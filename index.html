@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台股自訂指標看盤</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"
+        onerror="var s=document.createElement('script');s.src='https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js';document.head.appendChild(s);"></script>
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --lblbg:rgba(19,23,34,.78);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px}
+  body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+  header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 9px;height:32px}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  #sym{width:170px}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:hover{filter:brightness(1.08)}
+  label.chk{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--muted);cursor:pointer}
+  label.chk input{height:auto;margin:0}
+  .spacer{flex:1}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:32px}
+  .seg button{border:0;border-radius:0;height:30px;padding:0 11px;background:var(--panel2);color:var(--muted)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  #status{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+  #status.err{color:#ff6e6e}
+  #info{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;padding:8px 12px 2px}
+  #title{font-size:17px;font-weight:600}
+  #last{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+  #legend{display:flex;flex-wrap:wrap;gap:2px 12px;padding:0 12px 6px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:22px}
+  #legend b{color:var(--text);font-weight:500}
+  .u{color:var(--up)} .d{color:var(--down)}
+  #area{flex:1;min-height:0;position:relative}
+  #chartWrap{position:relative;height:100%}
+  #chart{position:absolute;inset:0}
+  .plabel{position:absolute;z-index:3;pointer-events:none;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;
+    background:var(--lblbg);padding:1px 6px;border-radius:4px;display:none;white-space:nowrap}
+  .plabel b{font-weight:600}
+  .tag{display:inline-block;margin-left:6px;padding:0 5px;border-radius:3px;font-size:11px;font-weight:600;color:#fff}
+  #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:24px;line-height:1.7}
+
+  /* 設定抽屜 */
+  #drawer{position:fixed;top:0;right:0;height:100%;width:360px;max-width:100%;background:var(--panel);border-left:1px solid var(--line);
+    transform:translateX(100%);transition:transform .2s;z-index:20;display:flex;flex-direction:column;box-shadow:-8px 0 24px #0005}
+  #drawer.open{transform:none}
+  #drawer .hd{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--line);font-weight:600}
+  #drawer .bd{padding:6px 16px 24px;overflow:auto}
+  .sec{padding:12px 0;border-bottom:1px solid var(--line)}
+  .sec:last-of-type{border-bottom:0}
+  .sec h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--muted)}
+  .stack{display:flex;flex-direction:column;gap:9px}
+  .stack label.chk{color:var(--text)}
+  .line{display:grid;grid-template-columns:1fr 58px 64px 34px;gap:6px;align-items:center}
+  .line.bb{grid-template-columns:1fr 50px 50px 64px 34px}
+  .line input[type=number]{width:100%;padding:4px 6px;height:28px}
+  .line select{padding:2px 4px;height:28px}
+  .line input[type=color]{width:34px;height:28px;padding:2px}
+  .line .hdr{font-size:11px;color:var(--muted)}
+  .kv{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .kv input[type=number]{width:76px;height:28px;padding:4px 6px}
+  .kv input[type=color]{width:40px;height:28px;padding:2px}
+  .kv select{height:28px;padding:2px 6px}
+  .colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px 12px}
+  .colors label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px}
+  .colors input[type=color]{width:36px;height:26px;padding:2px}
+  .presets{display:flex;gap:8px}
+  .rng{display:grid;grid-template-columns:110px 1fr 40px;align-items:center;gap:8px}
+  .rng input{height:auto;padding:0}
+  .rng b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+  details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-top:10px}
+  details summary{cursor:pointer;color:var(--text);font-size:13px}
+  details[open] summary{margin-bottom:10px}
+  .sub{font-size:12px;color:var(--muted);margin-top:4px;border-top:1px dashed var(--line);padding-top:8px}
+  .small{height:28px;padding:2px 10px;font-size:12px;align-self:flex-start}
+  .hint{font-size:12px;color:var(--muted);line-height:1.6}
+  #shade{position:fixed;inset:0;background:#0002;z-index:10;display:none}
+  #shade.open{display:block}
+  @media (max-width:600px){
+    #sym{width:130px}
+    #status{max-width:100%;flex-basis:100%}
+  }
+</style>
+</head>
+<body>
+<header>
+  <input id="sym" list="symList" placeholder="代號、名稱或 TX" autocomplete="off">
+  <datalist id="symList"></datalist>
+  <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">
+    <button data-tf="60">1時</button><button data-tf="240">4時</button><button data-tf="D">日</button><button data-tf="W">週</button><button data-tf="M">月</button>
+  </div>
+  <select id="period" title="顯示期間"></select>
+  <label class="chk" id="adjWrap" title="使用除權息還原後的股價（消除除權息缺口）"><input type="checkbox" id="adj">還原</label>
+  <label class="chk" id="nightWrap" title="日K以上的K棒把前一晚的夜盤併入" style="display:none"><input type="checkbox" id="night">含夜盤</label>
+  <button class="primary" id="loadBtn">載入</button>
+  <button id="setBtn" title="指標、顏色、版面與憑證">⚙ 設定</button>
+  <span class="spacer"></span>
+  <span id="status"></span>
+</header>
+
+<div id="info"><span id="title"></span><span id="last"></span></div>
+<div id="legend"></div>
+<div id="area"><div id="chartWrap">
+  <div id="chart"></div>
+  <div class="plabel" id="lbl-smi"></div>
+  <div class="plabel" id="lbl-aroon"></div>
+  <div class="plabel" id="lbl-vpo"></div>
+  <div class="plabel" id="lbl-t3"></div>
+  <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
+</div></div>
+
+<div id="shade"></div>
+<aside id="drawer" aria-label="設定">
+  <div class="hd">設定 <button id="closeBtn" class="small">關閉</button></div>
+  <div class="bd">
+
+    <div class="sec">
+      <h3>副圖指標（可任選）</h3>
+      <div class="stack">
+        <label class="chk"><input type="checkbox" data-ind="smi">SMI of MFI（資金流量 → 隨機動量）</label>
+        <label class="chk"><input type="checkbox" data-ind="aroon">Aroon 柱狀 ＋ 錢德動量擺盪（CMO）</label>
+        <label class="chk"><input type="checkbox" data-ind="vpo">VPO v1 貪恐震盪線</label>
+        <label class="chk"><input type="checkbox" data-ind="t3">Normalised T3 震盪指標</label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>主圖</h3>
+      <div class="stack">
+        <div class="line"><span class="hdr">均線</span><span class="hdr">週期</span><span class="hdr">粗細</span><span class="hdr">顏色</span></div>
+        <div class="line" data-ma="0"><label class="chk"><input type="checkbox" class="on">均線 1</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
+        <div class="line" data-ma="1"><label class="chk"><input type="checkbox" class="on">均線 2</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
+        <div class="line" data-ma="2"><label class="chk"><input type="checkbox" class="on">均線 3</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
+        <div class="line bb" style="margin-top:6px"><span class="hdr">布林通道</span><span class="hdr">週期</span><span class="hdr">倍數</span><span class="hdr">粗細</span><span class="hdr">顏色</span></div>
+        <div class="line bb" id="bbRow"><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>畫面顏色</h3>
+      <div class="stack">
+        <div class="presets"><button class="small" data-preset="dark">深色底</button><button class="small" data-preset="light">淺色底</button></div>
+        <div class="colors">
+          <label>背景<input type="color" data-k="col.bg" data-redraw="theme"></label>
+          <label>格線<input type="color" data-k="col.grid" data-redraw="theme"></label>
+          <label>刻度文字<input type="color" data-k="col.text" data-redraw="theme"></label>
+          <label>K棒上漲<input type="color" data-k="col.up" data-redraw="theme"></label>
+          <label>K棒下跌<input type="color" data-k="col.down" data-redraw="theme"></label>
+        </div>
+        <div class="hint">各指標線的顏色在下方「指標參數與顏色」裡調。</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>版面大小</h3>
+      <div class="stack">
+        <div class="rng"><span>圖表整體高度</span><input type="range" id="chartH" min="40" max="100" step="5"><b id="chartHv"></b></div>
+        <div class="rng"><span>K 線主圖佔比</span><input type="range" id="mainRatio" min="20" max="85" step="5"><b id="mainRatiov"></b></div>
+        <div class="hint">副圖之間的分隔線也可以直接上下拖曳。</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>指標參數與顏色</h3>
+      <details>
+        <summary>SMI of MFI</summary>
+        <div class="stack">
+          <div class="kv"><span>資金流量長度 MFI Length</span><input type="number" data-k="mfiLen" data-int data-redraw="smi" min="1"></div>
+          <div class="kv"><span>區間長度 K Length</span><input type="number" data-k="kLen" data-int data-redraw="smi" min="1"></div>
+          <div class="kv"><span>平滑長度 D Length</span><input type="number" data-k="dLen" data-int data-redraw="smi" min="1"></div>
+          <div class="kv"><span>超買線</span><input type="number" data-k="obLevel" data-redraw="smi" step="5" min="-100" max="100"></div>
+          <div class="kv"><span>超賣線</span><input type="number" data-k="osLevel" data-redraw="smi" step="5" min="-100" max="100"></div>
+          <label class="chk"><input type="checkbox" data-k="showRef" data-redraw="smi">顯示超買／超賣線與區域</label>
+          <div class="colors"><label>上升<input type="color" data-k="upCol" data-redraw="smi"></label><label>下降<input type="color" data-k="dnCol" data-redraw="smi"></label></div>
+          <button class="small" data-reset="smi">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>Aroon 柱狀 ＋ CMO</summary>
+        <div class="stack">
+          <div class="kv"><span>Aroon 長度 Aroon Length</span><input type="number" data-k="aroonLen" data-int data-redraw="aroon" min="1"></div>
+          <div class="kv"><span>錢德動量長度 CMO Length</span><input type="number" data-k="cmoLen" data-int data-redraw="aroon" min="1"></div>
+          <div class="kv"><span>訊號線長度 Signal</span><input type="number" data-k="cmoSig" data-int data-redraw="aroon" min="1"></div>
+          <div class="sub">柱狀顏色</div>
+          <div class="colors">
+            <label>零上增強<input type="color" data-k="arCol.ga" data-redraw="aroon"></label>
+            <label>零上減弱<input type="color" data-k="arCol.fa" data-redraw="aroon"></label>
+            <label>零下回升<input type="color" data-k="arCol.gb" data-redraw="aroon"></label>
+            <label>零下加深<input type="color" data-k="arCol.fb" data-redraw="aroon"></label>
+            <label>CMO 線<input type="color" data-k="arCol.cmo" data-redraw="aroon"></label>
+            <label>訊號線<input type="color" data-k="arCol.sig" data-redraw="aroon"></label>
+          </div>
+          <button class="small" data-reset="aroon">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>VPO v1 貪恐震盪線</summary>
+        <div class="stack">
+          <div class="kv"><span>SMI 長度</span><input type="number" data-k="vpo.smiK" data-int data-redraw="vpo" min="5" max="40"></div>
+          <div class="kv"><span>SMI 平滑</span><input type="number" data-k="vpo.smiD" data-int data-redraw="vpo" min="2" max="10"></div>
+          <div class="kv"><span>量能 Z-Score 期數</span><input type="number" data-k="vpo.volZ" data-int data-redraw="vpo" min="20" max="200"></div>
+          <div class="kv"><span>BIAS 均線長度</span><input type="number" data-k="vpo.biasLen" data-int data-redraw="vpo" min="20" max="200"></div>
+          <div class="kv"><span>EPD 動量長度</span><input type="number" data-k="vpo.momLen" data-int data-redraw="vpo" min="5" max="40"></div>
+          <div class="kv"><span>Z-Score 期數</span><input type="number" data-k="vpo.zLen" data-int data-redraw="vpo" min="20" max="200"></div>
+          <div class="sub">權重</div>
+          <div class="kv"><span>SMI</span><input type="number" data-k="vpo.wSmi" data-redraw="vpo" min="0" max="50"></div>
+          <div class="kv"><span>量能</span><input type="number" data-k="vpo.wVol" data-redraw="vpo" min="0" max="50"></div>
+          <div class="kv"><span>BIAS</span><input type="number" data-k="vpo.wBias" data-redraw="vpo" min="0" max="50"></div>
+          <div class="kv"><span>EPD 動量</span><input type="number" data-k="vpo.wEpd" data-redraw="vpo" min="0" max="50"></div>
+          <div class="sub">輸出</div>
+          <div class="kv"><span>靈敏度（tanh 增益）</span><input type="number" data-k="vpo.gain" data-redraw="vpo" min="0.5" max="4" step="0.1"></div>
+          <div class="kv"><span>輸出 EMA 平滑</span><input type="number" data-k="vpo.smooth" data-int data-redraw="vpo" min="1" max="20"></div>
+          <div class="kv"><span>上界（貪婪）</span><input type="number" data-k="vpo.thUp" data-redraw="vpo" min="30" max="95" step="5"></div>
+          <div class="kv"><span>下界（恐懼）</span><input type="number" data-k="vpo.thDn" data-redraw="vpo" min="-95" max="-30" step="5"></div>
+          <div class="kv"><span>主線寬度</span><select data-k="vpo.lw" data-int data-redraw="vpo"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <label class="chk"><input type="checkbox" data-k="vpo.fill" data-redraw="vpo">顯示區域填色</label>
+          <div class="colors">
+            <label>貪婪<input type="color" data-k="vpo.colUp" data-redraw="vpo"></label>
+            <label>恐懼<input type="color" data-k="vpo.colDn" data-redraw="vpo"></label>
+            <label>中性<input type="color" data-k="vpo.colMid" data-redraw="vpo"></label>
+          </div>
+          <button class="small" data-reset="vpo">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>Normalised T3 震盪指標</summary>
+        <div class="stack">
+          <div class="kv"><span>T3 週期 Period</span><input type="number" data-k="t3.len" data-int data-redraw="t3" min="1"></div>
+          <div class="kv"><span>T3 量因子 Volume Factor</span><input type="number" data-k="t3.vf" data-redraw="t3" min="0" max="1" step="0.1"></div>
+          <div class="kv"><span>正規化期數 Normalisation</span><input type="number" data-k="t3.norm" data-int data-redraw="t3" min="1"></div>
+          <div class="kv"><span>均線種類</span><select data-k="t3.maType" data-redraw="t3">
+            <option>SMA</option><option>EMA</option><option>DEMA</option><option>TEMA</option><option>RMA</option><option>WMA</option>
+            <option>HMA</option><option>T3</option><option>ALMA</option><option>LINREG</option><option>VWMA</option></select></div>
+          <div class="kv"><span>均線週期 MA Period</span><input type="number" data-k="t3.maLen" data-int data-redraw="t3" min="1"></div>
+          <label class="chk"><input type="checkbox" data-k="t3.showOsc" data-redraw="t3">顯示震盪柱</label>
+          <label class="chk"><input type="checkbox" data-k="t3.showMa" data-redraw="t3">顯示均線</label>
+          <label class="chk"><input type="checkbox" data-k="t3.showStatic" data-redraw="t3">顯示 ±0.4／±0.5 區間</label>
+          <div class="colors"><label>均線<input type="color" data-k="t3.maCol" data-redraw="t3"></label></div>
+          <div class="hint">柱狀依數值分 10 段漸層（原作配色：正值綠、負值紅）。</div>
+          <button class="small" data-reset="t3">恢復預設</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="sec">
+      <h3>FinMind 憑證</h3>
+      <div class="stack">
+        <input type="password" id="token" placeholder="貼上 api token">
+        <label class="chk"><input type="checkbox" id="showTok">顯示</label>
+        <div class="hint">只存在這台裝置的瀏覽器裡。憑證在 FinMind 網站「使用者資訊」頁面取得。</div>
+      </div>
+    </div>
+
+    <button id="resetAll" class="small" style="margin-top:6px">主圖、顏色與版面恢復預設</button>
+  </div>
+</aside>
+
+<script>
+(() => {
+'use strict';
+
+/* ───────────── 設定存取 ───────────── */
+const THEMES = {
+  dark:  { bg:'#131722', grid:'#1e2533', text:'#8a93a6', up:'#ef5350', down:'#26a69a' },
+  light: { bg:'#ffffff', grid:'#eef0f4', text:'#5b6275', up:'#e53935', down:'#089981' },
+};
+const CHROME = {
+  dark:  { panel:'#1b2130', panel2:'#222a3b', line:'#2a3245', text:'#d6dbe6', muted:'#8a93a6', scheme:'dark' },
+  light: { panel:'#f4f5f8', panel2:'#ffffff', line:'#d8dce4', text:'#1f2430', muted:'#667085', scheme:'light' },
+};
+const DEFAULTS = {
+  token:'', mfiLen:13, kLen:13, dLen:5, upCol:'#ef5350', dnCol:'#26a69a', showRef:true, obLevel:40, osLevel:-40,
+  aroonLen:14, cmoLen:9, cmoSig:10,
+  arCol:{ ga:'#26a69a', fa:'#b2dfdb', gb:'#ffcdd2', fb:'#ef5350', cmo:'#00bcd4', sig:'#ff9800' },
+  vpo:{ smiK:14, smiD:3, volZ:60, biasLen:55, momLen:14, zLen:60, wSmi:30, wVol:20, wBias:20, wEpd:30,
+        gain:1.5, smooth:6, thUp:60, thDn:-60, lw:3, fill:false, colUp:'#009646', colDn:'#dc1e1e', colMid:'#468ce6' },
+  t3:{ len:2, vf:0.7, norm:50, maType:'SMA', maLen:18, showOsc:true, showMa:true, showStatic:true, maCol:'#ffffff' },
+  ind:{ smi:true, aroon:true, vpo:true, t3:true }, chartH:100, mainRatio:50,
+  ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
+  bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
+  themeName:'dark', col: Object.assign({}, THEMES.dark),
+  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:6
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+let S = clone(DEFAULTS);
+try { Object.assign(S, JSON.parse(store.get('twchart.settings') || '{}')); } catch(e){}
+if ((S.v || 0) < 5){ S.ind = { smi:true, aroon:true }; if (S.showMA === false) S.ma = clone(DEFAULTS.ma).map(m => Object.assign(m, { on:false })); }
+if ((S.v || 0) < 6){ S.ind = Object.assign({}, S.ind, { vpo:true, t3:true }); S.mainRatio = Math.min(S.mainRatio || 50, 50); }
+['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
+S.v = 6;
+S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
+if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
+['bb','arCol','vpo','t3','col'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+if (!THEMES[S.themeName]) S.themeName = 'dark';
+const save = () => store.set('twchart.settings', JSON.stringify(S));
+
+const $ = id => document.getElementById(id);
+
+/* ───────────── 指標計算（照 Pine 內建函式邏輯移植） ───────────── */
+// ta.mfi(src, len)：
+//   upper = sum(volume * (change(src) <= 0 ? 0 : src), len)
+//   lower = sum(volume * (change(src) >= 0 ? 0 : src), len)
+//   mfi   = 100 - 100 / (1 + upper / lower)
+function taMFI(src, vol, len){
+  const n = src.length, up = new Array(n), dn = new Array(n), out = new Array(n).fill(null);
+  for (let i = 0; i < n; i++){
+    const ch = i > 0 ? src[i] - src[i-1] : NaN;   // 第一根無前值 → Pine 的 na 比較結果為 false
+    up[i] = vol[i] * ((isNaN(ch) || ch > 0) ? src[i] : 0);
+    dn[i] = vol[i] * ((isNaN(ch) || ch < 0) ? src[i] : 0);
+  }
+  let U = 0, L = 0;
+  for (let i = 0; i < n; i++){
+    U += up[i]; L += dn[i];
+    if (i >= len){ U -= up[i-len]; L -= dn[i-len]; }
+    if (i >= len - 1){
+      if (L > 0) out[i] = 100 - 100 / (1 + U / L);
+      else if (U > 0) out[i] = 100;                 // 連續上漲、無下跌量 → 取極限值 100
+      else out[i] = null;                           // 無成交量
+    }
+  }
+  return out;
+}
+// ta.highest / ta.lowest：含當根往回 len 根
+function taExtreme(arr, len, isMax){
+  const out = new Array(arr.length).fill(null);
+  for (let i = len - 1; i < arr.length; i++){
+    let v = null;
+    for (let j = i - len + 1; j <= i; j++){
+      const x = arr[j]; if (x === null) { v = null; break; }
+      if (v === null || (isMax ? x > v : x < v)) v = x;
+    }
+    out[i] = v;
+  }
+  return out;
+}
+// ta.ema：alpha = 2/(len+1)，以第一個有效值起算
+function taEMA(arr, len){
+  const a = 2 / (len + 1), out = new Array(arr.length).fill(null);
+  let prev = null;
+  for (let i = 0; i < arr.length; i++){
+    const x = arr[i];
+    if (x === null){ prev = null; continue; }
+    prev = prev === null ? x : a * x + (1 - a) * prev;
+    out[i] = prev;
+  }
+  return out;
+}
+function taSMA(arr, len){
+  const out = new Array(arr.length).fill(null); let s = 0;
+  for (let i = 0; i < arr.length; i++){
+    s += arr[i]; if (i >= len) s -= arr[i-len];
+    if (i >= len - 1) out[i] = s / len;
+  }
+  return out;
+}
+function smiOfMfi(close, vol, mfiLen, kLen, dLen){
+  const mfi = taMFI(close, vol, mfiLen);
+  const hh = taExtreme(mfi, kLen, true), ll = taExtreme(mfi, kLen, false);
+  const rel = mfi.map((m,i) => (m === null || hh[i] === null) ? null : m - (hh[i] + ll[i]) / 2);
+  const rng = mfi.map((m,i) => (hh[i] === null) ? null : hh[i] - ll[i]);
+  const num = taEMA(taEMA(rel, dLen), dLen);
+  const den = taEMA(taEMA(rng, dLen), dLen);
+  return num.map((x,i) => (x === null || den[i] === null) ? null : (den[i] !== 0 ? 200 * x / den[i] : 0));
+}
+// ta.highestbars / ta.lowestbars：往回 len 根（含當根）內最高／最低值的位移，0 = 當根、-k = k 根前；同值取最近一根
+function taExtremeBars(src, len, isMax){
+  const out = new Array(src.length).fill(null);
+  for (let i = len - 1; i < src.length; i++){
+    let best = src[i], off = 0;
+    for (let k = 1; k < len; k++){
+      const v = src[i-k];
+      if (isMax ? v > best : v < best){ best = v; off = -k; }
+    }
+    out[i] = off;
+  }
+  return out;
+}
+// 可處理空值的 sum / sma（窗口內有空值 → 空值，同 Pine）
+function taSumN(arr, len){
+  const out = new Array(arr.length).fill(null);
+  for (let i = len - 1; i < arr.length; i++){
+    let s = 0, ok = true;
+    for (let j = i - len + 1; j <= i; j++){ if (arr[j] === null){ ok = false; break; } s += arr[j]; }
+    out[i] = ok ? s : null;
+  }
+  return out;
+}
+const taSMAN = (arr, len) => taSumN(arr, len).map(x => x === null ? null : x / len);
+
+// Aroon Histogram + CMO [ChuckBanger]
+//   upper = 100 * (highestbars(high, len+1) + len) / len
+//   lower = 100 * (lowestbars(low,  len+1) + len) / len
+//   hist  = upper − lower
+//   CMO   = 150 * (sm1 − sm2) / (sm1 + sm2)，sm1/sm2 = 上漲／下跌幅度的 len 期加總
+//   訊號線 = sma(CMO, signal)
+function aroonCMO(high, low, close, len, cmoLen, sig){
+  const hb = taExtremeBars(high, len + 1, true), lb = taExtremeBars(low, len + 1, false);
+  const hist = hb.map((h,i) => (h === null || lb[i] === null) ? null : 100 * (h + len) / len - 100 * (lb[i] + len) / len);
+  // 第一根沒有前一根：change 為空值 → f1 得 0、f2 得空值（照 Pine 的 na 規則）
+  const m1 = close.map((c,i) => i === 0 ? 0 : Math.max(c - close[i-1], 0));
+  const m2 = close.map((c,i) => i === 0 ? null : Math.max(close[i-1] - c, 0));
+  const s1 = taSumN(m1, cmoLen), s2 = taSumN(m2, cmoLen);
+  const cmo = s1.map((a,i) => (a === null || s2[i] === null || a + s2[i] === 0) ? null : 150 * (a - s2[i]) / (a + s2[i]));
+  return { hist, cmo, signal: taSMAN(cmo, sig) };
+}
+// 布林通道：中線 = sma(close, len)；上下軌 = 中線 ± mult × 標準差（ta.stdev，母體標準差）
+function bollinger(close, len, mult){
+  const mid = new Array(close.length).fill(null), up = mid.slice(), lo = mid.slice();
+  for (let i = len - 1; i < close.length; i++){
+    let s = 0; for (let j = i - len + 1; j <= i; j++) s += close[j];
+    const m = s / len; let v = 0;
+    for (let j = i - len + 1; j <= i; j++) v += (close[j] - m) ** 2;
+    const sd = Math.sqrt(v / len);
+    mid[i] = m; up[i] = m + mult * sd; lo[i] = m - mult * sd;
+  }
+  return { mid, up, lo };
+}
+window.__ind = { taMFI, taEMA, taExtreme, smiOfMfi, aroonCMO, bollinger, bars: () => bars };   // 供驗算用
+
+/* ───────────── 共用數學（照 Pine 內建函式；窗口內有空值 → 空值） ───────────── */
+const clamp1 = x => Math.max(Math.min(x, 1), -1);
+const nz = x => (x === null || x === undefined || isNaN(x)) ? 0 : x;
+function taStdevN(arr, len){                      // ta.stdev：母體標準差
+  const out = new Array(arr.length).fill(null);
+  for (let i = len - 1; i < arr.length; i++){
+    let s = 0, ok = true;
+    for (let j = i - len + 1; j <= i; j++){ if (arr[j] === null){ ok = false; break; } s += arr[j]; }
+    if (!ok) continue;
+    const m = s / len; let v = 0;
+    for (let j = i - len + 1; j <= i; j++) v += (arr[j] - m) ** 2;
+    out[i] = Math.sqrt(v / len);
+  }
+  return out;
+}
+function taRMA(arr, len){                          // ta.rma：先以 SMA 起算，alpha = 1/len
+  const a = 1 / len, sma = taSMAN(arr, len), out = new Array(arr.length).fill(null);
+  let prev = null;
+  for (let i = 0; i < arr.length; i++){
+    if (prev === null){ prev = sma[i]; out[i] = prev; continue; }
+    if (arr[i] === null){ prev = null; continue; }
+    prev = a * arr[i] + (1 - a) * prev; out[i] = prev;
+  }
+  return out;
+}
+function taWMA(arr, len){
+  const out = new Array(arr.length).fill(null), den = len * (len + 1) / 2;
+  for (let i = len - 1; i < arr.length; i++){
+    let s = 0, ok = true;
+    for (let k = 0; k < len; k++){ const x = arr[i-k]; if (x === null){ ok = false; break; } s += x * (len - k); }
+    if (ok) out[i] = s / den;
+  }
+  return out;
+}
+const sub = (a, b, fa = 1, fb = 1) => a.map((x,i) => (x === null || b[i] === null) ? null : fa * x - fb * b[i]);
+function taHMA(arr, len){
+  const half = taWMA(arr, Math.max(1, Math.floor(len / 2))), full = taWMA(arr, len);
+  return taWMA(sub(half, full, 2, 1), Math.max(1, Math.round(Math.sqrt(len))));
+}
+function taDEMA(arr, len){ const e1 = taEMA(arr, len); return sub(e1, taEMA(e1, len), 2, 1); }
+function taTEMA(arr, len){
+  const e1 = taEMA(arr, len), e2 = taEMA(e1, len), e3 = taEMA(e2, len);
+  return e1.map((x,i) => (x === null || e2[i] === null || e3[i] === null) ? null : 3 * (x - e2[i]) + e3[i]);
+}
+// ta.t3（TradingView ta 函式庫）：六層 EMA 以量因子加權
+function taT3(arr, len, vf){
+  const e1 = taEMA(arr, len), e2 = taEMA(e1, len), e3 = taEMA(e2, len), e4 = taEMA(e3, len), e5 = taEMA(e4, len), e6 = taEMA(e5, len);
+  const c1 = -vf*vf*vf, c2 = 3*vf*vf + 3*vf*vf*vf, c3 = -6*vf*vf - 3*vf - 3*vf*vf*vf, c4 = 1 + 3*vf + vf*vf*vf + 3*vf*vf;
+  return e6.map((x,i) => (x === null || e5[i] === null || e4[i] === null || e3[i] === null) ? null : c1*x + c2*e5[i] + c3*e4[i] + c4*e3[i]);
+}
+function taALMA(arr, len, offset, sigma){
+  const m = offset * (len - 1), s = len / sigma, out = new Array(arr.length).fill(null);
+  const w = Array.from({ length:len }, (_, k) => Math.exp(-((k - m) ** 2) / (2 * s * s)));
+  const norm = w.reduce((a,b) => a + b, 0);
+  for (let i = len - 1; i < arr.length; i++){
+    let sum = 0, ok = true;
+    for (let k = 0; k < len; k++){ const x = arr[i - (len - 1 - k)]; if (x === null){ ok = false; break; } sum += x * w[k]; }
+    if (ok) out[i] = sum / norm;
+  }
+  return out;
+}
+function taLinreg(arr, len){                      // 最小平方法迴歸線在當根的值
+  const out = new Array(arr.length).fill(null);
+  for (let i = len - 1; i < arr.length; i++){
+    let sx = 0, sy = 0, sxy = 0, sxx = 0, ok = true;
+    for (let k = 0; k < len; k++){ const y = arr[i - len + 1 + k]; if (y === null){ ok = false; break; } sx += k; sy += y; sxy += k * y; sxx += k * k; }
+    if (!ok) continue;
+    const slope = len > 1 ? (len * sxy - sx * sy) / (len * sxx - sx * sx) : 0;
+    out[i] = (sy - slope * sx) / len + slope * (len - 1);
+  }
+  return out;
+}
+function taVWMA(arr, vol, len){
+  const pv = arr.map((x,i) => x === null ? null : x * vol[i]);
+  const a = taSMAN(pv, len), b = taSMAN(vol, len);
+  return a.map((x,i) => (x === null || !b[i]) ? null : x / b[i]);
+}
+function maByType(type, arr, len, vol){
+  switch (type){
+    case 'EMA': return taEMA(arr, len);   case 'DEMA': return taDEMA(arr, len);  case 'TEMA': return taTEMA(arr, len);
+    case 'RMA': return taRMA(arr, len);   case 'WMA':  return taWMA(arr, len);   case 'HMA':  return taHMA(arr, len);
+    case 'T3':  return taT3(arr, len, 0.7); case 'ALMA': return taALMA(arr, len, 0, 0.6);
+    case 'LINREG': return taLinreg(arr, len); case 'VWMA': return taVWMA(arr, vol, len);
+    default: return taSMAN(arr, len);
+  }
+}
+
+/* ───────────── VPO v1 貪恐震盪線 ───────────── */
+// 四個雙向引擎（SMI、帶方向量能 Z、BIAS Z、EPD 動量 Z）加權 → tanh 壓縮 → EMA 平滑
+function vpoCalc(o, h, l, c, v, P){
+  const n = c.length, K = P.smiK, D = P.smiD;
+  // 引擎 1：價格 SMI
+  const ll = taExtreme(l, K, false), hh = taExtreme(h, K, true);
+  const rdiff = c.map((x,i) => hh[i] === null ? null : x - (hh[i] + ll[i]) / 2);
+  const rng = hh.map((x,i) => x === null ? null : x - ll[i]);
+  const avgrel = taEMA(taEMA(rdiff, D), D), avgdiff = taEMA(taEMA(rng, D), D);
+  const smiRaw = avgdiff.map((d,i) => nz(d) !== 0 && avgrel[i] !== null ? avgrel[i] / (d / 2) * 100 : 0);
+  const eSmi = taEMA(smiRaw, 4).map(x => clamp1(x / 100));
+  // 引擎 2：帶方向量能 Z（紅K爆量為正、黑K爆量為負）
+  const vSma = taSMAN(v, P.volZ), vStd = taStdevN(v, P.volZ);
+  const dirVz = v.map((x,i) => {
+    const z = nz(vStd[i]) > 0 ? (x - nz(vSma[i])) / vStd[i] : 0;
+    return (c[i] > o[i] ? 1 : c[i] < o[i] ? -1 : 0) * Math.max(z, 0);
+  });
+  const eVol = taRMA(dirVz, 10).map(x => clamp1(nz(x) / 2.5));
+  // 引擎 3：BIAS 乖離率 Z
+  const bMa = taSMAN(c, P.biasLen);
+  const bRaw = c.map((x,i) => nz(bMa[i]) > 0 ? (x - bMa[i]) / bMa[i] * 100 : 0);
+  const bAvg = taSMAN(bRaw, P.zLen), bStd = taStdevN(bRaw, P.zLen);
+  const eBias = bRaw.map((x,i) => clamp1((nz(bStd[i]) > 0 ? (x - nz(bAvg[i])) / bStd[i] : 0) / 2.5));
+  // 引擎 4：EPD 雙平滑動量 Z
+  const roc = c.map((x,i) => i >= P.momLen && c[i - P.momLen] ? 100 * (x - c[i - P.momLen]) / c[i - P.momLen] : 0);
+  const ms = taEMA(taEMA(roc, 5), 8);
+  const mAvg = taSMAN(ms, P.zLen), mStd = taStdevN(ms, P.zLen);
+  const eEpd = ms.map((x,i) => clamp1((nz(mStd[i]) > 0 ? (x - nz(mAvg[i])) / mStd[i] : 0) / 2.5));
+  // 合成
+  const tw = P.wSmi + P.wVol + P.wBias + P.wEpd;
+  const tanh = x => { const xx = Math.max(Math.min(x, 10), -10), e2 = Math.exp(2 * xx); return (e2 - 1) / (e2 + 1); };
+  const comp = c.map((_,i) => tw > 0 ? (eSmi[i] * P.wSmi + eVol[i] * P.wVol + eBias[i] * P.wBias + eEpd[i] * P.wEpd) / tw : 0);
+  return taEMA(comp.map(x => tanh(x * P.gain) * 100), P.smooth);
+}
+
+/* ───────────── Normalised T3 Oscillator [BackQuant] ───────────── */
+const hex8 = h => { h = h.replace('#',''); const a = h.length === 8 ? parseInt(h.slice(6), 16) / 255 : 1;
+  const n = parseInt(h.slice(0,6), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${+a.toFixed(3)})`; };
+function t3Calc(c, v, P){
+  const subj = taT3(c, P.len, P.vf);
+  const lo = taExtreme(subj, P.norm, false), hi = taExtreme(subj, P.norm, true);
+  const osc = subj.map((x,i) => (x === null || hi[i] === null || hi[i] - lo[i] === 0) ? null : (x - lo[i]) / (hi[i] - lo[i]) - 0.5);
+  const ma = maByType(P.maType, osc, P.maLen, v);
+  // 柱狀顏色：照原作 var 變數寫法，條件都不成立時沿用上一根顏色
+  let col = '#1dcaff4d';
+  const cols = osc.map(x => {
+    if (x === null) return null;
+    if (x > 0 && x < 0.125) col = '#1dcaff4d';
+    if (x > 0 && x > 0.125) col = '#1e9b254d';
+    if (x > 0 && x > 0.25)  col = '#00ff003d';
+    if (x > 0 && x > 0.4)   col = '#00ff0080';
+    if (x > 0 && x > 0.49)  col = '#33ff00fc';
+    if (x < 0 && x > -0.125) col = '#e651004d';
+    if (x < 0 && x < -0.125) col = '#7715154d';
+    if (x < 0 && x < -0.25)  col = '#ff00004d';
+    if (x < 0 && x < -0.4)   col = '#ff000080';
+    if (x < 0 && x < -0.49)  col = '#ff0000';
+    return hex8(col);
+  });
+  return { osc, ma, cols };
+}
+window.__ind = { taMFI, taEMA, taExtreme, smiOfMfi, aroonCMO, bollinger, vpoCalc, t3Calc, taT3, maByType, taRMA, taStdevN, bars: () => bars };
+
+/* ───────────── FinMind API ───────────── */
+const API = 'https://api.finmindtrade.com/api/v4/data';
+async function finmind(params){
+  const qs = new URLSearchParams(params);
+  const tok = (S.token || '').trim();
+  let res;
+  try {
+    res = await fetch(API + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {});
+  } catch(e){
+    if (!tok) throw new Error('無法連線到 FinMind，請檢查網路');
+    qs.set('token', tok);   // 部分環境不允許自訂標頭，改用網址參數帶憑證再試一次
+    try { res = await fetch(API + '?' + qs); }
+    catch(e2){ throw new Error('無法連線到 FinMind，請檢查網路'); }
+  }
+  let j = null; try { j = await res.json(); } catch(e){}
+  if (res.status === 402 || (j && j.status === 402)) throw new Error('本小時查詢次數已用完（FinMind 額度上限），請稍後再試');
+  if (!res.ok || !j || j.status !== 200){
+    const msg = (j && j.msg) || String(res.status);
+    const err = new Error('FinMind 回應錯誤：' + msg + (/level|sponsor|backer|permission|權限|會員/i.test(msg) ? '（此資料需要付費會員）' : (res.status === 401 || res.status === 403 ? '（憑證可能有誤）' : '')));
+    err.finmindMsg = msg; err.httpStatus = res.status;
+    throw err;
+  }
+  return j.data || [];
+}
+// 同一次開啟頁面內，重複的查詢直接用快取，不再消耗額度
+const qCache = new Map();
+function finmindCached(params){
+  const k = JSON.stringify(params);
+  if (!qCache.has(k)) qCache.set(k, finmind(params).catch(e => { qCache.delete(k); throw e; }));
+  return qCache.get(k);
+}
+
+/* ───────────── 台指期 ───────────── */
+const FUT = { TX:'台指期（大台）', MTX:'小型台指（小台）', TMF:'微型台指（微台）' };
+const FUT_ALIAS = { TXF:'TX', MXF:'MTX', '大台':'TX', '台指期':'TX', '台指':'TX', '小台':'MTX', '小台指':'MTX', '微台':'TMF', '微台指':'TMF' };
+
+/* ───────────── 股票清單（代號↔名稱） ───────────── */
+let stockMap = new Map();
+async function loadStockList(){
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const c = JSON.parse(store.get('twchart.stocklist') || 'null');
+    if (c && c.d === today && c.list && c.list.length){ applyList(c.list); return; }
+  } catch(e){}
+  try {
+    const rows = await finmind({ dataset:'TaiwanStockInfo' });
+    const latest = new Map();
+    for (const r of rows){
+      const p = latest.get(r.stock_id);
+      if (!p || (r.date || '') > (p.date || '')) latest.set(r.stock_id, r);
+    }
+    const list = [...latest.values()].map(r => [r.stock_id, r.stock_name]).sort((a,b) => a[0].localeCompare(b[0]));
+    store.set('twchart.stocklist', JSON.stringify({ d: today, list }));
+    applyList(list);
+  } catch(e){ /* 清單非必要，失敗就略過 */ }
+}
+function applyList(list){
+  stockMap = new Map(list);
+  const dl = $('symList'); dl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  const add = v => { const o = document.createElement('option'); o.value = v; frag.appendChild(o); };
+  for (const [id,name] of Object.entries(FUT)) add(id + ' ' + name + ' 近月');
+  for (const [id,name] of list) add(id + ' ' + name);
+  dl.appendChild(frag);
+  if (currentSym && currentSym.kind === 'stock' && stockMap.has(currentSym.id)) $('title').textContent = currentSym.id + ' ' + stockMap.get(currentSym.id);
+}
+function parseSym(txt){
+  txt = (txt || '').trim(); if (!txt) return null;
+  const first = txt.split(/\s+/)[0];
+  const fa = FUT_ALIAS[first] || FUT_ALIAS[first.toUpperCase()] || (FUT[first.toUpperCase()] ? first.toUpperCase() : null);
+  if (fa) return { id:fa, kind:'fut', name:FUT[fa] };
+  const m = txt.match(/^[0-9A-Za-z]+/);
+  if (m){ const id = m[0].toUpperCase(); return { id, kind:'stock', name:stockMap.get(id) || '' }; }
+  for (const [id,name] of stockMap) if (name === txt) return { id, kind:'stock', name };
+  for (const [id,name] of stockMap) if (name.includes(txt)) return { id, kind:'stock', name };
+  return null;
+}
+
+/* ───────────── 圖表 ───────────── */
+const LC = () => window.LightweightCharts;
+const hexA = (hex, a) => { const h = hex.replace('#',''); const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h.slice(0,6), 16);
+  return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+const CLEAR = 'rgba(0,0,0,0)';
+const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
+const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
+
+// 副圖由上往下的順序；要新增指標就在 IND 裡登記
+const IND_ORDER = ['smi', 'aroon', 'vpo', 't3'];
+
+let chart, candle, maS = [], bbU, bbM, bbL;
+let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
+let maVals = [[],[],[]], bbVals = null;
+let paneOf = {}, paneRO = null;
+const toLine = arr => bars.map((b,i) => arr[i] === null || arr[i] === undefined ? { time:b.time } : { time:b.time, value:arr[i] });
+const fmt = (x, d=2) => x === null || x === undefined || isNaN(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+
+/* ── 各副圖指標：建立（create）、計算繪製（draw）、左上角數值（label） ── */
+const IND = {
+  smi: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries, BaselineSeries } = LC(), fr = fixedRange(-100, 100);
+      const zoneOpt = () => ({ lineWidth:1, topLineColor:CLEAR, bottomLineColor:CLEAR, priceLineVisible:false, lastValueVisible:false,
+                               crosshairMarkerVisible:false, autoscaleInfoProvider:fr, priceFormat:F1 });
+      this.s.ob = chart.addSeries(BaselineSeries, zoneOpt(), p);    // 超買區塊填色
+      this.s.os = chart.addSeries(BaselineSeries, zoneOpt(), p);    // 超賣區塊填色
+      this.s.line = chart.addSeries(LineSeries, { lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3,
+                                                  priceFormat:F1, autoscaleInfoProvider:fr }, p);
+      this.refs = [];
+    },
+    draw(){
+      const v = this.vals = smiOfMfi(bars.map(b => b.close), bars.map(b => b.volume), S.mfiLen, S.kLen, S.dLen);
+      this.s.line.setData(bars.map((b,i) => v[i] === null ? { time:b.time }
+        : { time:b.time, value:v[i], color: (i > 0 && v[i-1] !== null && v[i] >= v[i-1]) ? S.upCol : S.dnCol }));
+      this.s.ob.setData(toLine(v)); this.s.os.setData(toLine(v));
+      const { LineStyle } = LC(), L = this.s.line;
+      this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
+      const mk = (price, color, style, width, lab, title) => this.refs.push(L.createPriceLine({ price, color, lineWidth:width, lineStyle:style, axisLabelVisible:lab, title }));
+      mk(0, hexA(S.col.text, .6), LineStyle.Dotted, 1, false, '');
+      const on = !!S.showRef;
+      if (on){ mk(S.obLevel, S.upCol, LineStyle.Dashed, 2, true, '超買'); mk(S.osLevel, S.dnCol, LineStyle.Dashed, 2, true, '超賣'); }
+      this.s.ob.applyOptions({ visible:on, baseValue:{ type:'price', price:S.obLevel },
+        topFillColor1:hexA(S.upCol,.45), topFillColor2:hexA(S.upCol,.12), bottomFillColor1:CLEAR, bottomFillColor2:CLEAR });
+      this.s.os.applyOptions({ visible:on, baseValue:{ type:'price', price:S.osLevel },
+        topFillColor1:CLEAR, topFillColor2:CLEAR, bottomFillColor1:hexA(S.dnCol,.12), bottomFillColor2:hexA(S.dnCol,.45) });
+    },
+    label(i){
+      const v = this.vals; if (!v) return '';
+      const x = v[i], pv = i > 0 ? v[i-1] : null;
+      const col = x == null ? 'var(--text)' : (pv != null && x >= pv ? S.upCol : S.dnCol);
+      let tag = '';
+      if (S.showRef && x != null){
+        if (x >= S.obLevel) tag = `<span class="tag" style="background:${S.upCol}">超買</span>`;
+        else if (x <= S.osLevel) tag = `<span class="tag" style="background:${S.dnCol}">超賣</span>`;
+      }
+      return `SMI-MFI (${S.mfiLen},${S.kLen},${S.dLen}) <b style="color:${col}">${fmt(x,1)}</b>${tag}`;
+    },
+  },
+
+  aroon: {
+    s:{}, vals:null,
+    create(p){
+      const { HistogramSeries, LineSeries } = LC();
+      this.s.hist = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F1 }, p);
+      this.s.cmo  = chart.addSeries(LineSeries, { lineWidth:1.5, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F1 }, p);
+      this.s.sig  = chart.addSeries(LineSeries, { lineWidth:1.5, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F1 }, p);
+      const { LineStyle } = LC();
+      // hline(100, red) / hline(0) / hline(-100, lime)
+      this.s.cmo.createPriceLine({ price:100,  color:'#ff5252', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+      this.zero = this.s.cmo.createPriceLine({ price:0, color:hexA(S.col.text,.6), lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+      this.s.cmo.createPriceLine({ price:-100, color:'#00e676', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+    },
+    color(h, prev){
+      const rising = prev !== null && prev !== undefined && prev < h, C = S.arCol;
+      return h >= 0 ? (rising ? C.ga : C.fa) : (rising ? C.gb : C.fb);
+    },
+    draw(){
+      const v = this.vals = aroonCMO(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), S.aroonLen, S.cmoLen, S.cmoSig);
+      this.s.hist.setData(bars.map((b,i) => v.hist[i] === null ? { time:b.time }
+        : { time:b.time, value:v.hist[i], color:this.color(v.hist[i], i > 0 ? v.hist[i-1] : null) }));
+      this.s.cmo.setData(toLine(v.cmo)); this.s.sig.setData(toLine(v.signal));
+      this.s.cmo.applyOptions({ color:S.arCol.cmo }); this.s.sig.applyOptions({ color:S.arCol.sig });
+      this.zero.applyOptions({ color:hexA(S.col.text,.6) });
+    },
+    label(i){
+      const v = this.vals; if (!v) return '';
+      const h = v.hist[i], hc = h == null ? 'var(--text)' : this.color(h, i > 0 ? v.hist[i-1] : null);
+      return `Aroon (${S.aroonLen}) 柱 <b style="color:${hc}">${fmt(h,1)}</b>　` +
+        `<span style="color:${S.arCol.cmo}">CMO (${S.cmoLen}) <b>${fmt(v.cmo[i],1)}</b></span>　` +
+        `<span style="color:${S.arCol.sig}">訊號 (${S.cmoSig}) <b>${fmt(v.signal[i],1)}</b></span>`;
+    },
+  },
+
+  vpo: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries, BaselineSeries } = LC(), fr = fixedRange(-100, 100);
+      this.s.fill = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:1, topLineColor:CLEAR, bottomLineColor:CLEAR,
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:fr, priceFormat:F1 }, p);
+      this.s.line = chart.addSeries(LineSeries, { priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3, priceFormat:F1, autoscaleInfoProvider:fr }, p);
+      this.refs = [];
+    },
+    color(x){ const P = S.vpo; return x >= P.thUp ? P.colUp : x <= P.thDn ? P.colDn : P.colMid; },
+    draw(){
+      const P = S.vpo;
+      const v = this.vals = vpoCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), bars.map(b => b.volume), P);
+      this.s.line.applyOptions({ lineWidth:+P.lw });
+      this.s.line.setData(bars.map((b,i) => v[i] === null ? { time:b.time } : { time:b.time, value:v[i], color:this.color(v[i]) }));
+      this.s.fill.setData(toLine(v));
+      this.s.fill.applyOptions({ visible:!!P.fill, topFillColor1:hexA(P.colUp,.14), topFillColor2:hexA(P.colUp,.14),
+                                 bottomFillColor1:hexA(P.colDn,.14), bottomFillColor2:hexA(P.colDn,.14) });
+      const { LineStyle } = LC(), L = this.s.line;
+      this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
+      this.refs.push(L.createPriceLine({ price:P.thUp, color:hexA(P.colUp,.75), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:true, title:'貪婪' }));
+      this.refs.push(L.createPriceLine({ price:0, color:hexA(S.col.text,.5), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:false }));
+      this.refs.push(L.createPriceLine({ price:P.thDn, color:hexA(P.colDn,.75), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:true, title:'恐懼' }));
+    },
+    label(i){
+      const v = this.vals; if (!v) return '';
+      const x = v[i], P = S.vpo;
+      let tag = '';
+      if (x != null && x >= P.thUp) tag = `<span class="tag" style="background:${P.colUp}">貪婪</span>`;
+      else if (x != null && x <= P.thDn) tag = `<span class="tag" style="background:${P.colDn}">恐懼</span>`;
+      return `VPO v1 <b style="color:${x == null ? 'var(--text)' : this.color(x)}">${fmt(x,1)}</b>${tag}`;
+    },
+  },
+
+  t3: {
+    s:{}, vals:null,
+    create(p){
+      const { HistogramSeries, LineSeries, BaselineSeries, LineStyle } = LC();
+      const band = (top, base, lineCol, fill, above) => chart.addSeries(BaselineSeries, {
+        baseValue:{ type:'price', price:base }, lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+        topLineColor: above ? lineCol : CLEAR, bottomLineColor: above ? CLEAR : lineCol,
+        topFillColor1: above ? fill : CLEAR, topFillColor2: above ? fill : CLEAR,
+        bottomFillColor1: above ? CLEAR : fill, bottomFillColor2: above ? CLEAR : fill, priceFormat:F2 }, p);
+      this.s.ob = band(0.5, 0.4, hex8('#ff0000fc'), hex8('#7715154d'), true);     // +0.4 ~ +0.5 超買帶
+      this.s.os = band(-0.5, -0.4, hex8('#00ff00fc'), hex8('#1e9b254d'), false);  // −0.4 ~ −0.5 超賣帶
+      this.s.cols = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F2 }, p);
+      this.s.ma = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F2 }, p);
+      this.lines = [
+        this.s.cols.createPriceLine({ price:0.4,  color:hex8('#ff0000fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false }),
+        this.s.cols.createPriceLine({ price:-0.4, color:hex8('#00ff00fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false }),
+      ];
+      this.mid = this.s.cols.createPriceLine({ price:0, color:hexA(S.col.text,.35), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false });
+    },
+    draw(){
+      const P = S.t3, v = this.vals = t3Calc(bars.map(b => b.close), bars.map(b => b.volume), P);
+      this.s.cols.setData(bars.map((b,i) => v.osc[i] === null ? { time:b.time } : { time:b.time, value:v.osc[i], color:v.cols[i] }));
+      this.s.ma.setData(toLine(v.ma));
+      this.s.ob.setData(bars.map(b => ({ time:b.time, value:0.5 })));
+      this.s.os.setData(bars.map(b => ({ time:b.time, value:-0.5 })));
+      this.s.cols.applyOptions({ visible:!!P.showOsc });
+      this.s.ma.applyOptions({ visible:!!P.showMa, color:P.maCol });
+      this.s.ob.applyOptions({ visible:!!P.showStatic }); this.s.os.applyOptions({ visible:!!P.showStatic });
+      this.lines.forEach(l => l.applyOptions({ lineVisible:!!P.showStatic }));
+      this.mid.applyOptions({ color:hexA(S.col.text,.35) });
+    },
+    label(i){
+      const v = this.vals; if (!v) return '';
+      const x = v.osc[i], P = S.t3;
+      return `Normalised T3 (${P.len},${P.vf},${P.norm}) <b style="color:${x == null ? 'var(--text)' : x >= 0 ? '#33d17a' : '#ff5252'}">${fmt(x,3)}</b>　` +
+        `<span style="color:${P.maCol}">${P.maType} (${P.maLen}) <b>${fmt(v.ma[i],3)}</b></span>`;
+    },
+  },
+};
+
+function initChart(){
+  if (chart) return;
+  const { createChart, CandlestickSeries, LineSeries, CrosshairMode, LineStyle } = LC();
+  chart = createChart($('chart'), {
+    autoSize: true,
+    layout: { fontSize:11, panes:{ enableResize:true } },
+    crosshair: { mode: CrosshairMode.Normal },
+    timeScale: { rightOffset:4, minBarSpacing:1 },
+    localization: { locale:'zh-TW', dateFormat:'yyyy/MM/dd' },
+  });
+  candle = chart.addSeries(CandlestickSeries, { priceLineVisible:false }, 0);
+  const lineOpt = () => ({ lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+  bbU = chart.addSeries(LineSeries, lineOpt(), 0);
+  bbM = chart.addSeries(LineSeries, Object.assign(lineOpt(), { lineStyle:LineStyle.Dashed }), 0);
+  bbL = chart.addSeries(LineSeries, lineOpt(), 0);
+  maS = [0,1,2].map(() => chart.addSeries(LineSeries, lineOpt(), 0));
+  applyTheme();
+  applyMainStyle();
+  chart.subscribeCrosshairMove(p => renderLegend(p && p.time !== undefined ? idxByTime.get(p.time) : undefined));
+  new ResizeObserver(() => positionLabels()).observe($('chart'));
+  buildIndicators();
+}
+
+/* 畫面顏色 */
+function applyTheme(){
+  const c = S.col, ch = CHROME[S.themeName] || CHROME.dark, r = document.documentElement.style;
+  r.setProperty('--bg', c.bg); r.setProperty('--up', c.up); r.setProperty('--down', c.down);
+  r.setProperty('--panel', ch.panel); r.setProperty('--panel2', ch.panel2); r.setProperty('--line', ch.line);
+  r.setProperty('--text', ch.text); r.setProperty('--muted', ch.muted); r.setProperty('--lblbg', hexA(c.bg, .8));
+  r.setProperty('color-scheme', ch.scheme);
+  if (!chart) return;
+  chart.applyOptions({
+    layout:{ background:{ color:c.bg }, textColor:c.text, panes:{ separatorColor:c.grid, separatorHoverColor:hexA(c.text,.35) } },
+    grid:{ vertLines:{ color:c.grid }, horzLines:{ color:c.grid } },
+    rightPriceScale:{ borderColor:c.grid }, timeScale:{ borderColor:c.grid },
+  });
+  candle.applyOptions({ upColor:c.up, downColor:c.down, borderUpColor:c.up, borderDownColor:c.down, wickUpColor:c.up, wickDownColor:c.down });
+}
+
+/* 主圖：均線與布林通道 */
+function applyMainStyle(){
+  if (!chart) return;
+  S.ma.forEach((m,k) => maS[k].applyOptions({ visible:!!m.on, color:m.col, lineWidth:+m.w }));
+  const b = S.bb;
+  bbU.applyOptions({ visible:!!b.on, color:b.col, lineWidth:+b.w });
+  bbL.applyOptions({ visible:!!b.on, color:b.col, lineWidth:+b.w });
+  bbM.applyOptions({ visible:!!b.on, color:hexA(b.col, .75), lineWidth:Math.max(1, +b.w - 1) });
+}
+function drawMain(){
+  if (!chart || !bars.length) return;
+  const cl = bars.map(b => b.close);
+  maVals = S.ma.map(m => taSMA(cl, Math.max(1, +m.len || 1)));
+  maVals.forEach((v,k) => maS[k].setData(toLine(v)));
+  bbVals = bollinger(cl, Math.max(2, +S.bb.len || 20), +S.bb.mult || 2);
+  bbU.setData(toLine(bbVals.up)); bbM.setData(toLine(bbVals.mid)); bbL.setData(toLine(bbVals.lo));
+  applyMainStyle();
+  renderLegend();
+}
+
+/* 副圖：依勾選狀態重建（勾幾個就有幾格，0 個也可以） */
+function buildIndicators(){
+  if (!chart) return;
+  for (const k of IND_ORDER){ const d = IND[k]; Object.values(d.s).forEach(s => chart.removeSeries(s)); d.s = {}; d.vals = null; }
+  while (chart.panes().length > 1) chart.removePane(chart.panes().length - 1);
+  paneOf = {}; let p = 1;
+  for (const k of IND_ORDER) if (S.ind[k]){ IND[k].create(p); paneOf[k] = p++; }
+  drawIndicators();
+  layoutPanes();
+}
+function drawInd(k){ if (bars.length && paneOf[k] !== undefined) IND[k].draw(); renderLegend(); }
+function drawIndicators(){ for (const k of IND_ORDER) if (bars.length && paneOf[k] !== undefined) IND[k].draw(); renderLegend(); }
+
+function layoutPanes(){
+  $('chartWrap').style.height = S.chartH + '%';
+  if (!chart) return;
+  const panes = chart.panes(), n = panes.length - 1, R = S.mainRatio / 100;
+  panes.forEach((pn, i) => pn.setStretchFactor(n === 0 ? 1 : (i === 0 ? R : (1 - R) / n)));
+  if (paneRO) paneRO.disconnect();
+  paneRO = new ResizeObserver(() => positionLabels());
+  requestAnimationFrame(() => {
+    chart.panes().forEach(pn => { const el = pn.getHTMLElement(); if (el) paneRO.observe(el); });
+    positionLabels();
+  });
+}
+function positionLabels(){
+  if (!chart) return;
+  const wrap = $('chartWrap').getBoundingClientRect(), panes = chart.panes();
+  for (const k of IND_ORDER){
+    const lab = $('lbl-' + k), idx = paneOf[k];
+    const el = idx !== undefined && panes[idx] ? panes[idx].getHTMLElement() : null;
+    if (!el || !bars.length){ lab.style.display = 'none'; continue; }
+    const r = el.getBoundingClientRect();
+    lab.style.display = 'block'; lab.style.top = (r.top - wrap.top + 4) + 'px'; lab.style.left = (r.left - wrap.left + 6) + 'px';
+  }
+}
+
+function renderLegend(i){
+  if (!bars.length){ $('legend').innerHTML = ''; positionLabels(); return; }
+  if (i === undefined) i = bars.length - 1;
+  const b = bars[i], p = i > 0 ? bars[i-1] : null;
+  const cls = p ? (b.close > p.close ? 'u' : b.close < p.close ? 'd' : '') : '';
+  const chg = p ? b.close - p.close : null, pct = p ? chg / p.close * 100 : null;
+  let h = `<span><b>${b.label}</b></span>` +
+    (b.contract ? `<span>合約 <b>${b.contract.slice(0,4)}/${b.contract.slice(4)}</b></span>` : '') +
+    `<span>開 <b class="${cls}">${fmt(b.open)}</b></span><span>高 <b class="${cls}">${fmt(b.high)}</b></span>` +
+    `<span>低 <b class="${cls}">${fmt(b.low)}</b></span><span>收 <b class="${cls}">${fmt(b.close)}</b></span>` +
+    (p ? `<span class="${cls}">${chg >= 0 ? '+' : ''}${fmt(chg)} (${pct >= 0 ? '+' : ''}${fmt(pct)}%)</span>` : '') +
+    `<span>量 <b>${fmt(b.volume,0)}</b> ${volUnit}</span>`;
+  S.ma.forEach((m,k) => { if (m.on) h += `<span style="color:${m.col}">MA${m.len} ${fmt(maVals[k] ? maVals[k][i] : null)}</span>`; });
+  if (S.bb.on && bbVals) h += `<span style="color:${S.bb.col}">布林(${S.bb.len},${S.bb.mult}) 上 ${fmt(bbVals.up[i])}　中 ${fmt(bbVals.mid[i])}　下 ${fmt(bbVals.lo[i])}</span>`;
+  $('legend').innerHTML = h;
+  for (const k of IND_ORDER) if (paneOf[k] !== undefined) $('lbl-' + k).innerHTML = IND[k].label(i);
+  positionLabels();
+}
+
+/* ───────────── 看盤週期設定 ───────────── */
+// 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
+const TF = {
+  '60':  { intraday:true,  P:60,  unit:'天', periods:[['20','20 天'],['40','40 天'],['60','60 天']], def:'20', warm:15 },
+  '240': { intraday:true,  P:240, unit:'天', periods:[['40','40 天'],['60','60 天'],['120','120 天']], def:'60', warm:35 },
+  'D':   { periods:[['0.5','半年'],['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年']], def:'1',  warm:200 },
+  'W':   { periods:[['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年'],['10','10 年']], def:'3',  warm:750 },
+  'M':   { periods:[['5','5 年'],['10','10 年'],['20','20 年']], def:'10', warm:2600 },
+};
+function buildPeriodOptions(){
+  const c = TF[S.tf], sel = $('period'); sel.innerHTML = '';
+  for (const [v,t] of c.periods){ const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); }
+  const want = (S.periods || {})[S.tf];
+  sel.value = c.periods.some(p => p[0] === want) ? want : c.def;
+  document.querySelectorAll('#tfSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === S.tf));
+}
+function updateKindUI(sym){
+  const fut = sym && sym.kind === 'fut';
+  $('adjWrap').style.display = fut ? 'none' : '';
+  $('nightWrap').style.display = fut ? '' : 'none';
+  const intra = !!TF[S.tf].intraday;
+  $('night').disabled = intra; $('nightWrap').style.opacity = intra ? .45 : 1;
+  $('nightWrap').title = intra ? '1 小時／4 小時目前只含日盤' : '日K以上的K棒把前一晚的夜盤併入（開盤價取夜盤開盤）';
+  $('adj').disabled = intra; $('adjWrap').style.opacity = intra ? .45 : 1;
+}
+
+/* ───────────── 載入資料 ───────────── */
+function ymd(d){ return d.toISOString().slice(0,10); }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function setStatus(t, err){ const s = $('status'); s.textContent = t || ''; s.className = err ? 'err' : ''; }
+const slash = d => d.replace(/-/g,'/');
+const hm = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+function parseHM(s){ s = String(s || '').trim().split(' ').pop(); const p = s.split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+
+// 日K：股票
+async function dailyStock(id, from, to, adj){
+  const rows = await finmindCached({ dataset: adj ? 'TaiwanStockPriceAdj' : 'TaiwanStockPrice', data_id:id, start_date:from, end_date:to });
+  return rows.filter(r => r.close > 0).sort((a,b) => a.date.localeCompare(b.date))
+    .map(r => ({ date:r.date, open:r.open, high:r.max, low:r.min, close:r.close, volume:r.Trading_Volume / 1000 }));
+}
+// 日K：台指期近月連續（每天取成交量大於零、最近到期的月合約；可選擇併入前一晚夜盤）
+async function dailyFut(id, from, to, night){
+  const rows = await finmindCached({ dataset:'TaiwanFuturesDaily', data_id:id, start_date:from, end_date:to });
+  const byDate = new Map();
+  for (const r of rows){
+    const c = String(r.contract_date || '').trim();
+    if (!(r.close > 0) || !/^\d{6}$/.test(c)) continue;          // 排除價差單、週契約等非單一月份合約
+    let e = byDate.get(r.date); if (!e){ e = { pos:new Map(), ah:new Map() }; byDate.set(r.date, e); }
+    (r.trading_session === 'after_market' ? e.ah : e.pos).set(c, r);
+  }
+  const out = [];
+  for (const date of [...byDate.keys()].sort()){
+    const e = byDate.get(date);
+    const cs = [...e.pos.keys()].sort(); if (!cs.length) continue;
+    const near = cs.find(c => e.pos.get(c).volume > 0) || cs[0];
+    const p = e.pos.get(near);
+    const bar = { date, open:p.open, high:p.max, low:p.min, close:p.close, volume:p.volume, contract:near };
+    const a = night ? e.ah.get(near) : null;
+    if (a && a.open > 0){
+      bar.open = a.open; bar.high = Math.max(bar.high, a.max); bar.low = Math.min(bar.low, a.min); bar.volume += a.volume;
+    }
+    out.push(bar);
+  }
+  return out;
+}
+// 日K → 週K／月K
+function mondayOf(date){ const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0,10); }
+function aggregate(daily, tf){
+  const out = []; let cur = null, curKey = null;
+  for (const b of daily){
+    const k = tf === 'W' ? mondayOf(b.date) : b.date.slice(0,7);
+    if (k !== curKey){
+      cur = { date:b.date, open:b.open, high:b.high, low:b.low, close:b.close, volume:b.volume, contract:b.contract };
+      out.push(cur); curKey = k;
+    } else {
+      cur.high = Math.max(cur.high, b.high); cur.low = Math.min(cur.low, b.low);
+      cur.close = b.close; cur.volume += b.volume; cur.contract = b.contract;
+    }
+  }
+  return out;
+}
+// 交易日清單
+async function tradingDates(n){
+  const today = ymd(new Date());
+  try {
+    const rows = await finmindCached({ dataset:'TaiwanStockTradingDate', start_date: ymd(addDays(new Date(), -Math.ceil(n * 1.7) - 20)) });
+    const ds = [...new Set(rows.map(r => r.date))].filter(d => d <= today).sort();
+    if (ds.length >= Math.min(n, 10)) return ds.slice(-n);
+  } catch(e){}
+  const ds = []; let d = new Date();                                    // 取不到就用週一到週五近似
+  while (ds.length < n){ const w = d.getDay(); if (w > 0 && w < 6) ds.unshift(ymd(d)); d = addDays(d, -1); }
+  return ds;
+}
+async function pool(items, limit, fn, onProg, isStale){
+  let i = 0, done = 0, err = null; const out = new Array(items.length);
+  const worker = async () => { while (i < items.length && !err){
+    if (isStale && isStale()){ err = new Error('stale'); break; } const k = i++; try { out[k] = await fn(items[k]); } catch(e){ err = err || e; } onProg && onProg(++done, items.length); } };
+  await Promise.all(Array.from({ length:limit }, worker));
+  if (err) throw err;
+  return out;
+}
+// 分K → 1 小時／4 小時 K 棒（股票以 09:00 起算，台指期日盤以 08:45 起算，與 TradingView 對齊方式相同）
+function intradayBars(date, rows, sym, P){
+  let anchor = 540, end = 810, list = rows;                              // 股票 09:00–13:30
+  if (sym.kind === 'fut'){
+    anchor = 525; end = 825;                                             // 期貨日盤 08:45–13:45
+    const vol = new Map();
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); vol.set(c, (vol.get(c) || 0) + (+r.volume || 0)); }
+    const cs = [...vol.keys()]; const mono = cs.filter(c => /^\d{6}$/.test(c));
+    const pickFrom = mono.length ? mono : cs;
+    const main = pickFrom.sort((a,b) => vol.get(b) - vol.get(a))[0];   // 當天成交量最大的月合約
+    list = rows.filter(r => String(r.contract_date || '').trim() === main);
+    list.forEach(r => r._c = main);
+  }
+  const mins = list.map(r => ({ m:parseHM(r.minute), r })).filter(x => x.r.close > 0 && x.m >= anchor && x.m <= end).sort((a,b) => a.m - b.m);
+  const [y, mo, d] = date.split('-').map(Number);
+  const out = []; let cur = null, curB = null;
+  for (const { m, r } of mins){
+    const mm = Math.min(Math.max(m, anchor), end - 1);
+    const b = anchor + Math.floor((mm - anchor) / P) * P;
+    if (b !== curB){
+      cur = { date, time: Date.UTC(y, mo-1, d, 0, b) / 1000, label: slash(date) + ' ' + hm(b),
+              open:r.open, high:r.high, low:r.low, close:r.close, volume:+r.volume || 0, contract:r._c };
+      out.push(cur); curB = b;
+    } else {
+      cur.high = Math.max(cur.high, r.high); cur.low = Math.min(cur.low, r.low); cur.close = r.close; cur.volume += +r.volume || 0;
+    }
+  }
+  return out;
+}
+
+async function getBars(sym, tf, period, isStale){
+  const c = TF[tf], today = new Date();
+  if (c.intraday){
+    const nShow = parseInt(period, 10), dates = await tradingDates(nShow + c.warm);
+    const ds = sym.kind === 'fut' ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar';
+    const fetchDay = d => finmindCached({ dataset:ds, data_id:sym.id, start_date:d });
+    await fetchDay(dates[dates.length-1]);                               // 先試一天，沒有權限就不再浪費額度
+    const perDay = await pool(dates, 5, fetchDay, (k,n) => { if (!isStale()) setStatus(`讀取分K ${k}/${n}…`); }, isStale);
+    const all = []; dates.forEach((d,i) => all.push(...intradayBars(d, perDay[i] || [], sym, c.P)));
+    return { bars: all, showFromDate: dates[Math.max(0, dates.length - nShow)] };
+  }
+  const years = parseFloat(period);
+  const showFrom = addDays(today, -Math.round(years * 365));
+  const from = ymd(addDays(showFrom, -c.warm)), to = ymd(today);
+  let daily = sym.kind === 'fut' ? await dailyFut(sym.id, from, to, !!S.night) : await dailyStock(sym.id, from, to, !!S.adj);
+  if (tf !== 'D') daily = aggregate(daily, tf);
+  const bars = daily.map(b => Object.assign(b, { time:b.date, label: tf === 'M' ? slash(b.date).slice(0,7) : slash(b.date) + (tf === 'W' ? ' 當週' : '') }));
+  return { bars, showFromDate: ymd(showFrom) };
+}
+
+let loading = false, loadSeq = 0;
+async function load(){
+  const sym = parseSym($('sym').value);
+  if (!sym){ setStatus('請輸入股票代號、名稱，或台指期代號 TX／MTX／TMF', true); return; }
+  if (!LC()){ setStatus('圖表元件尚未載入，請確認網路後重新整理', true); return; }
+  updateKindUI(sym);
+  const seq = ++loadSeq; loading = true; $('loadBtn').disabled = true;
+  const tf = S.tf, conf = TF[tf];
+  setStatus('讀取 ' + sym.id + ' 中…');
+  try {
+    const { bars: nb, showFromDate } = await getBars(sym, tf, $('period').value, () => seq !== loadSeq);
+    if (seq !== loadSeq) return;                                         // 使用者已切換到別的查詢
+    if (!nb.length) throw new Error('查無 ' + sym.id + ' 的資料' + (conf.intraday ? '（分K約在收盤後 15:50–16:30 更新）' : '（代號是否正確？）'));
+    initChart();
+    bars = nb; currentSym = sym;
+    volUnit = sym.kind === 'fut' ? '口' : '張';
+    idxByTime = new Map(bars.map((b,i) => [b.time, i]));
+    chart.applyOptions({ timeScale:{ timeVisible: !!conf.intraday, secondsVisible:false } });
+
+    candle.setData(bars.map(({time,open,high,low,close}) => ({ time, open, high, low, close })));
+    drawMain();
+    drawIndicators();
+    layoutPanes();
+
+    let from = bars.findIndex(b => b.date >= showFromDate); if (from < 0) from = 0;
+    chart.timeScale().setVisibleLogicalRange({ from: from - 0.5, to: bars.length - 1 + 4 });
+
+    const last = bars[bars.length-1], prev = bars[bars.length-2];
+    $('title').textContent = sym.kind === 'fut' ? `${sym.id} ${FUT[sym.id]}・近月連續` : sym.id + (stockMap.has(sym.id) ? ' ' + stockMap.get(sym.id) : '');
+    if (prev){
+      const c = last.close - prev.close, cls = c > 0 ? 'u' : c < 0 ? 'd' : '';
+      $('last').innerHTML = `<span class="${cls}">${fmt(last.close)} ${c > 0 ? '▲' : c < 0 ? '▼' : ''}${fmt(Math.abs(c))} (${fmt(c/prev.close*100)}%)</span>`;
+    } else $('last').textContent = fmt(last.close);
+    $('empty').style.display = 'none';
+    S.lastSym = $('sym').value.trim(); S.periods = Object.assign({}, S.periods, { [tf]: $('period').value }); save();
+    const notes = [];
+    if (sym.kind === 'stock' && S.adj && !conf.intraday) notes.push('還原股價');
+    if (sym.kind === 'fut') notes.push(conf.intraday ? '僅日盤' : (S.night ? '含夜盤' : '僅日盤'));
+    setStatus('資料至 ' + last.label + (notes.length ? '（' + notes.join('，') + '）' : ''));
+  } catch(e){
+    if (seq !== loadSeq) return;
+    if (conf.intraday && e.finmindMsg)
+      setStatus('1 小時／4 小時要用 FinMind 分K資料，需要贊助會員（Sponsor）；目前帳號可用日／週／月線。FinMind 訊息：' + e.finmindMsg, true);
+    else setStatus(e.message || String(e), true);
+  } finally {
+    if (seq === loadSeq){ loading = false; $('loadBtn').disabled = false; }
+  }
+}
+
+/* ───────────── 介面繫結 ───────────── */
+document.querySelectorAll('select.w').forEach(sel => [1,2,3,4].forEach(w => { const o = document.createElement('option'); o.value = w; o.textContent = w + ' 粗'; sel.appendChild(o); }));
+
+const getPath = p => p.split('.').reduce((o,k) => o[k], S);
+const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
+const REDRAW = {
+  smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
+  theme: () => { applyTheme(); drawIndicators(); },
+};
+const RESETS = {
+  smi:   ['mfiLen','kLen','dLen','obLevel','osLevel','showRef','upCol','dnCol'],
+  aroon: ['aroonLen','cmoLen','cmoSig','arCol'],
+  vpo:   ['vpo'],
+  t3:    ['t3'],
+};
+
+function fillSettingsUI(){
+  $('token').value = S.token || '';
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const v = getPath(el.dataset.k);
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+  });
+  document.querySelectorAll('[data-ind]').forEach(c => c.checked = !!S.ind[c.dataset.ind]);
+  document.querySelectorAll('[data-ma]').forEach(row => {
+    const m = S.ma[+row.dataset.ma];
+    row.querySelector('.on').checked = !!m.on; row.querySelector('.len').value = m.len;
+    row.querySelector('.w').value = m.w; row.querySelector('.col').value = m.col;
+    row.querySelector('label').lastChild.textContent = 'MA' + m.len;
+  });
+  const bb = $('bbRow');
+  bb.querySelector('.on').checked = !!S.bb.on; bb.querySelector('.len').value = S.bb.len; bb.querySelector('.mult').value = S.bb.mult;
+  bb.querySelector('.w').value = S.bb.w; bb.querySelector('.col').value = S.bb.col;
+  $('chartH').value = S.chartH; $('chartHv').textContent = S.chartH + '%';
+  $('mainRatio').value = S.mainRatio; $('mainRatiov').textContent = S.mainRatio + '%';
+}
+function openDrawer(o){ $('drawer').classList.toggle('open', o); $('shade').classList.toggle('open', o); }
+$('setBtn').onclick = () => openDrawer(true);
+$('closeBtn').onclick = $('shade').onclick = () => openDrawer(false);
+$('showTok').onchange = e => $('token').type = e.target.checked ? 'text' : 'password';
+$('token').onchange = () => { S.token = $('token').value.trim(); save(); loadStockList(); };
+
+// 所有指標參數與顏色（data-k 指到設定的位置，data-redraw 指要重畫哪一個）
+document.querySelectorAll('[data-k]').forEach(el => {
+  const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+  el.addEventListener(ev, () => {
+    let v;
+    if (el.type === 'checkbox') v = el.checked;
+    else if (el.type === 'number' || el.hasAttribute('data-int')){
+      v = parseFloat(el.value); if (isNaN(v)) return;
+      if (el.min !== '' && v < +el.min) return;
+      if (el.max !== '' && v > +el.max) return;
+      if (el.hasAttribute('data-int')) v = Math.round(v);
+    } else v = el.value;
+    setPath(el.dataset.k, v);
+    save(); (REDRAW[el.dataset.redraw] || (() => {}))();
+  });
+});
+document.querySelectorAll('[data-reset]').forEach(btn => btn.onclick = () => {
+  const k = btn.dataset.reset;
+  RESETS[k].forEach(key => S[key] = clone(DEFAULTS[key]));
+  if (k === 't3' && S.themeName === 'light') S.t3.maCol = '#2a2e39';
+  save(); fillSettingsUI(); REDRAW[k]();
+});
+// 深色／淺色底
+document.querySelectorAll('[data-preset]').forEach(btn => btn.onclick = () => {
+  const name = btn.dataset.preset;
+  S.themeName = name; S.col = clone(THEMES[name]);
+  if (name === 'light' && S.t3.maCol.toLowerCase() === '#ffffff') S.t3.maCol = '#2a2e39';
+  if (name === 'dark'  && S.t3.maCol.toLowerCase() === '#2a2e39') S.t3.maCol = '#ffffff';
+  save(); fillSettingsUI(); applyTheme(); drawIndicators();
+});
+
+// 副圖勾選
+document.querySelectorAll('[data-ind]').forEach(c => c.onchange = () => {
+  S.ind = Object.assign({}, S.ind, { [c.dataset.ind]: c.checked }); save(); buildIndicators();
+});
+// 主圖：均線
+document.querySelectorAll('[data-ma]').forEach(row => {
+  const k = +row.dataset.ma, m = () => S.ma[k];
+  row.querySelector('.on').onchange = e => { m().on = e.target.checked; save(); applyMainStyle(); renderLegend(); };
+  row.querySelector('.w').onchange = e => { m().w = +e.target.value; save(); applyMainStyle(); };
+  row.querySelector('.col').oninput = e => { m().col = e.target.value; save(); applyMainStyle(); renderLegend(); };
+  row.querySelector('.len').oninput = e => {
+    const v = parseInt(e.target.value, 10);
+    if (v >= 1 && v <= 500){ m().len = v; row.querySelector('label').lastChild.textContent = 'MA' + v; save(); drawMain(); }
+  };
+});
+// 主圖：布林通道
+(() => {
+  const r = $('bbRow');
+  r.querySelector('.on').onchange = e => { S.bb.on = e.target.checked; save(); applyMainStyle(); renderLegend(); };
+  r.querySelector('.w').onchange = e => { S.bb.w = +e.target.value; save(); applyMainStyle(); };
+  r.querySelector('.col').oninput = e => { S.bb.col = e.target.value; save(); applyMainStyle(); renderLegend(); };
+  r.querySelector('.len').oninput = e => { const v = parseInt(e.target.value, 10); if (v >= 2 && v <= 500){ S.bb.len = v; save(); drawMain(); } };
+  r.querySelector('.mult').oninput = e => { const v = parseFloat(e.target.value); if (v > 0 && v <= 10){ S.bb.mult = v; save(); drawMain(); } };
+})();
+// 版面
+$('chartH').oninput = e => { S.chartH = +e.target.value; $('chartHv').textContent = S.chartH + '%'; save(); layoutPanes(); };
+$('mainRatio').oninput = e => { S.mainRatio = +e.target.value; $('mainRatiov').textContent = S.mainRatio + '%'; save(); layoutPanes(); };
+$('resetAll').onclick = () => {
+  Object.assign(S, { ind:clone(DEFAULTS.ind), ma:clone(DEFAULTS.ma), bb:clone(DEFAULTS.bb), chartH:100, mainRatio:DEFAULTS.mainRatio,
+                     themeName:'dark', col:clone(THEMES.dark) });
+  save(); fillSettingsUI(); applyTheme(); drawMain(); buildIndicators(); layoutPanes();
+};
+
+// 查詢列
+$('loadBtn').onclick = load;
+$('sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+$('sym').addEventListener('change', () => { if (parseSym($('sym').value) && /\s/.test($('sym').value)) load(); });
+$('sym').addEventListener('input', () => updateKindUI(parseSym($('sym').value)));
+$('period').onchange = () => { S.periods = Object.assign({}, S.periods, { [S.tf]: $('period').value }); save(); if (bars.length) load(); };
+$('adj').onchange = () => { S.adj = $('adj').checked; save(); if (bars.length) load(); };
+$('night').onchange = () => { S.night = $('night').checked; save(); if (bars.length) load(); };
+document.querySelectorAll('#tfSeg button').forEach(btn => btn.onclick = () => {
+  if (S.tf === btn.dataset.tf) return;
+  S.tf = btn.dataset.tf; save(); buildPeriodOptions(); if (bars.length || $('sym').value.trim()) load();
+});
+
+fillSettingsUI();
+applyTheme();
+layoutPanes();
+if (!TF[S.tf]) S.tf = 'D';
+buildPeriodOptions();
+$('adj').checked = !!S.adj; $('night').checked = !!S.night;
+if (S.lastSym) $('sym').value = S.lastSym;
+updateKindUI(parseSym(S.lastSym));
+applyList([]);
+loadStockList();
+const boot = () => { if (S.lastSym) load(); };
+if (LC()) boot(); else window.addEventListener('load', boot);
+})();
+</script>
+</body>
+</html>
