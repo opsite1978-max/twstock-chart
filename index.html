@@ -148,27 +148,26 @@
     <div class="sec">
       <h3>副圖指標（可任選）</h3>
       <div class="stack">
-        <label class="chk"><input type="checkbox" data-ind="smi">SMI of MFI（資金流量 → 隨機動量）</label>
-        <label class="chk"><input type="checkbox" data-ind="aroon">Aroon 柱狀 ＋ 錢德動量擺盪（CMO）</label>
         <label class="chk"><input type="checkbox" data-ind="vpo">VPO v1 貪恐震盪線</label>
         <label class="chk"><input type="checkbox" data-ind="t3">Normalised T3 震盪指標</label>
         <label class="chk"><input type="checkbox" data-ind="wt">BotWT×3 波浪趨勢 × 三段波浪</label>
-        <label class="chk"><input type="checkbox" data-ind="ztsv">ZTSV+ 量能 Z 分數</label>
       </div>
     </div>
 
     <div class="sec">
       <h3>主圖</h3>
       <div class="stack">
+        <div hidden>
         <div class="line"><span class="hdr">均線</span><span class="hdr">週期</span><span class="hdr">粗細</span><span class="hdr">顏色</span></div>
         <div class="line" data-ma="0"><label class="chk"><input type="checkbox" class="on">均線 1</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
         <div class="line" data-ma="1"><label class="chk"><input type="checkbox" class="on">均線 2</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
         <div class="line" data-ma="2"><label class="chk"><input type="checkbox" class="on">均線 3</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
         <div class="line bb" style="margin-top:6px"><span class="hdr">布林通道</span><span class="hdr">週期</span><span class="hdr">倍數</span><span class="hdr">粗細</span><span class="hdr">顏色</span></div>
-        <div class="sub">疊加指標</div>
+        </div>
+        <div class="sub" hidden>疊加指標</div>
         <label class="chk"><input type="checkbox" data-ovl="topg">Top G 高低通道與轉折（BigBeluga）</label>
         <label class="chk"><input type="checkbox" data-ovl="bias">Bias Finder 多空偏向帶（UAlgo）</label>
-        <div class="line bb" id="bbRow"><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
+        <div class="line bb" id="bbRow" hidden><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
       </div>
     </div>
 
@@ -201,8 +200,8 @@
     </div>
 
     <div class="sec">
-      <h3>指標參數與顏色</h3>
-      <details>
+      <h3>副圖指標參數與顏色</h3>
+      <details hidden>
         <summary>SMI of MFI</summary>
         <div class="stack">
           <div class="kv"><span>資金流量長度 MFI Length</span><input type="number" data-k="mfiLen" data-int data-redraw="smi" min="1"></div>
@@ -216,7 +215,7 @@
           <button class="small" data-reset="smi">恢復預設</button>
         </div>
       </details>
-      <details>
+      <details hidden>
         <summary>Aroon 柱狀 ＋ CMO</summary>
         <div class="stack">
           <div class="kv"><span>Aroon 長度 Aroon Length</span><input type="number" data-k="aroonLen" data-int data-redraw="aroon" min="1"></div>
@@ -273,7 +272,6 @@
             <option>SMA</option><option>EMA</option><option>DEMA</option><option>TEMA</option><option>RMA</option><option>WMA</option>
             <option>HMA</option><option>T3</option><option>ALMA</option><option>LINREG</option><option>VWMA</option></select></div>
           <div class="kv"><span>均線週期 MA Period</span><input type="number" data-k="t3.maLen" data-int data-redraw="t3" min="1"></div>
-          <label class="chk"><input type="checkbox" data-k="t3.showOsc" data-redraw="t3">顯示震盪柱</label>
           <label class="chk"><input type="checkbox" data-k="t3.showMa" data-redraw="t3">顯示均線</label>
           <label class="chk"><input type="checkbox" data-k="t3.showStatic" data-redraw="t3">顯示 ±0.4／±0.5 區間</label>
           <div class="kv"><span>均線（顏色／粗細）</span><span class="pair"><input type="color" data-k="t3.maCol" data-redraw="t3"><select class="wsel" data-k="t3.maW" data-int data-redraw="t3"></select></span></div>
@@ -284,7 +282,7 @@
     </div>
 
     <div class="sec">
-      <h3>新增指標參數</h3>
+      <h3>主圖指標參數</h3>
       <details>
         <summary>BotWT×3 波浪趨勢 × 三段波浪</summary>
         <div class="stack">
@@ -310,7 +308,7 @@
           <button class="small" data-reset="wt">恢復預設</button>
         </div>
       </details>
-      <details>
+      <details hidden>
         <summary>ZTSV+ 量能 Z 分數</summary>
         <div class="stack">
           <div class="kv"><span>TSV 量能長度</span><input type="number" data-k="ztsv.tsvLen" data-int data-redraw="ztsv" min="1"></div>
@@ -424,6 +422,9 @@ S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
+// 精簡版：只保留 VPO、T3（只留均線）、BotWT×3 與 Top G、Bias Finder
+S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
+S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 const save = () => store.set('twchart.settings', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
@@ -948,7 +949,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['smi', 'aroon', 'vpo', 't3', 'wt', 'ztsv'];
+const IND_ORDER = ['vpo', 't3', 'wt'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1811,6 +1812,7 @@ $('mainRatio').oninput = e => { S.mainRatio = +e.target.value; $('mainRatiov').t
 $('resetAll').onclick = () => {
   Object.assign(S, { ind:clone(DEFAULTS.ind), ovl:clone(DEFAULTS.ovl), ma:clone(DEFAULTS.ma), bb:clone(DEFAULTS.bb), chartH:100, mainRatio:DEFAULTS.mainRatio,
                      themeName:'dark', col:clone(THEMES.dark), fontSize:12, lvlW:2 });
+  S.ma.forEach(m => m.on = false); S.bb.on = false;
   save(); fillSettingsUI(); applyTheme(); drawMain(); buildIndicators(); buildOverlays(); layoutPanes();
 };
 
