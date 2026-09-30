@@ -10,7 +10,7 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
-    --up:#ef5350; --down:#26a69a; --lblbg:rgba(19,23,34,.78);
+    --up:#ef5350; --down:#26a69a; --lblbg:rgba(19,23,34,.78); --fs:12px;
     color-scheme:dark;
   }
   *{box-sizing:border-box}
@@ -34,15 +34,15 @@
   #status{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
   #status.err{color:#ff6e6e}
   #info{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;padding:8px 12px 2px}
-  #title{font-size:17px;font-weight:600}
-  #last{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
-  #legend{display:flex;flex-wrap:wrap;gap:2px 12px;padding:0 12px 6px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:22px}
+  #title{font-size:calc(var(--fs) + 5px);font-weight:600}
+  #last{font-size:calc(var(--fs) + 5px);font-weight:600;font-variant-numeric:tabular-nums}
+  #legend{display:flex;flex-wrap:wrap;gap:2px 12px;padding:0 12px 6px;font-size:var(--fs);color:var(--muted);font-variant-numeric:tabular-nums;min-height:22px}
   #legend b{color:var(--text);font-weight:500}
   .u{color:var(--up)} .d{color:var(--down)}
   #area{flex:1;min-height:0;position:relative}
   #chartWrap{position:relative;height:100%}
   #chart{position:absolute;inset:0}
-  .plabel{position:absolute;z-index:3;pointer-events:none;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;
+  .plabel{position:absolute;z-index:3;pointer-events:none;font-size:var(--fs);color:var(--muted);font-variant-numeric:tabular-nums;
     background:var(--lblbg);padding:1px 6px;border-radius:4px;display:none;white-space:nowrap}
   .plabel b{font-weight:600}
   .tag{display:inline-block;margin-left:6px;padding:0 5px;border-radius:3px;font-size:11px;font-weight:600;color:#fff}
@@ -114,6 +114,8 @@
   <div class="plabel" id="lbl-aroon"></div>
   <div class="plabel" id="lbl-vpo"></div>
   <div class="plabel" id="lbl-t3"></div>
+  <div class="plabel" id="lbl-wt"></div>
+  <div class="plabel" id="lbl-ztsv"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -129,6 +131,8 @@
         <label class="chk"><input type="checkbox" data-ind="aroon">Aroon 柱狀 ＋ 錢德動量擺盪（CMO）</label>
         <label class="chk"><input type="checkbox" data-ind="vpo">VPO v1 貪恐震盪線</label>
         <label class="chk"><input type="checkbox" data-ind="t3">Normalised T3 震盪指標</label>
+        <label class="chk"><input type="checkbox" data-ind="wt">BotWT×3 波浪趨勢 × 三段波浪</label>
+        <label class="chk"><input type="checkbox" data-ind="ztsv">ZTSV+ 量能 Z 分數</label>
       </div>
     </div>
 
@@ -140,6 +144,9 @@
         <div class="line" data-ma="1"><label class="chk"><input type="checkbox" class="on">均線 2</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
         <div class="line" data-ma="2"><label class="chk"><input type="checkbox" class="on">均線 3</label><input type="number" class="len" min="1"><select class="w"></select><input type="color" class="col"></div>
         <div class="line bb" style="margin-top:6px"><span class="hdr">布林通道</span><span class="hdr">週期</span><span class="hdr">倍數</span><span class="hdr">粗細</span><span class="hdr">顏色</span></div>
+        <div class="sub">疊加指標</div>
+        <label class="chk"><input type="checkbox" data-ovl="topg">Top G 高低通道與轉折（BigBeluga）</label>
+        <label class="chk"><input type="checkbox" data-ovl="bias">Bias Finder 多空偏向帶（UAlgo）</label>
         <div class="line bb" id="bbRow"><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
       </div>
     </div>
@@ -155,6 +162,10 @@
           <label>K棒上漲<input type="color" data-k="col.up" data-redraw="theme"></label>
           <label>K棒下跌<input type="color" data-k="col.down" data-redraw="theme"></label>
         </div>
+        <div class="kv"><span>文字大小</span><select data-k="fontSize" data-int data-redraw="font">
+          <option value="11">小</option><option value="12">標準</option><option value="14">大</option><option value="16">特大</option><option value="18">超大</option></select></div>
+        <div class="kv"><span>超買／超賣線粗細</span><select data-k="lvlW" data-int data-redraw="all">
+          <option value="1">1 細</option><option value="2">2 標準</option><option value="3">3 粗</option><option value="4">4 最粗</option></select></div>
         <div class="hint">各指標線的顏色在下方「指標參數與顏色」裡調。</div>
       </div>
     </div>
@@ -251,6 +262,76 @@
     </div>
 
     <div class="sec">
+      <h3>新增指標參數</h3>
+      <details>
+        <summary>BotWT×3 波浪趨勢 × 三段波浪</summary>
+        <div class="stack">
+          <div class="kv"><span>通道長度 Channel Length</span><input type="number" data-k="wt.n1" data-int data-redraw="wt" min="1"></div>
+          <div class="kv"><span>平均長度 Average Length</span><input type="number" data-k="wt.n2" data-int data-redraw="wt" min="1"></div>
+          <div class="kv"><span>訊號線長度 Signal</span><input type="number" data-k="wt.sigLen" data-int data-redraw="wt" min="1"></div>
+          <div class="kv"><span>超買區</span><input type="number" data-k="wt.ob1" data-redraw="wt"></div>
+          <div class="kv"><span>極端超買</span><input type="number" data-k="wt.ob2" data-redraw="wt"></div>
+          <div class="kv"><span>超賣區</span><input type="number" data-k="wt.os1" data-redraw="wt"></div>
+          <div class="kv"><span>極端超賣</span><input type="number" data-k="wt.os2" data-redraw="wt"></div>
+          <label class="chk"><input type="checkbox" data-k="wt.showDiv" data-redraw="wt">超賣區標示多頭背離（D）</label>
+          <div class="kv"><span>背離樞紐 K 棒數</span><input type="number" data-k="wt.divPiv" data-int data-redraw="wt" min="2" max="15"></div>
+          <div class="sub">三段波浪</div>
+          <div class="kv"><span>轉折偵測強度（左右 K 棒數）</span><input type="number" data-k="wt.pivLen" data-int data-redraw="wt" min="2"></div>
+          <div class="kv"><span>趨勢基準 EMA</span><input type="number" data-k="wt.trendLen" data-int data-redraw="wt" min="10"></div>
+          <div class="kv"><span>RSI 長度（背離判定）</span><input type="number" data-k="wt.rsiLen" data-int data-redraw="wt" min="5"></div>
+          <label class="chk"><input type="checkbox" data-k="wt.showUp" data-redraw="wt">同時偵測三段上漲（抓頭）</label>
+          <label class="chk"><input type="checkbox" data-k="wt.showStep" data-redraw="wt">顯示段位階梯</label>
+          <label class="chk"><input type="checkbox" data-k="wt.mainSig" data-redraw="wt">K 線圖上也標出訊號（ACE、底部三角）</label>
+          <button class="small" data-reset="wt">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>ZTSV+ 量能 Z 分數</summary>
+        <div class="stack">
+          <div class="kv"><span>TSV 量能長度</span><input type="number" data-k="ztsv.tsvLen" data-int data-redraw="ztsv" min="1"></div>
+          <div class="kv"><span>Z 分數回看</span><input type="number" data-k="ztsv.zLen" data-int data-redraw="ztsv" min="10"></div>
+          <div class="kv"><span>訊號線長度</span><input type="number" data-k="ztsv.sigLen" data-int data-redraw="ztsv" min="2"></div>
+          <div class="kv"><span>訊號線平均</span><select data-k="ztsv.sigType" data-redraw="ztsv"><option>EMA</option><option>SMA</option><option>WMA</option><option>HMA</option></select></div>
+          <div class="sub">上中下界</div>
+          <div class="kv"><span>界線模式</span><select data-k="ztsv.bandMode" data-redraw="ztsv"><option value="adaptive">自適應</option><option value="fixed">固定</option></select></div>
+          <div class="kv"><span>自適應回看</span><input type="number" data-k="ztsv.bandLen" data-int data-redraw="ztsv" min="50"></div>
+          <div class="kv"><span>上界百分位</span><input type="number" data-k="ztsv.upPct" data-redraw="ztsv" min="50" max="99.5" step="0.5"></div>
+          <div class="kv"><span>下界百分位</span><input type="number" data-k="ztsv.loPct" data-redraw="ztsv" min="0.5" max="50" step="0.5"></div>
+          <div class="kv"><span>固定門檻 ±</span><input type="number" data-k="ztsv.fixTh" data-redraw="ztsv" min="0.1" step="0.01"></div>
+          <div class="sub">顯示</div>
+          <div class="kv"><span>主線呈現</span><select data-k="ztsv.disp" data-redraw="ztsv"><option value="col">柱狀</option><option value="line">線條</option></select></div>
+          <label class="chk"><input type="checkbox" data-k="ztsv.showBull" data-redraw="ztsv">超賣轉折 ▲</label>
+          <label class="chk"><input type="checkbox" data-k="ztsv.showBear" data-redraw="ztsv">超買轉折 ▼</label>
+          <label class="chk"><input type="checkbox" data-k="ztsv.twColor" data-redraw="ztsv">台股配色（紅漲綠跌）</label>
+          <button class="small" data-reset="ztsv">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>Top G（主圖）</summary>
+        <div class="stack">
+          <div class="kv"><span>通道長度 Length</span><input type="number" data-k="topg.len" data-int data-redraw="topg" min="5"></div>
+          <div class="colors"><label>主色<input type="color" data-k="topg.col" data-redraw="topg"></label></div>
+          <button class="small" data-reset="topg">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>Bias Finder（主圖）</summary>
+        <div class="stack">
+          <div class="kv"><span>擺盪平滑 Oscillator Period</span><input type="number" data-k="bias.oscP" data-int data-redraw="bias" min="1"></div>
+          <div class="kv"><span>週期 Period</span><input type="number" data-k="bias.period" data-int data-redraw="bias" min="1"></div>
+          <div class="kv"><span>平滑 Smoothing</span><input type="number" data-k="bias.smoothing" data-int data-redraw="bias" min="1"></div>
+          <label class="chk"><input type="checkbox" data-k="bias.showBias" data-redraw="bias">顯示多空偏向帶</label>
+          <label class="chk"><input type="checkbox" data-k="bias.showHA" data-redraw="bias">顯示平滑平均K（HA）</label>
+          <label class="chk"><input type="checkbox" data-k="bias.showSd" data-redraw="bias">顯示標準差外框</label>
+          <div class="kv"><span>標準差長度</span><input type="number" data-k="bias.sdLen" data-int data-redraw="bias" min="2"></div>
+          <div class="kv"><span>標準差倍數</span><input type="number" data-k="bias.sdMult" data-redraw="bias" min="3" step="0.5"></div>
+          <div class="colors"><label>多方<input type="color" data-k="bias.bull" data-redraw="bias"></label><label>空方<input type="color" data-k="bias.bear" data-redraw="bias"></label></div>
+          <button class="small" data-reset="bias">恢復預設</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="sec">
       <h3>FinMind 憑證</h3>
       <div class="stack">
         <input type="password" id="token" placeholder="貼上 api token">
@@ -283,11 +364,16 @@ const DEFAULTS = {
   vpo:{ smiK:14, smiD:3, volZ:60, biasLen:55, momLen:14, zLen:60, wSmi:30, wVol:20, wBias:20, wEpd:30,
         gain:1.5, smooth:6, thUp:60, thDn:-60, lw:3, fill:false, colUp:'#009646', colDn:'#dc1e1e', colMid:'#468ce6' },
   t3:{ len:2, vf:0.7, norm:50, maType:'SMA', maLen:18, showOsc:true, showMa:true, showStatic:true, maCol:'#ffffff' },
-  ind:{ smi:true, aroon:true, vpo:true, t3:true }, chartH:100, mainRatio:50,
+  wt:{ n1:10, n2:21, sigLen:4, os1:-53, os2:-60, ob1:53, ob2:60, showDiv:true, divPiv:5, pivLen:5, trendLen:60, rsiLen:14, showUp:true, showStep:true, mainSig:true },
+  ztsv:{ tsvLen:13, zLen:100, sigLen:7, sigType:'EMA', bandMode:'adaptive', bandLen:200, upPct:90, loPct:10, fixTh:1.96, disp:'col', showBull:true, showBear:true, twColor:true },
+  topg:{ len:150, col:'#cd7f32' },
+  bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645' },
+  ovl:{ topg:true, bias:true }, fontSize:12, lvlW:2,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
-  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:6
+  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:7
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const store = {
@@ -298,11 +384,12 @@ let S = clone(DEFAULTS);
 try { Object.assign(S, JSON.parse(store.get('twchart.settings') || '{}')); } catch(e){}
 if ((S.v || 0) < 5){ S.ind = { smi:true, aroon:true }; if (S.showMA === false) S.ma = clone(DEFAULTS.ma).map(m => Object.assign(m, { on:false })); }
 if ((S.v || 0) < 6){ S.ind = Object.assign({}, S.ind, { vpo:true, t3:true }); S.mainRatio = Math.min(S.mainRatio || 50, 50); }
+if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S.ovl = { topg:true, bias:true }; }
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 6;
+S.v = 7;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','vpo','t3','col'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','vpo','t3','col','wt','ztsv','topg','bias','ovl'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 const save = () => store.set('twchart.settings', JSON.stringify(S));
 
@@ -579,6 +666,168 @@ function t3Calc(c, v, P){
 }
 window.__ind = { taMFI, taEMA, taExtreme, smiOfMfi, aroonCMO, bollinger, vpoCalc, t3Calc, taT3, maByType, taRMA, taStdevN, bars: () => bars };
 
+/* ───────────── 共用：交叉、樞紐、RSI ───────────── */
+const ok = (...xs) => xs.every(x => x !== null && x !== undefined && !isNaN(x));
+function xOver(a, b, i){ return i > 0 && ok(a[i], b[i], a[i-1], b[i-1]) && a[i] > b[i] && a[i-1] <= b[i-1]; }
+function xUnder(a, b, i){ return i > 0 && ok(a[i], b[i], a[i-1], b[i-1]) && a[i] < b[i] && a[i-1] >= b[i-1]; }
+// ta.pivothigh / ta.pivotlow：在第 i 根確認（樞紐在 i−R），左側同值可、右側須嚴格
+function taPivot(src, L, R, isHigh){
+  const out = new Array(src.length).fill(null);
+  for (let i = L + R; i < src.length; i++){
+    const c = i - R, v = src[c]; let good = ok(v);
+    for (let k = 1; good && k <= L; k++){ const w = src[c-k]; if (!ok(w) || (isHigh ? w > v : w < v)) good = false; }
+    for (let k = 1; good && k <= R; k++){ const w = src[c+k]; if (!ok(w) || (isHigh ? w >= v : w <= v)) good = false; }
+    if (good) out[i] = v;
+  }
+  return out;
+}
+function taRSI(src, len){
+  const u = src.map((x,i) => i === 0 ? null : Math.max(x - src[i-1], 0));
+  const d = src.map((x,i) => i === 0 ? null : Math.max(src[i-1] - x, 0));
+  const ru = taRMA(u, len), rd = taRMA(d, len);
+  return ru.map((a,i) => (a === null || rd[i] === null) ? null : rd[i] === 0 ? 100 : a === 0 ? 0 : 100 - 100 / (1 + a / rd[i]));
+}
+const gt = (a, b) => ok(a, b) && a > b, lt = (a, b) => ok(a, b) && a < b, le = (a, b) => ok(a, b) && a <= b, ge = (a, b) => ok(a, b) && a >= b;
+
+/* ───────────── Bottom WaveTrend × Tri-Wave（BotWT×3） ───────────── */
+function wtCalc(h, l, c, P){
+  const n = c.length;
+  const ap = c.map((x,i) => (h[i] + l[i] + x) / 3);
+  const esa = taEMA(ap, P.n1);
+  const d = taEMA(ap.map((x,i) => Math.abs(x - esa[i])), P.n1);
+  const ci = ap.map((x,i) => d[i] ? (x - esa[i]) / (0.015 * d[i]) : null);
+  const wt1 = taEMA(ci, P.n2), wt2 = taSMAN(wt1, P.sigLen);
+  const diff = wt1.map((x,i) => ok(x, wt2[i]) ? x - wt2[i] : null);
+
+  // 超賣區多頭背離
+  const plW = taPivot(l, P.divPiv, P.divPiv, false);
+  const div = []; let prev = null;
+  for (let i = 0; i < n; i++){
+    if (plW[i] === null) continue;
+    const cur = { low:l[i - P.divPiv], wt:wt1[i - P.divPiv] };
+    if (prev && P.showDiv && cur.low < prev.low && gt(cur.wt, prev.wt) && lt(prev.wt, P.os1)) div.push({ i: i - P.divPiv, v: cur.wt });
+    prev = cur;
+  }
+
+  // 三段波浪
+  const tEma = taEMA(c, P.trendLen), rsi = taRSI(c, P.rsiLen);
+  const ph = taPivot(h, P.pivLen, P.pivLen, true), pl = taPivot(l, P.pivLen, P.pivLen, false);
+  let lastPL = null, lastPH = null, rsiPL = null, rsiPH = null, legDn = 0, legUp = 0, bullDiv = false, bearDiv = false;
+  const step = [], legD = [], legU = [], sig = [];
+  for (let i = 0; i < n; i++){
+    let b3 = false, t3 = false;
+    const dnT = c[i] < tEma[i], upT = c[i] > tEma[i];
+    if (pl[i] !== null){
+      const cr = rsi[i - P.pivLen];
+      if (lastPL !== null && pl[i] < lastPL){
+        if (dnT) legDn = Math.min(legDn + 1, 3);
+        bullDiv = gt(cr, rsiPL);
+        if (legDn >= 3 && bullDiv) b3 = true;
+      }
+      lastPL = pl[i]; rsiPL = cr;
+    }
+    if (ph[i] !== null){
+      const cr = rsi[i - P.pivLen];
+      if (lastPH !== null && ph[i] > lastPH){
+        legDn = 0; bullDiv = false;
+        if (upT) legUp = Math.min(legUp + 1, 3);
+        bearDiv = lt(cr, rsiPH);
+        if (P.showUp && legUp >= 3 && bearDiv) t3 = true;
+      }
+      lastPH = ph[i]; rsiPH = cr;
+    }
+    if (xOver(c, tEma, i)){ legDn = 0; bullDiv = false; }
+    if (xUnder(c, tEma, i)){ legUp = 0; bearDiv = false; }
+    step.push(legDn > 0 ? -legDn * 33.33 : legUp > 0 ? legUp * 33.33 : 0);
+    legD.push(legDn); legU.push(legUp);
+
+    const cu = xOver(wt1, wt2, i), cd = xUnder(wt1, wt2, i);
+    const inOS = le(wt1[i], P.os1), inDOS = le(wt1[i], P.os2), inOB = ge(wt1[i], P.ob1);
+    const aceBuy = legDn >= 3 && cu && inOS, aceSell = legUp >= 3 && cd && inOB;
+    const bot = cu && inOS, deep = cu && inDOS;
+    sig.push({ aceBuy, aceSell, b3: b3 && !aceBuy, t3: t3 && !aceSell, bot, deep,
+               botOnly: bot && !aceBuy, deepOnly: deep && !aceBuy });
+  }
+  return { wt1, wt2, diff, step, legD, legU, sig, div };
+}
+
+/* ───────────── ZTSV+ 量能 Z 分數 ───────────── */
+function percentileLin(arr, len, pct){
+  const out = new Array(arr.length).fill(null);
+  for (let i = len - 1; i < arr.length; i++){
+    const w = arr.slice(i - len + 1, i + 1);
+    if (w.some(x => x === null)) continue;
+    w.sort((a,b) => a - b);
+    const pos = (len - 1) * pct / 100, lo = Math.floor(pos), hi = Math.ceil(pos);
+    out[i] = w[lo] + (w[hi] - w[lo]) * (pos - lo);
+  }
+  return out;
+}
+function ztsvCalc(c, v, P){
+  const n = c.length;
+  const raw = c.map((x,i) => i === 0 ? null : v[i] * (x - c[i-1]));
+  const tsv = taSumN(raw, P.tsvLen), mu = taSMAN(tsv, P.zLen), sd = taStdevN(tsv, P.zLen);
+  const z = tsv.map((x,i) => (sd[i] === null || sd[i] === 0 || x === null) ? null : (x - mu[i]) / sd[i]);
+  const sig = P.sigType === 'SMA' ? taSMAN(z, P.sigLen) : P.sigType === 'WMA' ? taWMA(z, P.sigLen) : P.sigType === 'HMA' ? taHMA(z, P.sigLen) : taEMA(z, P.sigLen);
+  const pUp = percentileLin(z, P.bandLen, P.upPct), pMid = percentileLin(z, P.bandLen, 50), pLo = percentileLin(z, P.bandLen, P.loPct);
+  const up = [], mid = [], lo = [], bull = [], bear = [];
+  let armL = false, usedL = false, armS = false, usedS = false;
+  for (let i = 0; i < n; i++){
+    const adp = P.bandMode === 'adaptive' && pUp[i] !== null && pLo[i] !== null;
+    const U = adp ? pUp[i] : P.fixTh, M = adp ? pMid[i] : 0, L = adp ? pLo[i] : -P.fixTh;
+    up.push(U); mid.push(M); lo.push(L);
+    const zi = z[i];
+    if (lt(zi, L) && !usedL) armL = true;
+    if (gt(zi, U) && !usedS) armS = true;
+    const bt = armL && xOver(z, sig, i) && i > 0 && gt(zi, z[i-1]);
+    const br = armS && xUnder(z, sig, i) && i > 0 && lt(zi, z[i-1]);
+    if (bt){ armL = false; usedL = true; }
+    if (br){ armS = false; usedS = true; }
+    if (gt(zi, M)){ armL = false; usedL = false; }
+    if (lt(zi, M)){ armS = false; usedS = false; }
+    bull.push(bt); bear.push(br);
+  }
+  return { z, sig, up, mid, lo, bull, bear };
+}
+
+/* ───────────── Top G indicator [BigBeluga]（主圖） ───────────── */
+function topGCalc(h, l, c, P){
+  const n = c.length, len = P.len;
+  const lo = taExtreme(l, len, false), hi = taExtreme(h, len, true);
+  const mid = taHMA(lo.map((x,i) => ok(x, hi[i]) ? (x + hi[i]) / 2 : null), 15);
+  const roc = c.map((x,i) => i >= 8 && c[i-8] ? 100 * (x - c[i-8]) / c[i-8] : null);
+  const sd = taStdevN(roc, 200);
+  const r = roc.map((x,i) => ok(x, sd[i]) && sd[i] !== 0 ? x / sd[i] : null);
+  const sig = [];
+  for (let i = 0; i < n; i++){
+    if (i < 5){ sig.push({}); continue; }
+    const top  = lt(h[i], hi[i]) && h[i-1] === hi[i-1] && gt(r[i-2], 2) && lo[i] !== null && lo[i] === lo[i-5];
+    const G    = l[i-1] === lo[i-1] && gt(l[i], lo[i]) && l[i-2] === lo[i-2] && lt(r[i-2], -2);
+    const sG   = l[i-1] === lo[i-1] && gt(l[i], lo[i]) && !G;
+    const sTop = lt(h[i], hi[i]) && h[i-1] === hi[i-1] && !top;
+    sig.push({ top, G, sG, sTop });
+  }
+  return { lo, hi, mid, sig };
+}
+
+/* ───────────── Bias Finder [UAlgo]（主圖） ───────────── */
+function biasCalc(o, h, l, c, P){
+  const n = c.length;
+  const os = taEMA(o, P.period), cs = taEMA(c, P.period), hs = taEMA(h, P.period), ls = taEMA(l, P.period);
+  const haC = os.map((x,i) => (x + hs[i] + ls[i] + cs[i]) / 4);
+  const tmpO = os.map((x,i) => (x + cs[i]) / 2);
+  const haO = tmpO.map((x,i) => i === 0 ? x : (tmpO[i-1] + haC[i-1]) / 2);
+  const haH = hs.map((x,i) => Math.max(x, haO[i], haC[i])), haL = ls.map((x,i) => Math.min(x, haO[i], haC[i]));
+  const hos = taEMA(haO, P.smoothing), hcs = taEMA(haC, P.smoothing), hhs = taEMA(haH, P.smoothing), hls = taEMA(haL, P.smoothing);
+  const osc = hcs.map((x,i) => 100 * (x - hos[i])), oscS = taEMA(osc, P.oscP);
+  const state = osc.map((x,i) => x > 0 ? (x >= oscS[i] ? 2 : 1) : x < 0 ? (x <= oscS[i] ? -2 : -1) : 0);
+  const sdH = taStdevN(hhs, P.sdLen), sdL = taStdevN(hls, P.sdLen);
+  const upSd = hhs.map((x,i) => sdH[i] === null ? null : x + sdH[i] * P.sdMult);
+  const loSd = hls.map((x,i) => sdL[i] === null ? null : x - sdL[i] * P.sdMult);
+  return { hos, hcs, hhs, hls, avg: hhs.map((x,i) => (x + hls[i]) / 2), osc, oscS, state, upSd, loSd };
+}
+window.__ind = Object.assign(window.__ind || {}, { wtCalc, ztsvCalc, topGCalc, biasCalc, taPivot, taRSI, percentileLin });
+
 /* ───────────── FinMind API ───────────── */
 const API = 'https://api.finmindtrade.com/api/v4/data';
 async function finmind(params){
@@ -666,7 +915,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['smi', 'aroon', 'vpo', 't3'];
+const IND_ORDER = ['smi', 'aroon', 'vpo', 't3', 'wt', 'ztsv'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -699,7 +948,7 @@ const IND = {
       const mk = (price, color, style, width, lab, title) => this.refs.push(L.createPriceLine({ price, color, lineWidth:width, lineStyle:style, axisLabelVisible:lab, title }));
       mk(0, hexA(S.col.text, .6), LineStyle.Dotted, 1, false, '');
       const on = !!S.showRef;
-      if (on){ mk(S.obLevel, S.upCol, LineStyle.Dashed, 2, true, '超買'); mk(S.osLevel, S.dnCol, LineStyle.Dashed, 2, true, '超賣'); }
+      if (on){ mk(S.obLevel, S.upCol, LineStyle.Dashed, +S.lvlW, true, '超買'); mk(S.osLevel, S.dnCol, LineStyle.Dashed, +S.lvlW, true, '超賣'); }
       this.s.ob.applyOptions({ visible:on, baseValue:{ type:'price', price:S.obLevel },
         topFillColor1:hexA(S.upCol,.45), topFillColor2:hexA(S.upCol,.12), bottomFillColor1:CLEAR, bottomFillColor2:CLEAR });
       this.s.os.applyOptions({ visible:on, baseValue:{ type:'price', price:S.osLevel },
@@ -727,9 +976,9 @@ const IND = {
       this.s.sig  = chart.addSeries(LineSeries, { lineWidth:1.5, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F1 }, p);
       const { LineStyle } = LC();
       // hline(100, red) / hline(0) / hline(-100, lime)
-      this.s.cmo.createPriceLine({ price:100,  color:'#ff5252', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+      this.hi100 = this.s.cmo.createPriceLine({ price:100,  color:'#ff5252', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:true, title:'超買' });
       this.zero = this.s.cmo.createPriceLine({ price:0, color:hexA(S.col.text,.6), lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
-      this.s.cmo.createPriceLine({ price:-100, color:'#00e676', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:false });
+      this.lo100 = this.s.cmo.createPriceLine({ price:-100, color:'#00e676', lineWidth:1, lineStyle:LineStyle.Dashed, axisLabelVisible:true, title:'超賣' });
     },
     color(h, prev){
       const rising = prev !== null && prev !== undefined && prev < h, C = S.arCol;
@@ -742,6 +991,7 @@ const IND = {
       this.s.cmo.setData(toLine(v.cmo)); this.s.sig.setData(toLine(v.signal));
       this.s.cmo.applyOptions({ color:S.arCol.cmo }); this.s.sig.applyOptions({ color:S.arCol.sig });
       this.zero.applyOptions({ color:hexA(S.col.text,.6) });
+      this.hi100.applyOptions({ lineWidth:+S.lvlW }); this.lo100.applyOptions({ lineWidth:+S.lvlW });
     },
     label(i){
       const v = this.vals; if (!v) return '';
@@ -772,9 +1022,9 @@ const IND = {
                                  bottomFillColor1:hexA(P.colDn,.14), bottomFillColor2:hexA(P.colDn,.14) });
       const { LineStyle } = LC(), L = this.s.line;
       this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
-      this.refs.push(L.createPriceLine({ price:P.thUp, color:hexA(P.colUp,.75), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:true, title:'貪婪' }));
+      this.refs.push(L.createPriceLine({ price:P.thUp, color:P.colUp, lineWidth:+S.lvlW, lineStyle:LineStyle.Dashed, axisLabelVisible:true, title:'貪婪' }));
       this.refs.push(L.createPriceLine({ price:0, color:hexA(S.col.text,.5), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:false }));
-      this.refs.push(L.createPriceLine({ price:P.thDn, color:hexA(P.colDn,.75), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:true, title:'恐懼' }));
+      this.refs.push(L.createPriceLine({ price:P.thDn, color:P.colDn, lineWidth:+S.lvlW, lineStyle:LineStyle.Dashed, axisLabelVisible:true, title:'恐懼' }));
     },
     label(i){
       const v = this.vals; if (!v) return '';
@@ -800,8 +1050,8 @@ const IND = {
       this.s.cols = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F2 }, p);
       this.s.ma = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F2 }, p);
       this.lines = [
-        this.s.cols.createPriceLine({ price:0.4,  color:hex8('#ff0000fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false }),
-        this.s.cols.createPriceLine({ price:-0.4, color:hex8('#00ff00fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false }),
+        this.s.cols.createPriceLine({ price:0.4,  color:hex8('#ff0000fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:true, title:'超買' }),
+        this.s.cols.createPriceLine({ price:-0.4, color:hex8('#00ff00fc'), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:true, title:'超賣' }),
       ];
       this.mid = this.s.cols.createPriceLine({ price:0, color:hexA(S.col.text,.35), lineWidth:1, lineStyle:LineStyle.Solid, axisLabelVisible:false });
     },
@@ -814,7 +1064,8 @@ const IND = {
       this.s.cols.applyOptions({ visible:!!P.showOsc });
       this.s.ma.applyOptions({ visible:!!P.showMa, color:P.maCol });
       this.s.ob.applyOptions({ visible:!!P.showStatic }); this.s.os.applyOptions({ visible:!!P.showStatic });
-      this.lines.forEach(l => l.applyOptions({ lineVisible:!!P.showStatic }));
+      this.lines.forEach(l => l.applyOptions({ lineVisible:!!P.showStatic, axisLabelVisible:!!P.showStatic, lineWidth:+S.lvlW }));
+      this.s.ob.applyOptions({ lineWidth:+S.lvlW }); this.s.os.applyOptions({ lineWidth:+S.lvlW });
       this.mid.applyOptions({ color:hexA(S.col.text,.35) });
     },
     label(i){
@@ -847,6 +1098,7 @@ function initChart(){
   chart.subscribeCrosshairMove(p => renderLegend(p && p.time !== undefined ? idxByTime.get(p.time) : undefined));
   new ResizeObserver(() => positionLabels()).observe($('chart'));
   buildIndicators();
+  buildOverlays();
 }
 
 /* 畫面顏色 */
@@ -855,10 +1107,10 @@ function applyTheme(){
   r.setProperty('--bg', c.bg); r.setProperty('--up', c.up); r.setProperty('--down', c.down);
   r.setProperty('--panel', ch.panel); r.setProperty('--panel2', ch.panel2); r.setProperty('--line', ch.line);
   r.setProperty('--text', ch.text); r.setProperty('--muted', ch.muted); r.setProperty('--lblbg', hexA(c.bg, .8));
-  r.setProperty('color-scheme', ch.scheme);
+  r.setProperty('color-scheme', ch.scheme); r.setProperty('--fs', S.fontSize + 'px');
   if (!chart) return;
   chart.applyOptions({
-    layout:{ background:{ color:c.bg }, textColor:c.text, panes:{ separatorColor:c.grid, separatorHoverColor:hexA(c.text,.35) } },
+    layout:{ background:{ color:c.bg }, textColor:c.text, fontSize:+S.fontSize, panes:{ separatorColor:c.grid, separatorHoverColor:hexA(c.text,.35) } },
     grid:{ vertLines:{ color:c.grid }, horzLines:{ color:c.grid } },
     rightPriceScale:{ borderColor:c.grid }, timeScale:{ borderColor:c.grid },
   });
@@ -882,6 +1134,7 @@ function drawMain(){
   bbVals = bollinger(cl, Math.max(2, +S.bb.len || 20), +S.bb.mult || 2);
   bbU.setData(toLine(bbVals.up)); bbM.setData(toLine(bbVals.mid)); bbL.setData(toLine(bbVals.lo));
   applyMainStyle();
+  drawOverlays();
   renderLegend();
 }
 
@@ -894,6 +1147,7 @@ function buildIndicators(){
   for (const k of IND_ORDER) if (S.ind[k]){ IND[k].create(p); paneOf[k] = p++; }
   drawIndicators();
   layoutPanes();
+  if (typeof refreshMarkers === 'function') refreshMarkers();
 }
 function drawInd(k){ if (bars.length && paneOf[k] !== undefined) IND[k].draw(); renderLegend(); }
 function drawIndicators(){ for (const k of IND_ORDER) if (bars.length && paneOf[k] !== undefined) IND[k].draw(); renderLegend(); }
@@ -936,19 +1190,283 @@ function renderLegend(i){
     `<span>量 <b>${fmt(b.volume,0)}</b> ${volUnit}</span>`;
   S.ma.forEach((m,k) => { if (m.on) h += `<span style="color:${m.col}">MA${m.len} ${fmt(maVals[k] ? maVals[k][i] : null)}</span>`; });
   if (S.bb.on && bbVals) h += `<span style="color:${S.bb.col}">布林(${S.bb.len},${S.bb.mult}) 上 ${fmt(bbVals.up[i])}　中 ${fmt(bbVals.mid[i])}　下 ${fmt(bbVals.lo[i])}</span>`;
+  for (const k of OVL_ORDER) if (S.ovl[k] && OVL[k].vals) h += OVL[k].legend(i);
   $('legend').innerHTML = h;
   for (const k of IND_ORDER) if (paneOf[k] !== undefined) $('lbl-' + k).innerHTML = IND[k].label(i);
   positionLabels();
 }
+
+/* ───────────── 區域填色外掛（兩條線之間、或整格背景） ───────────── */
+// items[i] = { up, lo, color }；up/lo 為 null 時代表整格高度；mode 'poly' 連續多邊形、'rect' 每根一塊
+class BandFill {
+  constructor(mode = 'poly', grad = false){ this.mode = mode; this.grad = grad; this.items = []; this._view = new BandFillView(this); }
+  attached({ chart, series, requestUpdate }){ this.chart = chart; this.series = series; this.req = requestUpdate; }
+  detached(){ this.chart = this.series = this.req = null; }
+  setItems(items){ this.items = items || []; if (this.req) this.req(); }
+  updateAllViews(){}
+  paneViews(){ return [this._view]; }
+}
+class BandFillView {
+  constructor(src){ this.src = src; }
+  zOrder(){ return 'bottom'; }
+  renderer(){
+    const src = this.src;
+    return { draw(target){
+      if (!src.chart || !src.series || !src.items.length) return;
+      target.useMediaCoordinateSpace(({ context:ctx, mediaSize }) => {
+        const ts = src.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr) return;
+        const it = src.items, s = src.series, H = mediaSize.height;
+        const a = Math.max(0, Math.floor(vr.from) - 1), b = Math.min(it.length - 1, Math.ceil(vr.to) + 1);
+        const Y = (v, top) => v === null || v === undefined ? (top ? 0 : H) : s.priceToCoordinate(v);
+        if (src.mode === 'rect'){
+          const w = ts.options().barSpacing;
+          for (let i = a; i <= b; i++){
+            const d = it[i]; if (!d || !d.color) continue;
+            const x = ts.logicalToCoordinate(i); if (x === null) continue;
+            const y1 = Y(d.up, true), y2 = Y(d.lo, false); if (y1 === null || y2 === null) continue;
+            ctx.fillStyle = d.color; ctx.fillRect(x - w / 2, Math.min(y1, y2), w, Math.abs(y2 - y1));
+          }
+          return;
+        }
+        for (let i = Math.max(a, 1); i <= b; i++){
+          const p = it[i-1], d = it[i]; if (!p || !d || !d.color) continue;
+          const x1 = ts.logicalToCoordinate(i-1), x2 = ts.logicalToCoordinate(i);
+          const u1 = Y(p.up, true), u2 = Y(d.up, true), l1 = Y(p.lo, false), l2 = Y(d.lo, false);
+          if ([x1, x2, u1, u2, l1, l2].some(v => v === null)) continue;
+          ctx.beginPath(); ctx.moveTo(x1, u1); ctx.lineTo(x2, u2); ctx.lineTo(x2, l2); ctx.lineTo(x1, l1); ctx.closePath();
+          if (src.grad){
+            const g = ctx.createLinearGradient(0, Math.min(u1, u2), 0, Math.max(l1, l2));
+            g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, d.color); ctx.fillStyle = g;
+          } else ctx.fillStyle = d.color;
+          ctx.fill();
+        }
+      });
+    } };
+  }
+}
+
+/* ───────────── 主圖疊加指標 ───────────── */
+const OVL_ORDER = ['topg', 'bias'];
+const OVL = {
+  topg: {
+    s:{}, vals:null, band:null,
+    create(){
+      const { LineSeries, LineStyle } = LC(), o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+      this.s.hi   = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:1, lineStyle:LineStyle.Dashed }), 0);
+      this.s.mid  = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:1 }), 0);
+      this.s.loW  = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:4 }), 0);
+      this.s.lo   = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:1 }), 0);
+      this.band = new BandFill('poly', true); this.s.lo.attachPrimitive(this.band);
+    },
+    draw(){
+      const P = S.topg, v = this.vals = topGCalc(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), P);
+      this.s.hi.applyOptions({ color:P.col }); this.s.lo.applyOptions({ color:P.col });
+      this.s.loW.applyOptions({ color:hexA(P.col,.2) }); this.s.mid.applyOptions({ color:hexA(S.col.text,.5) });
+      this.s.hi.setData(toLine(v.hi)); this.s.mid.setData(toLine(v.mid)); this.s.lo.setData(toLine(v.lo)); this.s.loW.setData(toLine(v.lo));
+      this.band.setItems(v.lo.map((x,i) => ok(x, v.hi[i]) ? { up:v.hi[i], lo:x, color:hexA(P.col,.12) } : null));
+    },
+    markers(){
+      const v = this.vals, P = S.topg, out = []; if (!v) return out;
+      v.sig.forEach((s,i) => {
+        if (s.top)  out.push({ i, position:'aboveBar', shape:'arrowDown', color:S.col.text, text:'Top' });
+        if (s.G)    out.push({ i, position:'belowBar', shape:'arrowUp', color:P.col, text:'G', size:2 });
+        if (s.sG)   out.push({ i, position:'belowBar', shape:'arrowUp', color:hexA(P.col,.7) });
+        if (s.sTop) out.push({ i, position:'aboveBar', shape:'arrowDown', color:hexA(P.col,.7) });
+      });
+      return out;
+    },
+    legend(i){ const v = this.vals; if (!v) return '';
+      return `<span style="color:${S.topg.col}">Top G 高 ${fmt(v.hi[i])}　中 ${fmt(v.mid[i])}　低 ${fmt(v.lo[i])}</span>`; },
+  },
+  bias: {
+    s:{}, vals:null, band:null,
+    create(){
+      const { LineSeries, CandlestickSeries } = LC(), o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, lineWidth:1 });
+      this.s.hi = chart.addSeries(LineSeries, Object.assign(o(), { color:CLEAR }), 0);
+      this.s.lo = chart.addSeries(LineSeries, Object.assign(o(), { color:CLEAR }), 0);
+      this.s.upSd = chart.addSeries(LineSeries, o(), 0);
+      this.s.loSd = chart.addSeries(LineSeries, o(), 0);
+      this.s.ha = chart.addSeries(CandlestickSeries, { priceLineVisible:false, lastValueVisible:false }, 0);
+      this.band = new BandFill('poly', false); this.s.lo.attachPrimitive(this.band);
+    },
+    color(st){ const P = S.bias;
+      return st === 2 ? hexA(P.bull,.65) : st === 1 ? hexA(P.bull,.25) : st === -2 ? hexA(P.bear,.65) : st === -1 ? hexA(P.bear,.25) : null; },
+    draw(){
+      const P = S.bias, v = this.vals = biasCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), P);
+      this.s.hi.setData(toLine(v.hhs)); this.s.lo.setData(toLine(v.hls));
+      this.band.setItems(P.showBias ? v.hls.map((x,i) => ({ up:v.hhs[i], lo:x, color:this.color(v.state[i]) })) : []);
+      const sdLine = arr => bars.map((b,i) => arr[i] === null ? { time:b.time } : { time:b.time, value:arr[i], color:this.color(v.state[i]) || CLEAR });
+      this.s.upSd.setData(sdLine(v.upSd)); this.s.loSd.setData(sdLine(v.loSd));
+      this.s.upSd.applyOptions({ visible:!!P.showSd }); this.s.loSd.applyOptions({ visible:!!P.showSd });
+      this.s.ha.setData(bars.map((b,i) => { const bull = !(v.hos[i] > v.hcs[i]), col = bull ? P.bull : P.bear;
+        return { time:b.time, open:v.hos[i], high:v.hhs[i], low:v.hls[i], close:v.hcs[i], color:col, borderColor:col, wickColor:col }; }));
+      this.s.ha.applyOptions({ visible:!!P.showHA });
+    },
+    markers(){ return []; },
+    legend(i){ const v = this.vals; if (!v) return '';
+      const st = v.state[i], t = st === 2 ? '多方・轉強' : st === 1 ? '多方・轉弱' : st === -2 ? '空方・轉強' : st === -1 ? '空方・轉弱' : '中性';
+      return `<span style="color:${st > 0 ? S.bias.bull : st < 0 ? S.bias.bear : 'var(--muted)'}">偏向 ${t}</span>`; },
+  },
+};
+function buildOverlays(){
+  if (!chart) return;
+  for (const k of OVL_ORDER){ const d = OVL[k]; Object.values(d.s).forEach(s => chart.removeSeries(s)); d.s = {}; d.vals = null; d.band = null; }
+  for (const k of OVL_ORDER) if (S.ovl[k]) OVL[k].create();
+  drawOverlays();
+}
+function drawOverlays(){
+  if (!chart || !bars.length){ refreshMarkers(); return; }
+  for (const k of OVL_ORDER) if (S.ovl[k] && Object.keys(OVL[k].s).length) OVL[k].draw();
+  refreshMarkers(); renderLegend();
+}
+
+/* 主圖標記（Top G 與 WaveTrend 的訊號都畫在 K 線上） */
+let mainMk = null;
+function refreshMarkers(){
+  if (!chart) return;
+  if (!mainMk) mainMk = LC().createSeriesMarkers(candle, []);
+  let list = [];
+  for (const k of OVL_ORDER) if (S.ovl[k] && OVL[k].vals) list = list.concat(OVL[k].markers());
+  if (paneOf.wt !== undefined && IND.wt.vals && S.wt.mainSig) list = list.concat(IND.wt.mainMarkers());
+  list.sort((a,b) => a.i - b.i);
+  mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
+}
+
+/* ───────────── 新副圖：BotWT×3、ZTSV+ ───────────── */
+Object.assign(IND, {
+  wt: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries, BaselineSeries, HistogramSeries, LineType } = LC(), F = F1;
+      const flat = (val, base, col, above) => chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:base }, lineVisible:false,
+        topLineColor:CLEAR, bottomLineColor:CLEAR, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F,
+        topFillColor1: above ? col : CLEAR, topFillColor2: above ? col : CLEAR, bottomFillColor1: above ? CLEAR : col, bottomFillColor2: above ? CLEAR : col }, p);
+      this.s.bgHost = chart.addSeries(LineSeries, { lineVisible:false, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.bg = new BandFill('rect'); this.s.bgHost.attachPrimitive(this.bg);
+      this.s.obZ = flat(0, 0, CLEAR, true); this.s.osZ = flat(0, 0, CLEAR, false);
+      this.s.stepFill = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineType:LineType.WithSteps, lineWidth:2,
+        topLineColor:CLEAR, bottomLineColor:CLEAR, topFillColor1:'rgba(0,200,0,.07)', topFillColor2:'rgba(0,200,0,.07)',
+        bottomFillColor1:'rgba(242,54,69,.08)', bottomFillColor2:'rgba(242,54,69,.08)', priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.step = chart.addSeries(LineSeries, { lineType:LineType.WithSteps, lineWidth:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.area = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:1,
+        topLineColor:'rgba(46,189,133,.25)', topFillColor1:'rgba(46,189,133,.25)', topFillColor2:'rgba(46,189,133,.25)',
+        bottomLineColor:'rgba(246,70,93,.2)', bottomFillColor1:'rgba(246,70,93,.2)', bottomFillColor2:'rgba(246,70,93,.2)',
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.wt2 = chart.addSeries(LineSeries, { color:'#f6465d', lineWidth:1, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F }, p);
+      this.s.wt1 = chart.addSeries(LineSeries, { color:'#2ebd85', lineWidth:2, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3, priceFormat:F }, p);
+      this.mk = LC().createSeriesMarkers(this.s.wt1, []);
+      this.s.wt1.priceScale().applyOptions({ scaleMargins:{ top:0.14, bottom:0.14 } });
+      this.refs = [];
+    },
+    draw(){
+      const P = S.wt, v = this.vals = wtCalc(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), P);
+      const { LineStyle } = LC(), W = +S.lvlW;
+      this.s.wt1.setData(toLine(v.wt1)); this.s.wt2.setData(toLine(v.wt2)); this.s.area.setData(toLine(v.diff));
+      const stepCol = i => v.legD[i] >= 3 ? 'rgba(242,54,69,.7)' : v.legD[i] > 0 ? 'rgba(242,54,69,.45)' : v.legU[i] >= 3 ? 'rgba(8,153,129,.7)' : v.legU[i] > 0 ? 'rgba(8,153,129,.45)' : hexA(S.col.text,.3);
+      this.s.step.setData(P.showStep ? bars.map((b,i) => ({ time:b.time, value:v.step[i], color:stepCol(i) })) : []);
+      this.s.stepFill.setData(P.showStep ? bars.map((b,i) => ({ time:b.time, value:v.step[i] })) : []);
+      this.s.bgHost.setData(bars.map((b,i) => ({ time:b.time, value:0 })));
+      this.bg.setItems(bars.map((b,i) => v.legD[i] >= 3 ? { up:null, lo:null, color:'rgba(255,235,59,.08)' } : v.legU[i] >= 3 ? { up:null, lo:null, color:'rgba(255,152,0,.06)' } : null));
+      // 超買／超賣區（加深填色）
+      const cst = val => bars.map(b => ({ time:b.time, value:val }));
+      this.s.obZ.setData(cst(P.ob2)); this.s.obZ.applyOptions({ baseValue:{ type:'price', price:P.ob1 }, topFillColor1:'rgba(242,54,69,.16)', topFillColor2:'rgba(242,54,69,.16)' });
+      this.s.osZ.setData(cst(P.os2)); this.s.osZ.applyOptions({ baseValue:{ type:'price', price:P.os1 }, bottomFillColor1:'rgba(8,153,129,.18)', bottomFillColor2:'rgba(8,153,129,.18)' });
+      // 界線：清楚的實線／虛線＋右側刻度標籤
+      const L = this.s.wt1; this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
+      const mk = (price, color, style, width, title) => this.refs.push(L.createPriceLine({ price, color, lineWidth:width, lineStyle:style, axisLabelVisible:!!title, title }));
+      mk(0, hexA(S.col.text,.5), LineStyle.Solid, 1, '');
+      mk(P.ob1, '#f23645', LineStyle.Solid, W, '超買'); mk(P.ob2, '#f23645', LineStyle.Dashed, W, '極端');
+      mk(P.os1, '#089981', LineStyle.Solid, W, '超賣'); mk(P.os2, '#089981', LineStyle.Dashed, W, '極端');
+      mk(-100, 'rgba(242,54,69,.6)', LineStyle.Dashed, 1, ''); mk(100, 'rgba(8,153,129,.6)', LineStyle.Dashed, 1, '');
+      // 副圖標記
+      const m = [];
+      v.sig.forEach((s,i) => {
+        if (!bars[i]) return;
+        if (s.botOnly && !s.deepOnly && v.wt2[i] !== null) m.push({ i, position:'atPriceMiddle', price:v.wt2[i], shape:'circle', color:'#2ebd85' });
+        if (s.deepOnly && v.wt2[i] !== null) m.push({ i, position:'atPriceMiddle', price:v.wt2[i], shape:'circle', color:'#ffc400' });
+        if (s.aceBuy)  m.push({ i, position:'atPriceBottom', price:Math.min(-100, v.wt1[i] ?? -100), shape:'arrowUp', color:'#ff9900', text:'ACE BUY', size:2 });
+        if (s.aceSell) m.push({ i, position:'atPriceTop', price:Math.max(100, v.wt1[i] ?? 100), shape:'arrowDown', color:'#9c27b0', text:'ACE SELL', size:2 });
+        if (s.b3) m.push({ i, position:'atPriceBottom', price:-100, shape:'arrowUp', color:'#00a86b', text:'B3' });
+        if (s.t3) m.push({ i, position:'atPriceTop', price:100, shape:'arrowDown', color:'#e53935', text:'T3' });
+      });
+      v.div.forEach(d => { if (d.v !== null) m.push({ i:d.i, position:'atPriceMiddle', price:d.v, shape:'circle', color:'#3fa9f5', text:'D' }); });
+      m.sort((a,b) => a.i - b.i);
+      this.mk.setMarkers(m.map(x => { const o = Object.assign({}, x, { time:bars[x.i].time }); delete o.i; return o; }));
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, out = []; if (!v) return out;
+      v.sig.forEach((s,i) => {
+        if (s.aceBuy)  out.push({ i, position:'belowBar', shape:'arrowUp', color:'#ff9900', text:'ACE' });
+        if (s.aceSell) out.push({ i, position:'aboveBar', shape:'arrowDown', color:'#9c27b0', text:'ACE' });
+        if (s.bot && !s.deep) out.push({ i, position:'belowBar', shape:'arrowUp', color:'#2ebd85', size:0.6 });
+        if (s.deep) out.push({ i, position:'belowBar', shape:'arrowUp', color:'#ffc400', size:0.8 });
+      });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.wt; if (!v) return '';
+      const w = v.wt1[i], d = v.diff[i], ld = v.legD[i], lu = v.legU[i];
+      const zone = le(w, P.os2) ? '極端超賣' : le(w, P.os1) ? '超賣區' : ge(w, P.ob2) ? '極端超買' : ge(w, P.ob1) ? '超買區' : '中性區';
+      const zc = le(w, P.os1) ? '#089981' : ge(w, P.ob1) ? '#f23645' : 'var(--muted)';
+      const st = ld > 0 ? `跌勢 第${ld}段` : lu > 0 ? `漲勢 第${lu}段` : '無明確波段';
+      const stc = ld >= 3 ? '#f23645' : lu >= 3 ? '#089981' : 'var(--muted)';
+      const ace = ld >= 3 && le(w, P.os1) ? '　<b style="color:#ff9900">⚡ 等金叉即王牌</b>' : lu >= 3 && ge(w, P.ob1) ? '　<b style="color:#ff9900">⚡ 等死叉即王牌</b>' : '';
+      return `BotWT×3 <b style="color:#2ebd85">${fmt(w,1)}${d === null ? '' : d >= 0 ? ' ▲' : ' ▼'}</b> <span style="color:#f6465d">${fmt(v.wt2[i],1)}</span>` +
+        `　<b style="color:${zc}">${zone}</b>　<b style="color:${stc}">${st}</b>${ace}`;
+    },
+  },
+
+  ztsv: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries, HistogramSeries } = LC(), F = F2;
+      this.s.z = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F }, p);
+      this.s.zl = chart.addSeries(LineSeries, { lineWidth:2, priceLineVisible:false, lastValueVisible:false, priceFormat:F }, p);
+      this.s.up = chart.addSeries(LineSeries, { priceLineVisible:false, lastValueVisible:true, title:'上界', crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.mid = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.lo = chart.addSeries(LineSeries, { priceLineVisible:false, lastValueVisible:true, title:'下界', crosshairMarkerVisible:false, priceFormat:F }, p);
+      this.s.sig = chart.addSeries(LineSeries, { color:'#ffa726', lineWidth:1, priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:2, priceFormat:F }, p);
+      this.mk = LC().createSeriesMarkers(this.s.sig, []);
+    },
+    cols(){ const tw = S.ztsv.twColor; return { up: tw ? '#e53935' : '#26a69a', dn: tw ? '#26a69a' : '#e53935' }; },
+    zCol(z, i){ const v = this.vals, C = this.cols();
+      return z >= v.up[i] ? C.up : z >= v.mid[i] ? hexA(C.up,.45) : z <= v.lo[i] ? C.dn : hexA(C.dn,.45); },
+    draw(){
+      const P = S.ztsv, v = this.vals = ztsvCalc(bars.map(b => b.close), bars.map(b => b.volume), P), C = this.cols(), W = +S.lvlW;
+      const zData = bars.map((b,i) => v.z[i] === null ? { time:b.time } : { time:b.time, value:v.z[i], color:this.zCol(v.z[i], i) });
+      const asLine = P.disp === 'line';
+      this.s.z.setData(asLine ? [] : zData); this.s.zl.setData(asLine ? zData : []);
+      this.s.sig.setData(toLine(v.sig));
+      const band = arr => bars.map((b,i) => v.z[i] === null ? { time:b.time } : { time:b.time, value:arr[i] });
+      this.s.up.setData(band(v.up)); this.s.mid.setData(band(v.mid)); this.s.lo.setData(band(v.lo));
+      this.s.up.applyOptions({ color:C.up, lineWidth:W }); this.s.lo.applyOptions({ color:C.dn, lineWidth:W }); this.s.mid.applyOptions({ color:'rgba(158,158,158,.7)' });
+      const m = [];
+      v.bull.forEach((t,i) => { if (t && P.showBull && v.z[i] !== null) m.push({ i, position:'atPriceBottom', price:v.z[i] - (v.up[i] - v.lo[i]) * .12, shape:'arrowUp', color:C.up }); });
+      v.bear.forEach((t,i) => { if (t && P.showBear && v.z[i] !== null) m.push({ i, position:'atPriceTop', price:v.z[i] + (v.up[i] - v.lo[i]) * .12, shape:'arrowDown', color:C.dn }); });
+      m.sort((a,b) => a.i - b.i);
+      this.mk.setMarkers(m.map(x => { const o = Object.assign({}, x, { time:bars[x.i].time }); delete o.i; return o; }));
+    },
+    label(i){
+      const v = this.vals; if (!v) return '';
+      const z = v.z[i], C = this.cols();
+      let tag = '';
+      if (z !== null && z >= v.up[i]) tag = `<span class="tag" style="background:${C.up}">上界之上</span>`;
+      else if (z !== null && z <= v.lo[i]) tag = `<span class="tag" style="background:${C.dn}">下界之下</span>`;
+      return `ZTSV+ Z <b style="color:${z === null ? 'var(--text)' : this.zCol(z, i)}">${fmt(z)}</b>　<span style="color:#ffa726">訊號 <b>${fmt(v.sig[i])}</b></span>` +
+        `　<span style="color:${C.up}">上 ${fmt(v.up[i])}</span>　<span style="color:${C.dn}">下 ${fmt(v.lo[i])}</span>${tag}`;
+    },
+  },
+});
 
 /* ───────────── 看盤週期設定 ───────────── */
 // 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
 const TF = {
   '60':  { intraday:true,  P:60,  unit:'天', periods:[['20','20 天'],['40','40 天'],['60','60 天']], def:'20', warm:15 },
   '240': { intraday:true,  P:240, unit:'天', periods:[['40','40 天'],['60','60 天'],['120','120 天']], def:'60', warm:35 },
-  'D':   { periods:[['0.5','半年'],['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年']], def:'1',  warm:200 },
-  'W':   { periods:[['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年'],['10','10 年']], def:'3',  warm:750 },
-  'M':   { periods:[['5','5 年'],['10','10 年'],['20','20 年']], def:'10', warm:2600 },
+  'D':   { periods:[['0.5','半年'],['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年']], def:'1',  warm:420 },
+  'W':   { periods:[['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年'],['10','10 年']], def:'3',  warm:1600 },
+  'M':   { periods:[['5','5 年'],['10','10 年'],['20','20 年']], def:'10', warm:6500 },
 };
 function buildPeriodOptions(){
   const c = TF[S.tf], sel = $('period'); sel.innerHTML = '';
@@ -1148,13 +1666,21 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  theme: () => { applyTheme(); drawIndicators(); },
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'),
+  topg: () => drawOverlays(), bias: () => drawOverlays(),
+  theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
+  font: () => { applyTheme(); renderLegend(); layoutPanes(); },
+  all: () => { drawIndicators(); drawOverlays(); },
 };
 const RESETS = {
   smi:   ['mfiLen','kLen','dLen','obLevel','osLevel','showRef','upCol','dnCol'],
   aroon: ['aroonLen','cmoLen','cmoSig','arCol'],
   vpo:   ['vpo'],
   t3:    ['t3'],
+  wt:    ['wt'],
+  ztsv:  ['ztsv'],
+  topg:  ['topg'],
+  bias:  ['bias'],
 };
 
 function fillSettingsUI(){
@@ -1164,6 +1690,7 @@ function fillSettingsUI(){
     if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
   });
   document.querySelectorAll('[data-ind]').forEach(c => c.checked = !!S.ind[c.dataset.ind]);
+  document.querySelectorAll('[data-ovl]').forEach(c => c.checked = !!S.ovl[c.dataset.ovl]);
   document.querySelectorAll('[data-ma]').forEach(row => {
     const m = S.ma[+row.dataset.ma];
     row.querySelector('.on').checked = !!m.on; row.querySelector('.len').value = m.len;
@@ -1217,6 +1744,10 @@ document.querySelectorAll('[data-preset]').forEach(btn => btn.onclick = () => {
 document.querySelectorAll('[data-ind]').forEach(c => c.onchange = () => {
   S.ind = Object.assign({}, S.ind, { [c.dataset.ind]: c.checked }); save(); buildIndicators();
 });
+// 主圖疊加指標勾選
+document.querySelectorAll('[data-ovl]').forEach(c => c.onchange = () => {
+  S.ovl = Object.assign({}, S.ovl, { [c.dataset.ovl]: c.checked }); save(); buildOverlays();
+});
 // 主圖：均線
 document.querySelectorAll('[data-ma]').forEach(row => {
   const k = +row.dataset.ma, m = () => S.ma[k];
@@ -1241,9 +1772,9 @@ document.querySelectorAll('[data-ma]').forEach(row => {
 $('chartH').oninput = e => { S.chartH = +e.target.value; $('chartHv').textContent = S.chartH + '%'; save(); layoutPanes(); };
 $('mainRatio').oninput = e => { S.mainRatio = +e.target.value; $('mainRatiov').textContent = S.mainRatio + '%'; save(); layoutPanes(); };
 $('resetAll').onclick = () => {
-  Object.assign(S, { ind:clone(DEFAULTS.ind), ma:clone(DEFAULTS.ma), bb:clone(DEFAULTS.bb), chartH:100, mainRatio:DEFAULTS.mainRatio,
-                     themeName:'dark', col:clone(THEMES.dark) });
-  save(); fillSettingsUI(); applyTheme(); drawMain(); buildIndicators(); layoutPanes();
+  Object.assign(S, { ind:clone(DEFAULTS.ind), ovl:clone(DEFAULTS.ovl), ma:clone(DEFAULTS.ma), bb:clone(DEFAULTS.bb), chartH:100, mainRatio:DEFAULTS.mainRatio,
+                     themeName:'dark', col:clone(THEMES.dark), fontSize:12, lvlW:2 });
+  save(); fillSettingsUI(); applyTheme(); drawMain(); buildIndicators(); buildOverlays(); layoutPanes();
 };
 
 // 查詢列
