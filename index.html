@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>台股自訂指標看盤</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#131722">
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"
         onerror="var s=document.createElement('script');s.src='https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js';document.head.appendChild(s);"></script>
 <style>
@@ -69,6 +73,8 @@
   .kv input[type=number]{width:76px;height:28px;padding:4px 6px}
   .kv input[type=color]{width:40px;height:28px;padding:2px}
   .kv select{height:28px;padding:2px 6px}
+  .pair{display:flex;gap:6px;align-items:center}
+  .pair input[type=color]{width:40px;height:28px;padding:2px}
   .colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px 12px}
   .colors label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px}
   .colors input[type=color]{width:36px;height:26px;padding:2px}
@@ -191,6 +197,7 @@
           <div class="kv"><span>超賣線</span><input type="number" data-k="osLevel" data-redraw="smi" step="5" min="-100" max="100"></div>
           <label class="chk"><input type="checkbox" data-k="showRef" data-redraw="smi">顯示超買／超賣線與區域</label>
           <div class="colors"><label>上升<input type="color" data-k="upCol" data-redraw="smi"></label><label>下降<input type="color" data-k="dnCol" data-redraw="smi"></label></div>
+          <div class="kv"><span>主線粗細</span><span class="pair"><select class="wsel" data-k="smiW" data-int data-redraw="smi"></select></span></div>
           <button class="small" data-reset="smi">恢復預設</button>
         </div>
       </details>
@@ -206,9 +213,9 @@
             <label>零上減弱<input type="color" data-k="arCol.fa" data-redraw="aroon"></label>
             <label>零下回升<input type="color" data-k="arCol.gb" data-redraw="aroon"></label>
             <label>零下加深<input type="color" data-k="arCol.fb" data-redraw="aroon"></label>
-            <label>CMO 線<input type="color" data-k="arCol.cmo" data-redraw="aroon"></label>
-            <label>訊號線<input type="color" data-k="arCol.sig" data-redraw="aroon"></label>
           </div>
+          <div class="kv"><span>CMO 線（顏色／粗細）</span><span class="pair"><input type="color" data-k="arCol.cmo" data-redraw="aroon"><select class="wsel" data-k="arW.cmo" data-int data-redraw="aroon"></select></span></div>
+          <div class="kv"><span>訊號線（顏色／粗細）</span><span class="pair"><input type="color" data-k="arCol.sig" data-redraw="aroon"><select class="wsel" data-k="arW.sig" data-int data-redraw="aroon"></select></span></div>
           <button class="small" data-reset="aroon">恢復預設</button>
         </div>
       </details>
@@ -254,7 +261,7 @@
           <label class="chk"><input type="checkbox" data-k="t3.showOsc" data-redraw="t3">顯示震盪柱</label>
           <label class="chk"><input type="checkbox" data-k="t3.showMa" data-redraw="t3">顯示均線</label>
           <label class="chk"><input type="checkbox" data-k="t3.showStatic" data-redraw="t3">顯示 ±0.4／±0.5 區間</label>
-          <div class="colors"><label>均線<input type="color" data-k="t3.maCol" data-redraw="t3"></label></div>
+          <div class="kv"><span>均線（顏色／粗細）</span><span class="pair"><input type="color" data-k="t3.maCol" data-redraw="t3"><select class="wsel" data-k="t3.maW" data-int data-redraw="t3"></select></span></div>
           <div class="hint">柱狀依數值分 10 段漸層（原作配色：正值綠、負值紅）。</div>
           <button class="small" data-reset="t3">恢復預設</button>
         </div>
@@ -273,6 +280,9 @@
           <div class="kv"><span>極端超買</span><input type="number" data-k="wt.ob2" data-redraw="wt"></div>
           <div class="kv"><span>超賣區</span><input type="number" data-k="wt.os1" data-redraw="wt"></div>
           <div class="kv"><span>極端超賣</span><input type="number" data-k="wt.os2" data-redraw="wt"></div>
+          <div class="kv"><span>WT1 快線（顏色／粗細）</span><span class="pair"><input type="color" data-k="wt.c1" data-redraw="wt"><select class="wsel" data-k="wt.w1" data-int data-redraw="wt"></select></span></div>
+          <div class="kv"><span>WT2 慢線（顏色／粗細）</span><span class="pair"><input type="color" data-k="wt.c2" data-redraw="wt"><select class="wsel" data-k="wt.w2" data-int data-redraw="wt"></select></span></div>
+          <div class="kv"><span>段位階梯粗細</span><span class="pair"><select class="wsel" data-k="wt.stepW" data-int data-redraw="wt"></select></span></div>
           <label class="chk"><input type="checkbox" data-k="wt.showDiv" data-redraw="wt">超賣區標示多頭背離（D）</label>
           <div class="kv"><span>背離樞紐 K 棒數</span><input type="number" data-k="wt.divPiv" data-int data-redraw="wt" min="2" max="15"></div>
           <div class="sub">三段波浪</div>
@@ -303,6 +313,9 @@
           <label class="chk"><input type="checkbox" data-k="ztsv.showBull" data-redraw="ztsv">超賣轉折 ▲</label>
           <label class="chk"><input type="checkbox" data-k="ztsv.showBear" data-redraw="ztsv">超買轉折 ▼</label>
           <label class="chk"><input type="checkbox" data-k="ztsv.twColor" data-redraw="ztsv">台股配色（紅漲綠跌）</label>
+          <div class="kv"><span>訊號線（顏色／粗細）</span><span class="pair"><input type="color" data-k="ztsv.sigCol" data-redraw="ztsv"><select class="wsel" data-k="ztsv.sigW" data-int data-redraw="ztsv"></select></span></div>
+          <div class="kv"><span>線條模式主線粗細</span><span class="pair"><select class="wsel" data-k="ztsv.lineW" data-int data-redraw="ztsv"></select></span></div>
+
           <button class="small" data-reset="ztsv">恢復預設</button>
         </div>
       </details>
@@ -311,6 +324,9 @@
         <div class="stack">
           <div class="kv"><span>通道長度 Length</span><input type="number" data-k="topg.len" data-int data-redraw="topg" min="5"></div>
           <div class="colors"><label>主色<input type="color" data-k="topg.col" data-redraw="topg"></label></div>
+          <div class="kv"><span>上緣粗細</span><span class="pair"><select class="wsel" data-k="topg.wHi" data-int data-redraw="topg"></select></span></div>
+          <div class="kv"><span>中線（顏色／粗細）</span><span class="pair"><input type="color" data-k="topg.midCol" data-redraw="topg"><select class="wsel" data-k="topg.wMid" data-int data-redraw="topg"></select></span></div>
+          <div class="kv"><span>下緣粗細</span><span class="pair"><select class="wsel" data-k="topg.wLo" data-int data-redraw="topg"></select></span></div>
           <button class="small" data-reset="topg">恢復預設</button>
         </div>
       </details>
@@ -325,6 +341,7 @@
           <label class="chk"><input type="checkbox" data-k="bias.showSd" data-redraw="bias">顯示標準差外框</label>
           <div class="kv"><span>標準差長度</span><input type="number" data-k="bias.sdLen" data-int data-redraw="bias" min="2"></div>
           <div class="kv"><span>標準差倍數</span><input type="number" data-k="bias.sdMult" data-redraw="bias" min="3" step="0.5"></div>
+          <div class="kv"><span>標準差外框粗細</span><span class="pair"><select class="wsel" data-k="bias.sdW" data-int data-redraw="bias"></select></span></div>
           <div class="colors"><label>多方<input type="color" data-k="bias.bull" data-redraw="bias"></label><label>空方<input type="color" data-k="bias.bear" data-redraw="bias"></label></div>
           <button class="small" data-reset="bias">恢復預設</button>
         </div>
@@ -363,11 +380,12 @@ const DEFAULTS = {
   arCol:{ ga:'#26a69a', fa:'#b2dfdb', gb:'#ffcdd2', fb:'#ef5350', cmo:'#00bcd4', sig:'#ff9800' },
   vpo:{ smiK:14, smiD:3, volZ:60, biasLen:55, momLen:14, zLen:60, wSmi:30, wVol:20, wBias:20, wEpd:30,
         gain:1.5, smooth:6, thUp:60, thDn:-60, lw:3, fill:false, colUp:'#009646', colDn:'#dc1e1e', colMid:'#468ce6' },
-  t3:{ len:2, vf:0.7, norm:50, maType:'SMA', maLen:18, showOsc:true, showMa:true, showStatic:true, maCol:'#ffffff' },
-  wt:{ n1:10, n2:21, sigLen:4, os1:-53, os2:-60, ob1:53, ob2:60, showDiv:true, divPiv:5, pivLen:5, trendLen:60, rsiLen:14, showUp:true, showStep:true, mainSig:true },
-  ztsv:{ tsvLen:13, zLen:100, sigLen:7, sigType:'EMA', bandMode:'adaptive', bandLen:200, upPct:90, loPct:10, fixTh:1.96, disp:'col', showBull:true, showBear:true, twColor:true },
-  topg:{ len:150, col:'#cd7f32' },
-  bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645' },
+  t3:{ len:2, vf:0.7, norm:50, maType:'SMA', maLen:18, showOsc:true, showMa:true, showStatic:true, maCol:'#ffffff', maW:1 },
+  smiW:2, arW:{ cmo:1, sig:1 },
+  wt:{ n1:10, n2:21, sigLen:4, os1:-53, os2:-60, ob1:53, ob2:60, showDiv:true, divPiv:5, pivLen:5, trendLen:60, rsiLen:14, showUp:true, showStep:true, mainSig:true, c1:'#2ebd85', w1:2, c2:'#f6465d', w2:1, stepW:2 },
+  ztsv:{ tsvLen:13, zLen:100, sigLen:7, sigType:'EMA', bandMode:'adaptive', bandLen:200, upPct:90, loPct:10, fixTh:1.96, disp:'col', showBull:true, showBear:true, twColor:true, sigCol:'#ffa726', sigW:1, lineW:2 },
+  topg:{ len:150, col:'#cd7f32', wHi:1, wMid:1, wLo:1, midCol:'#8a93a6' },
+  bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645', sdW:1 },
   ovl:{ topg:true, bias:true }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
@@ -389,7 +407,7 @@ if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S
 S.v = 7;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','vpo','t3','col','wt','ztsv','topg','bias','ovl'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 const save = () => store.set('twchart.settings', JSON.stringify(S));
 
@@ -943,6 +961,7 @@ const IND = {
       this.s.line.setData(bars.map((b,i) => v[i] === null ? { time:b.time }
         : { time:b.time, value:v[i], color: (i > 0 && v[i-1] !== null && v[i] >= v[i-1]) ? S.upCol : S.dnCol }));
       this.s.ob.setData(toLine(v)); this.s.os.setData(toLine(v));
+      this.s.line.applyOptions({ lineWidth:+S.smiW });
       const { LineStyle } = LC(), L = this.s.line;
       this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
       const mk = (price, color, style, width, lab, title) => this.refs.push(L.createPriceLine({ price, color, lineWidth:width, lineStyle:style, axisLabelVisible:lab, title }));
@@ -989,7 +1008,7 @@ const IND = {
       this.s.hist.setData(bars.map((b,i) => v.hist[i] === null ? { time:b.time }
         : { time:b.time, value:v.hist[i], color:this.color(v.hist[i], i > 0 ? v.hist[i-1] : null) }));
       this.s.cmo.setData(toLine(v.cmo)); this.s.sig.setData(toLine(v.signal));
-      this.s.cmo.applyOptions({ color:S.arCol.cmo }); this.s.sig.applyOptions({ color:S.arCol.sig });
+      this.s.cmo.applyOptions({ color:S.arCol.cmo, lineWidth:+S.arW.cmo }); this.s.sig.applyOptions({ color:S.arCol.sig, lineWidth:+S.arW.sig });
       this.zero.applyOptions({ color:hexA(S.col.text,.6) });
       this.hi100.applyOptions({ lineWidth:+S.lvlW }); this.lo100.applyOptions({ lineWidth:+S.lvlW });
     },
@@ -1062,7 +1081,7 @@ const IND = {
       this.s.ob.setData(bars.map(b => ({ time:b.time, value:0.5 })));
       this.s.os.setData(bars.map(b => ({ time:b.time, value:-0.5 })));
       this.s.cols.applyOptions({ visible:!!P.showOsc });
-      this.s.ma.applyOptions({ visible:!!P.showMa, color:P.maCol });
+      this.s.ma.applyOptions({ visible:!!P.showMa, color:P.maCol, lineWidth:+P.maW });
       this.s.ob.applyOptions({ visible:!!P.showStatic }); this.s.os.applyOptions({ visible:!!P.showStatic });
       this.lines.forEach(l => l.applyOptions({ lineVisible:!!P.showStatic, axisLabelVisible:!!P.showStatic, lineWidth:+S.lvlW }));
       this.s.ob.applyOptions({ lineWidth:+S.lvlW }); this.s.os.applyOptions({ lineWidth:+S.lvlW });
@@ -1260,8 +1279,8 @@ const OVL = {
     },
     draw(){
       const P = S.topg, v = this.vals = topGCalc(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), P);
-      this.s.hi.applyOptions({ color:P.col }); this.s.lo.applyOptions({ color:P.col });
-      this.s.loW.applyOptions({ color:hexA(P.col,.2) }); this.s.mid.applyOptions({ color:hexA(S.col.text,.5) });
+      this.s.hi.applyOptions({ color:P.col, lineWidth:+P.wHi }); this.s.lo.applyOptions({ color:P.col, lineWidth:+P.wLo });
+      this.s.loW.applyOptions({ color:hexA(P.col,.2), lineWidth:+P.wLo + 3 }); this.s.mid.applyOptions({ color:P.midCol, lineWidth:+P.wMid });
       this.s.hi.setData(toLine(v.hi)); this.s.mid.setData(toLine(v.mid)); this.s.lo.setData(toLine(v.lo)); this.s.loW.setData(toLine(v.lo));
       this.band.setItems(v.lo.map((x,i) => ok(x, v.hi[i]) ? { up:v.hi[i], lo:x, color:hexA(P.col,.12) } : null));
     },
@@ -1297,7 +1316,7 @@ const OVL = {
       this.band.setItems(P.showBias ? v.hls.map((x,i) => ({ up:v.hhs[i], lo:x, color:this.color(v.state[i]) })) : []);
       const sdLine = arr => bars.map((b,i) => arr[i] === null ? { time:b.time } : { time:b.time, value:arr[i], color:this.color(v.state[i]) || CLEAR });
       this.s.upSd.setData(sdLine(v.upSd)); this.s.loSd.setData(sdLine(v.loSd));
-      this.s.upSd.applyOptions({ visible:!!P.showSd }); this.s.loSd.applyOptions({ visible:!!P.showSd });
+      this.s.upSd.applyOptions({ visible:!!P.showSd, lineWidth:+P.sdW }); this.s.loSd.applyOptions({ visible:!!P.showSd, lineWidth:+P.sdW });
       this.s.ha.setData(bars.map((b,i) => { const bull = !(v.hos[i] > v.hcs[i]), col = bull ? P.bull : P.bear;
         return { time:b.time, open:v.hos[i], high:v.hhs[i], low:v.hls[i], close:v.hcs[i], color:col, borderColor:col, wickColor:col }; }));
       this.s.ha.applyOptions({ visible:!!P.showHA });
@@ -1362,6 +1381,7 @@ Object.assign(IND, {
       const P = S.wt, v = this.vals = wtCalc(bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), P);
       const { LineStyle } = LC(), W = +S.lvlW;
       this.s.wt1.setData(toLine(v.wt1)); this.s.wt2.setData(toLine(v.wt2)); this.s.area.setData(toLine(v.diff));
+      this.s.wt1.applyOptions({ color:P.c1, lineWidth:+P.w1 }); this.s.wt2.applyOptions({ color:P.c2, lineWidth:+P.w2 }); this.s.step.applyOptions({ lineWidth:+P.stepW });
       const stepCol = i => v.legD[i] >= 3 ? 'rgba(242,54,69,.7)' : v.legD[i] > 0 ? 'rgba(242,54,69,.45)' : v.legU[i] >= 3 ? 'rgba(8,153,129,.7)' : v.legU[i] > 0 ? 'rgba(8,153,129,.45)' : hexA(S.col.text,.3);
       this.s.step.setData(P.showStep ? bars.map((b,i) => ({ time:b.time, value:v.step[i], color:stepCol(i) })) : []);
       this.s.stepFill.setData(P.showStep ? bars.map((b,i) => ({ time:b.time, value:v.step[i] })) : []);
@@ -1412,7 +1432,7 @@ Object.assign(IND, {
       const st = ld > 0 ? `跌勢 第${ld}段` : lu > 0 ? `漲勢 第${lu}段` : '無明確波段';
       const stc = ld >= 3 ? '#f23645' : lu >= 3 ? '#089981' : 'var(--muted)';
       const ace = ld >= 3 && le(w, P.os1) ? '　<b style="color:#ff9900">⚡ 等金叉即王牌</b>' : lu >= 3 && ge(w, P.ob1) ? '　<b style="color:#ff9900">⚡ 等死叉即王牌</b>' : '';
-      return `BotWT×3 <b style="color:#2ebd85">${fmt(w,1)}${d === null ? '' : d >= 0 ? ' ▲' : ' ▼'}</b> <span style="color:#f6465d">${fmt(v.wt2[i],1)}</span>` +
+      return `BotWT×3 <b style="color:${P.c1}">${fmt(w,1)}${d === null ? '' : d >= 0 ? ' ▲' : ' ▼'}</b> <span style="color:${P.c2}">${fmt(v.wt2[i],1)}</span>` +
         `　<b style="color:${zc}">${zone}</b>　<b style="color:${stc}">${st}</b>${ace}`;
     },
   },
@@ -1438,6 +1458,7 @@ Object.assign(IND, {
       const asLine = P.disp === 'line';
       this.s.z.setData(asLine ? [] : zData); this.s.zl.setData(asLine ? zData : []);
       this.s.sig.setData(toLine(v.sig));
+      this.s.sig.applyOptions({ color:P.sigCol, lineWidth:+P.sigW }); this.s.zl.applyOptions({ lineWidth:+P.lineW });
       const band = arr => bars.map((b,i) => v.z[i] === null ? { time:b.time } : { time:b.time, value:arr[i] });
       this.s.up.setData(band(v.up)); this.s.mid.setData(band(v.mid)); this.s.lo.setData(band(v.lo));
       this.s.up.applyOptions({ color:C.up, lineWidth:W }); this.s.lo.applyOptions({ color:C.dn, lineWidth:W }); this.s.mid.applyOptions({ color:'rgba(158,158,158,.7)' });
@@ -1453,7 +1474,7 @@ Object.assign(IND, {
       let tag = '';
       if (z !== null && z >= v.up[i]) tag = `<span class="tag" style="background:${C.up}">上界之上</span>`;
       else if (z !== null && z <= v.lo[i]) tag = `<span class="tag" style="background:${C.dn}">下界之下</span>`;
-      return `ZTSV+ Z <b style="color:${z === null ? 'var(--text)' : this.zCol(z, i)}">${fmt(z)}</b>　<span style="color:#ffa726">訊號 <b>${fmt(v.sig[i])}</b></span>` +
+      return `ZTSV+ Z <b style="color:${z === null ? 'var(--text)' : this.zCol(z, i)}">${fmt(z)}</b>　<span style="color:${S.ztsv.sigCol}">訊號 <b>${fmt(v.sig[i])}</b></span>` +
         `　<span style="color:${C.up}">上 ${fmt(v.up[i])}</span>　<span style="color:${C.dn}">下 ${fmt(v.lo[i])}</span>${tag}`;
     },
   },
@@ -1660,6 +1681,7 @@ async function load(){
 }
 
 /* ───────────── 介面繫結 ───────────── */
+document.querySelectorAll('select.wsel').forEach(sel => [1,2,3,4].forEach(w => { const o = document.createElement('option'); o.value = w; o.textContent = w + ' 粗'; sel.appendChild(o); }));
 document.querySelectorAll('select.w').forEach(sel => [1,2,3,4].forEach(w => { const o = document.createElement('option'); o.value = w; o.textContent = w + ' 粗'; sel.appendChild(o); }));
 
 const getPath = p => p.split('.').reduce((o,k) => o[k], S);
@@ -1673,8 +1695,8 @@ const REDRAW = {
   all: () => { drawIndicators(); drawOverlays(); },
 };
 const RESETS = {
-  smi:   ['mfiLen','kLen','dLen','obLevel','osLevel','showRef','upCol','dnCol'],
-  aroon: ['aroonLen','cmoLen','cmoSig','arCol'],
+  smi:   ['mfiLen','kLen','dLen','obLevel','osLevel','showRef','upCol','dnCol','smiW'],
+  aroon: ['aroonLen','cmoLen','cmoSig','arCol','arW'],
   vpo:   ['vpo'],
   t3:    ['t3'],
   wt:    ['wt'],
@@ -1801,6 +1823,7 @@ updateKindUI(parseSym(S.lastSym));
 applyList([]);
 loadStockList();
 const boot = () => { if (S.lastSym) load(); };
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (LC()) boot(); else window.addEventListener('load', boot);
 })();
 </script>
