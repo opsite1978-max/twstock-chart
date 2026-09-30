@@ -88,6 +88,14 @@
   .sub{font-size:12px;color:var(--muted);margin-top:4px;border-top:1px dashed var(--line);padding-top:8px}
   .small{height:28px;padding:2px 10px;font-size:12px;align-self:flex-start}
   .hint{font-size:12px;color:var(--muted);line-height:1.6}
+  #installBtn{margin-left:auto;align-self:center}
+  #installHelp{position:fixed;inset:0;z-index:30;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px}
+  #installHelp[hidden]{display:none}
+  .ih-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:420px;width:100%;padding:18px 20px;line-height:1.7;font-size:15px}
+  .ih-card h3{margin:0 0 8px;font-size:17px}
+  .ih-card ol{margin:6px 0 12px;padding-left:22px}
+  .ih-card .warn{background:#ff980022;border:1px solid #ff980066;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:14px}
+  .ih-card button{width:100%;height:40px;margin-top:6px}
   #shade{position:fixed;inset:0;background:#0002;z-index:10;display:none}
   #shade.open{display:block}
   @media (max-width:600px){
@@ -112,7 +120,14 @@
   <span id="status"></span>
 </header>
 
-<div id="info"><span id="title"></span><span id="last"></span></div>
+<div id="info"><span id="title"></span><span id="last"></span><span class="spacer"></span><button id="installBtn" class="small" hidden>📲 安裝成 App</button></div>
+<div id="installHelp" hidden>
+  <div class="ih-card" role="dialog" aria-modal="true" aria-labelledby="ihTitle">
+    <h3 id="ihTitle">把看盤安裝成 App</h3>
+    <div id="ihBody"></div>
+    <button id="ihClose" class="primary">知道了</button>
+  </div>
+</div>
 <div id="legend"></div>
 <div id="area"><div id="chartWrap">
   <div id="chart"></div>
@@ -1822,6 +1837,35 @@ if (S.lastSym) $('sym').value = S.lastSym;
 updateKindUI(parseSym(S.lastSym));
 applyList([]);
 loadStockList();
+
+/* ───────────── 安裝成 App ───────────── */
+(() => {
+  const ua = navigator.userAgent;
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const inApp = /Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  let prompt = null;
+  const btn = $('installBtn');
+  if (standalone) return;                                   // 已經是 App 開啟，不顯示按鈕
+  btn.hidden = false;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); prompt = e; btn.hidden = false; });
+  window.addEventListener('appinstalled', () => { prompt = null; btn.hidden = true; setStatus('已安裝成 App，之後從桌面圖示打開即可'); });
+  const help = () => {
+    let h = '';
+    if (inApp) h += '<div class="warn">你現在是在 LINE／Facebook 等 App 裡面開的網頁，這裡沒辦法安裝。請按右上角「⋯」或「分享」，選「用瀏覽器開啟」（iPhone 選 Safari、Android 選 Chrome），再按一次「安裝成 App」。</div>';
+    if (isIOS) h += '<b>iPhone／iPad（Safari）</b><ol><li>按畫面下方中間的「分享」按鈕（方框加向上箭頭）</li><li>往下滑，點「加入主畫面」</li><li>右上角按「加入」，桌面就會出現看盤圖示</li></ol>';
+    else if (isAndroid) h += '<b>Android（Chrome）</b><ol><li>點右上角「⋮」</li><li>點「安裝應用程式」或「加到主畫面」</li><li>按「安裝」，桌面就會出現看盤圖示</li></ol>';
+    else h += '<b>電腦（Chrome 或 Edge）</b><ol><li>看網址列最右邊，有一個「螢幕加向下箭頭」的小圖示，點它</li><li>如果沒看到：點右上角「⋮」→「投放、儲存及分享」→「安裝網頁為應用程式」</li><li>按「安裝」，之後從桌面或開始選單打開</li></ol>';
+    $('ihBody').innerHTML = h; $('installHelp').hidden = false;
+  };
+  btn.onclick = async () => {
+    if (prompt){ prompt.prompt(); try { await prompt.userChoice; } catch(e){} prompt = null; return; }
+    help();
+  };
+  $('ihClose').onclick = () => $('installHelp').hidden = true;
+  $('installHelp').onclick = e => { if (e.target.id === 'installHelp') $('installHelp').hidden = true; };
+})();
 const boot = () => { if (S.lastSym) load(); };
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (LC()) boot(); else window.addEventListener('load', boot);
