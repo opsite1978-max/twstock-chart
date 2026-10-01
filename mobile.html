@@ -158,6 +158,7 @@
   <div class="plabel" id="lbl-t3"></div>
   <div class="plabel" id="lbl-wt"></div>
   <div class="plabel" id="lbl-ztsv"></div>
+  <div class="plabel" id="lbl-rsib"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「看」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -172,6 +173,7 @@
         <label class="chk"><input type="checkbox" data-ind="vpo">VPO v1 貪恐震盪線</label>
         <label class="chk"><input type="checkbox" data-ind="t3">Normalised T3 震盪指標</label>
         <label class="chk"><input type="checkbox" data-ind="wt">BotWT×3 波浪趨勢 × 三段波浪</label>
+        <label class="chk"><input type="checkbox" data-ind="rsib">RSI 美國線（RSIB）</label>
       </div>
     </div>
 
@@ -300,6 +302,27 @@
           <button class="small" data-reset="t3">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>RSI 美國線（RSIB）</summary>
+        <div class="stack">
+          <div class="kv"><span>長度參數</span><input type="number" data-k="rsib.len" data-int data-redraw="rsib" min="2" max="100"></div>
+          <div class="kv"><span>呈現方式</span><select data-k="rsib.mode" data-redraw="rsib"><option value="bar">美國線</option><option value="line">線條</option></select></div>
+          <label class="chk"><input type="checkbox" data-k="rsib.std" data-redraw="rsib">用普通 RSI 算法（不除以均價）</label>
+          <div class="sub">線條顏色與粗細</div>
+          <div class="kv"><span>美國線　上漲／下跌</span><span class="pair"><input type="color" data-k="rsib.upCol" data-redraw="rsib"><input type="color" data-k="rsib.dnCol" data-redraw="rsib"><select data-k="rsib.thick" data-redraw="rsib"><option value="1">粗</option><option value="">細</option></select></span></div>
+          <div class="kv"><span>線條模式主線</span><span class="pair"><input type="color" data-k="rsib.lineCol" data-redraw="rsib"><select class="wsel" data-k="rsib.lineW" data-int data-redraw="rsib"></select></span></div>
+          <div class="sub">超買／超賣</div>
+          <div class="kv"><span>超買線</span><input type="number" data-k="rsib.obLv" data-redraw="rsib" min="50" max="100"></div>
+          <div class="kv"><span>超賣線</span><input type="number" data-k="rsib.osLv" data-redraw="rsib" min="0" max="50"></div>
+          <div class="kv"><span>超買／超賣線顏色、粗細</span><span class="pair"><input type="color" data-k="rsib.obCol" data-redraw="rsib"><input type="color" data-k="rsib.osCol" data-redraw="rsib"><select class="wsel" data-k="rsib.lvW" data-int data-redraw="rsib"></select></span></div>
+          <div class="sub">內帶</div>
+          <div class="kv"><span>內帶形式</span><select data-k="rsib.inner" data-redraw="rsib"><option value="dyn">動態</option><option value="fixed">固定</option><option value="off">不顯示</option></select></div>
+          <div class="kv"><span>動態內帶算法</span><select data-k="rsib.innerType" data-redraw="rsib"><option value="sd">標準偏差</option><option value="rma">平滑均線</option></select></div>
+          <div class="kv"><span>內帶寬度</span><input type="number" data-k="rsib.mult" data-redraw="rsib" min="0" max="4" step="0.2"></div>
+          <div class="kv"><span>內帶線</span><span class="pair"><input type="color" data-k="rsib.innerCol" data-redraw="rsib"><select class="wsel" data-k="rsib.innerW" data-int data-redraw="rsib"></select></span></div>
+          <button class="small" data-reset="rsib">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -420,12 +443,14 @@ const DEFAULTS = {
   ztsv:{ tsvLen:13, zLen:100, sigLen:7, sigType:'EMA', bandMode:'adaptive', bandLen:200, upPct:90, loPct:10, fixTh:1.96, disp:'col', showBull:true, showBear:true, twColor:true, sigCol:'#ffa726', sigW:1, lineW:2 },
   topg:{ len:150, col:'#cd7f32', wHi:1, wMid:1, wLo:1, midCol:'#8a93a6' },
   bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645', sdW:1 },
+  rsib:{ len:14, std:false, mode:'bar', inner:'dyn', innerType:'sd', mult:1, upCol:'#2196f3', dnCol:'#ff5252', thick:'1', lineCol:'#a64d79', lineW:2,
+          obLv:70, osLv:30, obCol:'#2196f3', osCol:'#ff5252', lvW:2, innerCol:'#c27ba0', innerW:1 },
   ovl:{ topg:true, bias:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
-  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:7
+  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:8
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const store = {
@@ -444,13 +469,14 @@ try {
 if ((S.v || 0) < 5){ S.ind = { smi:true, aroon:true }; if (S.showMA === false) S.ma = clone(DEFAULTS.ma).map(m => Object.assign(m, { on:false })); }
 if ((S.v || 0) < 6){ S.ind = Object.assign({}, S.ind, { vpo:true, t3:true }); S.mainRatio = Math.min(S.mainRatio || 50, 50); }
 if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S.ovl = { topg:true, bias:true }; }
+if ((S.v || 0) < 8) S.ind = Object.assign({}, S.ind, { rsib:true });
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 7;
+S.v = 8;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
-// 精簡版：只保留 VPO、T3（只留均線）、BotWT×3 與 Top G、Bias Finder
+// 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
 S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 const save = () => store.set('twchart.mobile', JSON.stringify(S));
@@ -977,7 +1003,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1524,6 +1550,69 @@ Object.assign(IND, {
   },
 });
 
+/* ───────────── RSI 美國線 RSIB（LunaOwl） ───────────── */
+// gain_loss = change(src) / norm（norm：勾「普通 RSI」為 1，否則為前後兩根收盤平均）
+// RSI = 50 + 50 × rma(gain_loss) / rma(|gain_loss|)
+// 內帶 = 50 ± 寬度 × stdev(|change(RSI)|) 或 rma(|change(RSI)|)，固定模式為 ±5
+function rsibCalc(c, P){
+  const gl = c.map((x,i) => i === 0 ? null : (x - c[i-1]) / (P.std ? 1 : (x + c[i-1]) / 2));
+  const a = taRMA(gl, P.len), b = taRMA(gl.map(x => x === null ? null : Math.abs(x)), P.len);
+  const rsi = a.map((x,i) => (x === null || b[i] === null || b[i] === 0) ? null : 50 + 50 * x / b[i]);
+  const dAbs = rsi.map((x,i) => i === 0 || x === null || rsi[i-1] === null ? null : Math.abs(x - rsi[i-1]));
+  const ch = P.innerType === 'rma' ? taRMA(dAbs, P.len) : taStdevN(dAbs, P.len);
+  const w = ch.map(x => P.inner === 'fixed' ? 5 * P.mult : x === null ? null : P.mult * x);
+  return { rsi, up: w.map(x => x === null ? null : 50 + x), lo: w.map(x => x === null ? null : 50 - x) };
+}
+window.__ind = Object.assign(window.__ind || {}, { rsibCalc });
+
+Object.assign(IND, {
+  rsib: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { BarSeries, LineSeries } = LC(), fr = fixedRange(0, 100);
+      const o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fr });
+      this.s.inUp = chart.addSeries(LineSeries, o(), p);
+      this.s.inLo = chart.addSeries(LineSeries, o(), p);
+      this.s.bars = chart.addSeries(BarSeries, Object.assign(o(), { openVisible:true }), p);
+      this.s.line = chart.addSeries(LineSeries, Object.assign(o(), { lastValueVisible:true, crosshairMarkerVisible:true, crosshairMarkerRadius:3 }), p);
+      this.refs = [];
+    },
+    draw(){
+      const P = S.rsib, c = bars.map(b => b.close), v = this.vals = rsibCalc(c, P);
+      const { LineStyle } = LC();
+      const asBar = P.mode === 'bar';
+      this.s.bars.setData(asBar ? bars.map((b,i) => (v.rsi[i] === null || i === 0 || v.rsi[i-1] === null) ? { time:b.time } : {
+        time:b.time, open:v.rsi[i-1], close:v.rsi[i], high:Math.max(v.rsi[i], v.rsi[i-1]), low:Math.min(v.rsi[i], v.rsi[i-1]),
+        color: c[i-1] < c[i] ? P.upCol : P.dnCol }) : []);
+      this.s.bars.applyOptions({ thinBars: !P.thick, lastValueVisible: asBar });
+      this.s.line.setData(asBar ? [] : toLine(v.rsi));
+      this.s.line.applyOptions({ color:P.lineCol, lineWidth:+P.lineW });
+      const showIn = P.inner !== 'off';
+      this.s.inUp.setData(showIn ? toLine(v.up) : []); this.s.inLo.setData(showIn ? toLine(v.lo) : []);
+      [this.s.inUp, this.s.inLo].forEach(s => s.applyOptions({ color:P.innerCol, lineWidth:+P.innerW, lineStyle:LineStyle.Solid }));
+      // 超買／超賣線：清楚的虛線＋刻度標籤（不填背景）
+      const host = asBar ? this.s.bars : this.s.line;
+      [this.s.bars, this.s.line].forEach(s => (s._rsibRefs || []).forEach(r => s.removePriceLine(r)));
+      this.s.bars._rsibRefs = []; this.s.line._rsibRefs = [];
+      const mk = (price, color, width, style, title) => host._rsibRefs.push(host.createPriceLine({ price, color, lineWidth:width, lineStyle:style, axisLabelVisible:!!title, title }));
+      mk(P.obLv, P.obCol, +P.lvW, LineStyle.Dashed, '超買');
+      mk(50, hexA(S.col.text,.35), 1, LineStyle.Dotted, '');
+      mk(P.osLv, P.osCol, +P.lvW, LineStyle.Dashed, '超賣');
+    },
+    label(i){
+      const v = this.vals, P = S.rsib; if (!v) return '';
+      const x = v.rsi[i], p = i > 0 ? v.rsi[i-1] : null;
+      const up = i > 0 && bars[i-1] && bars[i].close > bars[i-1].close;
+      const col = x == null ? 'var(--text)' : P.mode === 'bar' ? (up ? P.upCol : P.dnCol) : P.lineCol;
+      let tag = '';
+      if (x != null && x >= P.obLv) tag = `<span class="tag" style="background:${P.obCol}">超買</span>`;
+      else if (x != null && x <= P.osLv) tag = `<span class="tag" style="background:${P.osCol}">超賣</span>`;
+      return `RSIB (${P.len}) <b style="color:${col}">${fmt(x,1)}${x == null || p == null ? '' : x >= p ? ' ▲' : ' ▼'}</b>` +
+        (P.inner !== 'off' ? `　<span style="color:${P.innerCol}">內帶 ${fmt(v.lo[i],1)}～${fmt(v.up[i],1)}</span>` : '') + tag;
+    },
+  },
+});
+
 /* ───────────── 看盤週期設定 ───────────── */
 // 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
 const TF = {
@@ -1732,7 +1821,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'),
   topg: () => drawOverlays(), bias: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -1744,6 +1833,7 @@ const RESETS = {
   vpo:   ['vpo'],
   t3:    ['t3'],
   wt:    ['wt'],
+  rsib:  ['rsib'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
