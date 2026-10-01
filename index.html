@@ -109,7 +109,7 @@
   <input id="sym" list="symList" placeholder="代號、名稱或 TX" autocomplete="off">
   <datalist id="symList"></datalist>
   <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">
-    <button data-tf="60">1時</button><button data-tf="240">4時</button><button data-tf="D">日</button><button data-tf="W">週</button><button data-tf="M">月</button>
+    <button data-tf="D">日</button><button data-tf="W">週</button><button data-tf="M">月</button>
   </div>
   <select id="period" title="顯示期間"></select>
   <label class="chk" id="adjWrap" title="使用除權息還原後的股價（消除除權息缺口）"><input type="checkbox" id="adj">還原</label>
@@ -1922,7 +1922,7 @@ document.querySelectorAll('#tfSeg button').forEach(btn => btn.onclick = () => {
 fillSettingsUI();
 applyTheme();
 layoutPanes();
-if (!TF[S.tf]) S.tf = 'D';
+if (!TF[S.tf] || TF[S.tf].intraday) S.tf = 'D';
 buildPeriodOptions();
 $('adj').checked = !!S.adj; $('night').checked = !!S.night;
 if (S.lastSym) $('sym').value = S.lastSym;
