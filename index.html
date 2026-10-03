@@ -169,6 +169,7 @@
         <div class="sub" hidden>疊加指標</div>
         <label class="chk"><input type="checkbox" data-ovl="topg">Top G 高低通道與轉折（BigBeluga）</label>
         <label class="chk"><input type="checkbox" data-ovl="bias">Bias Finder 多空偏向帶（UAlgo）</label>
+        <label class="chk"><input type="checkbox" data-ovl="bb3">布林 2／3 倍標準差 ＋ EMA 多空線</label>
         <div class="line bb" id="bbRow" hidden><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
       </div>
     </div>
@@ -367,6 +368,23 @@
         </div>
       </details>
       <details>
+        <summary>布林 2／3 倍標準差 ＋ EMA 多空線（主圖）</summary>
+        <div class="stack">
+          <label class="chk"><input type="checkbox" data-k="bb3.showEma" data-redraw="bb3">顯示 EMA 多空線</label>
+          <div class="kv"><span>EMA 週期</span><input type="number" data-k="bb3.emaLen" data-int data-redraw="bb3" min="1"></div>
+          <div class="kv"><span>EMA 上升色／下降色、粗細</span><span class="pair"><input type="color" data-k="bb3.emaUp" data-redraw="bb3"><input type="color" data-k="bb3.emaDn" data-redraw="bb3"><select class="wsel" data-k="bb3.emaW" data-int data-redraw="bb3"></select></span></div>
+          <div class="sub">布林通道</div>
+          <div class="kv"><span>布林週期</span><input type="number" data-k="bb3.len" data-int data-redraw="bb3" min="2"></div>
+          <label class="chk"><input type="checkbox" data-k="bb3.show1" data-redraw="bb3">顯示第一組（內軌）</label>
+          <div class="kv"><span>內軌標準差倍數</span><input type="number" data-k="bb3.m1" data-redraw="bb3" min="0.1" step="0.1"></div>
+          <div class="kv"><span>內軌顏色、粗細</span><span class="pair"><input type="color" data-k="bb3.c1" data-redraw="bb3"><select class="wsel" data-k="bb3.w1" data-int data-redraw="bb3"></select></span></div>
+          <label class="chk"><input type="checkbox" data-k="bb3.show2" data-redraw="bb3">顯示第二組（外軌）</label>
+          <div class="kv"><span>外軌標準差倍數</span><input type="number" data-k="bb3.m2" data-redraw="bb3" min="0.1" step="0.1"></div>
+          <div class="kv"><span>外軌顏色、粗細</span><span class="pair"><input type="color" data-k="bb3.c2" data-redraw="bb3"><select class="wsel" data-k="bb3.w2" data-int data-redraw="bb3"></select></span></div>
+          <button class="small" data-reset="bb3">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>Bias Finder（主圖）</summary>
         <div class="stack">
           <div class="kv"><span>擺盪平滑 Oscillator Period</span><input type="number" data-k="bias.oscP" data-int data-redraw="bias" min="1"></div>
@@ -424,12 +442,13 @@ const DEFAULTS = {
   bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645', sdW:1 },
   rsib:{ len:14, std:false, mode:'bar', inner:'dyn', innerType:'sd', mult:1, upCol:'#2196f3', dnCol:'#ff5252', thick:'1', lineCol:'#a64d79', lineW:2,
           obLv:70, osLv:30, obCol:'#2196f3', osCol:'#ff5252', lvW:2, innerCol:'#c27ba0', innerW:1 },
-  ovl:{ topg:true, bias:true }, fontSize:12, lvlW:2,
+  bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
+  ovl:{ topg:true, bias:true, bb3:true }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
-  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:8
+  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:9
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const store = {
@@ -442,13 +461,14 @@ if ((S.v || 0) < 5){ S.ind = { smi:true, aroon:true }; if (S.showMA === false) S
 if ((S.v || 0) < 6){ S.ind = Object.assign({}, S.ind, { vpo:true, t3:true }); S.mainRatio = Math.min(S.mainRatio || 50, 50); }
 if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S.ovl = { topg:true, bias:true }; }
 if ((S.v || 0) < 8) S.ind = Object.assign({}, S.ind, { rsib:true });
+if ((S.v || 0) < 9) S.ovl = Object.assign({}, S.ovl, { bb3:true });
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 8;
+S.v = 9;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
-// 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder
+// 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
 S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 const save = () => store.set('twchart.settings', JSON.stringify(S));
@@ -1585,6 +1605,44 @@ Object.assign(IND, {
   },
 });
 
+/* ───────────── 布林通道 2／3 倍標準差 ＋ EMA 多空線（GP，主圖） ───────────── */
+// EMA 多空線：EMA(close, 13)，比兩根前高或持平 → 上升色，比兩根前低 → 下降色
+// 布林：中線 SMA(close, 20)，上下軌 = 中線 ± 2 倍與 3 倍標準差
+Object.assign(OVL, {
+  bb3: {
+    s:{}, vals:null,
+    create(){
+      const { LineSeries } = LC(), o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, lineWidth:1 });
+      this.s.u2 = chart.addSeries(LineSeries, o(), 0); this.s.l2 = chart.addSeries(LineSeries, o(), 0);
+      this.s.u1 = chart.addSeries(LineSeries, o(), 0); this.s.l1 = chart.addSeries(LineSeries, o(), 0);
+      this.s.ema = chart.addSeries(LineSeries, o(), 0);
+    },
+    draw(){
+      const P = S.bb3, c = bars.map(b => b.close);
+      const ema = taEMA(c, P.emaLen), b1 = bollinger(c, P.len, P.m1), b2 = bollinger(c, P.len, P.m2);
+      this.vals = { ema, b1, b2 };
+      this.s.ema.setData(bars.map((b,i) => ema[i] === null ? { time:b.time } :
+        { time:b.time, value:ema[i], color: (i >= 2 && ema[i-2] !== null && ema[i] < ema[i-2]) ? P.emaDn : P.emaUp }));
+      this.s.ema.applyOptions({ lineWidth:+P.emaW, visible:!!P.showEma });
+      this.s.u1.setData(toLine(b1.up)); this.s.l1.setData(toLine(b1.lo));
+      this.s.u2.setData(toLine(b2.up)); this.s.l2.setData(toLine(b2.lo));
+      [this.s.u1, this.s.l1].forEach(s => s.applyOptions({ color:P.c1, lineWidth:+P.w1, visible:!!P.show1 }));
+      [this.s.u2, this.s.l2].forEach(s => s.applyOptions({ color:P.c2, lineWidth:+P.w2, visible:!!P.show2 }));
+    },
+    markers(){ return []; },
+    legend(i){
+      const v = this.vals, P = S.bb3; if (!v) return '';
+      const e = v.ema[i], rising = !(i >= 2 && v.ema[i-2] !== null && e < v.ema[i-2]);
+      let h = '';
+      if (P.showEma) h += `<span style="color:${rising ? P.emaUp : P.emaDn}">EMA${P.emaLen} ${fmt(e)} ${e === null ? '' : rising ? '多' : '空'}</span>`;
+      if (P.show1) h += `<span style="color:${P.c1}">布林${P.m1}倍 上 ${fmt(v.b1.up[i])}　下 ${fmt(v.b1.lo[i])}</span>`;
+      if (P.show2) h += `<span style="color:${P.c2}">${P.m2}倍 上 ${fmt(v.b2.up[i])}　下 ${fmt(v.b2.lo[i])}</span>`;
+      return h;
+    },
+  },
+});
+OVL_ORDER.push('bb3');
+
 /* ───────────── 看盤週期設定 ───────────── */
 // 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
 const TF = {
@@ -1794,7 +1852,7 @@ const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce(
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
   wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'),
-  topg: () => drawOverlays(), bias: () => drawOverlays(),
+  topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
   all: () => { drawIndicators(); drawOverlays(); },
@@ -1809,6 +1867,7 @@ const RESETS = {
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
+  bb3:   ['bb3'],
 };
 
 function fillSettingsUI(){
