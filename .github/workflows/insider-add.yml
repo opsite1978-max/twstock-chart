@@ -1,0 +1,49 @@
+name: 加入內部人追蹤
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  issues: write
+  actions: write
+jobs:
+  add:
+    # 只接受專案擁有者本人開的申請
+    if: github.event.issue.user.login == github.repository_owner && contains(github.event.issue.title, '加入內部人追蹤')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 加入清單
+        id: add
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          txt = os.environ.get('TITLE', '') + ' ' + (os.environ.get('BODY') or '')
+          codes = re.findall(r'(?<![0-9A-Z])([0-9]{4}[0-9A-Z]{0,2})(?![0-9A-Z])', txt)
+          p = 'insider/watchlist.txt'
+          have = [l.split('#')[0].strip() for l in open(p, encoding='utf-8')]
+          new = [c for c in dict.fromkeys(codes) if c not in have]
+          with open(p, 'a', encoding='utf-8') as f:
+              for c in new:
+                  f.write(c + '\n')
+          open(os.environ['GITHUB_OUTPUT'], 'a').write('added=' + ' '.join(new) + '\n')
+          PY
+      - name: 存回並開始抓資料
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADDED: ${{ steps.add.outputs.added }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          if [ -n "$ADDED" ]; then
+            git add insider/watchlist.txt
+            git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "加入內部人追蹤：$ADDED"
+            git push -q origin HEAD:main
+            gh workflow run insider-data.yml --ref main
+            MSG="已加入：$ADDED。資料大約 10 到 40 分鐘內抓完，之後重新整理內部人頁面就看得到。"
+          else
+            MSG="這些代號已經在追蹤清單裡，或沒有找到股票代號。"
+          fi
+          gh issue close "$NUM" --comment "$MSG"

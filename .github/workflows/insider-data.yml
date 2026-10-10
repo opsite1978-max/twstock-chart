@@ -1,0 +1,30 @@
+name: 內部人申報資料更新
+on:
+  schedule:
+    - cron: '23 */2 * * *'   # 每兩小時檢查一次；資料齊全時幾乎不做事
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['insider/watchlist.txt', 'scripts/insider_scrape.py']
+permissions:
+  contents: write
+concurrency:
+  group: insider-data
+  cancel-in-progress: false
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓公開資訊觀測站
+        env:
+          BUDGET_SEC: '2700'
+          BACK_MONTHS: '36'
+        run: python3 scripts/insider_scrape.py
+      - name: 存回專案
+        run: |
+          git add data/insider
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "內部人申報資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep 5; done
