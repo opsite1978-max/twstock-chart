@@ -1,0 +1,28 @@
+name: probe-mops
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe
+        run: |
+          mkdir out; cd out
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128 Safari/537.36"
+          curl -sS -m 30 -A "$UA" -o new_index.html -w "new %{http_code}\n" https://mops.twse.com.tw/mops/ || true
+          curl -sS -m 30 -A "$UA" -o ov_index.html -w "ov %{http_code}\n" https://mopsov.twse.com.tw/mops/web/index || true
+          for p in query6_1 stapap1 t56sb12 IR1_1 t56sb01 query6_2 t93sb06_1; do
+            for host in mopsov.twse.com.tw mops.twse.com.tw; do
+              curl -sS -m 30 -A "$UA" -X POST "https://$host/mops/web/ajax_$p" \
+                -d "encodeURIComponent=1&step=1&firstin=1&off=1&TYPEK=all&isnew=false&co_id=2330&year=115&month=08" \
+                -o "${host}_${p}.html" -w "$host $p %{http_code} %{size_download}\n" || true
+            done
+          done
+          # new-site JS bundle: grep for insider routes
+          grep -oE 'src="[^"]+\.js"' new_index.html | head -20 > js_list.txt || true
+          for s in $(sed -E 's/src="([^"]+)"/\1/' js_list.txt); do
+            case "$s" in http*) u="$s";; /*) u="https://mops.twse.com.tw$s";; *) u="https://mops.twse.com.tw/mops/$s";; esac
+            f=$(basename "$s"); curl -sS -m 30 -A "$UA" -o "js_$f" "$u" || true
+          done
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with: { name: probe, path: out }
