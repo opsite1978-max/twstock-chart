@@ -116,6 +116,7 @@
   <label class="chk" id="nightWrap" title="日K以上的K棒把前一晚的夜盤併入" style="display:none"><input type="checkbox" id="night">含夜盤</label>
   <button class="primary" id="loadBtn">載入</button>
   <button id="setBtn" title="指標、顏色、版面與憑證">⚙ 設定</button>
+  <button id="insiderBtn" title="內部人買賣申報" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='insider.html'+(m?'?s='+m[0].toUpperCase():'')">內部人</button>
   <span class="spacer"></span>
   <span id="status"></span>
 </header>

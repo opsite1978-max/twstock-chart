@@ -129,6 +129,7 @@
     <datalist id="symList"></datalist>
     <button class="primary" id="loadBtn">看</button>
     <button id="setBtn" title="設定" aria-label="設定">⚙</button>
+    <button id="insiderBtn" title="內部人買賣申報" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='insider.html'+(m?'?s='+m[0].toUpperCase():'')">內部人</button>
   </div>
   <div class="mrow">
     <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">

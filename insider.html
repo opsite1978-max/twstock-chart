@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>內部人買賣</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1e2533;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --warn:#f0a940;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#eef0f4;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --warn:#b26a00;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 6px 0 0;font-weight:600;white-space:nowrap}
+  input,button,a.btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;height:34px}
+  input{width:120px}
+  input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  button,a.btn{cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .title{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:6px 0 10px}
+  .title .nm{font-size:20px;font-weight:700}
+  .title .px{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .up{color:var(--up)} .dn{color:var(--down)}
+  .msg{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .card .k{font-size:12px;color:var(--muted)}
+  .card .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0}
+  .card .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  section{margin-top:16px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600}
+  h2 .muted{font-weight:400;font-size:12px;margin-left:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:30px;vertical-align:middle}
+  .seg button{border:0;border-radius:0;height:28px;padding:0 10px;background:var(--panel2);color:var(--muted)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .chartwrap{position:relative}
+  canvas{display:block;width:100%;touch-action:pan-y}
+  #tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:12px;line-height:1.55;min-width:170px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 4px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  .minis{display:grid;grid-template-columns:1fr;gap:8px}
+  @media(min-width:760px){.minis{grid-template-columns:1fr 1fr}}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+  th{background:var(--panel);color:var(--muted);font-weight:500;position:sticky;top:0}
+  th:first-child,td:first-child,td.l,th.l{text-align:left}
+  tr.mrow{cursor:pointer}
+  tr.mrow:hover td{background:var(--panel)}
+  tr.sub td{background:var(--panel);font-size:12px}
+  tr.sub table th{background:var(--panel2)}
+  .caret{display:inline-block;width:12px;color:var(--muted)}
+  b.num{font-weight:600}
+  footer{margin-top:22px;font-size:12px;color:var(--muted)}
+  footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>內部人買賣</h1>
+  <input id="q" inputmode="numeric" placeholder="股票代號" autocomplete="off">
+  <button class="primary" id="go">查詢</button>
+  <span class="spacer"></span>
+  <a class="btn" id="back" href="./">← 看盤</a>
+</header>
+<main>
+  <div class="chips" id="chips"></div>
+  <div id="out"><div class="msg">載入追蹤清單中…</div></div>
+  <footer>
+    資料來源：公開資訊觀測站「內部人持股異動事後申報表」與「董監事持股餘額明細」，每月 15 日前申報上個月，本站每兩小時自動更新；股價來自 FinMind。
+    申報表只有股數、沒有成交價，金額＝股數 × 當月平均收盤價，屬估算。內部人賣股原因包含繳稅、質借、分散持股，不必然代表看壞。
+  </footer>
+</main>
+<script>
+'use strict';
+/* ───────── 設定：沿用看盤頁的 FinMind 憑證與深淺色 ───────── */
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+const lots = sh => sh / 1000;                       // 股 → 張
+function fmtLots(sh){ const v = lots(sh); return Math.abs(v) >= 10 || v === 0 ? fmtInt(v) : v.toFixed(Math.abs(v) < 1 ? 2 : 1); }
+function fmtMoney(v, sign){                          // 元 → 萬／億
+  if (v == null || isNaN(v)) return '–';
+  const s = sign && v > 0 ? '+' : (v < 0 ? '−' : ''), a = Math.abs(v);
+  if (a >= 1e8) return s + (a / 1e8).toFixed(a >= 1e10 ? 0 : 2) + ' 億';
+  if (a >= 1e4) return s + fmtInt(a / 1e4) + ' 萬';
+  return a === 0 ? '0' : s + fmtInt(a) + ' 元';
+}
+function fmtPx(v){ if (v == null || isNaN(v)) return '–'; if (Number.isInteger(v) || v >= 1000) return fmtInt(v); return v >= 100 ? v.toFixed(1).replace(/\.0$/,'') : v.toFixed(2).replace(/\.?0+$/,''); }
+const ymLabel = ym => ym.replace('-', '/');
+function addMonths(ym, k){ let [y,m] = ym.split('-').map(Number); m += k; while(m < 1){ m += 12; y--; } while(m > 12){ m -= 12; y++; } return y + '-' + String(m).padStart(2,'0'); }
+
+/* ───────── FinMind 股價（月均價、月底收盤） ───────── */
+const FM = 'https://api.finmindtrade.com/api/v4/data';
+async function finmind(params){
+  const qs = new URLSearchParams(params), tok = (SET.token || '').trim();
+  let res;
+  try { res = await fetch(FM + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {}); }
+  catch(e){ if (!tok) throw e; qs.set('token', tok); res = await fetch(FM + '?' + qs); }
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('FinMind ' + res.status));
+  return j.data || [];
+}
+async function loadPrices(code, startYm){
+  const rows = await finmind({ dataset:'TaiwanStockPrice', data_id:code, start_date: startYm + '-01' });
+  const by = {};
+  for (const r of rows){
+    const ym = r.date.slice(0,7), c = +r.close;
+    if (!c) continue;
+    (by[ym] = by[ym] || { sum:0, n:0, close:0, last:'' });
+    by[ym].sum += c; by[ym].n++;
+    if (r.date >= by[ym].last){ by[ym].last = r.date; by[ym].close = c; }
+  }
+  const out = {};
+  for (const k in by) out[k] = { avg: by[k].sum / by[k].n, close: by[k].close, lastDate: by[k].last };
+  const lastRow = rows[rows.length - 1];
+  return { months: out, last: lastRow ? { date:lastRow.date, close:+lastRow.close, chg:+lastRow.spread } : null };
+}
+async function loadIssued(code){
+  const d = new Date(Date.now() - 20 * 864e5).toISOString().slice(0,10);
+  const rows = await finmind({ dataset:'TaiwanStockShareholding', data_id:code, start_date:d });
+  const r = rows[rows.length - 1];
+  return r ? +r.NumberOfSharesIssued : null;
+}
+
+/* ───────── 申報表解析 ─────────
+   每列：0身份別 1姓名 2持股種類 3選任時 4上月持股 5上月信託 6上月設質 7上月私募
+         8增加集中 9增加其他 10增加私募 11增加信託 12設定質權
+         13減少集中 14減少其他 15減少私募 16減少信託 17解除質權
+         18本月持股 19分戶集保 20本月信託 21本月設質 22本月私募 23備註 */
+const REL = [
+  ['之法人代表人之配偶及未成年子女', '法人代表人的配偶子女'],
+  ['之法人代表人利用他人名義持有者', '法人代表人的他人名義'],
+  ['之配偶及未成年子女', '的配偶子女'],
+  ['利用他人名義持有者', '他人名義'],
+  ['之法人代表人', '法人代表人'],
+  ['本人', ''],
+];
+function splitRole(role){
+  for (const [suf, lab] of REL) if (role.endsWith(suf)) return { base: role.slice(0, -suf.length).replace(/本人$/, ''), rel: suf, relLab: lab };
+  return { base: role, rel: '', relLab: '' };
+}
+function parseMonth(rec){
+  const rows = (rec.r || []).filter(r => r[2] === '普通股' || r[2] === '');
+  let owner = '';
+  const seen = new Set(), people = [];
+  for (const r of rows){
+    const sp = splitRole(r[0]);
+    if (sp.rel === '本人' || sp.rel === '之法人代表人') owner = r[1] || owner;
+    const who = r[1] || ('↳' + owner);
+    const key = who + '|' + sp.rel + '|' + r.slice(3, 23).join(',');
+    const dup = seen.has(key); seen.add(key);
+    people.push({ role:r[0], base:sp.base, rel:sp.rel, relLab:sp.relLab, name:r[1], owner, dup,
+      sel:r[3], prev:r[4], inMkt:r[8], inOth:r[9], plSet:r[12], outMkt:r[13], outOth:r[14], plRel:r[17],
+      now:r[18], pledge:r[21], note:r[23] || '' });
+  }
+  return people;
+}
+function displayName(p){ return p.name || '（配偶／未成年子女）'; }
+function roleLabel(p){ return p.base + (p.relLab ? p.relLab : ''); }
+
+function monthStats(people, px){
+  const u = people.filter(p => !p.dup);
+  const s = { buy:0, sell:0, othIn:0, othOut:0, plSet:0, plRel:0, n:0 };
+  const per = new Map();
+  for (const p of u){
+    s.buy += p.inMkt; s.sell += p.outMkt; s.othIn += p.inOth; s.othOut += p.outOth; s.plSet += p.plSet; s.plRel += p.plRel;
+    if (p.inMkt || p.outMkt || p.inOth || p.outOth || p.plSet || p.plRel) s.n++;
+    if (p.inMkt || p.outMkt){
+      const k = (p.name || '↳' + p.owner) + '|' + p.rel;
+      const o = per.get(k) || { p, roles: new Set(), net: 0 };
+      o.net += p.inMkt - p.outMkt; per.set(k, o);
+    }
+  }
+  // 同一人兼多職：把職稱合併（用重複列）
+  for (const p of people) if (p.dup){ const k = (p.name || '↳' + p.owner) + '|' + p.rel; if (per.has(k)) per.get(k).roles.add(p.base); }
+  for (const o of per.values()) o.roles.add(o.p.base);
+  s.net = s.buy - s.sell;
+  s.avg = px ? px.avg : null;
+  s.buyAmt = px ? s.buy * px.avg : null; s.sellAmt = px ? s.sell * px.avg : null; s.netAmt = px ? s.net * px.avg : null;
+  const list = [...per.values()];
+  s.topBuy = list.filter(o => o.net > 0).sort((a,b) => b.net - a.net);
+  s.topSell = list.filter(o => o.net < 0).sort((a,b) => a.net - b.net);
+  return s;
+}
+function personTag(o){
+  const roles = [...o.roles];
+  const r = roles[0] + (o.p.relLab || '');
+  return roles.length > 1 && !o.p.relLab ? r + '等' + roles.length + '個身份' : r;
+}
+
+/* ───────── 狀態與流程 ───────── */
+let INDEX = null, CUR = null, RANGE = 36;
+async function loadIndex(){
+  try {
+    const r = await fetch('data/insider/index.json?t=' + Date.now());
+    INDEX = r.ok ? await r.json() : { stocks:[] };
+  } catch(e){ INDEX = { stocks:[] }; }
+  const ch = $('#chips');
+  ch.innerHTML = INDEX.stocks.map(s => `<span class="chip" data-c="${esc(s.code)}">${esc(s.code)} ${esc(s.name || '')}</span>`).join('');
+  ch.onclick = e => { const c = e.target.closest('.chip'); if (c) open(c.dataset.c); };
+}
+function markChip(code){ document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.c === code)); }
+
+function addLink(code){
+  const t = encodeURIComponent('加入內部人追蹤 ' + code);
+  const b = encodeURIComponent('請把 ' + code + ' 加入內部人追蹤清單（直接按下方綠色按鈕送出即可）');
+  return `https://github.com/opsite1978-max/twstock-chart/issues/new?title=${t}&body=${b}`;
+}
+
+async function open(code){
+  code = String(code || '').trim().toUpperCase();
+  if (!code) return;
+  $('#q').value = code;
+  history.replaceState(null, '', '?s=' + code);
+  try { localStorage.setItem('insider.last', code); } catch(e){}
+  markChip(code);
+  const out = $('#out');
+  out.innerHTML = '<div class="msg">讀取 ' + esc(code) + ' 的申報資料…</div>';
+  let D = null;
+  try { const r = await fetch('data/insider/' + code + '.json?t=' + Date.now()); if (r.ok) D = await r.json(); } catch(e){}
+  const okMonths = D ? Object.keys(D.months).filter(k => D.months[k].s === 'ok').sort() : [];
+  if (!D || !okMonths.length){
+    const tracked = INDEX && INDEX.stocks.some(s => s.code === code);
+    out.innerHTML = tracked
+      ? `<div class="msg">${esc(code)} 已在追蹤清單，資料還在抓取中（新加入的股票約 10 到 40 分鐘）。稍後重新整理即可。</div>`
+      : `<div class="msg">${esc(code)} 還沒有加入追蹤。<br><br>
+         <a class="btn" style="display:inline-flex" href="${addLink(code)}" target="_blank" rel="noopener">＋ 加入追蹤</a><br><br>
+         <span class="small">按下後會打開 GitHub，直接按綠色「Create」送出即可；系統會自動加入並開始抓過去三年的資料，約 10 到 40 分鐘後回來重新整理。</span></div>`;
+    return;
+  }
+  const first = okMonths[0], last = okMonths[okMonths.length - 1];
+  let P = { months:{}, last:null }, issued = null, pxErr = '';
+  try {
+    [P, issued] = await Promise.all([loadPrices(code, first), loadIssued(code).catch(() => null)]);
+  } catch(e){ pxErr = e.message || String(e); }
+  CUR = build(D, P, issued, okMonths);
+  CUR.pxErr = pxErr;
+  render();
+}
+
+function build(D, P, issued, okMonths){
+  const first = okMonths[0], last = okMonths[okMonths.length - 1];
+  const nowYm = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,7);
+  const months = [];
+  for (let ym = first; ym <= nowYm; ym = addMonths(ym, 1)) months.push(ym);
+  const M = months.map(ym => {
+    const rec = D.months[ym], px = P.months[ym] || null;
+    const filed = !!(rec && rec.s === 'ok');
+    const people = filed ? parseMonth(rec) : [];
+    const st = filed ? monthStats(people, px) : null;
+    return { ym, filed, people, st, px, dir: filed ? rec.dir : null };
+  });
+  return { code: D.code, name: D.name, market: D.market, M, last, P, issued, months };
+}
+
+/* ───────── 畫面 ───────── */
+function sumRange(M, last, n){
+  const from = addMonths(last, -(n - 1));
+  const s = { buy:0, sell:0, buyAmt:0, sellAmt:0 };
+  for (const m of M) if (m.filed && m.ym >= from && m.ym <= last){
+    s.buy += m.st.buy; s.sell += m.st.sell; s.buyAmt += m.st.buyAmt || 0; s.sellAmt += m.st.sellAmt || 0;
+  }
+  s.net = s.buy - s.sell; s.netAmt = s.buyAmt - s.sellAmt;
+  return s;
+}
+function card(k, v, cls, sub){ return `<div class="card"><div class="k">${k}</div><div class="v ${cls||''}">${v}</div><div class="s">${sub||''}</div></div>`; }
+function signCls(v){ return v > 0 ? 'up' : v < 0 ? 'dn' : ''; }
+function ppDelta(v){ return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + ' 個百分點'; }
+
+function render(){
+  const C = CUR, out = $('#out');
+  const lastPx = C.P.last;
+  const s6 = sumRange(C.M, C.last, 6), s12 = sumRange(C.M, C.last, 12);
+  const filedM = C.M.filter(m => m.filed && m.dir);
+  const lastDir = filedM.length ? filedM[filedM.length - 1] : null;
+  const yearAgo = filedM.find(m => m.ym >= addMonths(C.last, -12)) || filedM[0];
+  let holdCard = '', pledgeCard = '';
+  if (lastDir){
+    const d = lastDir.dir, d0 = yearAgo.dir;
+    if (C.issued){
+      const r = d.total / C.issued * 100, r0 = d0.total / C.issued * 100;
+      holdCard = card('董監持股比', r.toFixed(r < 10 ? 2 : 1) + '%', '', '一年來 ' + ppDelta(r - r0));
+    } else {
+      holdCard = card('董監持股', fmtLots(d.total) + ' 張', '', '一年前 ' + fmtLots(d0.total) + ' 張');
+    }
+    const p = d.total ? d.pledge / d.total * 100 : 0, p0 = d0.total ? d0.pledge / d0.total * 100 : 0;
+    pledgeCard = card('質押比', p.toFixed(1) + '%', p >= 30 ? 'dn' : '', '一年來 ' + ppDelta(p - p0));
+  }
+  const pxNote = C.pxErr ? `<div class="msg err">股價讀取失敗（${esc(C.pxErr)}），金額無法估算。請到看盤頁「⚙ 設定」確認 FinMind 憑證。</div>` : '';
+  out.innerHTML = `
+    <div class="title">
+      <span class="nm">${esc(C.name || C.code)} <span class="muted" style="font-size:15px;font-weight:400">${esc(C.code)}</span></span>
+      ${lastPx ? `<span class="px">${fmtPx(lastPx.close)}</span><span class="small ${signCls(lastPx.chg)}">${lastPx.chg > 0 ? '+' : ''}${fmtPx(lastPx.chg)}</span><span class="small muted">${lastPx.date}</span>` : ''}
+      <span class="small muted">${esc(C.market || '')} · 申報資料至 ${ymLabel(C.last)}</span>
+    </div>
+    ${pxNote}
+    <div class="cards">
+      ${holdCard}${pledgeCard}
+      ${card('近 6 個月淨買賣 · 集中市場', fmtMoney(s6.netAmt, true), signCls(s6.net), (s6.net > 0 ? '+' : '') + fmtLots(s6.net) + ' 張')}
+      ${card('近 12 個月淨買賣 · 集中市場', fmtMoney(s12.netAmt, true), signCls(s12.net),
+        (s12.net > 0 ? '+' : '') + fmtLots(s12.net) + ' 張<br>買 ' + fmtLots(s12.buy) + ' 張（' + fmtMoney(s12.buyAmt) + '）· 賣 ' + fmtLots(s12.sell) + ' 張（' + fmtMoney(s12.sellAmt) + '）')}
+    </div>
+    <section>
+      <h2>股價與內部人每月買賣 <span class="seg" id="rng"><button data-n="12">1年</button><button data-n="24">2年</button><button data-n="36">3年</button></span></h2>
+      <div class="panel">
+        <div class="legend"><span><i style="background:var(--text);height:2px;vertical-align:3px"></i>月底收盤</span><span><i style="background:var(--up);border-radius:50%"></i>淨買月份</span><span><i style="background:var(--down);border-radius:50%"></i>淨賣月份（圓越大金額越大）</span></div>
+        <div class="chartwrap"><canvas id="cv"></canvas><div id="tip"></div></div>
+      </div>
+      <p class="note">上半是月底收盤，內部人有淨買賣的月份打圓點，可看出他們買在相對高點還是低點；框框是淨買（紅）與淨賣（綠）最大的月份，寫的是當月買賣最多那位的身份、當月均價與淨額（「等 N 人」＝當月同方向買賣的人數，金額為合計）。下半是每月在集中市場的買進（往上）與賣出（往下）金額。點月份看細節。</p>
+    </section>
+    <section>
+      <h2>董監持股比與質押比 <span class="muted">近 ${Math.min(36, filedM.length)} 個月，兩張小圖各自縮放</span></h2>
+      <div class="minis"><div class="panel"><canvas id="cvHold"></canvas></div><div class="panel"><canvas id="cvPl"></canvas></div></div>
+      <p class="note">持股比往下＝內部人整體減碼；質押比＝董監把多少比例的持股拿去抵押借錢，越高越要留意股價大跌時被追繳的風險。${C.issued ? '持股比以目前已發行股數計算。' : ''}</p>
+    </section>
+    <section id="secHolders"></section>
+    <section id="secMonths"></section>`;
+  document.querySelectorAll('#rng button').forEach(b => {
+    b.classList.toggle('on', +b.dataset.n === RANGE);
+    b.onclick = () => { RANGE = +b.dataset.n; document.querySelectorAll('#rng button').forEach(x => x.classList.toggle('on', x === b)); drawMain(); };
+  });
+  drawMain();
+  drawMini('#cvHold', filedM.slice(-36), m => C.issued ? m.dir.total / C.issued * 100 : m.dir.total / 1000, C.issued ? '董監持股比 %' : '董監持股（張）', C.issued ? 2 : 0);
+  drawMini('#cvPl', filedM.slice(-36), m => m.dir.total ? m.dir.pledge / m.dir.total * 100 : 0, '質押比 %', 2);
+  renderHolders();
+  renderMonths();
+}
+
+/* ───────── 主圖 ───────── */
+let HIT = null;
+function setupCanvas(cv, h){
+  const dpr = window.devicePixelRatio || 1, w = cv.parentElement.clientWidth;
+  cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { g, w, h };
+}
+function roundRect(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+function drawMain(){
+  const C = CUR, cv = $('#cv'); if (!cv) return;
+  const narrow = cv.parentElement.clientWidth < 520;
+  const { g, w, h } = setupCanvas(cv, narrow ? 560 : 540);
+  const col = { text:css('--text'), muted:css('--muted'), grid:css('--grid'), line:css('--line'), up:css('--up'), dn:css('--down'), panel:css('--panel2'), bg:css('--panel') };
+  const M = C.M.slice(-(RANGE + 1));  // 含本月（尚未申報）
+  const n = M.length;
+  const padL = 8, padR = narrow ? 44 : 56, boxH = narrow ? 34 : 38;
+  const rowsBox = narrow ? 2 : 1;
+  const topBoxes = 6, top = topBoxes + (boxH + 4) * rowsBox + 12;      // 上方標註區
+  const priceH = narrow ? 170 : 200;
+  const lowBoxY = top + priceH + 10;                                // 下方標註區
+  const barTop = lowBoxY + (boxH + 4) * rowsBox + 12, barH = h - barTop - 34;
+  const x0 = padL, x1 = w - padR, step = (x1 - x0) / n;
+  const X = i => x0 + step * (i + 0.5);
+  g.clearRect(0, 0, w, h);
+  g.font = '11px -apple-system,"Noto Sans TC",sans-serif'; g.textBaseline = 'middle';
+
+  // 價格區
+  const closes = M.map(m => m.px ? m.px.close : null);
+  if (C.P.last && M[n-1] && !M[n-1].filed && C.P.months[M[n-1].ym]) closes[n-1] = C.P.last.close;
+  const valid = closes.filter(v => v != null);
+  let lo = Math.min(...valid), hi = Math.max(...valid);
+  if (!valid.length){ lo = 0; hi = 1; }
+  const padv = (hi - lo) * 0.08 || hi * 0.05 || 1; lo -= padv; hi += padv;
+  const Y = v => top + priceH - (v - lo) / (hi - lo) * priceH;
+  // 格線＋右側刻度
+  g.strokeStyle = col.grid; g.fillStyle = col.muted; g.lineWidth = 1; g.textAlign = 'left';
+  const ticks = niceTicks(lo, hi, 4);
+  for (const t of ticks){ const y = Y(t); g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.fillText(fmtPx(t), x1 + 6, y); }
+  // 尚未申報月份陰影
+  M.forEach((m, i) => { if (!m.filed){ g.fillStyle = col.line + '66'; g.fillRect(X(i) - step/2, top - 4, step, h - top - 30); } });
+  const unfiled = M.findIndex(m => !m.filed);
+  if (unfiled >= 0){ g.fillStyle = col.muted; g.textAlign = 'center'; g.fillText('尚未', X(unfiled), barTop + barH / 2 - 7); g.fillText('申報', X(unfiled), barTop + barH / 2 + 7); }
+  // 面積＋線
+  const pts = closes.map((v, i) => v == null ? null : [X(i), Y(v)]).filter(Boolean);
+  if (pts.length > 1){
+    const grd = g.createLinearGradient(0, top, 0, top + priceH);
+    grd.addColorStop(0, col.text + '30'); grd.addColorStop(1, col.text + '00');
+    g.beginPath(); g.moveTo(pts[0][0], top + priceH); pts.forEach(p => g.lineTo(p[0], p[1])); g.lineTo(pts[pts.length-1][0], top + priceH); g.closePath(); g.fillStyle = grd; g.fill();
+    g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.strokeStyle = col.text; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+    const lp = pts[pts.length - 1];
+    g.beginPath(); g.arc(lp[0], lp[1], 3.5, 0, 7); g.fillStyle = col.text; g.fill();
+  }
+  // 圓點：大小依淨額
+  const amts = M.map(m => m.filed && m.st.netAmt != null && m.st.net !== 0 ? m.st.netAmt : 0);
+  const maxA = Math.max(1, ...amts.map(Math.abs));
+  const dotR = a => 3 + Math.sqrt(Math.abs(a) / maxA) * (narrow ? 9 : 12);
+  M.forEach((m, i) => {
+    const a = amts[i]; if (!a || closes[i] == null) return;
+    g.beginPath(); g.arc(X(i), Y(closes[i]), dotR(a), 0, 7);
+    g.fillStyle = a > 0 ? col.up : col.dn; g.globalAlpha = .9; g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = col.bg; g.lineWidth = 1.5; g.stroke();
+  });
+  // 標註框
+  const maxBoxes = narrow ? 2 : 3;
+  const ranked = M.map((m, i) => ({ m, i, a: amts[i] })).filter(o => o.a);
+  const buys = ranked.filter(o => o.a > 0).sort((a,b) => b.a - a.a).slice(0, maxBoxes);
+  const sells = ranked.filter(o => o.a < 0).sort((a,b) => a.a - b.a).slice(0, maxBoxes);
+  placeBoxes(g, buys, true, topBoxes, boxH, X, Y, closes, dotR, col, x0, x1, narrow);
+  placeBoxes(g, sells, false, lowBoxY, boxH, X, Y, closes, dotR, col, x0, x1, narrow);
+
+  // 下方：買進／賣出金額柱
+  const mid = barTop + barH / 2;
+  const bmax = Math.max(1, ...M.map(m => m.filed && m.st.buyAmt != null ? Math.max(m.st.buyAmt, m.st.sellAmt) : 0));
+  g.strokeStyle = col.line; g.beginPath(); g.moveTo(x0, mid); g.lineTo(x1, mid); g.stroke();
+  g.fillStyle = col.muted; g.textAlign = 'left';
+  g.fillText('買進 ↑', x1 + 6, barTop + 8); g.fillText('賣出 ↓', x1 + 6, barTop + barH - 8);
+  const bw = Math.max(2, Math.min(18, step * 0.62));
+  M.forEach((m, i) => {
+    if (!m.filed || m.st.buyAmt == null) return;
+    const hb = m.st.buyAmt / bmax * (barH / 2 - 14), hs = m.st.sellAmt / bmax * (barH / 2 - 14);
+    if (m.st.buy){ g.fillStyle = col.up; g.fillRect(X(i) - bw/2, mid - Math.max(1.5, hb), bw, Math.max(1.5, hb)); }
+    if (m.st.sell){ g.fillStyle = col.dn; g.fillRect(X(i) - bw/2, mid, bw, Math.max(1.5, hs)); }
+  });
+  // 金額大的直接標數字（買賣各前兩名）
+  g.font = '10px -apple-system,"Noto Sans TC",sans-serif'; g.textAlign = 'center';
+  const topB = M.map((m,i)=>({m,i})).filter(o => o.m.filed && o.m.st.buyAmt).sort((a,b) => b.m.st.buyAmt - a.m.st.buyAmt).slice(0,2);
+  const topS = M.map((m,i)=>({m,i})).filter(o => o.m.filed && o.m.st.sellAmt).sort((a,b) => b.m.st.sellAmt - a.m.st.sellAmt).slice(0,2);
+  for (const o of topB){ if (o.m.st.buyAmt < bmax * .25) continue; const hb = o.m.st.buyAmt / bmax * (barH/2 - 14); g.fillStyle = col.up; g.fillText(fmtMoney(o.m.st.buyAmt).replace(' ',''), clamp(X(o.i), x0 + 18, x1 - 18), mid - hb - 7); }
+  for (const o of topS){ if (o.m.st.sellAmt < bmax * .25) continue; const hs = o.m.st.sellAmt / bmax * (barH/2 - 14); g.fillStyle = col.dn; g.fillText(fmtMoney(o.m.st.sellAmt).replace(' ',''), clamp(X(o.i), x0 + 18, x1 - 18), mid + hs + 8); }
+
+  // X 軸
+  g.font = '11px -apple-system,"Noto Sans TC",sans-serif'; g.fillStyle = col.muted; g.textAlign = 'center';
+  const every = step >= 24 ? 1 : step >= 12 ? 2 : step >= 7 ? 3 : 6;
+  M.forEach((m, i) => {
+    const mo = +m.ym.slice(5);
+    if (mo === 1){ g.strokeStyle = col.line; g.setLineDash([3,3]); g.beginPath(); g.moveTo(X(i) - step/2, top - 4); g.lineTo(X(i) - step/2, h - 30); g.stroke(); g.setLineDash([]);
+      g.fillStyle = col.text; g.fillText(m.ym.slice(0,4), clamp(X(i), x0 + 14, x1 - 14), h - 8); g.fillStyle = col.muted; }
+    if ((mo - 1) % every === 0 || i === n - 1) g.fillText(String(mo), X(i), h - 24);
+  });
+  HIT = { M, X, step, x0, x1, top, h, closes, Y };
+  bindTip();
+}
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function niceTicks(lo, hi, n){
+  const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const st = [1,2,2.5,5,10].map(k => k * mag).find(k => span / k <= n + 1) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) out.push(+v.toFixed(6)); return out;
+}
+function boxText(o){
+  const st = o.m.st, list = o.a > 0 ? st.topBuy : st.topSell;
+  const head = list[0] ? personTag(list[0]) + (list.length > 1 ? ' 等 ' + list.length + ' 人' : '') : '內部人';
+  const sub = '均 ' + fmtPx(st.avg) + ' · ' + (o.a > 0 ? '淨買 ' : '淨賣 ') + fmtMoney(Math.abs(o.a)).replace(' ', '');
+  return [head, sub];
+}
+function placeBoxes(g, list, isBuy, y, bh, X, Y, closes, dotR, col, x0, x1, narrow){
+  if (!list.length) return;
+  g.font = (narrow ? '11px' : '12px') + ' -apple-system,"Noto Sans TC",sans-serif';
+  const items = list.map(o => { const t = boxText(o); const w = Math.max(g.measureText(t[0]).width, g.measureText(t[1]).width) + 14; return { o, t, w, cx: X(o.i) }; })
+                    .sort((a, b) => a.cx - b.cx);
+  // 窄螢幕：一列一個框；寬螢幕：同一列由左到右排開，互不重疊
+  if (narrow){
+    const c = isBuy ? col.up : col.dn;
+    items.sort((a, b) => Math.abs(b.o.a) - Math.abs(a.o.a));
+    items.forEach((it, k) => {
+      const by = isBuy ? y + k * (bh + 4) : y + k * (bh + 4);
+      drawBox(g, it, clamp(it.cx - it.w / 2, x0, x1 - it.w), by, bh, isBuy, X, Y, closes, dotR, col, c);
+    });
+    return;
+  }
+  const gap = 6, avail = x1 - x0;
+  let total = items.reduce((s, it) => s + it.w, 0) + gap * (items.length - 1);
+  while (total > avail && items.length > 1){
+    const k = items.reduce((mi, it, idx, arr) => Math.abs(it.o.a) < Math.abs(arr[mi].o.a) ? idx : mi, 0);
+    total -= items[k].w + gap; items.splice(k, 1);
+  }
+  let pos = items.map(it => clamp(it.cx - it.w / 2, x0, x1 - it.w));
+  for (let k = 1; k < pos.length; k++) pos[k] = Math.max(pos[k], pos[k-1] + items[k-1].w + gap);
+  const over = pos.length ? pos[pos.length-1] + items[items.length-1].w - x1 : 0;
+  if (over > 0){ pos[pos.length-1] -= over; for (let k = pos.length - 2; k >= 0; k--) pos[k] = Math.min(pos[k], pos[k+1] - items[k].w - gap); }
+  const c = isBuy ? col.up : col.dn;
+  items.forEach((it, k) => drawBox(g, it, pos[k], y, bh, isBuy, X, Y, closes, dotR, col, c));
+}
+function drawBox(g, it, bx, y, bh, isBuy, X, Y, closes, dotR, col, c){
+  {
+    const cx = X(it.o.i), cy = Y(closes[it.o.i]);
+    // 連接線
+    g.strokeStyle = c; g.lineWidth = 1; g.globalAlpha = .75; g.beginPath();
+    const ay = isBuy ? y + bh : y; const ax = clamp(cx, bx + 6, bx + it.w - 6);
+    g.moveTo(ax, ay); g.lineTo(cx, isBuy ? cy - dotR(it.o.a) : cy + dotR(it.o.a)); g.stroke(); g.globalAlpha = 1;
+    roundRect(g, bx, y, it.w, bh, 5); g.fillStyle = col.panel; g.fill(); g.strokeStyle = c; g.lineWidth = 1.2; g.stroke();
+    g.textAlign = 'center'; g.fillStyle = col.text; g.fillText(it.t[0], bx + it.w / 2, y + bh * .3);
+    g.fillStyle = c; g.font = 'bold ' + g.font.replace(/^bold /, ''); g.fillText(it.t[1], bx + it.w / 2, y + bh * .72);
+    g.font = g.font.replace(/^bold /, '');
+  }
+}
+function bindTip(){
+  const cv = $('#cv'), tip = $('#tip');
+  const show = ev => {
+    if (!HIT) return;
+    const r = cv.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const i = Math.floor((x - HIT.x0) / HIT.step);
+    if (i < 0 || i >= HIT.M.length){ tip.style.display = 'none'; return; }
+    const m = HIT.M[i];
+    let s = `<b>${ymLabel(m.ym)}${m.filed ? '' : '（本月至今）'}</b><br>`;
+    if (m.px) s += `月底收盤 ${fmtPx(m.px.close)} · 當月均價 ${fmtPx(m.px.avg)}<br>`;
+    if (!m.filed) s += '<span class="muted">內部人資料尚未申報（每月 15 日前申報上個月）</span>';
+    else {
+      const st = m.st;
+      s += `<span class="up">買進 ${fmtLots(st.buy)} 張 ≈ ${fmtMoney(st.buyAmt)}</span><br><span class="dn">賣出 ${fmtLots(st.sell)} 張 ≈ ${fmtMoney(st.sellAmt)}</span><br>`;
+      s += st.net ? `<b class="${signCls(st.net)}">淨${st.net > 0 ? '買' : '賣'} ${fmtLots(Math.abs(st.net))} 張 ≈ ${fmtMoney(Math.abs(st.netAmt))}</b>` : '當月沒有淨買賣';
+      if (st.topBuy[0]) s += `<br>買最多：${esc(displayName(st.topBuy[0].p))}（${esc(personTag(st.topBuy[0]))}）${fmtLots(st.topBuy[0].net)} 張`;
+      if (st.topSell[0]) s += `<br>賣最多：${esc(displayName(st.topSell[0].p))}（${esc(personTag(st.topSell[0]))}）${fmtLots(-st.topSell[0].net)} 張`;
+    }
+    tip.innerHTML = s; tip.style.display = 'block';
+    const tw = tip.offsetWidth, cx = HIT.X(i);
+    tip.style.left = clamp(cx + 12 + tw > r.width ? cx - tw - 12 : cx + 12, 0, r.width - tw) + 'px';
+    tip.style.top = (HIT.top + 10) + 'px';
+  };
+  cv.onmousemove = show; cv.onclick = show;
+  cv.ontouchstart = e => show(e);
+  cv.onmouseleave = () => tip.style.display = 'none';
+}
+
+/* ───────── 小圖 ───────── */
+function drawMini(sel, M, f, label, dec){
+  const cv = $(sel); if (!cv || !M.length) return;
+  const { g, w, h } = setupCanvas(cv, 150);
+  const col = { text:css('--text'), muted:css('--muted'), grid:css('--grid'), acc:css('--accent') };
+  const v = M.map(f), lo0 = Math.min(...v), hi0 = Math.max(...v), pad = (hi0 - lo0) * .15 || Math.max(hi0 * .02, .01);
+  const lo = lo0 - pad, hi = hi0 + pad, L = 6, R = w - 52, T = 30, B = h - 22;
+  const X = i => L + (R - L) * (M.length === 1 ? .5 : i / (M.length - 1)), Y = x => B - (x - lo) / (hi - lo) * (B - T);
+  g.font = '12px -apple-system,"Noto Sans TC",sans-serif'; g.textBaseline = 'middle';
+  g.fillStyle = col.muted; g.textAlign = 'left'; g.fillText(label, L, 10);
+  const last = v[v.length - 1], d = last - v[0];
+  g.fillStyle = col.text; g.font = 'bold 15px -apple-system,"Noto Sans TC",sans-serif'; g.textAlign = 'right';
+  g.fillText(fmtV(last), w - 4, 10);
+  g.font = '11px -apple-system,"Noto Sans TC",sans-serif'; g.fillStyle = col.muted;
+  g.fillText('期間 ' + (d > 0 ? '+' : d < 0 ? '−' : '') + fmtV(Math.abs(d)), w - 4, 24);
+  function fmtV(x){ return dec ? x.toFixed(dec) + (label.includes('%') ? '%' : '') : fmtInt(x); }
+  g.strokeStyle = col.grid; g.fillStyle = col.muted; g.textAlign = 'left';
+  [hi0, lo0].forEach(t => { const y = Y(t); g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke(); g.fillText(fmtV(t), R + 4, y); });
+  g.beginPath(); v.forEach((x, i) => i ? g.lineTo(X(i), Y(x)) : g.moveTo(X(i), Y(x))); g.strokeStyle = col.acc; g.lineWidth = 2; g.stroke();
+  g.fillStyle = col.muted; g.textAlign = 'left'; g.fillText(ymLabel(M[0].ym), L, h - 8); g.textAlign = 'right'; g.fillText(ymLabel(M[M.length-1].ym), R, h - 8);
+}
+
+/* ───────── 表格：持股名單 ───────── */
+function renderHolders(){
+  const C = CUR, m = [...C.M].reverse().find(x => x.filed); if (!m) return;
+  const people = m.people;
+  const map = new Map();
+  for (const p of people){
+    if (p.rel === '本人' || p.rel === '之法人代表人'){
+      const k = p.name; if (!k) continue;
+      const o = map.get(k) || { name:k, roles:[], now:p.now, sel:0, pledge:p.pledge, rel:0, relKeys:new Set() };
+      if (!o.roles.includes(p.base + (p.rel === '之法人代表人' ? '法人代表' : ''))) o.roles.push(p.base + (p.rel === '之法人代表人' ? '法人代表' : ''));
+      o.sel = Math.max(o.sel, p.sel); map.set(k, o);
+    }
+  }
+  for (const p of people){
+    if (p.rel && p.rel !== '本人' && p.rel !== '之法人代表人' && map.has(p.owner)){
+      const o = map.get(p.owner), key = p.rel + '|' + (p.name || '') + '|' + p.now;
+      if (!o.relKeys.has(key)){ o.relKeys.add(key); o.rel += p.now; }
+    }
+  }
+  const list = [...map.values()].sort((a, b) => b.now - a.now).slice(0, 15);
+  const iss = C.issued;
+  $('#secHolders').innerHTML = `<h2>${ymLabel(m.ym)} 內部人持股名單 <span class="muted">依持股排序，最多 15 位</span></h2>
+  <div class="tblwrap"><table><thead><tr><th>職稱</th><th class="l">姓名</th><th>持股(張)</th>${iss ? '<th>佔股本</th>' : ''}<th>選任時(張)</th><th>就任以來</th><th>質押(張)</th><th>質押比</th><th>關係人持股(張)</th></tr></thead><tbody>
+  ${list.map(o => `<tr><td>${esc(o.roles.join('、'))}</td><td class="l"><b>${esc(o.name)}</b></td><td>${fmtLots(o.now)}</td>${iss ? `<td>${(o.now / iss * 100).toFixed(2)}%</td>` : ''}
+    <td>${o.sel ? fmtLots(o.sel) : '–'}</td><td class="${signCls(o.now - o.sel)}">${o.sel ? ((o.now - o.sel > 0 ? '+' : '') + fmtLots(o.now - o.sel)) : '–'}</td>
+    <td>${o.pledge ? fmtLots(o.pledge) : '–'}</td><td>${o.now ? (o.pledge / o.now * 100).toFixed(1) + '%' : '–'}</td><td>${fmtLots(o.rel)}</td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="note">同一人兼多職時合併成一列；「就任以來」＝目前持股減選任時持股（經理人沒有選任時持股）；關係人＝配偶、未成年子女及利用他人名義持有。</p>`;
+}
+
+/* ───────── 表格：每月申報明細 ───────── */
+function renderMonths(){
+  const C = CUR, rows = [...C.M].filter(m => m.filed).reverse();
+  $('#secMonths').innerHTML = `<h2>每月申報明細 <span class="muted">點月份展開，看當月是誰買、誰賣</span></h2>
+  <div class="tblwrap"><table><thead><tr><th>月份</th><th>當月均價</th><th>市場買進(張)</th><th>買進金額</th><th>市場賣出(張)</th><th>賣出金額</th><th>淨買賣(張)</th><th>淨買賣金額</th><th>其他增加</th><th>其他減少</th><th>設質</th><th>解質</th></tr></thead>
+  <tbody id="mbody">${rows.map(m => monthRow(m)).join('')}</tbody></table></div>
+  <p class="note">市場買進／賣出＝在集中市場實際買賣的張數；其他增加／減少＝贈與、繼承、信託、私募等不經過市場的轉移（張）；設質＝新拿去抵押借錢，解質＝還款取回。</p>`;
+  $('#mbody').onclick = e => {
+    const tr = e.target.closest('tr.mrow'); if (!tr) return;
+    const nx = tr.nextElementSibling;
+    if (nx && nx.classList.contains('sub')){ nx.remove(); tr.querySelector('.caret').textContent = '▸'; return; }
+    const m = C.M.find(x => x.ym === tr.dataset.ym);
+    tr.insertAdjacentHTML('afterend', `<tr class="sub"><td colspan="12" style="padding:6px">${detail(m)}</td></tr>`);
+    tr.querySelector('.caret').textContent = '▾';
+  };
+}
+function monthRow(m){
+  const s = m.st, z = v => v ? fmtLots(v) : '0';
+  const active = s.n > 0;
+  return `<tr class="mrow" data-ym="${m.ym}"><td><span class="caret">${active ? '▸' : ''}</span>${ymLabel(m.ym)} <span class="muted small">${active ? s.n + ' 人' : ''}</span></td>
+    <td>${fmtPx(s.avg)}</td><td>${z(s.buy)}</td><td>${s.buy ? fmtMoney(s.buyAmt) : '–'}</td><td>${z(s.sell)}</td><td>${s.sell ? fmtMoney(s.sellAmt) : '–'}</td>
+    <td class="${signCls(s.net)}"><b class="num">${s.net > 0 ? '+' : ''}${z(s.net)}</b></td><td class="${signCls(s.net)}"><b class="num">${s.net ? fmtMoney(s.netAmt, true) : '–'}</b></td>
+    <td>${z(s.othIn)}</td><td>${z(s.othOut)}</td><td>${z(s.plSet)}</td><td>${z(s.plRel)}</td></tr>`;
+}
+function detail(m){
+  const ch = m.people.filter(p => !p.dup && (p.inMkt || p.outMkt || p.inOth || p.outOth || p.plSet || p.plRel));
+  if (!ch.length) return '<span class="muted">當月沒有內部人持股異動。</span>';
+  // 同一人多身份：合併職稱
+  const roles = new Map();
+  for (const p of m.people){ const k = (p.name || '↳' + p.owner) + '|' + p.rel; const s = roles.get(k) || new Set(); s.add(p.base); roles.set(k, s); }
+  ch.sort((a, b) => Math.abs(b.inMkt - b.outMkt) - Math.abs(a.inMkt - a.outMkt) || (b.inOth + b.outOth) - (a.inOth + a.outOth));
+  const px = m.px ? m.px.avg : null, z = v => v ? fmtLots(v) : '–';
+  return `<table><thead><tr><th>身份</th><th class="l">姓名</th><th>上月持股</th><th>市場買進</th><th>市場賣出</th><th>淨買賣金額</th><th>其他增加</th><th>其他減少</th><th>設質／解質</th><th>本月持股</th></tr></thead><tbody>
+  ${ch.map(p => { const rs = [...(roles.get((p.name || '↳' + p.owner) + '|' + p.rel) || [p.base])];
+      const role = rs[0] + (p.relLab || '') + (rs.length > 1 && !p.relLab ? ' 等 ' + rs.length + ' 個身份' : '');
+      const net = p.inMkt - p.outMkt;
+      return `<tr><td>${esc(role)}</td><td class="l"><b>${esc(p.name || '（' + (p.owner || '') + ' 的關係人）')}</b></td><td>${fmtLots(p.prev)}</td>
+      <td class="up">${z(p.inMkt)}</td><td class="dn">${z(p.outMkt)}</td><td class="${signCls(net)}">${net && px ? fmtMoney(net * px, true) : '–'}</td>
+      <td>${z(p.inOth)}</td><td>${z(p.outOth)}</td><td>${p.plSet || p.plRel ? z(p.plSet) + '／' + z(p.plRel) : '–'}</td><td><b class="num">${fmtLots(p.now)}</b></td></tr>`; }).join('')}
+  </tbody></table>`;
+}
+
+/* ───────── 啟動 ───────── */
+$('#back').href = innerWidth < 700 ? 'mobile.html' : './';
+$('#go').onclick = () => open($('#q').value);
+$('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
+let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR) render(); }, 200); });
+(async () => {
+  await loadIndex();
+  const p = new URLSearchParams(location.search).get('s');
+  let last = null; try { last = localStorage.getItem('insider.last'); } catch(e){}
+  const start = p || last || (INDEX.stocks[0] && INDEX.stocks[0].code) || '2330';
+  open(start);
+})();
+</script>
+</body>
+</html>
