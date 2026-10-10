@@ -25,9 +25,10 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
   header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
     padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
-  header h1{font-size:15px;margin:0 6px 0 0;font-weight:600;white-space:nowrap}
+  header{flex-wrap:nowrap}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
   input,button,a.btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;height:34px}
-  input{width:120px}
+  #q{flex:1 1 90px;min-width:0;max-width:240px}
   input:focus{outline:2px solid var(--accent);outline-offset:-1px}
   button,a.btn{cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
@@ -85,16 +86,17 @@
 <body>
 <header>
   <h1>內部人買賣</h1>
-  <input id="q" inputmode="numeric" placeholder="股票代號" autocomplete="off">
+  <input id="q" list="names" placeholder="代號或名稱" autocomplete="off" enterkeyhint="go"><datalist id="names"></datalist>
   <button class="primary" id="go">查詢</button>
   <span class="spacer"></span>
   <a class="btn" id="back" href="./">← 看盤</a>
 </header>
 <main>
   <div class="chips" id="chips"></div>
+  <div class="small muted" id="cov" style="margin:-4px 0 4px"></div>
   <div id="out"><div class="msg">載入追蹤清單中…</div></div>
   <footer>
-    資料來源：公開資訊觀測站「內部人持股異動事後申報表」與「董監事持股餘額明細」，每月 15 日前申報上個月，本站每小時自動更新；股價來自 FinMind。
+    資料來源：公開資訊觀測站「內部人持股異動事後申報表」與「董監事持股餘額明細」，每月 15 日前申報上個月，涵蓋全部上市、上櫃普通股，本站每小時自動更新；股價來自 FinMind。
     申報表只有股數、沒有成交價，金額＝股數 × 當月平均收盤價，屬估算。內部人賣股原因包含繳稅、質借、分散持股，不必然代表看壞。
   </footer>
 </main>
@@ -172,22 +174,19 @@ function splitRole(role){
   for (const [suf, lab] of REL) if (role.endsWith(suf)) return { base: role.slice(0, -suf.length).replace(/本人$/, ''), rel: suf, relLab: lab };
   return { base: role, rel: '', relLab: '' };
 }
-function parseMonth(rec){
-  const rows = (rec.r || []).filter(r => r[2] === '普通股' || r[2] === '');
-  let owner = '';
+/* 列（v2）：0身份別 1姓名 2所屬本人 3選任時 4上月持股 5增加集中 6增加其他 7設質 8減少集中 9減少其他 10解質 11本月持股 12本月設質 */
+function parseRows(rows){
   const seen = new Set(), people = [];
-  for (const r of rows){
-    const sp = splitRole(r[0]);
-    if (sp.rel === '本人' || sp.rel === '之法人代表人') owner = r[1] || owner;
-    const who = r[1] || ('↳' + owner);
-    const key = who + '|' + sp.rel + '|' + r.slice(3, 23).join(',');
+  for (const r of rows || []){
+    const sp = splitRole(r[0]), owner = r[2] || r[1];
+    const key = (r[1] || '↳' + owner) + '|' + sp.rel + '|' + r.slice(3).join(',');
     const dup = seen.has(key); seen.add(key);
     people.push({ role:r[0], base:sp.base, rel:sp.rel, relLab:sp.relLab, name:r[1], owner, dup,
-      sel:r[3], prev:r[4], inMkt:r[8], inOth:r[9], plSet:r[12], outMkt:r[13], outOth:r[14], plRel:r[17],
-      now:r[18], pledge:r[21], note:r[23] || '' });
+      sel:r[3], prev:r[4], inMkt:r[5], inOth:r[6], plSet:r[7], outMkt:r[8], outOth:r[9], plRel:r[10], now:r[11], pledge:r[12] });
   }
   return people;
 }
+function parseMonth(rec){ return parseRows(rec.c); }
 function displayName(p){ return p.name || '（配偶／未成年子女）'; }
 function roleLabel(p){ return p.base + (p.relLab ? p.relLab : ''); }
 
@@ -228,20 +227,23 @@ async function loadIndex(){
     const r = await fetch('data/insider/index.json?t=' + Date.now());
     INDEX = r.ok ? await r.json() : { stocks:[] };
   } catch(e){ INDEX = { stocks:[] }; }
+  const byCode = {}; (INDEX.stocks || []).forEach(s => byCode[s.code] = s);
+  INDEX.byCode = byCode;
+  const watch = (INDEX.watch && INDEX.watch.length ? INDEX.watch : (INDEX.stocks || []).slice(0, 24).map(s => s.code));
   const ch = $('#chips');
-  ch.innerHTML = INDEX.stocks.map(s => `<span class="chip" data-c="${esc(s.code)}">${esc(s.code)} ${esc(s.name || '')}</span>`).join('');
+  ch.innerHTML = watch.map(c => `<span class="chip" data-c="${esc(c)}">${esc(c)} ${esc((byCode[c] || {}).name || '')}</span>`).join('');
+  $('#names').innerHTML = (INDEX.stocks || []).map(s => `<option value="${esc(s.code)} ${esc(s.name || '')}">`).join('');
+  const total = INDEX.total || 0, done = (INDEX.stocks || []).length;
+  $('#cov').textContent = total ? `已收錄 ${fmtInt(done)}／${fmtInt(total)} 檔上市櫃股票` + (done < total ? '（其餘自動補抓中）' : '') : '';
   ch.onclick = e => { const c = e.target.closest('.chip'); if (c) open(c.dataset.c); };
 }
 function markChip(code){ document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.c === code)); }
 
-function addLink(code){
-  const t = encodeURIComponent('加入內部人追蹤 ' + code);
-  const b = encodeURIComponent('請把 ' + code + ' 加入內部人追蹤清單（直接按下方綠色按鈕送出即可）');
-  return `https://github.com/opsite1978-max/twstock-chart/issues/new?title=${t}&body=${b}`;
-}
-
 async function open(code){
-  code = String(code || '').trim().toUpperCase();
+  code = String(code || '').trim();
+  const mm = code.match(/^[0-9]{4}[0-9A-Z]{0,2}/i);
+  if (mm) code = mm[0].toUpperCase();
+  else if (INDEX && INDEX.stocks){ const hit = INDEX.stocks.find(s => s.name === code) || INDEX.stocks.find(s => (s.name || '').includes(code)); if (hit) code = hit.code; }
   if (!code) return;
   $('#q').value = code;
   history.replaceState(null, '', '?s=' + code);
@@ -253,12 +255,13 @@ async function open(code){
   try { const r = await fetch('data/insider/' + code + '.json?t=' + Date.now()); if (r.ok) D = await r.json(); } catch(e){}
   const okMonths = D ? Object.keys(D.months).filter(k => D.months[k].s === 'ok').sort() : [];
   if (!D || !okMonths.length){
-    const tracked = INDEX && INDEX.stocks.some(s => s.code === code);
-    out.innerHTML = tracked
-      ? `<div class="msg">${esc(code)} 已在追蹤清單，資料還在抓取中（新加入的股票約 10 到 40 分鐘）。稍後重新整理即可。</div>`
-      : `<div class="msg">${esc(code)} 還沒有加入追蹤。<br><br>
-         <a class="btn" style="display:inline-flex" href="${addLink(code)}" target="_blank" rel="noopener">＋ 加入追蹤</a><br><br>
-         <span class="small">按下後會打開 GitHub，直接按綠色「Create」送出即可；系統會自動加入並開始抓過去三年的資料，約 10 到 40 分鐘後回來重新整理。</span></div>`;
+    const pending = INDEX && (INDEX.pending || []).includes(code);
+    const none = D && Object.keys(D.months).length && !okMonths.length;
+    out.innerHTML = `<div class="msg">${esc(code)} ` + (none
+      ? '在公開資訊觀測站查不到內部人持股異動申報（可能是新上市、已下市，或代號不是普通股）。'
+      : pending || (D && !okMonths.length)
+        ? '的資料還在排隊補抓中。全市場一千八百多檔正分批抓取，最近兩個月的資料會最先補齊，請晚一點再來看。'
+        : '不在上市、上櫃普通股清單裡（興櫃、ETF 等目前沒有收錄）。') + '</div>';
     return;
   }
   const first = okMonths[0], last = okMonths[okMonths.length - 1];
@@ -283,7 +286,7 @@ function build(D, P, issued, okMonths){
     const st = filed ? monthStats(people, px) : null;
     return { ym, filed, people, st, px, dir: filed ? rec.dir : null };
   });
-  return { code: D.code, name: D.name, market: D.market, M, last, P, issued, months };
+  return { code: D.code, name: D.name, market: D.market, M, last, P, issued, months, latest: D.latest };
 }
 
 /* ───────── 畫面 ───────── */
@@ -568,8 +571,8 @@ function drawMini(sel, M, f, label, dec){
 
 /* ───────── 表格：持股名單 ───────── */
 function renderHolders(){
-  const C = CUR, m = [...C.M].reverse().find(x => x.filed); if (!m) return;
-  const people = m.people;
+  const C = CUR; if (!C.latest) return;
+  const m = { ym: C.latest.ym }, people = parseRows(C.latest.r);
   const map = new Map();
   for (const p of people){
     if (p.rel === '本人' || p.rel === '之法人代表人'){
@@ -642,6 +645,7 @@ function detail(m){
 $('#back').href = innerWidth < 700 ? 'mobile.html' : './';
 $('#go').onclick = () => open($('#q').value);
 $('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
+$('#q').onchange = () => { if (/^[0-9]{4}[0-9A-Z]{0,2} /.test($('#q').value)) open($('#q').value); };
 let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR) render(); }, 200); });
 (async () => {
   await loadIndex();

@@ -1,7 +1,7 @@
 name: 內部人申報資料更新
 on:
   schedule:
-    - cron: '23 * * * *'   # 每小時檢查一次；資料齊全時幾乎不做事
+    - cron: '23 * * * *'   # 每小時一次；全市場補齊之後，每次只重抓最近兩個月，幾分鐘就結束
   workflow_dispatch:
   push:
     branches: [main]
@@ -11,21 +11,64 @@ permissions:
 concurrency:
   group: insider-data
   cancel-in-progress: false
+env:
+  SHARDS: 8
 jobs:
-  scrape:
+  prep:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-      - name: 抓公開資訊觀測站
-        env:
-          BUDGET_SEC: ${{ github.event_name == 'workflow_dispatch' && '900' || '2700' }}
-          BACK_MONTHS: '36'
-        run: python3 scripts/insider_scrape.py
-      - name: 存回專案
-        if: always()
+      - name: 更新全市場股票清單（每天一次）
         run: |
+          if [ ! -f insider/universe.json ] || [ "$(TZ=Asia/Taipei date +%H)" = "06" ]; then
+            python3 scripts/insider_scrape.py universe
+          fi
+          git add insider/universe.json 2>/dev/null || true
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "更新全市場股票清單"
+          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
+
+  scrape:
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - name: 抓公開資訊觀測站（第 ${{ matrix.shard }} 組）
+        env:
+          BUDGET_SEC: ${{ github.event_name == 'workflow_dispatch' && '1200' || '2400' }}
+          BACK_MONTHS: '36'
+        run: python3 scripts/insider_scrape.py scrape ${{ matrix.shard }} $SHARDS out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shard-${{ matrix.shard }}
+          path: out
+          if-no-files-found: ignore
+          retention-days: 2
+
+  save:
+    needs: scrape
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/download-artifact@v4
+        with: { path: shards, pattern: 'shard-*', merge-multiple: true }
+      - name: 合併並存回專案（一次）
+        run: |
+          mkdir -p data/insider
+          if ls shards/*.json >/dev/null 2>&1; then cp shards/*.json data/insider/; fi
+          cat shards/_log_*.txt > data/insider/_lastrun.txt 2>/dev/null || true
+          rm -f data/insider/_log_*.txt
+          python3 scripts/insider_scrape.py index
           git add data/insider
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "內部人申報資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
-          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep 5; done
+          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
