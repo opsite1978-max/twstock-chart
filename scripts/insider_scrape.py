@@ -20,6 +20,11 @@ HOST = 'https://mopsov.twse.com.tw/mops/web/'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36'
 TW = datetime.timezone(datetime.timedelta(hours=8))
 T0 = time.time()
+LOG = []
+def log(*a):
+    line = ' '.join(str(x) for x in a)
+    print(line, flush=True)
+    LOG.append(datetime.datetime.now(TW).strftime('%H:%M:%S ') + line)
 
 class Blocked(Exception):
     pass
@@ -46,8 +51,8 @@ def post(prog, params):
             raise
         except Exception as e:
             _last[0] = time.time()
-            print('  retry', prog, params, e, flush=True)
-            time.sleep(8 * (attempt + 1))
+            log('  retry', prog, params.get('co_id'), params.get('year'), params.get('month'), type(e).__name__, e)
+            time.sleep(10 * (attempt + 1))
     raise RuntimeError('request failed')
 
 def strip(s):
@@ -181,62 +186,67 @@ def main():
     months = ym_list(now.date())
     codes = watchlist()
     os.makedirs(DATA, exist_ok=True)
-    print('watchlist', len(codes), 'months', months[-1], '~', months[0], flush=True)
-    done_all = True
-    try:
-        # 先做「新股票」與「最近月份」，讓網頁盡快可用；再往回補舊月份
-        order = []
-        for ym_i, ym in enumerate(months):
-            for c in codes:
-                order.append((ym_i, c, ym))
-        order.sort(key=lambda t: (t[0] > 1, t[0], t[1]))
-        cache = {}
-        dirty = set()
-        for _, code, ym in order:
-            if time.time() - T0 > BUDGET_SEC:
-                done_all = False
-                print('time budget reached', flush=True)
-                break
-            d = cache.get(code) or load(code)
-            cache[code] = d
-            rec = d['months'].get(ym)
-            if not need(rec, ym, months, now):
-                continue
-            y, m = roc(ym)
-            s = post('query6_1', {'co_id': code, 'year': y, 'month': m})
-            name, mkt, rows = parse_query6(s)
-            if name and not d.get('name'):
-                d['name'], d['market'] = name, mkt
-            stamp = now.isoformat(timespec='minutes')
-            if rows is None:
-                d['months'][ym] = {'s': 'none', 'at': stamp}
-                print(code, ym, 'none', flush=True)
-            else:
-                rec = {'s': 'ok', 'at': stamp, 'r': rows}
-                try:
-                    st = parse_stapap1(post('stapap1', {'co_id': code, 'year': y, 'month': m}))
-                    if st:
-                        rec['dir'] = st
-                except Blocked:
-                    raise
-                except Exception as e:
-                    print('  stapap1 fail', code, ym, e, flush=True)
-                d['months'][ym] = rec
-                print(code, ym, len(rows), 'rows', flush=True)
-            dirty.add(code)
-            if len(dirty) and int(time.time()) % 5 == 0:
-                for c in list(dirty):
-                    save(cache[c])
-                dirty.clear()
-        for c in dirty:
+    log('watchlist', len(codes), 'months', months[-1], '~', months[0])
+    status = 'done'
+    cache, dirty = {}, set()
+    def flush():
+        for c in list(dirty):
             save(cache[c])
-    except Blocked as e:
-        done_all = False
-        print('BLOCKED by MOPS, stop this run:', e, flush=True)
-        for c, d in cache.items():
-            save(d)
+        dirty.clear()
+    # 先做最近兩個月（全部股票），讓網頁盡快可用；再往回補舊月份
+    order = [(i, c, ym) for i, ym in enumerate(months) for c in codes]
+    order.sort(key=lambda t: (t[0] > 1, t[0], t[1]))
+    fails = n_req = n_ok = n_none = 0
+    for _, code, ym in order:
+        if time.time() - T0 > BUDGET_SEC:
+            status = 'partial (time budget)'
+            break
+        d = cache.get(code) or load(code)
+        cache[code] = d
+        if not need(d['months'].get(ym), ym, months, now):
+            continue
+        y, m = roc(ym)
+        try:
+            n_req += 1
+            name, mkt, rows = parse_query6(post('query6_1', {'co_id': code, 'year': y, 'month': m}))
+        except Blocked as e:
+            status = 'partial (blocked: %s)' % str(e)[:80]
+            log('BLOCKED', code, ym, str(e)[:200])
+            break
+        except Exception as e:
+            fails += 1
+            log('FAIL', code, ym, type(e).__name__, e)
+            if fails >= 6:
+                status = 'partial (too many failures)'
+                break
+            time.sleep(30)
+            continue
+        fails = 0
+        if name and not d.get('name'):
+            d['name'], d['market'] = name, mkt
+        stamp = now.isoformat(timespec='minutes')
+        if rows is None:
+            d['months'][ym] = {'s': 'none', 'at': stamp}
+            n_none += 1
+        else:
+            rec = {'s': 'ok', 'at': stamp, 'r': rows}
+            try:
+                st = parse_stapap1(post('stapap1', {'co_id': code, 'year': y, 'month': m}))
+                if st:
+                    rec['dir'] = st
+            except Exception as e:
+                log('  stapap1 fail', code, ym, type(e).__name__, e)
+            d['months'][ym] = rec
+            n_ok += 1
+        dirty.add(code)
+        if (n_ok + n_none) % 10 == 0:
+            flush()
+            log('progress', n_ok, 'ok', n_none, 'none', int(time.time() - T0), 's')
+    flush()
     write_index(codes)
-    print('done' if done_all else 'partial', 'in', int(time.time() - T0), 's', flush=True)
+    log('result', status, 'requests', n_req, 'ok', n_ok, 'none', n_none, 'in', int(time.time() - T0), 's')
+    with open(os.path.join(DATA, '_lastrun.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(LOG[-300:]) + '\n')
 
 if __name__ == '__main__':
     main()

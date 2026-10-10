@@ -19,10 +19,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: 抓公開資訊觀測站
         env:
-          BUDGET_SEC: '2700'
+          BUDGET_SEC: ${{ github.event_name == 'workflow_dispatch' && '900' || '2700' }}
           BACK_MONTHS: '36'
         run: python3 scripts/insider_scrape.py
       - name: 存回專案
+        if: always()
         run: |
           git add data/insider
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
