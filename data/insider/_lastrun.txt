@@ -1,287 +1,260 @@
-10-11 00:53:03 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
-10-11 00:55:05   retry query6_1 1783 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 00:55:42   retry query6_1 1805 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:56:08   retry query6_1 1805 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:56:45   retry query6_1 1805 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:57:15 FAIL 1805 2026-09 RuntimeError request failed
-10-11 00:58:01   retry query6_1 2010 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:58:28   retry query6_1 2010 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:59:32   retry query6_1 2115 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:00:12   retry query6_1 2247 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:01   retry query6_1 2337 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:39 progress 49 ok 1 none 516 s
-10-11 01:03:16   retry stapap1 2486 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:03:45   retry query6_1 2492 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:04:11   retry query6_1 2492 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:06:18   retry query6_1 2884 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:16   retry query6_1 3009 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:42   retry query6_1 3009 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:08:55   retry stapap1 3118 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:09:45   retry stapap1 3118 115 09 URLError <urlopen error timed out>
-10-11 01:10:21 progress 99 ok 1 none 1037 s
-10-11 01:12:07   retry query6_1 4108 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:13:07   retry query6_1 4207 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:13:33   retry query6_1 4207 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:14   retry query6_1 4433 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:49   retry query6_1 4529 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:15:20   retry query6_1 4536 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:15:47   retry query6_1 4536 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:56   retry stapap1 4737 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:24   retry query6_1 4749 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:15   retry query6_1 4749 115 09 URLError <urlopen error timed out>
-10-11 01:18:51   retry query6_1 4749 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:19:21 FAIL 4749 2026-09 RuntimeError request failed
-10-11 01:20:10   retry stapap1 4806 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:20:37   retry stapap1 4806 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:13   retry stapap1 4806 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:43   stapap1 fail 4806 2026-09 RuntimeError request failed
-10-11 01:22:12 progress 149 ok 1 none 1748 s
-10-11 01:25:39 progress 198 ok 2 none 1956 s
-10-11 01:26:11   retry stapap1 6654 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:29:36 progress 248 ok 2 none 2193 s
-10-11 01:31:08   retry stapap1 1466 115 08 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:31:43   retry stapap1 1516 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:14   retry stapap1 1521 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:08 result shard 0 partial (time budget) requests 286 ok 282 none 2 files 260 in 2404 s
-10-11 00:53:02 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
-10-11 00:55:11   retry query6_1 1815 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 00:55:43   retry query6_1 1904 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:57:38 progress 48 ok 2 none 275 s
-10-11 01:01:03   retry query6_1 3050 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:01:45   retry stapap1 3078 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:02:47 progress 98 ok 2 none 585 s
-10-11 01:06:15 progress 147 ok 3 none 792 s
-10-11 01:06:57   retry stapap1 5258 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:23   retry stapap1 5258 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:10:50 progress 197 ok 3 none 1067 s
-10-11 01:11:25   retry query6_1 6589 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:11:55   retry query6_1 6596 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:21   retry query6_1 6596 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:13:03   retry query6_1 6692 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:13:37   retry query6_1 6708 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:15:39   retry query6_1 7747 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:05   retry query6_1 7747 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:33 progress 247 ok 3 none 1470 s
-10-11 01:18:26   retry query6_1 9922 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:19:04   retry query6_1 1294 115 08 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:19:30   retry query6_1 1294 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:22:16 progress 296 ok 4 none 1754 s
-10-11 01:23:45   retry stapap1 2468 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:24:19   retry stapap1 2482 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:26:47   retry query6_1 2939 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:36 progress 346 ok 4 none 2073 s
-10-11 01:28:42   retry stapap1 3218 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:29:12   retry stapap1 3224 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:29:44   retry query6_1 3266 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:31:40   retry stapap1 3605 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:54 progress 396 ok 4 none 2391 s
-10-11 01:33:03 result shard 1 partial (time budget) requests 402 ok 398 none 4 files 263 in 2400 s
-10-11 00:53:02 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-11 00:58:06   retry stapap1 2206 115 09 URLError <urlopen error timed out>
-10-11 00:58:59 progress 49 ok 1 none 357 s
-10-11 01:00:18   retry stapap1 2397 115 09 URLError <urlopen error timed out>
-10-11 01:01:09   retry stapap1 2397 115 09 URLError <urlopen error timed out>
-10-11 01:05:06   retry stapap1 2701 115 09 URLError <urlopen error timed out>
-10-11 01:05:56   retry stapap1 2701 115 09 URLError <urlopen error timed out>
-10-11 01:06:56   retry stapap1 2701 115 09 URLError <urlopen error timed out>
-10-11 01:07:26   stapap1 fail 2701 2026-09 RuntimeError request failed
-10-11 01:09:31   retry stapap1 3048 115 09 URLError <urlopen error timed out>
-10-11 01:11:24 progress 99 ok 1 none 1102 s
-10-11 01:13:09   retry stapap1 3550 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:17:11   retry query6_1 4577 115 09 URLError <urlopen error timed out>
-10-11 01:18:33 progress 149 ok 1 none 1531 s
-10-11 01:19:14   retry query6_1 5345 115 09 URLError <urlopen error timed out>
-10-11 01:24:26 progress 199 ok 1 none 1884 s
-10-11 01:26:00   retry query6_1 6771 115 09 URLError <urlopen error timed out>
-10-11 01:26:50   retry query6_1 6771 115 09 URLError <urlopen error timed out>
-10-11 01:28:23   retry stapap1 6863 115 09 URLError <urlopen error timed out>
-10-11 01:31:19   retry query6_1 8047 115 09 URLError <urlopen error timed out>
-10-11 01:33:29 result shard 2 partial (time budget) requests 248 ok 247 none 1 files 248 in 2427 s
-10-11 00:53:03 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
-10-11 00:54:24   retry query6_1 1526 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:55:38   retry stapap1 1727 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:56:47   retry query6_1 2034 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:58:01 progress 50 ok 0 none 298 s
-10-11 00:58:20   retry stapap1 2429 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:58:55   retry stapap1 2448 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:00:07   retry stapap1 2614 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:02   retry stapap1 2739 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:02:19   retry query6_1 2888 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:03:46   retry query6_1 3114 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:04:51   retry query6_1 3290 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:05:05 progress 99 ok 1 none 722 s
-10-11 01:06:47   retry stapap1 3703 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:09:00 progress 149 ok 1 none 957 s
-10-11 01:09:29   retry query6_1 5212 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:33   retry stapap1 6245 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:59   retry stapap1 6245 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:13:56 progress 198 ok 2 none 1253 s
-10-11 01:14:13   retry query6_1 6515 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:39   retry query6_1 6515 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:20   retry query6_1 7402 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:46   retry query6_1 7402 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:21   retry query6_1 7402 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:51 FAIL 7402 2026-09 RuntimeError request failed
-10-11 01:20:50 progress 248 ok 2 none 1667 s
-10-11 01:24:00   retry stapap1 1710 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:24:51 progress 297 ok 3 none 1908 s
-10-11 01:25:29   retry query6_1 2221 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:26:49   retry query6_1 2443 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:22   retry query6_1 2457 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:47   retry query6_1 2457 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:28:32   retry query6_1 2474 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:30:59 progress 347 ok 3 none 2276 s
-10-11 01:31:03   retry stapap1 3053 115 08 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:31:55   retry query6_1 3149 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:52   retry stapap1 3290 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:17   retry stapap1 3290 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:38 result shard 3 partial (time budget) requests 366 ok 362 none 3 files 265 in 2435 s
-10-11 00:53:03 shard 4 / 8 stocks 271 months 2023-10 ~ 2026-09
-10-11 00:56:44 progress 50 ok 0 none 221 s
-10-11 00:58:12   retry stapap1 2611 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:58:39   retry stapap1 2611 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:51 progress 99 ok 1 none 528 s
-10-11 01:03:34   retry query6_1 4174 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:04:40   retry query6_1 4569 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:06:08 progress 149 ok 1 none 785 s
-10-11 01:09:46 progress 199 ok 1 none 1003 s
-10-11 01:11:45   retry stapap1 6855 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:44   retry query6_1 6967 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:13:06   retry stapap1 7631 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:13:41   retry stapap1 7708 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:58 progress 249 ok 1 none 1315 s
-10-11 01:15:26   retry stapap1 8349 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:19   retry query6_1 8478 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:56   retry stapap1 8929 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:54   retry stapap1 1453 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:19:20   retry stapap1 1453 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:20:28   retry stapap1 1604 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:18   retry stapap1 1760 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:48   retry query6_1 1781 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:22:13 progress 299 ok 1 none 1750 s
-10-11 01:23:54   retry query6_1 2396 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:24:20   retry query6_1 2396 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:24:56   retry query6_1 2396 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:25:26 FAIL 2396 2026-08 RuntimeError request failed
-10-11 01:28:20 progress 349 ok 1 none 2117 s
-10-11 01:29:13   retry stapap1 3147 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:29:39   retry stapap1 3147 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:30:46   retry stapap1 3260 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:31:12   retry stapap1 3260 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:52   retry stapap1 3598 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:18   retry stapap1 3598 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:39 result shard 4 partial (time budget) requests 383 ok 381 none 1 files 270 in 2436 s
-10-11 00:53:02 shard 5 / 8 stocks 272 months 2023-10 ~ 2026-09
-10-11 00:55:03   retry stapap1 1906 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 00:55:35   retry query6_1 2009 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:57:16 progress 50 ok 0 none 254 s
-10-11 01:00:18   retry query6_1 3115 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:00:44   retry query6_1 3115 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:26   retry stapap1 3122 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:01:57   retry stapap1 3205 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:02:22   retry stapap1 3205 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:02:59   retry stapap1 3205 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:03:29   stapap1 fail 3205 2026-09 RuntimeError request failed
-10-11 01:04:26 progress 100 ok 0 none 684 s
-10-11 01:06:25   retry query6_1 3716 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:01   retry stapap1 4111 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:34   retry query6_1 4139 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:08:31   retry stapap1 4440 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:08:56   retry stapap1 4440 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:10:14 progress 149 ok 1 none 1032 s
-10-11 01:13:06   retry stapap1 6196 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:13:38   retry query6_1 6212 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:12   retry query6_1 6225 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:49 progress 199 ok 1 none 1307 s
-10-11 01:15:43   retry query6_1 6542 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:16   retry query6_1 6561 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:16:45   retry stapap1 6561 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:11   retry stapap1 6561 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:17:47   retry stapap1 6561 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:17   stapap1 fail 6561 2026-09 RuntimeError request failed
-10-11 01:20:10   retry stapap1 7713 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:20:41   retry query6_1 7730 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:41   retry query6_1 8105 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:22:25   retry query6_1 8215 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:22:58   retry stapap1 8222 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:23:24   retry stapap1 8222 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:23:45 progress 249 ok 1 none 1843 s
-10-11 01:24:02   retry query6_1 8390 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:50 progress 299 ok 1 none 2088 s
-10-11 01:28:50   retry stapap1 2367 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:29:50   retry stapap1 2442 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:30:58   retry query6_1 2539 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:31:27   retry stapap1 2539 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:31:55   retry query6_1 2547 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:59   retry stapap1 2809 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:25   retry stapap1 2809 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:47 result shard 5 partial (time budget) requests 338 ok 337 none 1 files 270 in 2445 s
-10-11 00:53:02 shard 6 / 8 stocks 265 months 2023-10 ~ 2026-09
-10-11 00:53:57   retry query6_1 1419 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:54:23   retry query6_1 1419 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:54:58   retry query6_1 1419 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:55:28 FAIL 1419 2026-09 RuntimeError request failed
-10-11 00:58:02   retry query6_1 2114 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:58:32   retry query6_1 2204 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:59:07   retry query6_1 2233 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 00:59:33   retry query6_1 2233 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:00:09   retry query6_1 2233 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:00:39 FAIL 2233 2026-09 RuntimeError request failed
-10-11 01:02:20 progress 50 ok 0 none 558 s
-10-11 01:02:58   retry stapap1 2498 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:03:23   retry stapap1 2498 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:04:29   retry stapap1 2612 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:04:55   retry stapap1 2612 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:06:44   retry query6_1 3020 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:07:05   retry query6_1 3062 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:07:37   retry stapap1 3083 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:09:26 progress 99 ok 1 none 984 s
-10-11 01:09:54   retry stapap1 3546 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:10:26   retry query6_1 3559 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:10:59   retry query6_1 3614 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:04   retry query6_1 4116 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:12:30   retry query6_1 4116 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:14:43   retry query6_1 4968 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:15:26 progress 147 ok 3 none 1344 s
-10-11 01:16:22   retry query6_1 5525 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:18:04   retry query6_1 6215 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:19:08   retry stapap1 6477 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:20:16   retry query6_1 6641 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:20:42   retry query6_1 6641 115 09 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:21:09 progress 197 ok 3 none 1687 s
-10-11 01:24:51 progress 247 ok 3 none 1909 s
-10-11 01:25:08   retry query6_1 9933 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:26:14   retry stapap1 1323 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:26:47   retry stapap1 1342 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:19   retry query6_1 1444 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:27:45   retry query6_1 1444 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:28:21   retry query6_1 1444 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:28:51 FAIL 1444 2026-08 RuntimeError request failed
-10-11 01:29:37   retry query6_1 1467 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:30:08   retry query6_1 1473 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:31:02   retry query6_1 1702 115 08 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:31:35   retry stapap1 1709 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:01   retry stapap1 1709 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:32:43   retry query6_1 1721 115 08 URLError <urlopen error [Errno 111] Connection refused>
-10-11 01:33:05 result shard 6 partial (time budget) requests 286 ok 280 none 3 files 258 in 2402 s
-10-11 00:53:03 shard 7 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-11 00:54:32   retry stapap1 1416 115 09 URLError <urlopen error timed out>
-10-11 00:55:22   retry stapap1 1416 115 09 URLError <urlopen error timed out>
-10-11 00:56:22   retry stapap1 1416 115 09 URLError <urlopen error timed out>
-10-11 00:56:52   stapap1 fail 1416 2026-09 RuntimeError request failed
-10-11 01:00:48   retry stapap1 2311 115 09 URLError <urlopen error timed out>
-10-11 01:02:52 progress 50 ok 0 none 588 s
-10-11 01:04:31   retry stapap1 2609 115 09 URLError <urlopen error timed out>
-10-11 01:08:01 progress 100 ok 0 none 897 s
-10-11 01:10:17   retry query6_1 3556 115 09 URLError <urlopen error timed out>
-10-11 01:12:47   retry stapap1 4552 115 09 URLError <urlopen error timed out>
-10-11 01:15:21 progress 150 ok 0 none 1337 s
-10-11 01:22:20 progress 200 ok 0 none 1757 s
-10-11 01:23:40   retry stapap1 6698 115 09 URLError <urlopen error timed out>
-10-11 01:25:10   retry stapap1 6922 115 09 HTTPError HTTP Error 502: Bad Gateway
-10-11 01:26:08   retry stapap1 6936 115 09 URLError <urlopen error timed out>
-10-11 01:29:22 progress 250 ok 0 none 2179 s
-10-11 01:30:43   retry stapap1 8906 115 09 URLError <urlopen error timed out>
-10-11 01:31:34   retry stapap1 8906 115 09 URLError <urlopen error timed out>
-10-11 01:33:29   retry query6_1 1310 115 08 URLError <urlopen error timed out>
-10-11 01:33:42 result shard 7 partial (time budget) requests 273 ok 273 none 0 files 266 in 2439 s
+10-11 04:11:39 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
+10-11 04:13:08   retry query6_1 2027 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:14:45   retry stapap1 2038 115 08 URLError <urlopen error timed out>
+10-11 04:16:51   retry query6_1 2375 115 08 URLError <urlopen error timed out>
+10-11 04:17:41   retry query6_1 2375 115 08 URLError <urlopen error timed out>
+10-11 04:18:41   retry query6_1 2375 115 08 URLError <urlopen error timed out>
+10-11 04:19:11 FAIL 2375 2026-08 RuntimeError request failed
+10-11 04:20:21   retry query6_1 2380 115 08 URLError <urlopen error timed out>
+10-11 04:21:42   retry stapap1 2431 115 08 URLError <urlopen error timed out>
+10-11 04:23:42 progress 50 ok 0 none 723 s
+10-11 04:25:08   retry query6_1 3009 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:28:20   retry stapap1 3312 115 08 URLError <urlopen error timed out>
+10-11 04:29:48   retry query6_1 3325 115 08 URLError <urlopen error timed out>
+10-11 04:31:04   retry stapap1 3526 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:31:56   retry query6_1 3532 115 08 URLError <urlopen error timed out>
+10-11 04:32:46   retry query6_1 3532 115 08 URLError <urlopen error timed out>
+10-11 04:33:50 progress 100 ok 0 none 1331 s
+10-11 04:38:11 progress 150 ok 0 none 1591 s
+10-11 04:43:06   retry query6_1 7610 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:43:20 progress 200 ok 0 none 1900 s
+10-11 04:48:56 progress 250 ok 0 none 2236 s
+10-11 04:51:06   retry stapap1 1535 115 07 URLError <urlopen error timed out>
+10-11 04:51:40 result shard 0 partial (time budget) requests 268 ok 267 none 0 files 258 in 2400 s
+10-11 04:11:40 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
+10-11 04:12:32   retry query6_1 4930 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:14:25   retry stapap1 5211 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:14:54   retry stapap1 5258 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:15:20   retry stapap1 5258 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:15:56   retry stapap1 5258 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:16:26   stapap1 fail 5258 2026-08 RuntimeError request failed
+10-11 04:17:17   retry query6_1 5450 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:17:43   retry query6_1 5450 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:22   retry stapap1 6156 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:52   retry stapap1 6161 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:21:10   retry query6_1 6246 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:21:39   retry stapap1 6246 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:21:50 progress 50 ok 0 none 609 s
+10-11 04:23:11   retry stapap1 6589 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:23:41   retry stapap1 6596 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:24:07   retry stapap1 6596 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:24:45   retry query6_1 6606 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:25:11   retry query6_1 6606 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:27:20   retry stapap1 6961 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:27:47   retry query6_1 6994 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:28:46   retry stapap1 7753 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:12   retry stapap1 7753 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:48 progress 100 ok 0 none 1087 s
+10-11 04:30:27   retry query6_1 8068 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:55   retry stapap1 8068 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:31:21   retry stapap1 8068 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:32:29   retry query6_1 8423 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:32:55   retry query6_1 8423 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:35:51 progress 150 ok 0 none 1451 s
+10-11 04:37:02   retry stapap1 1506 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:37:34   retry query6_1 1519 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:16   retry query6_1 1519 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:59   retry stapap1 1525 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:39:27   retry query6_1 1531 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:40:19   retry query6_1 1592 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:37 progress 199 ok 1 none 1857 s
+10-11 04:42:59   retry query6_1 2421 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:31   retry stapap1 2440 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:35   retry stapap1 2545 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:41   retry query6_1 3073 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:48:43 progress 249 ok 1 none 2222 s
+10-11 04:49:05   retry query6_1 3287 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:49:38   retry stapap1 3293 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:50:39   retry stapap1 3501 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:42   retry stapap1 3605 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:52:08   retry stapap1 3605 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:52:29 result shard 1 partial (time budget) requests 273 ok 272 none 1 files 249 in 2448 s
+10-11 04:11:40 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
+10-11 04:13:05   retry stapap1 1213 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:13:38   retry query6_1 1230 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:14:07   retry query6_1 1309 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:14:33   retry query6_1 1309 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:15:09   retry query6_1 1309 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:15:39 FAIL 1309 2026-08 RuntimeError request failed
+10-11 04:18:05 progress 50 ok 0 none 384 s
+10-11 04:21:41 progress 100 ok 0 none 601 s
+10-11 04:23:33   retry query6_1 3567 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:25:02   retry stapap1 4175 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:25:30   retry query6_1 4413 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:26:12 progress 149 ok 1 none 871 s
+10-11 04:28:35   retry stapap1 6016 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:05   retry query6_1 6234 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:36   retry query6_1 6241 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:52 progress 199 ok 1 none 1151 s
+10-11 04:31:06   retry query6_1 6288 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:31:38   retry stapap1 6414 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:34:47   retry stapap1 7810 115 08 HTTPError HTTP Error 307: Temporary Redirect
+10-11 04:34:58 progress 249 ok 1 none 1398 s
+10-11 04:35:21   retry stapap1 8011 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:35:48   retry query6_1 8032 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:36:59   retry query6_1 8284 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:07   retry query6_1 9906 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:35   retry stapap1 9906 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:39:33   retry query6_1 2317 113 06 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:41:02   retry query6_1 2308 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:41:26 progress 299 ok 1 none 1785 s
+10-11 04:42:08   retry query6_1 2317 112 12 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:02   retry stapap1 1103 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:43:35   retry stapap1 1213 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:03   retry query6_1 1218 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:46:39   retry query6_1 1903 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:05   retry query6_1 1903 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:37 progress 349 ok 1 none 2156 s
+10-11 04:49:02   retry query6_1 2439 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:49:40   retry stapap1 2453 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:41 result shard 2 partial (time budget) requests 399 ok 397 none 1 files 269 in 2400 s
+10-11 04:11:40 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
+10-11 04:13:03   retry stapap1 3686 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:15:06 progress 50 ok 0 none 205 s
+10-11 04:16:09   retry stapap1 5439 115 08 HTTPError HTTP Error 307: Temporary Redirect
+10-11 04:19:26 progress 99 ok 1 none 466 s
+10-11 04:20:59   retry query6_1 6934 115 08 HTTPError HTTP Error 307: Temporary Redirect
+10-11 04:21:59   retry stapap1 6962 115 08 URLError <urlopen error timed out>
+10-11 04:23:40 progress 149 ok 1 none 720 s
+10-11 04:25:06   retry query6_1 9902 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:30:47 progress 199 ok 1 none 1146 s
+10-11 04:35:45 progress 249 ok 1 none 1445 s
+10-11 04:37:03   retry query6_1 2705 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:40:55 progress 299 ok 1 none 1754 s
+10-11 04:42:51   retry stapap1 3466 115 07 URLError <urlopen error timed out>
+10-11 04:46:01   retry query6_1 4127 115 07 URLError <urlopen error timed out>
+10-11 04:46:51   retry query6_1 4127 115 07 URLError <urlopen error timed out>
+10-11 04:47:51   retry query6_1 4127 115 07 URLError <urlopen error timed out>
+10-11 04:48:21 FAIL 4127 2026-07 RuntimeError request failed
+10-11 04:50:02   retry stapap1 4420 115 07 URLError <urlopen error timed out>
+10-11 04:50:52   retry stapap1 4420 115 07 URLError <urlopen error timed out>
+10-11 04:51:52   retry stapap1 4420 115 07 URLError <urlopen error timed out>
+10-11 04:52:22   stapap1 fail 4420 2026-07 RuntimeError request failed
+10-11 04:52:22 result shard 3 partial (time budget) requests 336 ok 334 none 1 files 270 in 2442 s
+10-11 04:11:39 shard 4 / 8 stocks 271 months 2023-10 ~ 2026-09
+10-11 04:15:17 progress 50 ok 0 none 218 s
+10-11 04:19:02   retry stapap1 6680 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:19:14 progress 100 ok 0 none 454 s
+10-11 04:23:18 progress 150 ok 0 none 699 s
+10-11 04:29:13   retry stapap1 1537 115 07 URLError <urlopen error timed out>
+10-11 04:31:44 progress 200 ok 0 none 1204 s
+10-11 04:37:02   retry query6_1 2908 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:38:22 progress 250 ok 0 none 1603 s
+10-11 04:45:06 progress 300 ok 0 none 2007 s
+10-11 04:46:19   retry stapap1 4735 115 07 URLError <urlopen error timed out>
+10-11 04:51:39 result shard 4 partial (time budget) requests 342 ok 342 none 0 files 271 in 2400 s
+10-11 04:11:40 shard 5 / 8 stocks 272 months 2023-10 ~ 2026-09
+10-11 04:12:30   retry query6_1 3027 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:12:55   retry query6_1 3027 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:16:07   retry stapap1 3583 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:16:54 progress 50 ok 0 none 313 s
+10-11 04:18:05   retry query6_1 4304 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:18:35   retry query6_1 4402 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:10   retry stapap1 4440 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:36   retry stapap1 4440 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:20:15   retry stapap1 4513 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:20:41   retry stapap1 4513 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:23:05 progress 100 ok 0 none 685 s
+10-11 04:24:56   retry stapap1 6212 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:25:21   retry stapap1 6212 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:27:36   retry stapap1 6715 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:28:07 progress 150 ok 0 none 987 s
+10-11 04:28:30   retry stapap1 6743 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:01   retry query6_1 6781 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:04   retry query6_1 6968 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:32:05   retry query6_1 8421 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:33:25   retry query6_1 9941 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:33:39 progress 200 ok 0 none 1319 s
+10-11 04:37:12 progress 250 ok 0 none 1532 s
+10-11 04:37:36   retry stapap1 2063 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:02   retry stapap1 2063 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:40:50   retry query6_1 2727 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:41:21   retry stapap1 2752 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:21   retry stapap1 2945 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:48   retry query6_1 3004 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:22   retry query6_1 3027 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:58   retry stapap1 3038 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:27   retry stapap1 3046 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:53   retry stapap1 3046 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:45:14 progress 300 ok 0 none 2013 s
+10-11 04:46:22   retry stapap1 3115 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:46:49   retry query6_1 3122 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:15   retry query6_1 3122 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:56   retry query6_1 3205 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:49:23   retry stapap1 3492 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:49:50   retry query6_1 3499 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:21   retry stapap1 3679 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:43 result shard 5 partial (time budget) requests 342 ok 342 none 0 files 272 in 2403 s
+10-11 04:11:40 shard 6 / 8 stocks 265 months 2023-10 ~ 2026-09
+10-11 04:15:10 progress 50 ok 0 none 210 s
+10-11 04:17:58   retry query6_1 4102 115 08 HTTPError HTTP Error 307: Temporary Redirect
+10-11 04:18:31   retry query6_1 4116 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:08   retry query6_1 4163 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:19:40   retry stapap1 4168 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:20:06   retry stapap1 4168 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:20:31 progress 100 ok 0 none 530 s
+10-11 04:22:33   retry stapap1 5305 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:23:01   retry query6_1 5347 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:24:45   retry query6_1 6147 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:25:13 progress 150 ok 0 none 812 s
+10-11 04:26:25   retry stapap1 6409 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:27:27   retry stapap1 6598 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:15   retry stapap1 6894 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:58 progress 200 ok 0 none 1098 s
+10-11 04:31:16   retry query6_1 8163 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:33:54 progress 250 ok 0 none 1334 s
+10-11 04:37:02   retry query6_1 1337 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:37:43   retry stapap1 1444 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:37:58 progress 300 ok 0 none 1578 s
+10-11 04:38:50   retry stapap1 1613 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:39:54   retry query6_1 1810 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:40:24   retry query6_1 2032 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:40:53   retry query6_1 2064 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:41:22   retry stapap1 2064 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:24   retry stapap1 2329 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:51   retry query6_1 2336 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:17   retry query6_1 2336 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:56   retry query6_1 2348 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:23   retry query6_1 2348 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:59   retry query6_1 2348 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:45:29 FAIL 2348 2026-07 RuntimeError request failed
+10-11 04:47:37 progress 350 ok 0 none 2156 s
+10-11 04:49:04   retry stapap1 3088 115 07 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:51:20 progress 400 ok 0 none 2380 s
+10-11 04:51:40 result shard 6 partial (time budget) requests 406 ok 405 none 0 files 265 in 2400 s
+10-11 04:11:39 shard 7 / 8 stocks 269 months 2023-10 ~ 2026-09
+10-11 04:13:05   retry stapap1 1603 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-11 04:13:37   retry query6_1 1617 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:16:10 progress 50 ok 0 none 270 s
+10-11 04:17:23   retry query6_1 2751 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:20:14 progress 100 ok 0 none 514 s
+10-11 04:20:57   retry stapap1 4106 115 08 HTTPError HTTP Error 307: Temporary Redirect
+10-11 04:22:01   retry stapap1 4429 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:24:14 progress 150 ok 0 none 755 s
+10-11 04:25:15   retry query6_1 6101 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:26:57   retry query6_1 6412 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:28:26   retry stapap1 6597 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:28:52   retry stapap1 6597 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:29:37 progress 200 ok 0 none 1077 s
+10-11 04:29:59   retry query6_1 6693 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:30:25   retry query6_1 6693 115 08 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:34:17 progress 250 ok 0 none 1357 s
+10-11 04:36:22   retry query6_1 3231 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:38:50 progress 300 ok 0 none 1630 s
+10-11 04:40:14   retry query6_1 1905 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:40:40   retry query6_1 1905 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:42:04   retry stapap1 2347 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:43:19   retry query6_1 2455 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:15   retry stapap1 2506 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:44:51   retry stapap1 2616 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:45:17   retry stapap1 2616 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:45:58   retry stapap1 2640 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:46:09 progress 350 ok 0 none 2069 s
+10-11 04:46:58   retry stapap1 2801 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:47:24   retry stapap1 2801 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:48:33   retry stapap1 3018 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:48:59   retry stapap1 3018 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:50:08   retry stapap1 3135 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:50:50   retry query6_1 3206 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:48   retry stapap1 3383 115 07 URLError <urlopen error [Errno 111] Connection refused>
+10-11 04:51:59 result shard 7 partial (time budget) requests 381 ok 381 none 0 files 269 in 2419 s
