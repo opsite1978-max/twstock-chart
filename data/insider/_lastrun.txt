@@ -1,0 +1,39 @@
+22:39:05 watchlist 24 months 2023-09 ~ 2026-08
+22:40:03 progress 10 ok 0 none 58 s
+22:41:06 progress 20 ok 0 none 121 s
+22:41:58 progress 30 ok 0 none 173 s
+22:42:58 progress 40 ok 0 none 232 s
+22:43:48 progress 50 ok 0 none 282 s
+22:44:49 progress 60 ok 0 none 344 s
+22:45:41 progress 70 ok 0 none 395 s
+22:47:12 progress 80 ok 0 none 487 s
+22:48:15 progress 90 ok 0 none 550 s
+22:49:44 progress 100 ok 0 none 639 s
+22:50:45 progress 110 ok 0 none 699 s
+22:51:37 progress 120 ok 0 none 752 s
+22:52:35 progress 130 ok 0 none 810 s
+22:56:28 progress 140 ok 0 none 1043 s
+22:58:02 progress 150 ok 0 none 1136 s
+22:59:03 progress 160 ok 0 none 1197 s
+23:00:37 progress 170 ok 0 none 1291 s
+23:01:06   retry stapap1 2308 115 01 URLError <urlopen error [Errno 104] Connection reset by peer>
+23:02:12 progress 180 ok 0 none 1386 s
+23:03:31   retry stapap1 3711 115 01 URLError <urlopen error timed out>
+23:05:03   retry stapap1 5483 115 01 URLError <urlopen error timed out>
+23:05:25 progress 190 ok 0 none 1580 s
+23:06:55 progress 200 ok 0 none 1670 s
+23:08:25   retry stapap1 3443 114 12 URLError <urlopen error timed out>
+23:10:05 progress 210 ok 0 none 1860 s
+23:11:38 progress 220 ok 0 none 1953 s
+23:14:32   retry query6_1 3034 114 11 URLError <urlopen error timed out>
+23:14:46 progress 230 ok 0 none 2140 s
+23:16:35   retry stapap1 5483 114 11 URLError <urlopen error timed out>
+23:17:25   retry stapap1 5483 114 11 URLError <urlopen error timed out>
+23:18:08 progress 240 ok 0 none 2343 s
+23:19:04   retry stapap1 2402 114 10 HTTPError HTTP Error 502: Bad Gateway
+23:19:15 progress 250 ok 0 none 2409 s
+23:20:31 progress 260 ok 0 none 2486 s
+23:21:27 progress 270 ok 0 none 2541 s
+23:22:26 progress 280 ok 0 none 2600 s
+23:23:20 progress 290 ok 0 none 2655 s
+23:24:06 result partial (time budget) requests 298 ok 298 none 0 in 2701 s
