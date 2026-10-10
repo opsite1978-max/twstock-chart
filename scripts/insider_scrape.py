@@ -116,10 +116,8 @@ def parse_stapap1(s):
     return {'total': tot, 'pledge': pl or 0}
 
 def ym_list(today):
-    # 某月資料在次月 15 日前申報；15 日（含）以前只把「上上個月」當作已到期
-    y, m = today.year, today.month
-    last = (y, m - 1) if today.day > 15 else (y, m - 2)
-    ly, lm = last
+    # 某月資料在次月 15 日前申報，很多公司月初就申報，所以上個月一開始就抓（還沒申報的會定期重試）
+    ly, lm = today.year, today.month - 1
     while lm <= 0:
         lm += 12; ly -= 1
     out = []

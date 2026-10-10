@@ -1,7 +1,7 @@
 name: 內部人申報資料更新
 on:
   schedule:
-    - cron: '23 */2 * * *'   # 每兩小時檢查一次；資料齊全時幾乎不做事
+    - cron: '23 * * * *'   # 每小時檢查一次；資料齊全時幾乎不做事
   workflow_dispatch:
   push:
     branches: [main]
