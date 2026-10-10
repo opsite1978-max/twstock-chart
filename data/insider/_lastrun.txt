@@ -1,39 +1,48 @@
-22:39:05 watchlist 24 months 2023-09 ~ 2026-08
-22:40:03 progress 10 ok 0 none 58 s
-22:41:06 progress 20 ok 0 none 121 s
-22:41:58 progress 30 ok 0 none 173 s
-22:42:58 progress 40 ok 0 none 232 s
-22:43:48 progress 50 ok 0 none 282 s
-22:44:49 progress 60 ok 0 none 344 s
-22:45:41 progress 70 ok 0 none 395 s
-22:47:12 progress 80 ok 0 none 487 s
-22:48:15 progress 90 ok 0 none 550 s
-22:49:44 progress 100 ok 0 none 639 s
-22:50:45 progress 110 ok 0 none 699 s
-22:51:37 progress 120 ok 0 none 752 s
-22:52:35 progress 130 ok 0 none 810 s
-22:56:28 progress 140 ok 0 none 1043 s
-22:58:02 progress 150 ok 0 none 1136 s
-22:59:03 progress 160 ok 0 none 1197 s
-23:00:37 progress 170 ok 0 none 1291 s
-23:01:06   retry stapap1 2308 115 01 URLError <urlopen error [Errno 104] Connection reset by peer>
-23:02:12 progress 180 ok 0 none 1386 s
-23:03:31   retry stapap1 3711 115 01 URLError <urlopen error timed out>
-23:05:03   retry stapap1 5483 115 01 URLError <urlopen error timed out>
-23:05:25 progress 190 ok 0 none 1580 s
-23:06:55 progress 200 ok 0 none 1670 s
-23:08:25   retry stapap1 3443 114 12 URLError <urlopen error timed out>
-23:10:05 progress 210 ok 0 none 1860 s
-23:11:38 progress 220 ok 0 none 1953 s
-23:14:32   retry query6_1 3034 114 11 URLError <urlopen error timed out>
-23:14:46 progress 230 ok 0 none 2140 s
-23:16:35   retry stapap1 5483 114 11 URLError <urlopen error timed out>
-23:17:25   retry stapap1 5483 114 11 URLError <urlopen error timed out>
-23:18:08 progress 240 ok 0 none 2343 s
-23:19:04   retry stapap1 2402 114 10 HTTPError HTTP Error 502: Bad Gateway
-23:19:15 progress 250 ok 0 none 2409 s
-23:20:31 progress 260 ok 0 none 2486 s
-23:21:27 progress 270 ok 0 none 2541 s
-23:22:26 progress 280 ok 0 none 2600 s
-23:23:20 progress 290 ok 0 none 2655 s
-23:24:06 result partial (time budget) requests 298 ok 298 none 0 in 2701 s
+23:25:11 watchlist 24 months 2023-10 ~ 2026-09
+23:26:12 progress 10 ok 0 none 61 s
+23:27:27 progress 20 ok 0 none 135 s
+23:28:29 progress 29 ok 1 none 198 s
+23:29:28 progress 39 ok 1 none 257 s
+23:30:35 progress 49 ok 1 none 324 s
+23:31:41 progress 59 ok 1 none 390 s
+23:32:46 progress 69 ok 1 none 455 s
+23:33:53 progress 79 ok 1 none 522 s
+23:34:52 progress 89 ok 1 none 581 s
+23:36:10 progress 99 ok 1 none 659 s
+23:37:05   retry stapap1 7419 114 05 HTTPError HTTP Error 502: Bad Gateway
+23:37:22 progress 109 ok 1 none 731 s
+23:38:26 progress 119 ok 1 none 794 s
+23:39:33 progress 129 ok 1 none 862 s
+23:40:41 progress 139 ok 1 none 930 s
+23:41:53 progress 149 ok 1 none 1001 s
+23:42:53 progress 159 ok 1 none 1062 s
+23:43:08   retry query6_1 2317 114 02 HTTPError HTTP Error 502: Bad Gateway
+23:43:51   retry stapap1 2345 114 02 URLError <urlopen error [Errno 111] Connection refused>
+23:44:45 progress 169 ok 1 none 1174 s
+23:45:51 progress 179 ok 1 none 1240 s
+23:46:56 progress 189 ok 1 none 1304 s
+23:48:20 progress 199 ok 1 none 1388 s
+23:49:38   retry query6_1 2308 113 12 URLError <urlopen error [Errno 111] Connection refused>
+23:49:53 progress 209 ok 1 none 1481 s
+23:51:04 progress 219 ok 1 none 1552 s
+23:52:07 progress 229 ok 1 none 1616 s
+23:53:15 progress 239 ok 1 none 1684 s
+23:54:10   retry stapap1 3443 113 11 URLError <urlopen error [Errno 111] Connection refused>
+23:54:44 progress 249 ok 1 none 1773 s
+23:55:46 progress 259 ok 1 none 1835 s
+23:57:05 progress 269 ok 1 none 1914 s
+23:58:09 progress 279 ok 1 none 1978 s
+23:59:15 progress 289 ok 1 none 2044 s
+00:00:24 progress 299 ok 1 none 2113 s
+00:01:11   retry stapap1 2303 113 08 HTTPError HTTP Error 502: Bad Gateway
+00:02:15 progress 309 ok 1 none 2224 s
+00:03:40 progress 319 ok 1 none 2309 s
+00:04:53 progress 329 ok 1 none 2381 s
+00:05:36   retry query6_1 2382 113 07 URLError <urlopen error [Errno 111] Connection refused>
+00:06:44   retry stapap1 2454 113 07 URLError <urlopen error timed out>
+00:07:26 progress 339 ok 1 none 2535 s
+00:07:54   retry stapap1 3443 113 07 URLError <urlopen error [Errno 111] Connection refused>
+00:08:58   retry stapap1 6940 113 07 URLError <urlopen error [Errno 111] Connection refused>
+00:09:24   retry stapap1 6940 113 07 URLError <urlopen error [Errno 111] Connection refused>
+00:09:57 progress 349 ok 1 none 2686 s
+00:10:16 result partial (time budget) requests 353 ok 352 none 1 in 2705 s

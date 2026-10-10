@@ -1,173 +1,173 @@
 {
-"updated": "2026-10-10T23:24+08:00",
+"updated": "2026-10-11T00:10+08:00",
 "stocks": [
 {
 "code": "2330",
 "name": "台積電",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2454",
 "name": "聯發科",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2317",
 "name": "鴻海",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2308",
 "name": "台達電",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2382",
 "name": "廣達",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3711",
 "name": "日月光投控",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2303",
 "name": "聯電",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 28,
+"latest": "2026-09"
 },
 {
 "code": "2379",
 "name": "瑞昱",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3034",
 "name": "聯詠",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3661",
 "name": "世芯-KY",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3443",
 "name": "創意",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "6669",
 "name": "緯穎",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3231",
 "name": "緯創",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2345",
 "name": "智邦",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2881",
 "name": "",
 "market": "",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "2882",
 "name": "",
 "market": "",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "1301",
 "name": "台塑",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 28,
+"latest": "2026-09"
 },
 {
 "code": "1440",
 "name": "南紡",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 28,
+"latest": "2026-09"
 },
 {
 "code": "2402",
 "name": "毅嘉",
 "market": "上市公司",
-"months": 13,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "5483",
 "name": "中美晶",
 "market": "上櫃公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "8054",
 "name": "安國",
 "market": "上櫃公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "3535",
 "name": "晶彩科",
 "market": "上市公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 },
 {
 "code": "6940",
 "name": "格斯科技*",
 "market": "興櫃公司",
-"months": 12,
+"months": 26,
 "latest": "2026-08"
 },
 {
 "code": "7419",
 "name": "達勝",
 "market": "興櫃公司",
-"months": 12,
-"latest": "2026-08"
+"months": 27,
+"latest": "2026-09"
 }
 ]
 }
