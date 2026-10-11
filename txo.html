@@ -158,6 +158,24 @@
       <p class="note" id="histNote"></p>
     </section>
 
+    <section id="lotSec">
+      <h2>結算日樂透回測<span class="muted">前一晚夜盤符合條件，結算日開盤買價外選擇權、放到結算</span></h2>
+      <div class="setrow" style="margin-bottom:4px">
+        <span class="seg" id="lotSide"><button data-s="p" class="on">賣權（賭大跌）</button><button data-s="c">買權（賭大漲）</button></span>
+        <label>價外距離 <select id="lotDist">
+          <option value="0.5">0.5%</option><option value="1" selected>1%</option><option value="1.5">1.5%</option><option value="2">2%</option><option value="3">3%</option></select></label>
+        <label>判斷價 <select id="lotPx"><option value="n">夜盤收盤</option><option value="x">夜盤最低（買權看最高）</option></select></label>
+        <label>合約 <select id="lotKind"><option value="all">全部結算日</option><option value="W">週三週選</option><option value="F">週五週選</option><option value="M">月選</option></select></label>
+      </div>
+      <div class="setrow" id="lotConds"></div>
+      <div class="tblx" id="lotSum"></div>
+      <p class="note" id="lotNote"></p>
+      <details>
+        <summary>展開每一次結算的明細</summary>
+        <div class="tbl" id="lotList"></div>
+      </details>
+    </section>
+
     <section>
       <h2>籌碼分布
         <span class="seg" id="distSeg">
@@ -187,7 +205,7 @@
       計算方式：每個結算日用買權、賣權價格反推隱含波動率（Black-76 模型，遠期價由價平附近買賣權價差推算），再算出每個履約價的 Gamma。
       Gamma 曝險＝Gamma × 未平倉口數 × 每點 50 元 × 指數² × 1%，買權記為正、賣權記為負（業界常用、與截圖相同的慣例，假設造市與賣方站在相反方向）。<br>
       零 Gamma（翻轉點）：總曝險由負轉正的價位。指數在零 Gamma 之上，避險傾向「漲了賣、跌了買」，波動較容易收斂；在零 Gamma 之下則傾向追價，波動容易放大。
-      看漲牆是現價上方買權 Gamma 曝險最大的履約價（壓力），看跌牆是現價下方賣權 Gamma 曝險最大的履約價（支撐）；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價）；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
+      看漲牆是現價上方買權 Gamma 曝險最大的履約價（壓力），看跌牆是現價下方賣權 Gamma 曝險最大的履約價（支撐）；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價），再扣掉台指期與指數的價差（日盤收盤時台指期減最近結算日遠期價），和履約價放在同一個基準；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
     </footer>
   </div>
 </main>
@@ -204,6 +222,7 @@ const signInt = n => n == null || isNaN(n) ? '–' : (n > 0 ? '+' : n < 0 ? '−
 const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
 const WD = '日一二三四五六';
 const md = d => +d.slice(5,7) + '/' + +d.slice(8,10);
+const slashD = d => d.slice(0,4) + '/' + md(d);
 const mdw = d => md(d) + '（' + WD[new Date(d + 'T00:00:00Z').getUTCDay()] + '）';
 const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,10);
 const shiftDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0,10);
@@ -463,8 +482,10 @@ function viewOf(list){
   }
   const rows = [...map.values()].sort((a,b) => a.K - b.K);
   // 現價：台指期近月最新價（含夜盤）；取不到就用遠期價
-  const P = DATA.fut ? DATA.fut.price : F;
-  return { list, F, P, rows, single:list.length === 1 ? list[0] : null };
+  // 台指期和加權指數有價差：用「台指期日盤收盤 − 最近結算日遠期價」當價差，把台指期最新價換成指數基準，才能和履約價比較
+  const basis = DATA.fut ? DATA.fut.dayClose - DATA.exps[0].F : 0;
+  const P = DATA.fut ? DATA.fut.price - basis : F;
+  return { list, F, P, basis, rows, single:list.length === 1 ? list[0] : null };
 }
 
 function stats(v){
@@ -509,9 +530,9 @@ function render(){
   const card = (k, val, sub, sw) => `<div class="card"><div class="k">${sw ? `<i style="background:${sw}"></i>` : ''}${k}</div><div class="v">${val}</div><div class="s">${sub || ''}</div></div>`;
   const pcr = st.oiC ? st.oiP / st.oiC : null, vpcr = st.volC ? st.volP / st.volC : null;
   const futSub = !fut ? '取不到台指期，暫用遠期價' :
-    fut.night != null ? `日盤收 ${fmtInt(fut.dayClose)}，夜盤 ${signInt(fut.night - fut.dayClose)} 點（${fut.nightContract.slice(4)}月）` : `日盤收盤（${fut.contract.slice(4)}月），夜盤還沒有資料`;
+    `台指期 ${fmtInt(fut.price)}（${fut.night != null ? '夜盤，' + signInt(fut.night - fut.dayClose) + ' 點' : '日盤收盤'}）扣掉價差 ${signInt(v.basis)} 點`;
   $('#cards').innerHTML = [
-    card('台指期現價（含夜盤）', fmtInt(P), futSub),
+    card('現價（換成指數基準，含夜盤）', fmtInt(P), futSub),
     card('零 Gamma（翻轉點）', st.flip ? fmtInt(st.flip) : '範圍內沒有', st.flip ? (P >= st.flip ? '現價在上方：正 Gamma 區' : '現價在下方：負 Gamma 區') + `（差 ${signInt(P - st.flip)} 點）` : ''),
     card('看漲牆（上方壓力）', fmtInt(st.callWall.K), `現價上方買權 Gamma 最大，距 ${signInt(st.callWall.K - P)} 點；最大買權未平倉 ${fmtInt(st.oiCallMax.K)}`, css('--call')),
     card('看跌牆（下方支撐）', fmtInt(st.putWall.K), `現價下方賣權 Gamma 最大，距 ${signInt(st.putWall.K - P)} 點；最大賣權未平倉 ${fmtInt(st.oiPutMax.K)}`, css('--put')),
@@ -789,7 +810,7 @@ const MK = {
   put:   (p, lab) => ({ p, label:(lab || '看跌牆') + ' ' + fmtInt(p), color:css('--put'), sw:2 }),
   pain:  p => ({ p, label:'最大痛點 ' + fmtInt(p), color:css('--pain'), dash:'1.5 3', sw:2.5 }),
 };
-const LG = { price:['台指期現價（含夜盤）', 'dash'], flip:['零 Gamma', 'ln'], pain:['最大痛點', 'dot'] };
+const LG = { price:['現價（指數基準，含夜盤）', 'dash'], flip:['零 Gamma', 'ln'], pain:['最大痛點', 'dot'] };
 function lgItem(k){ const c = { price:css('--text'), flip:css('--flip'), pain:css('--pain') }[k]; return [LG[k][0], c, LG[k][1]]; }
 
 function drawGex(){
@@ -956,13 +977,14 @@ function renderHistory(){
     const a = all[i], b = all[i + 1];
     if (a.fc !== b.fc) continue;
     const prevC = i > 0 && all[i - 1].fc === a.fc ? all[i - 1].c : null;
+    const bs = a.ix ? a.c - a.ix : 0;                                   // 當天台指期與指數的價差
     nx.set(a.d, { ret:(b.c / a.c - 1) * 100, rng:(b.h - b.l) / a.c * 100, today: prevC ? (a.c / prevC - 1) * 100 : null,
-                  inside: b.c >= a.pw && b.c <= a.cw, holdPw: b.l >= a.pw, holdCw: b.h <= a.cw });
+                  inside: b.c - bs >= a.pw && b.c - bs <= a.cw, holdPw: b.l - bs >= a.pw, holdCw: b.h - bs <= a.cw });
   }
   // 目前狀態
   const last = all[all.length - 1];
   let streak = 0; for (let i = all.length - 1; i >= 0 && (all[i].gex < 0) === (last.gex < 0); i--) streak++;
-  $('#histNow').innerHTML = `${mdw(last.d)} 收盤：台指期 ${fmtInt(last.c)}，總 Gamma 曝險 <b class="${last.gex < 0 ? 'neg' : 'pos'}">${fmtMoney(last.gex, true)}</b>，` +
+  $('#histNow').innerHTML = `${mdw(last.d)} 收盤：台指期 ${fmtInt(last.c)}（指數基準 ${fmtInt(last.ix || last.c)}），總 Gamma 曝險 <b class="${last.gex < 0 ? 'neg' : 'pos'}">${fmtMoney(last.gex, true)}</b>，` +
     `已連續 ${streak} 天${last.gex < 0 ? '負' : '正'} Gamma。零 Gamma ${last.flip ? fmtInt(last.flip) : '–'}、看漲牆 ${fmtInt(last.cw)}、看跌牆 ${fmtInt(last.pw)}、` +
     `最近結算日（${mdw(last.nearExp)}）最大痛點 ${fmtInt(last.pain)}。<span class="muted">（歷史資料計算於 ${esc(HIST.updated || '')}，用日盤收盤價）</span>`;
   drawHistPrice(D); drawHistGex(D);
@@ -985,7 +1007,7 @@ function renderHistory(){
     grp('正 Gamma（總曝險 ≥ 0）', d => d.gex >= 0) + grp('負 Gamma（總曝險 < 0）', d => d.gex < 0) +
     grp('全部', () => true) + '</tbody></table>';
   $('#histNote').textContent = '漲跌幅與振幅都是台指期近月日盤；「同方向延續」只算當天漲跌超過 0.3% 的日子，看隔天是否同方向；換月那天前後不列入。' +
-    '如果負 Gamma 那一列的振幅、超過 1% 的比例、大漲跌後再大漲跌的比例明顯比正 Gamma 高，就代表「負 Gamma 時大漲大跌容易連續」在台指期也成立。樣本天數少時差異可能只是巧合。';
+    '正負 Gamma 用指數基準的收盤判斷（台指期扣掉價差）。如果負 Gamma 那一列的振幅、超過 1% 的比例、大漲跌後再大漲跌的比例明顯比正 Gamma 高，就代表「負 Gamma 時大漲大跌容易連續」在台指期也成立。樣本天數少時差異可能只是巧合。';
 }
 function histFrame(svg, H){
   const W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520;
@@ -1002,13 +1024,14 @@ function histDates(svg, f, D, x){
   }
 }
 function histTip(r){
-  return `<b>${mdw(r.d)}</b><br>台指期 ${fmtInt(r.c)}<br>總 Gamma 曝險 ${fmtMoney(r.gex, true)}（最近結算日 ${fmtMoney(r.gexNear, true)}）<br>` +
+  return `<b>${mdw(r.d)}</b><br>台指期 ${fmtInt(r.c)}（指數基準 ${fmtInt(r.ix || r.c)}）<br>總 Gamma 曝險 ${fmtMoney(r.gex, true)}（最近結算日 ${fmtMoney(r.gexNear, true)}）<br>` +
     `零 Gamma ${r.flip ? fmtInt(r.flip) : '–'}・看漲牆 ${fmtInt(r.cw)}・看跌牆 ${fmtInt(r.pw)}<br>最大痛點 ${fmtInt(r.pain)}・賣權／買權比 ${r.pcr ?? '–'}・價平波動率 ${r.iv ?? '–'}%`;
 }
 function drawHistPrice(D){
   const svg = $('#svgHistP'), f = histFrame(svg, 280), x = histX(f, D.length);
-  legend($('#lgHistP'), [['台指期收盤', css('--text'), 'ln'], ['零 Gamma', css('--flip'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], ['負 Gamma 的日子（底色）', css('--put') + '40']]);
-  const vals = D.flatMap(d => [d.c, d.h, d.l, d.cw, d.pw, d.flip].filter(v => v != null));
+  legend($('#lgHistP'), [['收盤（指數基準）', css('--text'), 'ln'], ['零 Gamma', css('--flip'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], ['負 Gamma 的日子（底色）', css('--put') + '40']]);
+  const px = d => d.ix || d.c;
+  const vals = D.flatMap(d => [px(d), d.cw, d.pw, d.flip].filter(v => v != null));
   const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.04;
   const y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih;
   const step = f.iw / D.length;
@@ -1023,9 +1046,9 @@ function drawHistPrice(D){
     el('path', { d, fill:'none', stroke:col, 'stroke-width':w, 'stroke-dasharray':dash || null, 'stroke-linejoin':'round' }, svg);
   };
   line('cw', css('--call'), 1.5, null, true); line('pw', css('--put'), 1.5, null, true); line('flip', css('--flip'), 1.5, '4 3', true);
-  line('c', css('--text'), 2.2);
+  D.forEach(d => d._px = px(d)); line('_px', css('--text'), 2.2);
   const lastI = D.length - 1;
-  el('circle', { cx:x(lastI), cy:y(D[lastI].c), r:4, fill:css('--text'), stroke:css('--panel'), 'stroke-width':2 }, svg);
+  el('circle', { cx:x(lastI), cy:y(px(D[lastI])), r:4, fill:css('--text'), stroke:css('--panel'), 'stroke-width':2 }, svg);
   hover(svg, $('#tipHistP'), f, x, D.map((r, i) => ({ K:i, r })), o => histTip(o.r),
     mx => { const i = Math.max(0, Math.min(D.length - 1, Math.round((mx - f.m.l) / step - 0.5))); return { K:i, r:D[i] }; });
 }
@@ -1041,6 +1064,75 @@ function drawHistGex(D){
     mx => { const i = Math.max(0, Math.min(D.length - 1, Math.round((mx - f.m.l) / step - 0.5))); return { K:i, r:D[i] }; });
 }
 document.querySelectorAll('#histSeg button').forEach(b => b.onclick = () => { HN = +b.dataset.n; store.set('txo.histN', HN); renderHistory(); });
+
+/* ───────── 結算日樂透回測（data/txo/lottery.json，GitHub 每天收盤後更新） ───────── */
+let LOT = null, LOTS = store.get('txo.lotSide') || 'p';
+// 每個條件：1＝要成立、-1＝要不成立、0＝不看
+let LOTC = (() => { try { const o = JSON.parse(store.get('txo.lotConds2') || 'null'); return o && typeof o.gex === 'number' ? o : null; } catch(e){ return null; } })() || { gex:1, oi:1, flip:0, gw:0 };
+async function loadLottery(){
+  try {
+    const r = await fetch('data/txo/lottery.json?t=' + Date.now()); if (!r.ok) throw 0;
+    const j = await r.json(); LOT = (j.rows || []).filter(x => x.st && x.n != null && x.FD); LOT.updated = j.updated;
+    renderLottery();
+  } catch(e){ $('#lotSum').innerHTML = '<div class="msg">回測資料還在計算中（第一次約需 20 分鐘），稍後重新整理。</div>'; }
+}
+function renderLottery(){
+  if (!LOT) return;
+  const put = LOTS === 'p';
+  document.querySelectorAll('#lotSide button').forEach(b => b.classList.toggle('on', b.dataset.s === LOTS));
+  const C = [
+    ['gex', '夜盤時到期合約的 Gamma 曝險 ≤ 0（負 Gamma）'],
+    ['oi', put ? '夜盤跌破最大賣權未平倉履約價' : '夜盤突破最大買權未平倉履約價'],
+    ['flip', put ? '夜盤跌破零 Gamma' : '夜盤突破零 Gamma'],
+    ['gw', put ? '夜盤跌破看跌牆（Gamma）' : '夜盤突破看漲牆（Gamma）'],
+  ];
+  $('#lotConds').innerHTML = '<span style="width:100%">條件（前一晚夜盤）：</span>' + C.map(([k, t]) => `<label>${t} <select data-c="${k}">` +
+    [[0, '不看'], [1, '是'], [-1, '否']].map(([v, l]) => `<option value="${v}" ${LOTC[k] === v ? 'selected' : ''}>${l}</option>`).join('') + '</select></label>').join('');
+  $('#lotConds').querySelectorAll('select').forEach(i => i.onchange = () => { LOTC[i.dataset.c] = +i.value; store.set('txo.lotConds2', JSON.stringify(LOTC)); renderLottery(); });
+  const dist = +$('#lotDist').value / 100, useX = $('#lotPx').value === 'x', kind = $('#lotKind').value;
+  const kindOf = c => /W/.test(c) ? 'W' : /F/.test(c) ? 'F' : 'M';
+  // 每一次結算：判斷條件、選合約、算結果
+  const trades = [];
+  for (const r of LOT){
+    if (kind !== 'all' && kindOf(r.code) !== kind) continue;
+    const b = r.basis || 0;
+    const Nx = (useX ? (put ? r.nl : r.nh) : r.n) - b;                 // 夜盤價換成指數基準
+    const ok = {
+      gex: r.gexNearN != null && r.gexNearN <= 0,
+      oi: put ? Nx < r.pwOI : Nx > r.cwOI,
+      flip: r.flipNear != null && (put ? Nx < r.flipNear : Nx > r.flipNear),
+      gw: put ? Nx < r.pwG : Nx > r.cwG,
+    };
+    const hit = C.every(([k]) => !LOTC[k] || (LOTC[k] > 0) === !!ok[k]);
+    const Ox = r.o - b, target = put ? Ox * (1 - dist) : Ox * (1 + dist);
+    const cands = r.opts.filter(o => o[0] === (put ? 'p' : 'c') && o[2] > 0);
+    if (!cands.length) continue;
+    const o = cands.reduce((a, z) => Math.abs(z[1] - target) < Math.abs(a[1] - target) ? z : a);
+    const val = Math.max(0, put ? o[1] - r.st : r.st - o[1]), cost = o[2];
+    trades.push({ r, hit, ok, Nx, Ox, K:o[1], cost, val, mult: val / cost, vol:o[6] });
+  }
+  const sum = (name, xs) => {
+    if (!xs.length) return `<tr><td>${name}</td><td>0</td><td colspan="7" class="muted">沒有符合的結算日</td></tr>`;
+    const n = xs.length, cost = xs.reduce((t, x) => t + x.cost, 0), val = xs.reduce((t, x) => t + x.val, 0);
+    const win = xs.filter(x => x.val > x.cost).length, x5 = xs.filter(x => x.mult >= 5).length, x10 = xs.filter(x => x.mult >= 10).length;
+    const best = xs.reduce((a, x) => x.mult > a.mult ? x : a);
+    return `<tr><td>${name}</td><td>${n}</td><td>${(cost / n).toFixed(1)} 點</td><td>${win}（${(win / n * 100).toFixed(0)}%）</td><td>${x5}／${x10}</td>` +
+      `<td>${fmtInt(cost * MULT)} 元</td><td>${fmtInt(val * MULT)} 元</td><td class="${val >= cost ? 'pos' : 'neg'}">${((val / cost - 1) * 100).toFixed(0)}%</td>` +
+      `<td>${best.mult.toFixed(1)} 倍（${md(best.r.E)} ${fmtInt(best.K)}）</td></tr>`;
+  };
+  const hits = trades.filter(t => t.hit);
+  $('#lotSum').innerHTML = '<table><thead><tr><th>每次買 1 口</th><th>次數</th><th>平均權利金</th><th>賺錢次數</th><th>5 倍以上／10 倍以上</th><th>總投入</th><th>結算總回收</th><th>總報酬率</th><th>最好的一次</th></tr></thead><tbody>' +
+    sum('符合條件的結算日', hits) + sum('不看條件（每次都買）', trades) + '</tbody></table>';
+  $('#lotNote').textContent = `期間 ${LOT.length ? slashD(LOT[0].E) : ''}～${LOT.length ? slashD(LOT[LOT.length - 1].E) : ''}，共 ${trades.length} 次結算（資料計算於 ${LOT.updated || ''}）。` +
+    `做法：結算前一晚夜盤（換成指數基準）符合條件，結算日用開盤價買距離開盤 ${$('#lotDist').value}% 的價外${put ? '賣權' : '買權'}，持有到結算（結算價由收盤前買賣權價格反推）。` +
+    '開盤價可能只有零星成交，實際買到的價格會比較差；也沒有扣手續費與稅。符合條件的次數很少時，結果可能只是運氣。';
+  $('#lotList').innerHTML = '<table><thead><tr><th>結算日</th><th>合約</th><th>夜盤（指數基準）</th><th>零 Gamma</th><th>最大' + (put ? '賣' : '買') + '權未平倉</th><th>夜盤 Gamma 曝險</th><th>符合</th><th>買進</th><th>權利金</th><th>結算價</th><th>倍數</th></tr></thead><tbody>' +
+    trades.slice().reverse().map(t => `<tr${t.hit ? ' class="atm"' : ''}><td>${mdw(t.r.E)}</td><td>${esc(t.r.code.slice(4))}</td><td>${fmtInt(t.Nx)}</td><td>${t.r.flipNear ? fmtInt(t.r.flipNear) : '–'}</td>` +
+      `<td>${fmtInt(put ? t.r.pwOI : t.r.cwOI)}</td><td class="${t.r.gexNearN < 0 ? 'neg' : 'pos'}">${fmtMoney(t.r.gexNearN, true)}</td><td>${t.hit ? '是' : ''}</td>` +
+      `<td>${fmtInt(t.K)} ${put ? '賣權' : '買權'}</td><td>${t.cost}</td><td>${fmtInt(t.r.st)}</td><td class="${t.mult >= 1 ? 'pos' : ''}">${t.mult.toFixed(1)} 倍</td></tr>`).join('') + '</tbody></table>';
+}
+document.querySelectorAll('#lotSide button').forEach(b => b.onclick = () => { LOTS = b.dataset.s; store.set('txo.lotSide', LOTS); renderLottery(); });
+['#lotDist', '#lotPx', '#lotKind'].forEach(id => $(id).onchange = renderLottery);
 
 /* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
 function askToken(msg){
@@ -1082,7 +1174,7 @@ async function start(){
     for (const d of TD.slice(-20).reverse()){ const o = document.createElement('option'); o.value = d; o.textContent = mdw(d); sel.appendChild(o); }
     sel.value = date;
     await loadDate(date);
-    loadHistory();
+    loadHistory(); loadLottery();
   } catch(e){
     if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
   }
