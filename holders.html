@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>大戶散戶籌碼</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1e2533;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a;
+    --big:#3987e5; --small:#d95926; --price:#d6dbe6; --ppl:#59627a;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#eef0f4;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
+    --big:#2a78d6; --small:#eb6834; --price:#1f2430; --ppl:#b9bfcc;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  input,select,button,a.btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  #q{flex:1 1 90px;min-width:0;max-width:240px}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  button,a.btn{cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin:0 0 10px}
+  .tabs button{border:0;border-radius:0;background:none;height:38px;padding:0 16px;color:var(--muted);border-bottom:2px solid transparent;font-weight:600}
+  .tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .setrow{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--muted);margin:2px 0 10px}
+  .setrow label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .setrow select,.setrow input{height:30px;padding:3px 6px;font-size:13px}
+  .setrow input[type=number]{width:70px}
+  .setrow input[type=checkbox]{height:auto;width:auto}
+  .title{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:6px 0 10px}
+  .title .nm{font-size:20px;font-weight:700}
+  .title .px{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .up{color:var(--up)} .dn{color:var(--down)}
+  .msg{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .card .k{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .card .k i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .card .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0}
+  .card .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  section{margin-top:16px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600}
+  h2 .muted{font-weight:400;font-size:12px;margin-left:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:30px;vertical-align:middle}
+  .seg button{border:0;border-radius:0;height:28px;padding:0 10px;background:var(--panel2);color:var(--muted)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .chartwrap{position:relative}
+  canvas{display:block;width:100%;touch-action:pan-y}
+  #tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:12px;line-height:1.6;min-width:170px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  #tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 4px}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:3px}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+  th{background:var(--panel);color:var(--muted);font-weight:500;position:sticky;top:0}
+  th:first-child,td:first-child,td.l,th.l{text-align:left}
+  th.sort{cursor:pointer} th.sort.on{color:var(--text)}
+  tr.click{cursor:pointer} tr.click:hover td{background:var(--panel)}
+  b.num{font-weight:600}
+  .verdict{font-size:13px;margin:8px 2px 0;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+  footer{margin-top:22px;font-size:12px;color:var(--muted)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>大戶散戶</h1>
+  <input id="q" list="names" placeholder="代號或名稱" autocomplete="off" enterkeyhint="go"><datalist id="names"></datalist>
+  <button class="primary" id="go">查詢</button>
+  <span class="spacer"></span>
+  <a class="btn" id="back" href="./">← 看盤</a>
+</header>
+<main>
+  <div class="tabs"><button data-t="stock" class="on">個股籌碼</button><button data-t="screen">大戶買・散戶賣 選股</button></div>
+  <div class="setrow">
+    <label>大戶 <select id="bigSel"><option value="100">100 張以上</option><option value="400">400 張以上</option><option value="1000">1000 張以上</option></select></label>
+    <label>散戶 <select id="smallSel"><option value="5">5 張以下</option><option value="10">10 張以下</option><option value="50">50 張以下</option><option value="100">100 張以下</option></select></label>
+    <span class="small" id="cov"></span>
+  </div>
+
+  <div id="tabStock">
+    <div class="chips" id="chips"></div>
+    <div id="out"><div class="msg">載入中…</div></div>
+  </div>
+
+  <div id="tabScreen" hidden>
+    <div class="setrow">
+      <label>比較 <select id="sWeeks"><option value="1">近 1 週</option><option value="2">近 2 週</option><option value="4" selected>近 4 週</option><option value="8">近 8 週</option><option value="12">近 12 週</option></select></label>
+      <label>大戶增加至少 <input type="number" id="sBig" value="0.5" step="0.1" min="0"> 個百分點</label>
+      <label><input type="checkbox" id="sSmall" checked>散戶減少</label>
+      <label><input type="checkbox" id="sPpl" checked>股東人數減少</label>
+      <label>最新成交 ≥ <input type="number" id="sVol" value="100" step="50" min="0"> 張</label>
+      <label><select id="sMkt"><option value="">上市＋上櫃</option><option value="上市">只看上市</option><option value="上櫃">只看上櫃</option></select></label>
+    </div>
+    <div id="sOut"><div class="msg">載入選股資料中…</div></div>
+  </div>
+
+  <footer>
+    資料來源：臺灣集中保管結算所「集保戶股權分散表」（每週公布一次，與神秘金字塔同一份資料），涵蓋全部上市、上櫃普通股；股價走勢來自 FinMind。
+    持股比例是占集保庫存的比例；大戶、散戶的門檻以「持有張數」區分，可在上方切換。籌碼集中不代表一定上漲，請搭配其他資訊判斷。
+  </footer>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+function fmtPx(v){ if (v == null || isNaN(v)) return '–'; if (Number.isInteger(v) || v >= 1000) return fmtInt(v); return v >= 100 ? v.toFixed(1).replace(/\.0$/,'') : v.toFixed(2).replace(/\.?0+$/,''); }
+const pct = v => v == null ? '–' : v.toFixed(2) + '%';
+const pp = (v, d = 2) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(d);
+const sgn = v => v > 0 ? 'up' : v < 0 ? 'dn' : '';
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+
+/* 門檻 → 級距（0 起算）：1:1-999 2:1-5張 3:5-10張 4:10-15 5:15-20 6:20-30 7:30-40 8:40-50 9:50-100 10:100-200 11:200-400 12:400-600 13:600-800 14:800-1000 15:1000以上 */
+const BIG = { '100':[9,15], '400':[11,15], '1000':[14,15] };
+const SMALL = { '5':[0,2], '10':[0,3], '50':[0,8], '100':[0,9] };
+const LEVELS = ['1 股–未滿 1 張','1–5 張','5–10 張','10–15 張','15–20 張','20–30 張','30–40 張','40–50 張','50–100 張','100–200 張','200–400 張','400–600 張','600–800 張','800–1000 張','1000 張以上'];
+let BIGK = store.get('holders.big') || '400', SMALLK = store.get('holders.small') || '50';
+$('#bigSel').value = BIGK; $('#smallSel').value = SMALLK;
+const bigLab = () => '大戶（' + BIGK + ' 張以上）', smallLab = () => '散戶（' + SMALLK + ' 張以下）';
+function sumPct(rec, rg){ let s = 0; for (let i = rg[0]; i < rg[1]; i++) s += rec[17 + i]; return s / 1e4; }
+function sumPpl(rec, rg){ let s = 0; for (let i = rg[0]; i < rg[1]; i++) s += rec[2 + i]; return s; }
+
+/* ───────── FinMind 股價 ───────── */
+const FM = 'https://api.finmindtrade.com/api/v4/data';
+async function finmind(params){
+  const qs = new URLSearchParams(params), tok = (SET.token || '').trim();
+  let res;
+  try { res = await fetch(FM + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {}); }
+  catch(e){ if (!tok) throw e; qs.set('token', tok); res = await fetch(FM + '?' + qs); }
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('FinMind ' + res.status));
+  return j.data || [];
+}
+
+/* ───────── 清單 ───────── */
+let INDEX = { stocks:[] }, NAMES = {};
+async function loadIndex(){
+  try { const r = await fetch('data/holders/index.json?t=' + Date.now()); if (r.ok) INDEX = await r.json(); } catch(e){}
+  (INDEX.stocks || []).forEach(s => NAMES[s[0]] = s[1]);
+  $('#names').innerHTML = (INDEX.stocks || []).map(s => `<option value="${esc(s[0])} ${esc(s[1])}">`).join('');
+  const watch = INDEX.watch || [];
+  $('#chips').innerHTML = watch.map(c => `<span class="chip" data-c="${esc(c)}">${esc(c)} ${esc(NAMES[c] || '')}</span>`).join('');
+  $('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) open(c.dataset.c); };
+  if (INDEX.total) $('#cov').textContent = `資料至 ${INDEX.latest || '–'}・已收錄 ${fmtInt(INDEX.have)}／${fmtInt(INDEX.total)} 檔` +
+    (INDEX.fullYear < INDEX.have ? `（一年歷史已補齊 ${fmtInt(INDEX.fullYear)} 檔，其餘自動補抓中）` : '');
+}
+function resolve(v){
+  v = String(v || '').trim();
+  const m = v.match(/^[0-9]{4}[0-9A-Z]{0,2}/i);
+  if (m) return m[0].toUpperCase();
+  const hit = (INDEX.stocks || []).find(s => s[1] === v) || (INDEX.stocks || []).find(s => (s[1] || '').includes(v));
+  return hit ? hit[0] : '';
+}
+
+/* ───────── 個股 ───────── */
+let CUR = null, RANGE = +(store.get('holders.range') || 26);
+async function open(code){
+  code = resolve(code); if (!code) return;
+  showTab('stock');
+  $('#q').value = code; history.replaceState(null, '', '?s=' + code); store.set('holders.last', code);
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.c === code));
+  const out = $('#out');
+  out.innerHTML = '<div class="msg">讀取 ' + esc(code) + ' 的集保資料…</div>';
+  let D = null;
+  try { const r = await fetch('data/holders/' + code + '.json?t=' + Date.now()); if (r.ok) D = await r.json(); } catch(e){}
+  const dates = D ? Object.keys(D.w).sort() : [];
+  if (!dates.length){
+    out.innerHTML = `<div class="msg">${esc(code)} ${NAMES[code] ? esc(NAMES[code]) + ' ' : ''}還沒有集保資料。` +
+      (INDEX.total ? '可能還在排隊補抓，或不是上市、上櫃普通股。' : '') + '</div>';
+    return;
+  }
+  let px = {}, last = null, pxErr = '';
+  try {
+    const rows = await finmind({ dataset:'TaiwanStockPrice', data_id:code, start_date: dates[0].slice(0,8) + '01' });
+    let j = 0;
+    for (const d of dates){
+      while (j < rows.length && rows[j].date <= d){ px[d] = +rows[j].close; j++; }
+      if (px[d] == null && j > 0) px[d] = +rows[j-1].close;
+    }
+    const lr = rows[rows.length - 1]; if (lr) last = { date: lr.date, close: +lr.close, chg: +lr.spread };
+  } catch(e){ pxErr = e.message || String(e); }
+  CUR = { code, name: NAMES[code] || D.name || '', D, dates, px, last, pxErr };
+  render();
+}
+
+function series(){
+  const C = CUR, bg = BIG[BIGK], sm = SMALL[SMALLK];
+  return C.dates.map(d => {
+    const r = C.D.w[d];
+    return { d, big: sumPct(r, bg), small: sumPct(r, sm), ppl: r[0], bigPpl: sumPpl(r, bg), k1000: r[16], shares: r[1], px: C.px[d] ?? null, rec: r };
+  });
+}
+
+function card(color, k, v, sub){ return `<div class="card"><div class="k">${color ? `<i style="background:${color}"></i>` : ''}${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`; }
+function ago(S, n){ return S[Math.max(0, S.length - 1 - n)]; }
+
+function render(){
+  const C = CUR, S = series(), L = S[S.length - 1];
+  const w1 = ago(S, 1), w4 = ago(S, 4);
+  const dB4 = L.big - w4.big, dS4 = L.small - w4.small, dP4 = (L.ppl - w4.ppl) / w4.ppl * 100;
+  const sig = [];
+  sig.push(dB4 > 0.05 ? '大戶增加' : dB4 < -0.05 ? '大戶減少' : '大戶持平');
+  sig.push(dS4 < -0.05 ? '散戶減少' : dS4 > 0.05 ? '散戶增加' : '散戶持平');
+  sig.push(dP4 < -0.3 ? '股東人數減少' : dP4 > 0.3 ? '股東人數增加' : '股東人數持平');
+  const conc = (dB4 > 0.05) + (dS4 < -0.05) + (dP4 < -0.3), disp = (dB4 < -0.05) + (dS4 > 0.05) + (dP4 > 0.3);
+  const verdict = conc >= 2 && !disp ? '籌碼往大戶集中' : disp >= 2 && !conc ? '籌碼往散戶分散' : '籌碼變化不明顯或方向不一致';
+  const n = S.length;
+  $('#out').innerHTML = `
+    <div class="title">
+      <span class="nm">${esc(C.name || C.code)} <span class="muted" style="font-size:15px;font-weight:400">${esc(C.code)}</span></span>
+      ${C.last ? `<span class="px">${fmtPx(C.last.close)}</span><span class="small ${sgn(C.last.chg)}">${C.last.chg > 0 ? '+' : ''}${fmtPx(C.last.chg)}</span><span class="small muted">${C.last.date}</span>` : ''}
+      <span class="small muted">集保資料至 ${L.d}・共 ${n} 週</span>
+    </div>
+    ${C.pxErr ? `<div class="msg err">股價讀取失敗（${esc(C.pxErr)}）。請到看盤頁「⚙ 設定」確認 FinMind 憑證；籌碼資料不受影響。</div>` : ''}
+    <div class="cards">
+      ${card('var(--big)', bigLab() + '持股', pct(L.big), '1 週 ' + pp(L.big - w1.big) + '・4 週 ' + pp(dB4) + ' 個百分點')}
+      ${card('var(--small)', smallLab() + '持股', pct(L.small), '1 週 ' + pp(L.small - w1.small) + '・4 週 ' + pp(dS4) + ' 個百分點')}
+      ${card('', '股東總人數', fmtInt(L.ppl), '1 週 ' + pp((L.ppl - w1.ppl) / w1.ppl * 100) + '%・4 週 ' + pp(dP4) + '%')}
+      ${card('', '平均每人持股', fmtInt(L.shares / L.ppl / 1000 * 10) / 10 + ' 張', '1000 張以上大股東 ' + fmtInt(L.k1000) + ' 人')}
+    </div>
+    <div class="verdict"><b>近 4 週：${verdict}</b><span class="muted">　${sig.join('、')}</span></div>
+    <section>
+      <h2>股價 × 大戶 × 散戶 <span class="seg" id="rng"><button data-n="13">3 個月</button><button data-n="26">半年</button><button data-n="60">1 年</button></span></h2>
+      <div class="panel">
+        <div class="legend">
+          <span><i style="background:var(--price)"></i>股價（週收盤）</span>
+          <span><i style="background:var(--big)"></i>${bigLab()}</span>
+          <span><i style="background:var(--small)"></i>${smallLab()}</span>
+          <span><i style="background:var(--ppl);height:8px;vertical-align:0"></i>股東總人數</span>
+        </div>
+        <div class="chartwrap"><canvas id="cv"></canvas><div id="tip"></div></div>
+      </div>
+      <p class="note">中間那張圖把大戶、散戶放在同一個刻度上，畫的是「跟區間第一週相比，持股比例增減了幾個百分點」，兩條線往反方向張開，就是籌碼在換手：藍線往上、橘線往下＝大戶買、散戶賣。實際比例看上方卡片，或手指點圖看當週數字。</p>
+    </section>
+    <section id="secWeeks"></section>
+    <section id="secDist"></section>`;
+  document.querySelectorAll('#rng button').forEach(b => {
+    b.classList.toggle('on', +b.dataset.n === RANGE);
+    b.onclick = () => { RANGE = +b.dataset.n; store.set('holders.range', RANGE); document.querySelectorAll('#rng button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+  });
+  draw(); weeksTable(S); distTable(S);
+}
+
+/* ───────── 圖：三層共用時間軸 ───────── */
+let HIT = null;
+function setupCanvas(cv, h){
+  const dpr = window.devicePixelRatio || 1, w = cv.parentElement.clientWidth;
+  cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w, h };
+}
+function niceTicks(lo, hi, n){
+  const span = hi - lo || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const st = [1,2,2.5,5,10].map(k => k * mag).find(k => span / k <= n + 1) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / st - 1e-9) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(6)); return out;
+}
+function draw(){
+  const cv = $('#cv'); if (!cv) return;
+  const narrow = cv.parentElement.clientWidth < 520;
+  const { g, w, h } = setupCanvas(cv, narrow ? 470 : 500);
+  const col = { text:css('--text'), muted:css('--muted'), grid:css('--grid'), line:css('--line'), big:css('--big'), small:css('--small'), price:css('--price'), ppl:css('--ppl'), bg:css('--panel') };
+  const all = series(), S = all.slice(-RANGE), n = S.length;
+  const padL = 8, padR = narrow ? 50 : 60, x0 = padL, x1 = w - padR;
+  const X = i => n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1);
+  const gapP = 14;
+  const A = { t: 8, h: narrow ? 120 : 130 };                 // 股價
+  const B = { t: A.t + A.h + gapP + 8, h: narrow ? 190 : 200 };  // 大戶散戶變化
+  const P = { t: B.t + B.h + gapP + 8, h: h - (B.t + B.h + gapP + 8) - 24 }; // 股東人數
+  g.clearRect(0, 0, w, h);
+  g.font = '11px -apple-system,"Noto Sans TC",sans-serif'; g.textBaseline = 'middle';
+  const label = (t, y, c) => { g.fillStyle = c || col.muted; g.textAlign = 'left'; g.fillText(t, x0, y); };
+
+  // A：股價
+  const pxs = S.map(s => s.px).filter(v => v != null);
+  if (pxs.length){
+    let lo = Math.min(...pxs), hi = Math.max(...pxs); const pd = (hi - lo) * .1 || hi * .05 || 1; lo -= pd; hi += pd;
+    const Y = v => A.t + A.h - (v - lo) / (hi - lo) * A.h;
+    gridY(g, niceTicks(lo, hi, 3), Y, x0, x1, col, fmtPx);
+    line(g, S.map((s, i) => s.px == null ? null : [X(i), Y(s.px)]), col.price, 2);
+    A.Y = Y;
+  } else { g.fillStyle = col.muted; g.textAlign = 'center'; g.fillText('股價讀取失敗', (x0 + x1) / 2, A.t + A.h / 2); }
+  label('股價', A.t + 2);
+
+  // B：大戶、散戶持股比變化（同一刻度，百分點）
+  const b0 = S[0].big, s0 = S[0].small;
+  const db = S.map(s => s.big - b0), ds = S.map(s => s.small - s0);
+  let lo = Math.min(0, ...db, ...ds), hi = Math.max(0, ...db, ...ds); const pd = (hi - lo) * .12 || .1; lo -= pd; hi += pd;
+  const YB = v => B.t + B.h - (v - lo) / (hi - lo) * B.h;
+  gridY(g, niceTicks(lo, hi, 4), YB, x0, x1, col, v => pp(v, Math.abs(hi - lo) < 1 ? 2 : 1));
+  g.strokeStyle = col.muted; g.lineWidth = 1; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x0, YB(0)); g.lineTo(x1, YB(0)); g.stroke(); g.setLineDash([]);
+  line(g, ds.map((v, i) => [X(i), YB(v)]), col.small, 2);
+  line(g, db.map((v, i) => [X(i), YB(v)]), col.big, 2);
+  // 末端標示
+  const endLab = (v, c, txt, dy) => {
+    const y = YB(v); g.beginPath(); g.arc(X(n - 1), y, 4, 0, 7); g.fillStyle = c; g.fill(); g.strokeStyle = col.bg; g.lineWidth = 2; g.stroke();
+    g.fillStyle = col.text; g.textAlign = 'left'; g.font = 'bold 11px -apple-system,"Noto Sans TC",sans-serif';
+    g.fillText(txt, x1 + 6, y + dy); g.font = '11px -apple-system,"Noto Sans TC",sans-serif';
+  };
+  const yb = YB(db[n-1]), ys = YB(ds[n-1]), sep = Math.abs(yb - ys) < 14 ? (yb < ys ? -7 : 7) : 0;
+  endLab(db[n-1], col.big, pp(db[n-1]), sep); endLab(ds[n-1], col.small, pp(ds[n-1]), -sep);
+  label('大戶、散戶持股比例：區間累計增減（百分點）', B.t - 6);
+
+  // C：股東總人數
+  const ppl = S.map(s => s.ppl); let plo = Math.min(...ppl), phi = Math.max(...ppl); const ppd = (phi - plo) * .15 || phi * .02 || 1; plo -= ppd; phi += ppd * .3;
+  const YP = v => P.t + P.h - (v - plo) / (phi - plo) * P.h;
+  gridY(g, niceTicks(plo, phi, 2), YP, x0, x1, col, v => v >= 1e4 ? (v / 1e4).toFixed(v >= 1e5 ? 0 : 1) + ' 萬' : fmtInt(v));
+  const bw = Math.max(2, Math.min(12, (x1 - x0) / n * .6));
+  g.fillStyle = col.ppl;
+  S.forEach((s, i) => { const y = YP(s.ppl); g.fillRect(X(i) - bw / 2, y, bw, P.t + P.h - y); });
+  label('股東總人數', P.t - 6);
+
+  // X 軸
+  g.fillStyle = col.muted; g.textAlign = 'center';
+  const every = Math.ceil(n / (narrow ? 5 : 8));
+  S.forEach((s, i) => { if ((n - 1 - i) % every === 0) g.fillText(s.d.slice(5).replace('-', '/'), Math.min(Math.max(X(i), x0 + 16), x1 - 16), h - 10); });
+  HIT = { S, X, n, x0, x1, A, B, P, YB, YP, db, ds, h };
+  bindTip();
+}
+function gridY(g, ticks, Y, x0, x1, col, fmt){
+  g.strokeStyle = col.grid; g.lineWidth = 1; g.fillStyle = col.muted; g.textAlign = 'left';
+  for (const t of ticks){ const y = Y(t); g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.fillText(fmt(t), x1 + 6, y); }
+}
+function line(g, pts, c, wd){
+  g.strokeStyle = c; g.lineWidth = wd; g.lineJoin = 'round'; g.lineCap = 'round'; g.beginPath();
+  let started = false; for (const p of pts){ if (!p){ started = false; continue; } started ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); started = true; }
+  g.stroke();
+}
+function bindTip(){
+  const cv = $('#cv'), tip = $('#tip');
+  const show = ev => {
+    if (!HIT) return;
+    const r = cv.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    let i = HIT.n === 1 ? 0 : Math.round((x - HIT.x0) / (HIT.x1 - HIT.x0) * (HIT.n - 1));
+    i = Math.max(0, Math.min(HIT.n - 1, i));
+    const s = HIT.S[i], p = HIT.S[i - 1];
+    const wk = (a, b) => b ? `（週 ${pp(a - b)}）` : '';
+    tip.innerHTML = `<b>${s.d}</b><br>週收盤 ${fmtPx(s.px)}<br>
+      <i style="background:var(--big)"></i>${bigLab()} ${pct(s.big)}${wk(s.big, p && p.big)}<br>
+      <i style="background:var(--small)"></i>${smallLab()} ${pct(s.small)}${wk(s.small, p && p.small)}<br>
+      股東 ${fmtInt(s.ppl)} 人${p ? `（週 ${pp((s.ppl - p.ppl) / p.ppl * 100)}%）` : ''}`;
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth, cx = HIT.X(i);
+    tip.style.left = Math.max(0, Math.min(r.width - tw, cx + 14 + tw > r.width ? cx - tw - 14 : cx + 14)) + 'px';
+    tip.style.top = (HIT.B.t + 4) + 'px';
+  };
+  cv.onmousemove = show; cv.onclick = show; cv.ontouchstart = show;
+  cv.onmouseleave = () => tip.style.display = 'none';
+}
+
+/* ───────── 表格 ───────── */
+function weeksTable(S){
+  const rows = [...S].reverse().slice(0, 26);
+  $('#secWeeks').innerHTML = `<h2>每週明細 <span class="muted">最近 ${rows.length} 週</span></h2>
+  <div class="tblwrap"><table><thead><tr><th>日期</th><th>週收盤</th><th>${bigLab()}</th><th>週增減</th><th>${smallLab()}</th><th>週增減</th><th>股東人數</th><th>週增減</th><th>人均張數</th><th>千張大戶人數</th></tr></thead><tbody>
+  ${rows.map((s, k) => { const p = rows[k + 1];
+    const d1 = p ? s.big - p.big : null, d2 = p ? s.small - p.small : null, d3 = p ? s.ppl - p.ppl : null;
+    return `<tr><td>${s.d}</td><td>${fmtPx(s.px)}</td><td><b class="num">${pct(s.big)}</b></td><td class="${sgn(d1)}">${pp(d1)}</td>
+      <td><b class="num">${pct(s.small)}</b></td><td class="${sgn(-d2)}">${pp(d2)}</td><td>${fmtInt(s.ppl)}</td><td class="${sgn(-d3)}">${d3 == null ? '–' : (d3 > 0 ? '+' : '') + fmtInt(d3)}</td>
+      <td>${(s.shares / s.ppl / 1000).toFixed(1)}</td><td>${fmtInt(s.k1000)}</td></tr>`; }).join('')}
+  </tbody></table></div>
+  <p class="note">大戶增加標紅、散戶與股東人數減少標紅（對籌碼集中是加分）；反之標綠。</p>`;
+}
+function distTable(S){
+  const L = S[S.length - 1], P = S[Math.max(0, S.length - 5)];
+  $('#secDist').innerHTML = `<h2>持股分級 <span class="muted">${L.d}，與 ${P.d}（4 週前）比較</span></h2>
+  <div class="tblwrap"><table><thead><tr><th>持股張數</th><th>人數</th><th>人數增減</th><th>持股比例</th><th>比例增減</th></tr></thead><tbody>
+  ${LEVELS.map((lab, i) => { const a = L.rec[2 + i], b = P.rec[2 + i], c = L.rec[17 + i] / 1e4, d = P.rec[17 + i] / 1e4;
+    return `<tr><td>${lab}</td><td>${fmtInt(a)}</td><td class="${sgn(a - b)}">${a - b > 0 ? '+' : ''}${fmtInt(a - b)}</td><td>${c.toFixed(2)}%</td><td class="${sgn(c - d)}">${pp(c - d)}</td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+
+/* ───────── 選股 ───────── */
+let SCR = null, SORT = { k:'db', dir:-1 };
+async function loadScreen(){
+  if (SCR) return runScreen();
+  try { const r = await fetch('data/holders/screen.json?t=' + Date.now()); if (r.ok) SCR = await r.json(); } catch(e){}
+  if (!SCR || !SCR.rows || !SCR.rows.length){ $('#sOut').innerHTML = '<div class="msg">選股資料還在準備中，請稍後再來。</div>'; SCR = null; return; }
+  SCR.ci = {}; SCR.cols.forEach((c, i) => SCR.ci[c] = i);
+  runScreen();
+}
+function runScreen(){
+  const ci = SCR.ci, W = +$('#sWeeks').value, minB = +$('#sBig').value || 0, needS = $('#sSmall').checked, needP = $('#sPpl').checked,
+        minV = +$('#sVol').value || 0, mkt = $('#sMkt').value, nd = SCR.dates.length;
+  const bi = ci['b' + BIGK], si = ci['s' + SMALLK], pi = ci.ppl;
+  const res = [];
+  let usable = 0;
+  for (const r of SCR.rows){
+    const B = r[bi], Sm = r[si], Pp = r[pi];
+    const e = nd - 1, s = nd - 1 - W;
+    if (s < 0 || B[e] == null || B[s] == null) continue;
+    usable++;
+    if (mkt && r[ci.market] !== mkt) continue;
+    if (minV && r[ci.vol] != null && r[ci.vol] < minV) continue;   // 沒有成交量資料時不排除
+    const db = (B[e] - B[s]) / 100, dsm = (Sm[e] - Sm[s]) / 100, dp = (Pp[e] - Pp[s]) / Pp[s] * 100;
+    if (db < minB) continue;
+    if (needS && !(dsm < 0)) continue;
+    if (needP && !(dp < 0)) continue;
+    let streak = 0; for (let k = e; k > 0 && B[k] != null && B[k-1] != null && B[k] > B[k-1]; k--) streak++;
+    res.push({ code:r[ci.code], name:r[ci.name], ind:r[ci.ind], mkt:r[ci.market], close:r[ci.close], vol:r[ci.vol],
+               big:B[e] / 100, db, dsm, dp, streak });
+  }
+  const k = SORT.k; res.sort((a, b) => ((a[k] ?? -1e9) < (b[k] ?? -1e9) ? -1 : (a[k] ?? -1e9) > (b[k] ?? -1e9) ? 1 : 0) * SORT.dir);
+  const from = SCR.dates[Math.max(0, nd - 1 - W)], to = SCR.dates[nd - 1];
+  const th = (key, lab, cls) => `<th class="sort ${cls || ''} ${SORT.k === key ? 'on' : ''}" data-k="${key}">${lab}${SORT.k === key ? (SORT.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`;
+  const shown = res.slice(0, 300);
+  if (!res.length){ $('#sOut').innerHTML = `<div class="msg">${from} → ${to} 沒有符合條件的股票，可以把「大戶增加至少」調低，或把比較期間拉長。</div>`; return; }
+  $('#sOut').innerHTML = `<p class="small muted" style="margin:0 0 6px">${from} → ${to}・符合 <b style="color:var(--text)">${res.length}</b> 檔（共比較 ${fmtInt(usable)} 檔有資料的股票）${res.length > 300 ? '，只列前 300 檔' : ''}・點一列看個股圖</p>
+  <div class="tblwrap"><table><thead><tr>${th('code','股票','l')}${th('db','大戶增減')}${th('dsm','散戶增減')}${th('dp','人數增減')}${th('big', '大戶持股')}${th('streak','大戶連增')}${th('close','收盤')}${th('vol','成交張')}<th class="l">產業</th></tr></thead>
+  <tbody>${shown.map(x => `<tr class="click" data-c="${esc(x.code)}"><td class="l"><b>${esc(x.code)}</b> ${esc(x.name)}</td>
+    <td class="up"><b class="num">${pp(x.db)}</b></td><td class="${sgn(-x.dsm)}">${pp(x.dsm)}</td><td class="${sgn(-x.dp)}">${pp(x.dp)}%</td>
+    <td>${pct(x.big)}</td><td>${x.streak ? x.streak + ' 週' : '–'}</td><td>${fmtPx(x.close)}</td><td>${x.vol == null ? '–' : fmtInt(x.vol)}</td><td class="l muted">${esc(x.ind || '')}</td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="note">大戶持股＝目前選的大戶門檻（上方可切換）。大戶、散戶增減的單位是「持股比例的百分點」；人數增減是股東總人數的變化百分比。收盤、成交張是最新一個交易日。條件越嚴（期間拉長、門檻提高），越能篩掉單週雜訊。</p>`;
+  $('#sOut').querySelector('thead').onclick = e => { const t = e.target.closest('th.sort'); if (!t) return;
+    SORT = SORT.k === t.dataset.k ? { k:SORT.k, dir:-SORT.dir } : { k:t.dataset.k, dir: t.dataset.k === 'code' ? 1 : (t.dataset.k === 'dsm' || t.dataset.k === 'dp' ? 1 : -1) }; runScreen(); };
+  $('#sOut').querySelector('tbody').onclick = e => { const tr = e.target.closest('tr.click'); if (tr) open(tr.dataset.c); };
+}
+['sWeeks','sBig','sSmall','sPpl','sVol','sMkt'].forEach(id => $('#' + id).addEventListener('change', () => { saveScreenSet(); runScreen(); }));
+function saveScreenSet(){ store.set('holders.screen', JSON.stringify({ w:$('#sWeeks').value, b:$('#sBig').value, s:$('#sSmall').checked, p:$('#sPpl').checked, v:$('#sVol').value, m:$('#sMkt').value })); }
+try { const o = JSON.parse(store.get('holders.screen') || 'null'); if (o){ $('#sWeeks').value = o.w; $('#sBig').value = o.b; $('#sSmall').checked = o.s; $('#sPpl').checked = o.p; $('#sVol').value = o.v; $('#sMkt').value = o.m; } } catch(e){}
+
+/* ───────── 分頁、門檻、啟動 ───────── */
+function showTab(t){
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  $('#tabStock').hidden = t !== 'stock'; $('#tabScreen').hidden = t !== 'screen';
+  store.set('holders.tab', t);
+  if (t === 'screen') loadScreen();
+}
+document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; showTab(b.dataset.t);
+  if (b.dataset.t === 'stock' && !CUR){ open(store.get('holders.last') || (INDEX.watch && INDEX.watch[0]) || '2330'); return; }
+  if (b.dataset.t === 'screen') history.replaceState(null, '', '?tab=screen'); else if (CUR) history.replaceState(null, '', '?s=' + CUR.code); };
+$('#bigSel').onchange = () => { BIGK = $('#bigSel').value; store.set('holders.big', BIGK); if (CUR) render(); if (SCR) runScreen(); };
+$('#smallSel').onchange = () => { SMALLK = $('#smallSel').value; store.set('holders.small', SMALLK); if (CUR) render(); if (SCR) runScreen(); };
+$('#go').onclick = () => open($('#q').value);
+$('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
+$('#q').onchange = () => { if (/^[0-9]{4}[0-9A-Z]{0,2} /.test($('#q').value)) open($('#q').value); };
+$('#back').href = innerWidth < 700 ? 'mobile.html' : './';
+let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR && !$('#tabStock').hidden) draw(); }, 200); });
+(async () => {
+  await loadIndex();
+  const p = new URLSearchParams(location.search);
+  if (p.get('tab') === 'screen'){ showTab('screen'); return; }
+  open(p.get('s') || store.get('holders.last') || (INDEX.watch && INDEX.watch[0]) || '2330');
+})();
+</script>
+</body>
+</html>
