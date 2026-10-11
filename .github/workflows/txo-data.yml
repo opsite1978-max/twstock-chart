@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: 計算每日總 Gamma 曝險（FinMind）
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
@@ -37,5 +39,9 @@ jobs:
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="txo-bot" -c user.email="txo-bot@users.noreply.github.com" commit -qm "台指選擇權 Gamma 曝險歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
-          for i in 1 2 3 4 5; do if git pull -q --rebase origin main && git push -q origin HEAD:main; then ok=1; break; fi; sleep $((RANDOM % 10 + 5)); done
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 10 + 5))
+          done
           [ "$ok" = 1 ]
