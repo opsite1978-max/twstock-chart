@@ -86,7 +86,8 @@ def fetch_twse(d, typ):
     for r in t['data']:
         val = num(r[i_val])
         dirn = direction(r[i_dir]) if num(r[i_chg]) else 0
-        rows.append((r[i_u].strip(), r[i_un].strip(), val, dirn, r[i_code].strip(), num(r[i_close]) or None, num(r[i_vol])))
+        st = lambda x: str(x if x is not None else '').strip()
+        rows.append((st(r[i_u]), st(r[i_un]), val, dirn, st(r[i_code]), num(r[i_close]) or None, num(r[i_vol])))
     return rows
 
 def fetch_tpex(d):
@@ -100,7 +101,7 @@ def fetch_tpex(d):
         return None
     rows = []
     for r in data:
-        code, name, chg, val = r[0].strip(), r[1].strip(), r[3], num(r[8])
+        code, name, chg, val = str(r[0] or '').strip(), str(r[1] or '').strip(), r[3], num(r[8])
         kind = 'P' if '售' in name else 'C' if '購' in name else ''
         if not kind:
             continue   # 牛熊證等略過
