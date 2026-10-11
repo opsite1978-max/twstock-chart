@@ -1,0 +1,34 @@
+name: 選擇權樣本資料（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 抓樣本
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir out && cat > p.py <<'PY'
+          import json, os, urllib.request, urllib.parse
+          tok = os.environ['FINMIND_TOKEN']
+          def get(name, **q):
+              q['token'] = tok
+              j = json.load(urllib.request.urlopen('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(q), timeout=120))
+              j.pop('token_tail', None)
+              open('out/' + name + '.json', 'w').write(json.dumps(j, ensure_ascii=False).replace(tok, '***'))
+          get('td', dataset='TaiwanStockTradingDate', start_date='2026-08-01')
+          get('opt1008', dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-08')
+          get('opt1007', dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-07', end_date='2026-10-07')
+          get('inst', dataset='TaiwanOptionInstitutionalInvestors', data_id='TXO', start_date='2026-09-28', end_date='2026-10-08')
+          get('big', dataset='TaiwanOptionOpenInterestLargeTraders', data_id='TXO', start_date='2026-09-28', end_date='2026-10-08')
+          get('fut', dataset='TaiwanFuturesDaily', data_id='TX', start_date='2026-10-07')
+          PY
+          python3 p.py
+      - name: 存結果
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
