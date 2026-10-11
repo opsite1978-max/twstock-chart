@@ -22,8 +22,15 @@ TW = datetime.timezone(datetime.timedelta(hours=8))
 LOOKBACK_DAYS = 120
 WINDOWS = (1, 5, 10, 20)
 BASE = 60
-DETAIL_DAYS = 25
+DETAIL_DAYS = 22
+DETAIL_MIN = 100000   # 逐檔明細只留單日成交 10 萬元以上的權證（約占總成交金額九成以上），節省空間
 GAP = 3.2
+
+LOG = []
+_print = print
+def print(*a, **k):
+    _print(*a, **k)
+    LOG.append(datetime.datetime.now(TW).strftime('%m-%d %H:%M:%S ') + ' '.join(str(x) for x in a))
 
 _last = [0.0]
 def get_json(url):
@@ -196,14 +203,17 @@ def cmd_update():
         except Exception as e:
             print('FAIL', key, e, flush=True); continue
         if otc is None:
-            print(key, 'OTC not published yet, retry later', flush=True); continue
+            if (today - d).days <= 3:
+                print(key, 'OTC not published yet, retry later', flush=True); continue
+            print(key, 'OTC data unavailable, saving listed warrants only', flush=True)
+            otc = []
         agg, wl = {}, []
         for kind, rows in (('C', calls), ('P', puts)):
             for ucode, uname, val, dirn, wcode, close, vol in rows:
                 if uname and ucode and re.fullmatch(r'[0-9A-Z]{4,6}', ucode):
                     alias.setdefault(uname, ucode)   # 權證用的標的簡稱 → 代號
                 add(agg, ucode, kind, val, dirn)
-                if val > 0:
+                if val >= DETAIL_MIN:
                     wl.append([wcode, ucode, kind, round(val), dirn, close, round(vol / 1000)])
         keys = sorted(alias, key=len, reverse=True)
         miss = 0
@@ -213,7 +223,7 @@ def cmd_update():
                 miss += val > 0; continue
             wmap.setdefault(code, u)
             add(agg, u, kind, val, dirn)
-            if val > 0:
+            if val >= DETAIL_MIN:
                 wl.append([code, u, kind, round(val), dirn, close, round(vol / 1000)])
         rows = {c: [round(x / 1e4) for x in v[:6]] + [v[6]] for c, v in agg.items()
                 if (univ is None or c in univ) and (v[0] or v[3])}
@@ -239,6 +249,8 @@ def cmd_update():
             os.remove(os.path.join(DAYS, fn))
     print('fetched days', got, flush=True)
     build()
+    with open(os.path.join(OUT, '_lastrun.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(LOG[-300:]) + '\n')
 
 def build():
     files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
@@ -283,12 +295,7 @@ def build_detail(days):
     """每檔標的一個檔：每日認購／認售分布（全部天數）＋最近 20 日逐檔權證彙總"""
     ud = os.path.join(OUT, 'u')
     os.makedirs(ud, exist_ok=True)
-    metaf = os.path.join(OUT, 'meta.json')
-    meta = json.load(open(metaf, encoding='utf-8')) if os.path.exists(metaf) else {}
-    if not meta or os.environ.get('REFRESH_META', '1') == '1':
-        fresh = fetch_meta()
-        if fresh:
-            meta.update(fresh)
+    meta = fetch_meta()   # 權證基本資料每次重新下載，不存進專案
     alias = load_alias(); keys = sorted(alias, key=len, reverse=True)
     det = [d for d in days[:20] if 'w' in d]
     used = set()
@@ -302,9 +309,6 @@ def build_detail(days):
             elif dirn < 0: p['dn'] += val
             if close and d['d'] > p['cd']:
                 p['c'], p['cd'] = close, d['d']
-    meta = {k: v for k, v in meta.items() if k in used or k in per}
-    with open(metaf, 'w', encoding='utf-8') as f:
-        json.dump({k: meta[k] for k in sorted(used) if k in meta}, f, ensure_ascii=False, separators=(',', ':'))
     asc = days[::-1]
     codes = set(per) | set(c for d in days[:20] for c in d['r'])
     for fn in os.listdir(ud):
@@ -312,7 +316,17 @@ def build_detail(days):
             os.remove(os.path.join(ud, fn))
     for c in codes:
         series = [[d['d']] + (d['r'][c][:6] if c in d['r'] else [0] * 6) for d in asc]
-        ws = []
+        ws, iss = [], {}
+        for wcode, p in per.get(c, {}).items():   # 發行商分布用全部權證計算
+            m = meta.get(wcode, [])
+            k = (issuer_of(m[0], keys) if m and m[0] else '') or '其他'
+            o = iss.setdefault(k, [0, 0, 0, 0, 0])
+            if p['k'] == 'C':
+                o[0] += p['v']; o[1] += p['up']; o[2] += p['dn']
+            else:
+                o[3] += p['v']
+            o[4] += 1
+        iss = [[k] + [round(x / 1e4, 1) for x in v[:4]] + [v[4]] for k, v in sorted(iss.items(), key=lambda kv: -(kv[1][0] + kv[1][3]))]
         for wcode, p in sorted(per.get(c, {}).items(), key=lambda kv: -kv[1]['v'])[:60]:
             m = meta.get(wcode, [])
             name = m[0] if m else ''
@@ -322,7 +336,8 @@ def build_detail(days):
             json.dump({'code': c, 'detailFrom': det[-1]['d'] if det else '', 'detailTo': det[0]['d'] if det else '',
                        'cols': ['日期', '認購', '認購漲價', '認購跌價', '認售', '認售漲價', '認售跌價'], 'days': series,
                        'wcols': ['權證代號', '名稱', '類型', '成交萬元', '漲價成交萬元', '跌價成交萬元', '成交張數', '最新收盤', '履約價', '最後交易日', '行使比例', '發行商'],
-                       'warrants': ws}, f, ensure_ascii=False, separators=(',', ':'))
+                       'warrants': ws, 'icols': ['發行商', '認購成交萬元', '認購漲價萬元', '認購跌價萬元', '認售成交萬元', '權證檔數'], 'issuers': iss},
+                      f, ensure_ascii=False, separators=(',', ':'))
     print('detail files', len(codes), 'detail days', len(det), 'meta', len(meta), flush=True)
 
 if __name__ == '__main__':

@@ -86,6 +86,7 @@
   th.sort{cursor:pointer} th.sort.on{color:var(--text)}
   tr.click{cursor:pointer} tr.click:hover td{background:var(--panel)}
   b.num{font-weight:600}
+  .wlegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
   #insWrap iframe{width:100%;border:0;display:block;height:600px;background:transparent}
   .verdict{font-size:13px;margin:8px 2px 0;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
   footer{margin-top:22px;font-size:12px;color:var(--muted)}
@@ -111,6 +112,7 @@
   <div id="tabStock">
     <div class="chips" id="chips"></div>
     <div id="out"><div class="msg">載入中…</div></div>
+    <section id="warWrap" hidden></section>
     <section id="insWrap" hidden>
       <h2 style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">內部人買賣 <span class="muted">董事、監察人、經理人、持股超過 10% 大股東的申報</span></h2>
       <iframe id="insFrame" title="內部人買賣" loading="lazy"></iframe>
@@ -284,6 +286,7 @@ async function open(code){
   if (!dates.length){
     out.innerHTML = `<div class="msg">${esc(code)} ${NAMES[code] ? esc(NAMES[code]) + ' ' : ''}還沒有集保資料。` +
       (INDEX.total ? '可能還在排隊補抓，或不是上市、上櫃普通股。' : '') + '</div>';
+    renderWarrant(code, null, null);
     return;
   }
   let px = {}, last = null, pxErr = '';
@@ -295,9 +298,11 @@ async function open(code){
       if (px[d] == null && j > 0) px[d] = +rows[j-1].close;
     }
     const lr = rows[rows.length - 1]; if (lr) last = { date: lr.date, close: +lr.close, chg: +lr.spread };
+    var dpx = {}; for (const r of rows) dpx[r.date] = +r.close;
   } catch(e){ pxErr = e.message || String(e); }
   CUR = { code, name: NAMES[code] || D.name || '', D, dates, px, last, pxErr };
   render();
+  renderWarrant(code, typeof dpx === 'undefined' ? null : dpx, last);
 }
 
 function series(){
@@ -638,6 +643,105 @@ L_IDS.forEach(id => $('#' + id).addEventListener('change', () => {
   store.set('holders.layout', JSON.stringify(o)); runLayout(); }));
 try { const o = JSON.parse(store.get('holders.layout') || 'null'); if (o) L_IDS.forEach(i => { const el = $('#' + i); if (o[i] == null) return; if (el.type === 'checkbox') el.checked = o[i]; else el.value = o[i]; }); } catch(e){}
 
+/* ───────── 個股：權證動向 ───────── */
+let WD = null;
+let WTOKEN = '';
+async function renderWarrant(code, dpx, last){
+  WTOKEN = code;
+  const w = $('#warWrap'); w.hidden = false;
+  w.innerHTML = '<h2 style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">權證動向</h2><div class="msg">讀取權證資料…</div>';
+  let D = null;
+  try { const r = await fetch('data/warrant/u/' + code + '.json?t=' + Date.now()); if (r.ok) D = await r.json(); } catch(e){}
+  if (WTOKEN !== code) return;   // 已經換到別檔股票
+  if (!D || !D.days || !D.days.some(d => d[1] || d[4])){
+    w.innerHTML = '<h2 style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">權證動向</h2><div class="msg">這檔股票近期沒有權證成交，或沒有發行權證。</div>'; return;
+  }
+  WD = { D, dpx, last, range: +(store.get('holders.wrange') || 60) };
+  const S = last ? last.close : null;
+  const ws = D.warrants || [];
+  // 發行商分布
+  let issRows;
+  if (D.issuers) issRows = D.issuers.slice(0, 12).map(r => [r[0], { c:r[1], up:r[2], dn:r[3], p:r[4], n:r[5] }]);
+  else {
+    const iss = {};
+    for (const x of ws){ const k = x[11] || '其他'; const o = iss[k] || (iss[k] = { c:0, p:0, n:0, up:0, dn:0 }); if (x[2] === 'C'){ o.c += x[3]; o.up += x[4]; o.dn += x[5]; } else o.p += x[3]; o.n++; }
+    issRows = Object.entries(iss).sort((a, b) => (b[1].c + b[1].p) - (a[1].c + a[1].p)).slice(0, 12);
+  }
+  const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const daysLeft = d => d ? Math.round((new Date(d) - new Date(today)) / 864e5) : null;
+  const money = x => { if (!S || !x[8]) return null; return x[2] === 'C' ? (S - x[8]) / x[8] * 100 : (x[8] - S) / x[8] * 100; };
+  const top = ws.slice(0, 20);
+  const per = D.detailFrom ? `${D.detailFrom} → ${D.detailTo}` : '';
+  w.innerHTML = `<h2 style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">權證動向 <span class="seg" id="wrng"><button data-n="20">1 個月</button><button data-n="60">3 個月</button></span></h2>
+    <div class="panel">
+      <div class="legend wlegend"><span><i style="background:var(--price)"></i>股價</span><span><i style="background:var(--up)"></i>認購：權證上漲日成交（追價買進）</span><span><i style="background:var(--down)"></i>認購：下跌日成交</span><span><i style="background:var(--ppl)"></i>認購：平盤</span><span><i style="background:var(--big)"></i>認售成交（往下畫）</span></div>
+      <div class="chartwrap"><canvas id="wcv"></canvas><div id="wtip" class="wtip" style="position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.6;display:none;z-index:3;font-variant-numeric:tabular-nums;box-shadow:0 4px 14px #0006"></div></div>
+    </div>
+    <p class="note">每天一根：零線以上是認購權證的成交金額，依當天權證價格漲跌分顏色（紅＝上漲日，多半是追價買進；綠＝下跌日）；零線以下是認售權證成交金額。上面是股價，可以對照權證爆量發生在股價的什麼位置。</p>
+    ${ws.length ? `<h2 style="margin-top:14px">發行商分布 <span class="muted">${per}，依權證發行的券商（不是買方分點）</span></h2>
+    <div class="tblwrap"><table><thead><tr><th>發行商</th><th>認購成交</th><th>追價比</th><th>認售成交</th><th>權證檔數</th></tr></thead><tbody>
+    ${issRows.map(([k, o]) => `<tr><td>${esc(k)}</td><td>${fmtWan(Math.round(o.c))}</td><td>${o.up + o.dn ? (o.up / (o.up + o.dn) * 100).toFixed(0) + '%' : '–'}</td><td>${fmtWan(Math.round(o.p))}</td><td>${o.n}</td></tr>`).join('')}
+    </tbody></table></div>
+    <h2 style="margin-top:14px">成交最大的權證 <span class="muted">${per}，前 ${top.length} 檔</span></h2>
+    <div class="tblwrap"><table><thead><tr><th class="l">權證</th><th>類型</th><th>成交</th><th>追價比</th><th>履約價</th><th>價內外</th><th>剩餘天數</th><th>行使比例</th><th>收盤</th><th class="l">發行商</th></tr></thead><tbody>
+    ${top.map(x => { const m = money(x), dl = daysLeft(x[9]);
+      return `<tr><td class="l"><b>${esc(x[1] || x[0])}</b> <span class="muted small">${esc(x[0])}</span></td><td class="${x[2] === 'C' ? 'up' : ''}" style="${x[2] === 'P' ? 'color:var(--big)' : ''}">${x[2] === 'C' ? '認購' : '認售'}</td>
+      <td>${fmtWan(Math.round(x[3]))}</td><td>${x[4] + x[5] ? (x[4] / (x[4] + x[5]) * 100).toFixed(0) + '%' : '–'}</td><td>${x[8] ? fmtPx(x[8]) : '–'}</td>
+      <td>${m == null ? '–' : (m >= 0 ? '價內 ' : '價外 ') + Math.abs(m).toFixed(1) + '%'}</td><td>${dl == null ? '–' : dl + ' 天'}</td><td>${x[10] ? x[10].toFixed(3) : '–'}</td><td>${x[7] ? fmtPx(x[7]) : '–'}</td><td class="l muted">${esc(x[11] || '')}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    <p class="note">追價比＝這檔權證的成交金額裡，有多少發生在權證價格上漲的那幾天。價內外以最新股價和履約價計算；剩餘天數算到最後交易日。</p>` : '<p class="note">逐檔權證明細還在補抓中，稍後會出現發行商分布與熱門權證。</p>'}`;
+  document.querySelectorAll('#wrng button').forEach(b => {
+    b.classList.toggle('on', +b.dataset.n === WD.range);
+    b.onclick = () => { WD.range = +b.dataset.n; store.set('holders.wrange', WD.range); document.querySelectorAll('#wrng button').forEach(x => x.classList.toggle('on', x === b)); drawWarrant(); };
+  });
+  drawWarrant();
+}
+function drawWarrant(){
+  const cv = $('#wcv'); if (!cv || !WD) return;
+  const narrow = cv.parentElement.clientWidth < 520;
+  const { g, w, h } = setupCanvas(cv, narrow ? 330 : 360);
+  const col = { text:css('--text'), muted:css('--muted'), grid:css('--grid'), line:css('--line'), up:css('--up'), dn:css('--down'), flat:css('--ppl'), put:css('--big'), price:css('--price') };
+  const S = WD.D.days.slice(-WD.range), n = S.length;
+  const x0 = 8, x1 = w - (narrow ? 50 : 60), step = (x1 - x0) / n, X = i => x0 + step * (i + .5);
+  const A = { t: 10, h: narrow ? 90 : 100 }, B = { t: A.t + A.h + 26 }; B.h = h - B.t - 22;
+  g.clearRect(0, 0, w, h); g.font = '11px -apple-system,"Noto Sans TC",sans-serif'; g.textBaseline = 'middle';
+  // 股價
+  const px = S.map(d => WD.dpx ? WD.dpx[d[0]] ?? null : null), pv = px.filter(v => v != null);
+  if (pv.length){
+    let lo = Math.min(...pv), hi = Math.max(...pv); const pd = (hi - lo) * .1 || hi * .05 || 1; lo -= pd; hi += pd;
+    const Y = v => A.t + A.h - (v - lo) / (hi - lo) * A.h;
+    gridY(g, niceTicks(lo, hi, 2), Y, x0, x1, col, fmtPx);
+    line(g, px.map((v, i) => v == null ? null : [X(i), Y(v)]), col.price, 2);
+  } else { g.fillStyle = col.muted; g.textAlign = 'center'; g.fillText('股價讀取失敗', (x0 + x1) / 2, A.t + A.h / 2); }
+  g.fillStyle = col.muted; g.textAlign = 'left'; g.fillText('股價', x0, A.t);
+  // 權證成交（萬元）：認購往上、認售往下
+  const up = Math.max(1, ...S.map(d => d[1])), dn = Math.max(1, ...S.map(d => d[4]));
+  const ratio = up / (up + dn), zeroY = B.t + B.h * Math.max(.45, Math.min(.85, ratio));
+  const sc = Math.max(up / (zeroY - B.t), dn / (B.t + B.h - zeroY));
+  const bw = Math.max(2, Math.min(14, step * .7));
+  g.strokeStyle = col.line; g.beginPath(); g.moveTo(x0, zeroY); g.lineTo(x1, zeroY); g.stroke();
+  S.forEach((d, i) => {
+    const flat = Math.max(0, d[1] - d[2] - d[3]);
+    let y = zeroY;
+    for (const [v, c] of [[d[2], col.up], [d[3], col.dn], [flat, col.flat]]){ if (!v) continue; const hh = v / sc; g.fillStyle = c; g.fillRect(X(i) - bw / 2, y - hh, bw, hh); y -= hh; }
+    if (d[4]){ g.fillStyle = col.put; g.fillRect(X(i) - bw / 2, zeroY + 1, bw, d[4] / sc); }
+  });
+  g.fillStyle = col.muted; g.textAlign = 'left';
+  g.fillText('權證成交金額（每日）・單日最高：認購 ' + fmtWan(up) + '、認售 ' + fmtWan(dn), x0, B.t - 10);
+  g.fillText('認購 ↑', x1 + 4, B.t + 8); g.fillText('認售 ↓', x1 + 4, B.t + B.h - 8);
+  g.textAlign = 'center'; const every = Math.ceil(n / (narrow ? 5 : 8));
+  S.forEach((d, i) => { if ((n - 1 - i) % every === 0) g.fillText(d[0].slice(5).replace('-', '/'), Math.min(Math.max(X(i), x0 + 16), x1 - 16), h - 8); });
+  const tip = $('#wtip');
+  const show = ev => {
+    const r = cv.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((x - x0) / step))), d = S[i];
+    tip.innerHTML = `<b>${d[0]}</b>${px[i] != null ? '<br>收盤 ' + fmtPx(px[i]) : ''}<br><span class="up">認購 ${fmtWan(d[1])}</span>（上漲日 ${fmtWan(d[2])}・下跌日 ${fmtWan(d[3])}）<br><span style="color:var(--big)">認售 ${fmtWan(d[4])}</span>`;
+    tip.style.display = 'block'; const tw = tip.offsetWidth, cx = X(i);
+    tip.style.left = Math.max(0, Math.min(r.width - tw, cx + 12 + tw > r.width ? cx - tw - 12 : cx + 12)) + 'px'; tip.style.top = (B.t + 4) + 'px';
+  };
+  cv.onmousemove = show; cv.onclick = show; cv.ontouchstart = show; cv.onmouseleave = () => tip.style.display = 'none';
+}
+
 /* ───────── 權證大買 ───────── */
 let WSORT = { k:'net', dir:-1 };
 async function loadWar(){
@@ -713,7 +817,7 @@ $('#go').onclick = () => open($('#q').value);
 $('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
 $('#q').onchange = () => { if (/^[0-9]{4}[0-9A-Z]{0,2} /.test($('#q').value)) open($('#q').value); };
 $('#back').href = innerWidth < 700 ? 'mobile.html' : './';
-let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR && !$('#tabStock').hidden) draw(); }, 200); });
+let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR && !$('#tabStock').hidden){ draw(); drawWarrant(); } }, 200); });
 (async () => {
   await loadIndex();
   const p = new URLSearchParams(location.search);
