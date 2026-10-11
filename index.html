@@ -314,13 +314,16 @@
             <option value="auto">自動（依週期）</option>
             <option value="D">台股日線</option><option value="H60">台指期 60 分</option><option value="H240">台指期 4 小時</option>
             <option value="M15">台指期 15 分</option><option value="custom">自訂（用下方自訂數值）</option></select></div>
-          <div class="kv"><span>平滑濾波器</span><select data-k="abyss.mode" data-redraw="abyss"><option value="us">Ultimate Smoother（零延遲）</option><option value="ss">Super Smoother（最平滑）</option></select></div>
+          <div class="kv"><span>主線平滑</span><select data-k="abyss.disp" data-redraw="abyss"><option value="silk">絲滑（Super Smoother）</option><option value="us">零延遲（Ultimate Smoother）</option></select></div>
+          <div class="kv"><span>絲滑倍數（越大越平滑、越落後）</span><input type="number" data-k="abyss.silk" data-redraw="abyss" min="1" max="3" step="0.1"></div>
+          <div class="hint">TURN 一律用零延遲的判斷線計算轉折，顯示線只影響畫面，不會讓訊號變慢。</div>
           <div class="sub">TURN 條件</div>
           <div class="kv"><span>四因子品質門檻</span><input type="number" data-k="abyss.qMin" data-redraw="abyss" min="0.4" max="0.9" step="0.01"></div>
           <div class="kv"><span>曲率門檻（標準化加速度）</span><input type="number" data-k="abyss.accMin" data-redraw="abyss" min="0" max="2" step="0.05"></div>
           <div class="kv"><span>頂點預測提前根數（0＝等主線勾起）</span><input type="number" data-k="abyss.leadBars" data-redraw="abyss" min="0" max="5" step="0.5"></div>
           <div class="kv"><span>深淵線上限</span><input type="number" data-k="abyss.deepCap" data-redraw="abyss" min="10" max="45"></div>
-          <div class="kv"><span>深淵線百分位</span><input type="number" data-k="abyss.deepPct" data-redraw="abyss" min="2" max="30"></div>
+          <div class="kv"><span>亢奮線下限</span><input type="number" data-k="abyss.upCap" data-redraw="abyss" min="55" max="90"></div>
+          <div class="kv"><span>深淵／亢奮線百分位</span><input type="number" data-k="abyss.deepPct" data-redraw="abyss" min="2" max="30"></div>
           <div class="kv"><span>追價上限（離波段低點幾倍真實波幅）</span><input type="number" data-k="abyss.chaseATR" data-redraw="abyss" min="0.5" max="6" step="0.5"></div>
           <label class="chk"><input type="checkbox" data-k="abyss.strongBar" data-redraw="abyss">訊號 K 棒需收強</label>
           <div class="sub">下跌趨勢防護</div>
@@ -337,10 +340,13 @@
           <div class="kv"><span>自適應統計視窗</span><input type="number" data-k="abyss.pct" data-int data-redraw="abyss" min="60" max="1000"></div>
           <div class="kv"><span>趨勢檢定視窗</span><input type="number" data-k="abyss.trend" data-int data-redraw="abyss" min="20" max="300"></div>
           <div class="sub">外觀</div>
-          <div class="kv"><span>主線　上升／下降／粗細</span><span class="pair"><input type="color" data-k="abyss.colUp" data-redraw="abyss"><input type="color" data-k="abyss.colDn" data-redraw="abyss"><select class="wsel" data-k="abyss.lw" data-int data-redraw="abyss"></select></span></div>
+          <div class="kv"><span>主線粗細</span><select class="wsel" data-k="abyss.lw" data-int data-redraw="abyss"></select></div>
+          <div class="kv"><span>中性區　上升／下降</span><span class="pair"><input type="color" data-k="abyss.cMidUp" data-redraw="abyss"><input type="color" data-k="abyss.cMidDn" data-redraw="abyss"></span></div>
+          <div class="kv"><span>深淵區　翻揚／下沉</span><span class="pair"><input type="color" data-k="abyss.cDeepUp" data-redraw="abyss"><input type="color" data-k="abyss.cDeepDn" data-redraw="abyss"></span></div>
+          <div class="kv"><span>亢奮區　上衝／翻落</span><span class="pair"><input type="color" data-k="abyss.cHiUp" data-redraw="abyss"><input type="color" data-k="abyss.cHiDn" data-redraw="abyss"></span></div>
+          <div class="kv"><span>亢奮線／深淵線／粗細</span><span class="pair"><input type="color" data-k="abyss.upCol" data-redraw="abyss"><input type="color" data-k="abyss.deepCol" data-redraw="abyss"><select class="wsel" data-k="abyss.guideW" data-int data-redraw="abyss"></select></span></div>
           <div class="kv"><span>TURN 顏色</span><input type="color" data-k="abyss.turnCol" data-redraw="abyss"></div>
-          <div class="kv"><span>深淵線顏色</span><input type="color" data-k="abyss.guideCol" data-redraw="abyss"></div>
-          <label class="chk"><input type="checkbox" data-k="abyss.showGuide" data-redraw="abyss">顯示深淵線與中軸</label>
+          <label class="chk"><input type="checkbox" data-k="abyss.showGuide" data-redraw="abyss">顯示亢奮線、深淵線與中軸</label>
           <label class="chk"><input type="checkbox" data-k="abyss.mainSig" data-redraw="abyss">K 線圖上也標出 TURN</label>
           <div class="hint">TURN 只用當根與過去資料計算，不會事後改位置。網站載入的 K 棒數有限，統計視窗最多用到總根數的六成。</div>
           <button class="small" data-reset="abyss">恢復預設</button>
@@ -485,10 +491,11 @@ const DEFAULTS = {
   bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645', sdW:1 },
   rsib:{ len:14, std:false, mode:'bar', inner:'dyn', innerType:'sd', mult:1, upCol:'#2196f3', dnCol:'#ff5252', thick:'1', lineCol:'#a64d79', lineW:2,
           obLv:70, osLv:30, obCol:'#2196f3', osCol:'#ff5252', lvW:2, innerCol:'#c27ba0', innerW:1 },
-  abyss:{ preset:'auto', mode:'us', wCys:1, wMom:1, wPos:0.8, gain:1.5, deepCap:30, deepPct:10, resetLv:50, accMin:0.3, leadBars:1.5,
+  abyss:{ preset:'auto', disp:'silk', silk:1.4, wCys:1, wMom:1, wPos:0.8, gain:1.5, deepCap:30, upCap:70, deepPct:10, resetLv:50, accMin:0.3, leadBars:1.5,
           qMin:0.6, chaseATR:2.5, lineChase:20, strongBar:true, minGap:5, trendThr:1, vFrac:0.5, divMin:5, divWin:120, qStep:0.05, qDown:0.05,
           useVol:true, reqVol:false, volFactor:1.1, smooth:10, cost:20, range:60, reg:7, mem:15, pct:250, trend:60,
-          colUp:'#2daed9', colDn:'#6178b2', lw:2, turnCol:'#00e676', guideCol:'#4db6ac', showGuide:true, mainSig:true },
+          cMidUp:'#2daed9', cMidDn:'#6178b2', cDeepUp:'#00e676', cDeepDn:'#1e8f5e', cHiUp:'#ff5252', cHiDn:'#ff9800',
+          deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true }, chartH:100, mainRatio:50,
@@ -1656,7 +1663,8 @@ Object.assign(IND, {
 
 /* ───────────── ABYSS ULTIMATE v2 | One TURN（與 Pine v6 版同一套公式） ───────────── */
 // 主線：成本乖離（量加權成本）＋ 均線差動能（對數價格 MACD）＋ 區間位階，皆以隨機漫步理論離散度標準化
-//       → tanh 壓縮成 0～100 → Ultimate Smoother（零延遲）或 Super Smoother
+//       → tanh 壓縮成 0～100 → 兩條濾波：判斷線（Ultimate Smoother 零延遲，給 TURN 算曲率）
+//                                     顯示線（Super Smoother、週期 × 絲滑倍數，畫在圖上；深淵／亢奮線與事件都以它為準）
 // TURN：深淵事件 → 主線二次回歸曲率與頂點預測 → 四因子幾何平均（超跌×賣壓衰竭×動能修復×量價承接）
 //       → 下跌趨勢防護（強勢下跌須背離＋大趨勢減速；失敗後重新武裝但門檻提高）
 // 只用當根與過去資料，不會因後面的 K 棒改變過去的 TURN
@@ -1748,13 +1756,16 @@ function abyssCalc(o, h, l, c, vol, P, tf){
     const zR = hh[i] > ll[i] ? 2 * (2 * (x - ll[i]) / (hh[i] - ll[i]) - 1) : 0;
     return 50 + 50 * Math.tanh((P.wCys * zC + P.wMom * zM + P.wPos * zR) / wSum / P.gain);
   });
-  const osc = abyssFilter(raw, smoothLen, P.mode !== 'ss');
+  const det = abyssFilter(raw, smoothLen, true);                                   // 判斷線
+  const dispLen = Math.max(3, Math.round(smoothLen * (+P.silk || 1)));
+  const osc = P.disp === 'us' ? det : abyssFilter(raw, dispLen, false);            // 顯示線
 
-  // 主線運動學
-  const { b1, b2 } = abyssQuad(osc, regLen);
+  // 判斷線運動學
+  const { b1, b2 } = abyssQuad(det, regLen);
   const b2Sd = taStdevN(b2, pctUsed);
-  const pctLv = abyssPct(osc, pctUsed, P.deepPct);
+  const pctLv = abyssPct(osc, pctUsed, P.deepPct), pctHi = abyssPct(osc, pctUsed, 100 - P.deepPct);
   const deep = pctLv.map(x => Math.min(P.deepCap, x === null ? P.deepCap : x));
+  const upper = pctHi.map(x => Math.max(P.upCap, x === null ? P.upCap : x));
 
   // 賣壓衰竭 E
   const dn2 = lr.map(x => Math.min(nz(x), 0) ** 2);
@@ -1778,7 +1789,7 @@ function abyssCalc(o, h, l, c, vol, P, tf){
   const tr = c.map((x,i) => i === 0 ? h[i] - l[i] : Math.max(h[i] - l[i], Math.abs(h[i] - c[i-1]), Math.abs(l[i] - c[i-1])));
   const atr = taRMA(tr, 14);
 
-  const out = { osc, deep, turn:new Array(n).fill(false), Q:new Array(n).fill(null), qReq:new Array(n).fill(null),
+  const out = { osc, deep, upper, bandOK:pctLv.map(x => x !== null), turn:new Array(n).fill(false), Q:new Array(n).fill(null), qReq:new Array(n).fill(null),
                 inEp:new Array(n).fill(false), defLow:new Array(n).fill(null), fail:new Array(n).fill(0),
                 preset: ABYSS_NAME[key] || key, pctUsed };
   // 深淵事件狀態機（與 Pine 版逐行對應）
@@ -1788,7 +1799,7 @@ function abyssCalc(o, h, l, c, vol, P, tf){
 
   for (let i = 0; i < n; i++){
     const x = osc[i];
-    if (x === null) continue;
+    if (x === null || det[i] === null) continue;
     const warm = i > pctUsed && b2Sd[i] !== null && pctLv[i] !== null && b1[i] !== null;
 
     // ① 事件結束
@@ -1882,23 +1893,35 @@ Object.assign(IND, {
     s:{}, vals:null, refs:[],
     create(p){
       const { LineSeries } = LC(), fr = fixedRange(0, 100);
-      this.s.deep = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
-                                                  priceFormat:F1, autoscaleInfoProvider:fr }, p);
+      const g = () => ({ lineWidth:1, priceLineVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fr });
+      this.s.deep  = chart.addSeries(LineSeries, Object.assign(g(), { lastValueVisible:true, title:'深淵' }), p);
+      this.s.upper = chart.addSeries(LineSeries, Object.assign(g(), { lastValueVisible:true, title:'亢奮' }), p);
       this.s.line = chart.addSeries(LineSeries, { priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3,
                                                   priceFormat:F1, autoscaleInfoProvider:fr }, p);
       this.mk = LC().createSeriesMarkers(this.s.line, []);
       this.refs = [];
     },
+    // 主線顏色：依所在區間（深淵／中性／亢奮）與方向（上升／下降）共六色
+    color(i){
+      const v = this.vals, P = S.abyss, x = v.osc[i], p = i > 0 ? v.osc[i-1] : null;
+      const up = p === null || x >= p;
+      if (x <= v.deep[i]) return up ? P.cDeepUp : P.cDeepDn;
+      if (x >= v.upper[i]) return up ? P.cHiUp : P.cHiDn;
+      return up ? P.cMidUp : P.cMidDn;
+    },
     draw(){
       const P = S.abyss;
       const v = this.vals = abyssCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close),
                                       bars.map(b => b.volume), P, S.tf);
+      const ok = i => v.osc[i] !== null && i >= 100;          // 前 100 根波動率尚未估好，不畫
       this.s.line.applyOptions({ lineWidth:+P.lw });
-      this.s.line.setData(bars.map((b,i) => v.osc[i] === null || i < 100 ? { time:b.time }
-        : { time:b.time, value:v.osc[i], color: (i > 0 && v.osc[i-1] !== null && v.osc[i] < v.osc[i-1]) ? P.colDn : P.colUp }));
-      this.s.deep.setData(P.showGuide ? toLine(v.deep.map((d,i) => v.osc[i] === null || i < 100 ? null : d)) : []);
-      this.s.deep.applyOptions({ color:P.guideCol });
-      const { LineStyle } = LC(), L = this.s.line;
+      this.s.line.setData(bars.map((b,i) => ok(i) ? { time:b.time, value:v.osc[i], color:this.color(i) } : { time:b.time }));
+      const { LineStyle } = LC();
+      this.s.deep.setData(P.showGuide ? toLine(v.deep.map((d,i) => ok(i) && v.bandOK[i] ? d : null)) : []);
+      this.s.upper.setData(P.showGuide ? toLine(v.upper.map((d,i) => ok(i) && v.bandOK[i] ? d : null)) : []);
+      this.s.deep.applyOptions({ color:P.deepCol, lineWidth:+P.guideW, lineStyle:LineStyle.Dashed });
+      this.s.upper.applyOptions({ color:P.upCol, lineWidth:+P.guideW, lineStyle:LineStyle.Dashed });
+      const L = this.s.line;
       this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
       if (P.showGuide) this.refs.push(L.createPriceLine({ price:50, color:hexA(S.col.text,.35), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:false }));
       const m = [];
@@ -1914,14 +1937,16 @@ Object.assign(IND, {
     label(i){
       const v = this.vals, P = S.abyss; if (!v) return '';
       const x = v.osc[i], p = i > 0 ? v.osc[i-1] : null;
-      const col = x == null ? 'var(--text)' : (p != null && x < p ? P.colDn : P.colUp);
+      const col = x == null ? 'var(--text)' : this.color(i);
       let tag = '';
       if (v.turn[i]) tag = `<span class="tag" style="background:${P.turnCol};color:#000">TURN</span>`;
-      else if (v.inEp[i]) tag = `<span class="tag" style="background:${P.guideCol}">深淵事件中</span>`;
+      else if (x != null && x <= v.deep[i]) tag = `<span class="tag" style="background:${P.deepCol}">深淵區</span>`;
+      else if (x != null && x >= v.upper[i]) tag = `<span class="tag" style="background:${P.upCol}">亢奮區</span>`;
+      else if (v.inEp[i]) tag = `<span class="tag" style="background:${P.deepCol}">深淵事件中</span>`;
       const q = v.Q[i] != null && v.inEp[i] ? `　品質 <b>${fmt(v.Q[i],2)}</b>／需 ${fmt(v.qReq[i],2)}` : '';
       const d = v.defLow[i] != null ? `　防守低點 <b>${fmt(v.defLow[i])}</b>` : '';
       return `ABYSS v2（${v.preset}） <b style="color:${col}">${fmt(x,1)}${x == null || p == null ? '' : x >= p ? ' ▲' : ' ▼'}</b>` +
-        (P.showGuide ? `　<span style="color:${P.guideCol}">深淵線 ${fmt(v.deep[i],1)}</span>` : '') + q + d + tag;
+        (P.showGuide ? `　<span style="color:${P.upCol}">亢奮 ${fmt(v.upper[i],1)}</span>　<span style="color:${P.deepCol}">深淵 ${fmt(v.deep[i],1)}</span>` : '') + q + d + tag;
     },
   },
 });
