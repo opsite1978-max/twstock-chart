@@ -1,58 +1,57 @@
-10-11 14:32:26 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
-10-11 14:37:32 progress 200 ok 0 none 307 s
-10-11 14:42:35 progress 400 ok 0 none 610 s
-10-11 14:47:42 progress 600 ok 0 none 917 s
-10-11 14:52:53 progress 800 ok 0 none 1228 s
-10-11 14:58:01 progress 1000 ok 0 none 1536 s
-10-11 15:03:06 progress 1200 ok 0 none 1841 s
-10-11 15:08:15 progress 1400 ok 0 none 2150 s
-10-11 15:12:25 result shard 0 partial (time budget) requests 1562 ok 1562 none 0 files 345 in 2400 s
-10-11 14:32:26 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-11 14:37:15 progress 200 ok 0 none 289 s
-10-11 14:42:04 progress 400 ok 0 none 579 s
-10-11 14:46:54 progress 600 ok 0 none 868 s
-10-11 14:51:52 progress 800 ok 0 none 1166 s
-10-11 14:56:48 progress 1000 ok 0 none 1462 s
-10-11 15:01:42 progress 1200 ok 0 none 1757 s
-10-11 15:06:38 progress 1400 ok 0 none 2053 s
-10-11 15:11:30 progress 1600 ok 0 none 2344 s
-10-11 15:12:25 result shard 1 partial (time budget) requests 1638 ok 1638 none 0 files 365 in 2400 s
-10-11 14:32:25 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-11 14:38:02 progress 200 ok 0 none 338 s
-10-11 14:43:38 progress 400 ok 0 none 674 s
-10-11 14:49:17 progress 600 ok 0 none 1013 s
-10-11 14:54:59 progress 800 ok 0 none 1355 s
-10-11 15:00:45 progress 1000 ok 0 none 1701 s
-10-11 15:06:26 progress 1200 ok 0 none 2043 s
-10-11 15:12:08 progress 1400 ok 0 none 2384 s
-10-11 15:12:25 result shard 2 partial (time budget) requests 1410 ok 1410 none 0 files 365 in 2401 s
-10-11 14:32:25 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
-10-11 14:38:26 progress 200 ok 0 none 362 s
-10-11 14:44:18 progress 400 ok 0 none 715 s
-10-11 14:50:17 progress 600 ok 0 none 1074 s
-10-11 14:56:20 progress 800 ok 0 none 1436 s
-10-11 15:02:21 progress 1000 ok 0 none 1798 s
-10-11 15:08:24 progress 1200 ok 0 none 2161 s
-10-11 15:12:23 result shard 3 partial (time budget) requests 1331 ok 1331 none 0 files 351 in 2400 s
-10-11 14:32:26 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
-10-11 14:37:14 progress 199 ok 1 none 288 s
-10-11 14:42:04 progress 399 ok 1 none 579 s
-10-11 14:46:55 progress 599 ok 1 none 870 s
-10-11 14:50:38   retry 3623 20260731 IncompleteRead IncompleteRead(73706 bytes read)
-10-11 14:52:31 progress 799 ok 1 none 1205 s
-10-11 14:57:25 progress 999 ok 1 none 1500 s
-10-11 15:02:22 progress 1199 ok 1 none 1796 s
-10-11 15:07:17 progress 1399 ok 1 none 2092 s
-10-11 15:10:00   retry 6276 20260717 HTTPError HTTP Error 500: Internal Server Error
-10-11 15:12:19 progress 1599 ok 1 none 2393 s
-10-11 15:12:25 result shard 4 partial (time budget) requests 1604 ok 1603 none 1 files 358 in 2400 s
-10-11 14:32:26 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
-10-11 14:38:03 progress 200 ok 0 none 339 s
-10-11 14:43:40 progress 400 ok 0 none 675 s
-10-11 14:49:15 progress 600 ok 0 none 1010 s
-10-11 14:50:39   retry 3266 20260724 IncompleteRead IncompleteRead(65536 bytes read)
-10-11 14:53:44   retry 6134 20260724 RuntimeError no table
-10-11 14:56:02 progress 800 ok 0 none 1417 s
-10-11 15:01:39 progress 1000 ok 0 none 1754 s
-10-11 15:07:24 progress 1200 ok 0 none 2099 s
-10-11 15:12:25 result shard 5 partial (time budget) requests 1382 ok 1382 none 0 files 361 in 2401 s
+10-11 21:34:34 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
+10-11 21:40:08 progress 200 ok 0 none 336 s
+10-11 21:45:38 progress 400 ok 0 none 666 s
+10-11 21:51:17 progress 600 ok 0 none 1005 s
+10-11 21:56:55 progress 800 ok 0 none 1343 s
+10-11 22:00:35   retry 3558 20260612 IncompleteRead IncompleteRead(73706 bytes read)
+10-11 22:03:11 progress 1000 ok 0 none 1719 s
+10-11 22:08:45 progress 1200 ok 0 none 2053 s
+10-11 22:14:20 progress 1400 ok 0 none 2388 s
+10-11 22:14:33 result shard 0 partial (time budget) requests 1408 ok 1408 none 0 files 343 in 2401 s
+10-11 21:34:33 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-11 21:40:30 progress 200 ok 0 none 359 s
+10-11 21:46:31 progress 400 ok 0 none 720 s
+10-11 21:52:34 progress 600 ok 0 none 1082 s
+10-11 21:58:37 progress 800 ok 0 none 1446 s
+10-11 22:04:31 progress 1000 ok 0 none 1800 s
+10-11 22:05:37   retry 5903 20260618 IncompleteRead IncompleteRead(65536 bytes read)
+10-11 22:11:10 progress 1200 ok 0 none 2199 s
+10-11 22:14:32 result shard 1 partial (time budget) requests 1312 ok 1312 none 0 files 362 in 2401 s
+10-11 21:34:34 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-11 21:39:48 progress 200 ok 0 none 316 s
+10-11 21:45:00 progress 400 ok 0 none 628 s
+10-11 21:50:11 progress 600 ok 0 none 939 s
+10-11 21:55:26 progress 800 ok 0 none 1253 s
+10-11 22:00:38 progress 1000 ok 0 none 1566 s
+10-11 22:05:51 progress 1200 ok 0 none 1878 s
+10-11 22:11:06 progress 1400 ok 0 none 2193 s
+10-11 22:14:32 result shard 2 partial (time budget) requests 1531 ok 1531 none 0 files 365 in 2400 s
+10-11 21:34:33 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
+10-11 21:40:35 progress 200 ok 0 none 364 s
+10-11 21:46:40 progress 400 ok 0 none 728 s
+10-11 21:52:42 progress 600 ok 0 none 1090 s
+10-11 21:58:46 progress 800 ok 0 none 1454 s
+10-11 22:04:50 progress 1000 ok 0 none 1818 s
+10-11 22:10:49 progress 1200 ok 0 none 2177 s
+10-11 22:14:32 result shard 3 partial (time budget) requests 1323 ok 1323 none 0 files 349 in 2401 s
+10-11 21:34:34 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
+10-11 21:39:17 progress 200 ok 0 none 284 s
+10-11 21:44:00 progress 400 ok 0 none 567 s
+10-11 21:48:42 progress 600 ok 0 none 848 s
+10-11 21:53:25 progress 800 ok 0 none 1132 s
+10-11 21:58:07 progress 999 ok 1 none 1414 s
+10-11 22:02:48 progress 1199 ok 1 none 1695 s
+10-11 22:07:34 progress 1399 ok 1 none 1981 s
+10-11 22:09:51   retry 8908 20260618 IncompleteRead IncompleteRead(65536 bytes read)
+10-11 22:12:58 progress 1599 ok 1 none 2305 s
+10-11 22:14:33 result shard 4 partial (time budget) requests 1668 ok 1667 none 1 files 358 in 2400 s
+10-11 21:34:35 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
+10-11 21:39:31 progress 200 ok 0 none 298 s
+10-11 21:44:25 progress 400 ok 0 none 592 s
+10-11 21:49:22 progress 600 ok 0 none 888 s
+10-11 21:54:25 progress 800 ok 0 none 1192 s
+10-11 21:59:21 progress 1000 ok 0 none 1488 s
+10-11 22:04:19 progress 1200 ok 0 none 1786 s
+10-11 22:09:12 progress 1400 ok 0 none 2078 s
+10-11 22:14:08 progress 1600 ok 0 none 2375 s
+10-11 22:14:34 result shard 5 partial (time budget) requests 1618 ok 1618 none 0 files 361 in 2401 s
