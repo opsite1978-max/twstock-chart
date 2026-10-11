@@ -109,7 +109,7 @@
   header.m #loadBtn{min-width:56px}
   header.m #setBtn{width:44px;padding:0;font-size:18px}
   header.m .seg{height:42px;flex:1}
-  header.m .seg button{flex:1;height:40px;font-size:15px;padding:0 6px}
+  header.m .seg button{flex:1;height:40px;font-size:14px;padding:0 2px;min-width:0;white-space:nowrap}
   header.m select{flex:0 0 auto}
   header.m label.chk{font-size:14px}
   header.m #status{max-width:100%;flex-basis:auto!important;font-size:12px;min-height:14px}
@@ -134,8 +134,10 @@
   </div>
   <div class="mrow">
     <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">
-      <button data-tf="D">日K</button><button data-tf="W">週K</button><button data-tf="M">月K</button>
+      <button data-tf="5">5分</button><button data-tf="15">15分</button><button data-tf="30">30分</button><button data-tf="60">60分</button><button data-tf="240">4時</button><button data-tf="D">日</button><button data-tf="W">週</button><button data-tf="M">月</button>
     </div>
+  </div>
+  <div class="mrow">
     <select id="period" title="顯示期間"></select>
     <label class="chk" id="adjWrap" title="除權息還原"><input type="checkbox" id="adj">還原</label>
     <label class="chk" id="nightWrap" style="display:none"><input type="checkbox" id="night">夜盤</label>
@@ -1750,7 +1752,7 @@ function abyssPct(arr, len, p){
 }
 function abyssCalc(o, h, l, c, vol, P, tf){
   const n = c.length;
-  const key = P.preset === 'auto' ? (tf === '60' ? 'H60' : tf === '240' ? 'H240' : 'D') : P.preset;
+  const key = P.preset === 'auto' ? (tf === '60' ? 'H60' : tf === '240' ? 'H240' : (tf === '5' || tf === '15' || tf === '30') ? 'M15' : 'D') : P.preset;
   const pr = key === 'custom' ? [P.smooth, P.cost, P.range, P.reg, P.mem, P.pct, P.trend] : (ABYSS_PRESET[key] || ABYSS_PRESET.D);
   let [smoothLen, costLen, rangeLen, regLen, memLen, pctLen, trendLen] = pr.map(x => Math.max(2, Math.round(+x || 2)));
   // 網站載入的 K 棒數有限：統計視窗最多用到總根數的六成，否則永遠暖機不完
@@ -2020,6 +2022,9 @@ OVL_ORDER.push('bb3');
 /* ───────────── 看盤週期設定 ───────────── */
 // 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
 const TF = {
+  '5':   { intraday:true,  P:5,   unit:'天', periods:[['3','3 天'],['5','5 天'],['10','10 天']], def:'3', warm:5 },
+  '15':  { intraday:true,  P:15,  unit:'天', periods:[['5','5 天'],['10','10 天'],['20','20 天']], def:'10', warm:8 },
+  '30':  { intraday:true,  P:30,  unit:'天', periods:[['10','10 天'],['20','20 天'],['40','40 天']], def:'20', warm:10 },
   '60':  { intraday:true,  P:60,  unit:'天', periods:[['20','20 天'],['40','40 天'],['60','60 天']], def:'20', warm:15 },
   '240': { intraday:true,  P:240, unit:'天', periods:[['40','40 天'],['60','60 天'],['120','120 天']], def:'60', warm:35 },
   'D':   { periods:[['0.5','半年'],['1','1 年'],['2','2 年'],['3','3 年'],['5','5 年']], def:'1',  warm:420 },
@@ -2038,8 +2043,8 @@ function updateKindUI(sym){
   $('adjWrap').style.display = fut ? 'none' : '';
   $('nightWrap').style.display = fut ? '' : 'none';
   const intra = !!TF[S.tf].intraday;
-  $('night').disabled = intra; $('nightWrap').style.opacity = intra ? .45 : 1;
-  $('nightWrap').title = intra ? '1 小時／4 小時目前只含日盤' : '日K以上的K棒把前一晚的夜盤併入（開盤價取夜盤開盤）';
+  $('night').disabled = false; $('nightWrap').style.opacity = 1;
+  $('nightWrap').title = intra ? '分K加上夜盤時段（15:00 到隔天 05:00）' : '日K以上的K棒把前一晚的夜盤併入（開盤價取夜盤開盤）';
   $('adj').disabled = intra; $('adjWrap').style.opacity = intra ? .45 : 1;
 }
 
@@ -2100,7 +2105,7 @@ function aggregate(daily, tf){
 }
 // 交易日清單
 async function tradingDates(n){
-  const today = ymd(new Date());
+  const today = twToday();
   try {
     const rows = await finmindCached({ dataset:'TaiwanStockTradingDate', start_date: ymd(addDays(new Date(), -Math.ceil(n * 1.7) - 20)) });
     const ds = [...new Set(rows.map(r => r.date))].filter(d => d <= today).sort();
@@ -2118,46 +2123,123 @@ async function pool(items, limit, fn, onProg, isStale){
   if (err) throw err;
   return out;
 }
-// 分K → 1 小時／4 小時 K 棒（股票以 09:00 起算，台指期日盤以 08:45 起算，與 TradingView 對齊方式相同）
-function intradayBars(date, rows, sym, P){
-  let anchor = 540, end = 810, list = rows;                              // 股票 09:00–13:30
-  if (sym.kind === 'fut'){
-    anchor = 525; end = 825;                                             // 期貨日盤 08:45–13:45
+// 台灣時間的今天（不受電腦時區影響）
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,10);
+const shiftDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0,10);
+
+// 分K：過去日期的資料不會再變，存在這台裝置的瀏覽器裡，下次再看同一天就不再用掉 FinMind 額度
+const kdb = (() => { let p = null; return () => p || (p = new Promise(res => {
+  try {
+    const r = indexedDB.open('twchart-kbar', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('d');
+    r.onsuccess = () => {
+      const db = r.result;
+      try { const q = db.transaction('d').objectStore('d').count();          // 太多就整個清掉重來，避免無限長大
+            q.onsuccess = () => { if (q.result > 4000) try { db.transaction('d','readwrite').objectStore('d').clear(); } catch(e){} }; } catch(e){}
+      res(db);
+    };
+    r.onerror = r.onblocked = () => res(null);
+  } catch(e){ res(null); }
+})); })();
+async function kGet(k){
+  const db = await kdb(); if (!db) return null;
+  return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } });
+}
+async function kPut(k, v){ const db = await kdb(); if (!db) return; try { db.transaction('d','readwrite').objectStore('d').put(v, k); } catch(e){} }
+
+// 一天的一分K精簡成 [分鐘, 開, 高, 低, 收, 量, 合約序號]；期貨只留當天成交量最大的兩個月合約（換月日兩個都要）
+function compactK(rows, fut){
+  let cs = [];
+  if (fut){
     const vol = new Map();
-    for (const r of rows){ const c = String(r.contract_date || '').trim(); vol.set(c, (vol.get(c) || 0) + (+r.volume || 0)); }
-    const cs = [...vol.keys()]; const mono = cs.filter(c => /^\d{6}$/.test(c));
-    const pickFrom = mono.length ? mono : cs;
-    const main = pickFrom.sort((a,b) => vol.get(b) - vol.get(a))[0];   // 當天成交量最大的月合約
-    list = rows.filter(r => String(r.contract_date || '').trim() === main);
-    list.forEach(r => r._c = main);
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); if (/^\d{6}$/.test(c)) vol.set(c, (vol.get(c) || 0) + (+r.volume || 0)); }
+    cs = [...vol.keys()].sort((a,b) => vol.get(b) - vol.get(a)).slice(0, 2);
   }
-  const mins = list.map(r => ({ m:parseHM(r.minute), r })).filter(x => x.r.close > 0 && x.m >= anchor && x.m <= end).sort((a,b) => a.m - b.m);
-  const [y, mo, d] = date.split('-').map(Number);
-  const out = []; let cur = null, curB = null;
-  for (const { m, r } of mins){
-    const mm = Math.min(Math.max(m, anchor), end - 1);
-    const b = anchor + Math.floor((mm - anchor) / P) * P;
-    if (b !== curB){
-      cur = { date, time: Date.UTC(y, mo-1, d, 0, b) / 1000, label: slash(date) + ' ' + hm(b),
-              open:r.open, high:r.high, low:r.low, close:r.close, volume:+r.volume || 0, contract:r._c };
-      out.push(cur); curB = b;
-    } else {
-      cur.high = Math.max(cur.high, r.high); cur.low = Math.min(cur.low, r.low); cur.close = r.close; cur.volume += +r.volume || 0;
+  const out = [];
+  for (const r of rows){
+    if (!(r.close > 0)) continue;
+    let ci = 0;
+    if (fut){ ci = cs.indexOf(String(r.contract_date || '').trim()); if (ci < 0) continue; }
+    out.push([parseHM(r.minute), +r.open, +r.high, +r.low, +r.close, +r.volume || 0, ci]);
+  }
+  out.sort((a,b) => a[0] - b[0]);
+  return { c:cs, r:out };
+}
+const kMem = new Map();
+function kbarDay(sym, date){
+  const fut = sym.kind === 'fut', key = (fut ? 'F:' : 'S:') + sym.id + ':' + date;
+  if (kMem.has(key)) return kMem.get(key);
+  const today = twToday();
+  const stable = fut ? date <= shiftDay(today, -2) : date < today;       // 期貨夜盤跨到隔天，多等一天才存
+  const p = (async () => {
+    if (stable){ const v = await kGet(key); if (v && v.r) return v; }
+    const rows = await finmind({ dataset: fut ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar', data_id:sym.id, start_date:date });
+    const v = compactK(rows, fut);
+    if (stable && v.r.length) kPut(key, v);
+    return v;
+  })();
+  kMem.set(key, p); p.catch(() => kMem.delete(key));
+  return p;
+}
+
+// 一分K → 5／15／30／60 分、4 小時 K 棒
+// 每個交易時段各自從開盤起算（股票 09:00；台指期日盤 08:45、夜盤 15:00），與 TradingView 對齊方式相同
+// 夜盤 15:00 到隔天 05:00 算同一段，用當段成交量最大的月合約
+function intradayBars(dates, perDay, sym, P, night, firstDate){
+  const fut = sym.kind === 'fut', sess = new Map();
+  dates.forEach((date, i) => {
+    const day = perDay[i]; if (!day || !day.r) return;
+    for (const r of day.r){
+      const m = r[0]; let k, a, e, sDate = date, ext = m;
+      if (!fut){ if (m < 540 || m > 810) continue; k = 'D'; a = 540; e = 810; }           // 股票 09:00–13:30（14:30 盤後定價不算）
+      else if (m >= 525 && m <= 825){ k = 'D'; a = 525; e = 825; }                         // 期貨日盤 08:45–13:45
+      else if (night && m >= 900){ k = 'N'; a = 900; e = 1740; }                           // 夜盤前段 15:00–24:00
+      else if (night && m < 300){ k = 'N'; a = 900; e = 1740; sDate = shiftDay(date, -1); ext = m + 1440; }  // 夜盤後段 00:00–05:00
+      else continue;
+      if (sDate < firstDate) continue;                                                      // 第一天之前那段夜盤只抓到一半，不畫
+      const sk = sDate + k;
+      let s = sess.get(sk); if (!s){ s = { sDate, a, e, rows:[], vol:new Map() }; sess.set(sk, s); }
+      const c = fut ? day.c[r[6]] : '';
+      s.rows.push([ext, r[1], r[2], r[3], r[4], r[5], c]); s.vol.set(c, (s.vol.get(c) || 0) + r[5]);
+    }
+  });
+  const out = [];
+  for (const s of sess.values()){
+    const main = [...s.vol.keys()].sort((x,y) => s.vol.get(y) - s.vol.get(x))[0];
+    const rows = s.rows.filter(r => r[6] === main).sort((x,y) => x[0] - y[0]);
+    const [yy, mo, dd] = s.sDate.split('-').map(Number);
+    let cur = null, curB = null;
+    for (const [m, o, h, l, cl, v] of rows){
+      const mm = Math.min(Math.max(m, s.a), s.e - 1);
+      const b = s.a + Math.floor((mm - s.a) / P) * P;
+      if (b !== curB){
+        const time = Date.UTC(yy, mo-1, dd, 0, b) / 1000, iso = new Date(time * 1000).toISOString();
+        cur = { date:iso.slice(0,10), time, label:slash(iso.slice(0,10)) + ' ' + iso.slice(11,16),
+                open:o, high:h, low:l, close:cl, volume:v, contract:main || undefined };
+        out.push(cur); curB = b;
+      } else {
+        cur.high = Math.max(cur.high, h); cur.low = Math.min(cur.low, l); cur.close = cl; cur.volume += v;
+      }
     }
   }
-  return out;
+  return out.sort((x,y) => x.time - y.time);
 }
 
 async function getBars(sym, tf, period, isStale){
   const c = TF[tf], today = new Date();
   if (c.intraday){
     const nShow = parseInt(period, 10), dates = await tradingDates(nShow + c.warm);
-    const ds = sym.kind === 'fut' ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar';
-    const fetchDay = d => finmindCached({ dataset:ds, data_id:sym.id, start_date:d });
-    await fetchDay(dates[dates.length-1]);                               // 先試一天，沒有權限就不再浪費額度
-    const perDay = await pool(dates, 5, fetchDay, (k,n) => { if (!isStale()) setStatus(`讀取分K ${k}/${n}…`); }, isStale);
-    const all = []; dates.forEach((d,i) => all.push(...intradayBars(d, perDay[i] || [], sym, c.P)));
-    return { bars: all, showFromDate: dates[Math.max(0, dates.length - nShow)] };
+    const night = sym.kind === 'fut' && !!S.night;
+    let list = dates.slice();
+    if (night){                                                          // 週五、連假前的夜盤會延續到隔天凌晨，那天也要抓
+      const set = new Set(dates), today = twToday();
+      for (const d of dates){ const nd = shiftDay(d, 1); if (!set.has(nd) && nd <= today){ set.add(nd); list.push(nd); } }
+      list.sort();
+    }
+    const fetchDay = d => kbarDay(sym, d);
+    await fetchDay(list[list.length-1]);                                 // 先試一天，沒有權限就不再浪費額度
+    const perDay = await pool(list, 6, fetchDay, (k,n) => { if (!isStale()) setStatus(`讀取分K ${k}/${n}…`); }, isStale);
+    return { bars: intradayBars(list, perDay, sym, c.P, night, dates[0]), showFromDate: dates[Math.max(0, dates.length - nShow)] };
   }
   const years = parseFloat(period);
   const showFrom = addDays(today, -Math.round(years * 365));
@@ -2205,12 +2287,12 @@ async function load(){
     S.lastSym = $('sym').value.trim(); S.periods = Object.assign({}, S.periods, { [tf]: $('period').value }); save();
     const notes = [];
     if (sym.kind === 'stock' && S.adj && !conf.intraday) notes.push('還原股價');
-    if (sym.kind === 'fut') notes.push(conf.intraday ? '僅日盤' : (S.night ? '含夜盤' : '僅日盤'));
+    if (sym.kind === 'fut') notes.push(S.night ? '含夜盤' : '僅日盤');
     setStatus('資料至 ' + last.label + (notes.length ? '（' + notes.join('，') + '）' : ''));
   } catch(e){
     if (seq !== loadSeq) return;
     if (conf.intraday && e.finmindMsg)
-      setStatus('1 小時／4 小時要用 FinMind 分K資料，需要贊助會員（Sponsor）；目前帳號可用日／週／月線。FinMind 訊息：' + e.finmindMsg, true);
+      setStatus('分K（5 分到 4 小時）要用 FinMind 贊助會員的一分K資料，請確認設定裡的憑證是贊助會員帳號。FinMind 訊息：' + e.finmindMsg, true);
     else setStatus(e.message || String(e), true);
   } finally {
     if (seq === loadSeq){ loading = false; $('loadBtn').disabled = false; }
@@ -2356,7 +2438,7 @@ document.querySelectorAll('#tfSeg button').forEach(btn => btn.onclick = () => {
 fillSettingsUI();
 applyTheme();
 layoutPanes();
-if (!TF[S.tf] || TF[S.tf].intraday) S.tf = 'D';
+if (!TF[S.tf]) S.tf = 'D';
 buildPeriodOptions();
 $('adj').checked = !!S.adj; $('night').checked = !!S.night;
 { const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
