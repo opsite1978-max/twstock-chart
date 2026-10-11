@@ -112,6 +112,7 @@
   header.m .seg button{flex:1;height:40px;font-size:14px;padding:0 2px;min-width:0;white-space:nowrap}
   header.m select{flex:0 0 auto}
   header.m label.chk{font-size:14px}
+  header.m #holdersBtn,header.m #stratBtn,header.m #txoBtn{height:38px;font-size:14px;padding:0 9px}
   header.m #status{max-width:100%;flex-basis:auto!important;font-size:12px;min-height:14px}
   #info{padding:6px 12px 0}
   #area{padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -129,8 +130,6 @@
     <datalist id="symList"></datalist>
     <button class="primary" id="loadBtn">看</button>
     <button id="setBtn" title="設定" aria-label="設定">⚙</button>
-    <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
-    <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
   </div>
   <div class="mrow">
     <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">
@@ -141,6 +140,10 @@
     <select id="period" title="顯示期間"></select>
     <label class="chk" id="adjWrap" title="除權息還原"><input type="checkbox" id="adj">還原</label>
     <label class="chk" id="nightWrap" style="display:none"><input type="checkbox" id="night">夜盤</label>
+    <span style="flex:1"></span>
+    <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
+    <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
+    <button id="txoBtn" title="台指選擇權籌碼：各結算日 Gamma 曝險、看漲牆、看跌牆、最大痛點" onclick="location.href='txo.html'">選擇權</button>
   </div>
   <span id="status"></span>
 </header>

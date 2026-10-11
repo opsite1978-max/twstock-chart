@@ -118,6 +118,7 @@
   <button id="setBtn" title="指標、顏色、版面與憑證">⚙ 設定</button>
   <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
   <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
+    <button id="txoBtn" title="台指選擇權籌碼：各結算日 Gamma 曝險、看漲牆、看跌牆、最大痛點" onclick="location.href='txo.html'">選擇權</button>
   <span class="spacer"></span>
   <span id="status"></span>
 </header>
