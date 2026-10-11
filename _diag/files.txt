@@ -1,6 +1,6 @@
-total 212
-drwxr-xr-x 2 runner runner   4096 Oct 11 19:29 .
-drwxr-xr-x 8 runner runner   4096 Oct 11 19:29 ..
--rw-r--r-- 1 runner runner    152 Oct 11 19:40 _lastrun_build.txt
--rw-r--r-- 1 runner runner    410 Oct 11 19:38 _lastrun_fetch.txt
--rw-r--r-- 1 runner runner 199250 Oct 11 19:40 summary.json
+total 244
+drwxr-xr-x 2 runner runner   4096 Oct 11 23:35 .
+drwxr-xr-x 9 runner runner   4096 Oct 11 23:35 ..
+-rw-r--r-- 1 runner runner    153 Oct 11 23:45 _lastrun_build.txt
+-rw-r--r-- 1 runner runner    410 Oct 11 23:44 _lastrun_fetch.txt
+-rw-r--r-- 1 runner runner 233397 Oct 11 23:45 summary.json
