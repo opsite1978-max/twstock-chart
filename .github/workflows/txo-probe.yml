@@ -12,43 +12,19 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir out && cat > p.py <<'PY'
-          import json, os, urllib.request, urllib.parse, collections
+          import json, os, urllib.request, urllib.parse
           tok = os.environ['FINMIND_TOKEN']
-          def get(**q):
+          def get(name, **q):
               req = urllib.request.Request('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(q), headers={'Authorization': 'Bearer ' + tok})
-              try:
-                  j = json.load(urllib.request.urlopen(req, timeout=90))
-              except Exception as e:
-                  return {'err': str(e)[:200]}
+              j = json.load(urllib.request.urlopen(req, timeout=120))
               j.pop('token_tail', None)
-              return j
-          out = []
-          for q in [dict(dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-08'),
-                    dict(dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-01', end_date='2026-10-08'),
-                    dict(dataset='TaiwanOptionInstitutionalInvestors', data_id='TXO', start_date='2026-10-05'),
-                    dict(dataset='TaiwanOptionTick', data_id='TXO', start_date='2026-10-08'),
-                    dict(dataset='TaiwanOptionOpenInterestLargeTraders', data_id='TXO', start_date='2026-10-05'),
-                    dict(dataset='TaiwanFuturesDaily', data_id='TX', start_date='2026-10-08')]:
-              j = get(**q)
-              rows = j.get('data') or []
-              rep = {'q': q, 'status': j.get('status'), 'msg': j.get('msg'), 'err': j.get('err'), 'n': len(rows)}
-              if rows:
-                  rep['keys'] = list(rows[0].keys())
-                  for k in ('date', 'contract_date', 'trading_session', 'call_put', 'institutional_investors', 'name', 'contract_type'):
-                      if k in rows[0]:
-                          rep['cnt_' + k] = collections.Counter(str(r.get(k)) for r in rows).most_common(40)
-                  rep['sample'] = rows[:4]
-                  if q['dataset'] == 'TaiwanOptionDaily':
-                      d = [r for r in rows if r.get('date') == '2026-10-08']
-                      byc = collections.defaultdict(list)
-                      for r in d: byc[r['contract_date']].append(r)
-                      rep['per_contract'] = {c: {'n': len(v), 'oi': sum(r.get('open_interest') or 0 for r in v), 'vol': sum(r.get('volume') or 0 for r in v),
-                                                 'strikes': [min(r['strike_price'] for r in v), max(r['strike_price'] for r in v)]} for c, v in byc.items()}
-                      near = [r for r in d if r['contract_date'] == sorted(byc, key=lambda c: -sum(x.get('volume') or 0 for x in byc[c]))[0]]
-                      rep['near_sample'] = sorted(near, key=lambda r: (r['call_put'], r['strike_price']))[::12][:20]
-              out.append(rep)
-          s = json.dumps(out, ensure_ascii=False, indent=1, default=str).replace(tok, '***')
-          open('out/txo.json', 'w').write(s)
+              open('out/' + name + '.json', 'w').write(json.dumps(j, ensure_ascii=False).replace(tok, '***'))
+          get('td', dataset='TaiwanStockTradingDate', start_date='2026-08-01')
+          get('opt1008', dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-08')
+          get('opt1007', dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-07', end_date='2026-10-07')
+          get('inst', dataset='TaiwanOptionInstitutionalInvestors', data_id='TXO', start_date='2026-09-28', end_date='2026-10-08')
+          get('big', dataset='TaiwanOptionOpenInterestLargeTraders', data_id='TXO', start_date='2026-09-28', end_date='2026-10-08')
+          get('opt1012', dataset='TaiwanOptionDaily', data_id='TXO', start_date='2026-10-12')
           PY
           python3 p.py
       - name: 存結果
