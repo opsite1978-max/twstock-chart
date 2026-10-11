@@ -2,6 +2,9 @@
 """
 台指選擇權每日總 Gamma 曝險（GEX）歷史 → data/txo/history.json
 
+台指期和加權指數之間有價差（正逆價差），所以「現價」用最近結算日由買賣權價格反推的遠期價（約等於指數），
+和履約價、零 Gamma、兩道牆放在同一個基準比較；台指期的開高低收另外存，用來算隔天漲跌。
+
 每個交易日：用當天收盤後的全部台指選擇權（各結算日）未平倉與結算價，
 反推隱含波動率（Black-76），算出每個履約價的 Gamma 曝險，再整理成
   總 Gamma 曝險（在台指期收盤價）、零 Gamma（翻轉點）、看漲牆、看跌牆、
@@ -261,7 +264,7 @@ def analyse_day(date, rows, P, cal):
         'gex': round(total_at(P, exps)), 'gexNear': round(total_at(P, [near])),
         'flip': round(flip) if flip else None, 'cw': cw, 'pw': pw, 'pain': pain,
         'pcr': round(oip / oic, 3) if oic else None, 'iv': round(near['iv'] * 100, 2) if near['iv'] else None,
-        'near': near['code'], 'nearExp': near['exp'], 'oi': oic + oip,
+        'near': near['code'], 'nearExp': near['exp'], 'oi': oic + oip, 'F': round(Fref, 1),
     }
 
 
@@ -302,13 +305,15 @@ def cmd_update():
             if not any(r.get('trading_session') == 'position' and (r.get('open_interest') or 0) > 0 for r in rows):
                 log('no data yet', d); continue
             f = fut.get(d)
-            res = analyse_day(d, rows, f[3] if f else None, cal)
+            res = analyse_day(d, rows, None, cal)          # 用最近結算日的遠期價（約等於加權指數）當現價，和履約價同一個基準
             if not res:
                 log('cannot analyse', d); continue
             rec = {'d': d}
             if f:
                 rec.update({'o': f[0], 'h': f[1], 'l': f[2], 'c': f[3], 'fc': f[4]})
             rec.update(res)
+            rec['ix'] = res.pop('F', None) if 'F' in res else None
+            rec.pop('F', None)
             rec['final'] = d < today or datetime.datetime.now(TW).hour >= 17
             hist[d] = rec
             done += 1
