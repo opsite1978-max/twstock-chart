@@ -402,7 +402,13 @@ async function futPrice(date){
 }
 
 // 單一結算日：遠期價、隱含波動率、Gamma 曝險
-function analyse(code, strikesMap, date, nextTD){
+// 買賣權價格反推的遠期價：買權減賣權價差最小的履約價，F = K + C − P
+function parityF(strikesMap){
+  let F = null, best = Infinity;
+  for (const s of strikesMap.values()) if (s.c.px > 0 && s.p.px > 0){ const d = Math.abs(s.c.px - s.p.px); if (d < best){ best = d; F = s.K + s.c.px - s.p.px; } }
+  return F;
+}
+function analyse(code, strikesMap, date, nextTD, off){
   const info = contractInfo(code);
   const exp = adjustExp(info.exp, nextTD);
   if (exp <= date) return null;                                      // 已結算
@@ -410,10 +416,10 @@ function analyse(code, strikesMap, date, nextTD){
   const S = [...strikesMap.values()].sort((a,b) => a.K - b.K);
   const oiC = S.reduce((t,s) => t + s.c.oi, 0), oiP = S.reduce((t,s) => t + s.p.oi, 0);
   if (oiC + oiP <= 0) return null;
-  // 遠期價：買權減賣權價差最小的履約價，F = K + C − P
-  let F = null, best = Infinity;
-  for (const s of S) if (s.c.px > 0 && s.p.px > 0){ const d = Math.abs(s.c.px - s.p.px); if (d < best){ best = d; F = s.K + s.c.px - s.p.px; } }
+  // 遠期價：買賣權價格反推，再整體平移，讓最近結算日的遠期價等於台指期日盤收盤（和你看到的價格同一個基準）
+  let F = parityF(strikesMap);
   if (F == null) return null;
+  F += off || 0;
   // 隱含波動率：用價外那一邊（較準），缺的用前後內插
   for (const s of S){
     const call = s.K >= F, side = call ? s.c : s.p, other = call ? s.p : s.c;
@@ -463,10 +469,17 @@ async function loadDate(date){
   const fut = await futPrice(date).catch(() => null);
   const nextTD = cur.next || (isLatest ? null : TD[i + 1]);
   const exps = [];
-  for (const [code, m] of chain){ const a = analyse(code, m, date, nextTD); if (a) exps.push(a); }
+  // 最近一個還沒結算的合約：它反推的遠期價和台指期收盤的差，用來平移全部合約
+  let off = 0;
+  if (fut){
+    const live = [...chain.keys()].filter(c => adjustExp(contractInfo(c).exp, nextTD) > date)
+      .sort((a, b) => adjustExp(contractInfo(a).exp, nextTD).localeCompare(adjustExp(contractInfo(b).exp, nextTD)));
+    for (const c of live){ const f0 = parityF(chain.get(c)); if (f0 != null){ off = fut.dayClose - f0; break; } }
+  }
+  for (const [code, m] of chain){ const a = analyse(code, m, date, nextTD, off); if (a) exps.push(a); }
   exps.sort((a,b) => a.exp.localeCompare(b.exp) || a.code.localeCompare(b.code));
   if (!exps.length) throw new Error('這一天找不到可以計算的選擇權');
-  DATA = { date, prevDate: prev ? prevDate : null, exps, fut, base: isLatest ? (twToday() > date ? twToday() : date) : date };
+  DATA = { date, prevDate: prev ? prevDate : null, exps, fut, off, base: isLatest ? (twToday() > date ? twToday() : date) : date };
   INST = null;
   if (!CUR || (CUR !== 'ALL' && !exps.some(e => e.code === CUR))) CUR = exps[0].code;
   setStatus(''); $('#app').hidden = false;

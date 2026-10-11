@@ -2,8 +2,7 @@
 """
 台指選擇權每日總 Gamma 曝險（GEX）歷史 → data/txo/history.json
 
-台指期和加權指數之間有價差（正逆價差），所以「現價」用最近結算日由買賣權價格反推的遠期價（約等於指數），
-和履約價、零 Gamma、兩道牆放在同一個基準比較；台指期的開高低收另外存，用來算隔天漲跌。
+現價用台指期近月日盤收盤；各合約由買賣權價格反推的遠期價整體平移，讓最近結算日的遠期價等於台指期收盤。
 
 每個交易日：用當天收盤後的全部台指選擇權（各結算日）未平倉與結算價，
 反推隱含波動率（Black-76），算出每個履約價的 Gamma 曝險，再整理成
@@ -172,20 +171,32 @@ def analyse_day(date, rows, P, cal):
             s['coi'] = int(r.get('open_interest') or 0); s['cpx'] = px
         else:
             s['poi'] = int(r.get('open_interest') or 0); s['ppx'] = px
-    exps = []
-    for code, e in by.items():
-        S = sorted(e['S'].values(), key=lambda s: s['K'])
-        if sum(s['coi'] + s['poi'] for s in S) <= 0:
-            continue
-        T = max(0.15, day_diff(date, e['exp']) - 0.01) / 365
+    # 先算每個合約由買賣權價格反推的遠期價，再整體平移，讓最近結算日的遠期價等於台指期收盤 P
+    def parity(S):
         F, best = None, 1e18
         for s in S:
             if s['cpx'] > 0 and s['ppx'] > 0:
                 d = abs(s['cpx'] - s['ppx'])
                 if d < best:
                     best, F = d, s['K'] + s['cpx'] - s['ppx']
+        return F
+    off = 0.0
+    if P:
+        for code, e in sorted(by.items(), key=lambda kv: kv[1]['exp']):
+            f0 = parity(sorted(e['S'].values(), key=lambda s: s['K']))
+            if f0 is not None and sum(s['coi'] + s['poi'] for s in e['S'].values()) > 0:
+                off = P - f0
+                break
+    exps = []
+    for code, e in by.items():
+        S = sorted(e['S'].values(), key=lambda s: s['K'])
+        if sum(s['coi'] + s['poi'] for s in S) <= 0:
+            continue
+        T = max(0.15, day_diff(date, e['exp']) - 0.01) / 365
+        F = parity(S)
         if F is None:
             continue
+        F += off
         # 只對有未平倉、或價平附近的履約價反推波動率（節省時間）
         for s in S:
             s['iv'] = None
@@ -308,7 +319,7 @@ def cmd_update():
             if not any(r.get('trading_session') == 'position' and (r.get('open_interest') or 0) > 0 for r in rows):
                 log('no data yet', d); continue
             f = fut.get(d)
-            res = analyse_day(d, rows, None, cal)          # 用最近結算日的遠期價（約等於加權指數）當現價，和履約價同一個基準
+            res = analyse_day(d, rows, f[3] if f else None, cal)   # 現價＝台指期近月日盤收盤
             if not res:
                 log('cannot analyse', d); continue
             rec = {'d': d}

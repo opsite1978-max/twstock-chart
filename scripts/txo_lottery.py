@@ -3,7 +3,7 @@
 結算日「樂透選擇權」回測資料 → data/txo/lottery.json
 
 對過去約一年的每一個台指選擇權結算日（週三、週五週選與月選）：
-  台指期與指數有價差，夜盤價格會先扣掉 D 收盤時的價差（台指期收盤 − 到期合約遠期價）再和履約價比較
+  夜盤價格直接用台指期，不扣價差（選擇權遠期價已平移到台指期收盤）
   前一個交易日（D）收盤後的籌碼：零 Gamma、最大賣權／買權未平倉履約價、Gamma 曝險牆、最大痛點
   D 晚上的夜盤（FinMind 記在結算日 E 的 after_market）：台指期夜盤收盤、最低、最高
   在夜盤收盤價的總 Gamma 曝險（只算即將結算的合約、以及全部合約）
@@ -106,13 +106,13 @@ def cmd_update():
                     continue
                 # D 收盤的 Gamma 計算（沿用 txo_scrape 的方法）
                 near_only = [r for r in rowsD if str(r.get('contract_date') or '').strip() == code]
-                resD_near = T.analyse_day(D, near_only, None, cal)      # 現價＝這個合約的遠期價（約等於指數）
+                resD_near = T.analyse_day(D, near_only, P_D, cal)       # 現價＝台指期日盤收盤（不扣價差）
                 if not resD_near:
                     continue
                 FD = resD_near['F']
-                basis = P_D - FD                                         # 台指期減指數的價差
-                Nx = (N - basis) if N else FD                            # 夜盤收盤換算成指數基準
-                resD = T.analyse_day(D, rowsD, None, cal)
+                basis = 0.0
+                Nx = N if N else P_D                                     # 夜盤收盤，直接和履約價比較
+                resD = T.analyse_day(D, rowsD, P_D, cal)
                 resN_near = T.analyse_day(D, near_only, Nx, cal)
                 resN_all = T.analyse_day(D, rowsD, Nx, cal)
                 oiP = max(SD.values(), key=lambda s: (s.get('p') or {}).get('oi', 0))['K'] if SD else None
