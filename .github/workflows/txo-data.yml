@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['scripts/txo_scrape.py', '.github/workflows/txo-data.yml']
+    paths: ['scripts/txo_scrape.py', 'scripts/txo_lottery.py', '.github/workflows/txo-data.yml']
 permissions:
   contents: write
 concurrency:
@@ -22,6 +22,11 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           REQ_BUDGET: '400'
         run: python3 scripts/txo_scrape.py update
+      - name: 結算日樂透選擇權回測資料
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          REQ_BUDGET: '600'
+        run: python3 scripts/txo_lottery.py update
       - name: 存回專案
         run: |
           git add data/txo
