@@ -1,0 +1,37 @@
+name: probe-warrant
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe
+        run: |
+          mkdir out; cd out
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128 Safari/537.36"
+          for p in t187ap42_L t187ap37_L t187ap43_L; do
+            curl -sS -m 90 -A "$UA" -o $p.json -w "$p %{http_code} %{size_download}\n" "https://openapi.twse.com.tw/v1/opendata/$p" >> codes.txt 2>&1 || true
+          done
+          curl -sS -m 90 -A "$UA" -o tpex_swagger.json -w "tpex_swagger %{http_code} %{size_download}\n" "https://www.tpex.org.tw/openapi/swagger.json" >> codes.txt 2>&1 || true
+          python3 - <<'PY' >> codes.txt
+          import json
+          try:
+              d=json.load(open('tpex_swagger.json',encoding='utf-8-sig'))
+              for p,v in d.get('paths',{}).items():
+                  s=(v.get('get') or {}).get('summary','')
+                  if '權證' in s or 'warrant' in p.lower(): print('TPEX', p, s)
+          except Exception as e: print('tpex swagger parse fail', e)
+          PY
+          # 證交所網頁版：每日權證成交（MI_INDEX 0999 認購、0999P 認售）
+          curl -sS -m 90 -A "$UA" -o mi_0999.json -w "mi0999 %{http_code} %{size_download}\n" "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20261008&type=0999&response=json" >> codes.txt 2>&1 || true
+          for f in *.json; do echo "== $f"; head -c 1500 $f; echo; done > heads.txt
+          rm -f tpex_swagger.json
+      - name: save
+        run: |
+          cd out; git init -q -b probe-out
+          git -c user.name=bot -c user.email=bot@x add -A; git -c user.name=bot -c user.email=bot@x commit -qm probe
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
