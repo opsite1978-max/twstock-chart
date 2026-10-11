@@ -191,8 +191,12 @@ function finmind(params){
   const p = (async () => {
     const qs = new URLSearchParams(params), tok = (SET.token || '').trim();
     let res;
-    try { res = await fetch(FM + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {}); }
-    catch(e){ if (!tok) throw new Error('無法連線到 FinMind'); qs.set('token', tok); res = await fetch(FM + '?' + qs); }
+    try { res = await fetch(FM + '?' + (tok && qs.set('token', tok), qs)); }
+    catch(e){
+      try { await new Promise(r => setTimeout(r, 800)); res = await fetch(FM + '?' + qs); }   // 網路不穩時再試一次
+      catch(e2){ throw new Error('連不上 FinMind 網站，請確認手機或電腦的網路連線，稍後重新整理'); }
+    }
+    if (res.status === 401 || res.status === 403) throw new Error('FinMind 不接受這組憑證，請重新貼上憑證');
     const j = await res.json().catch(() => null);
     if (res.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完，請稍後再試');
     if (!res.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || res.status));
@@ -717,6 +721,20 @@ async function loadInst(date){
   $('#instNote').textContent = '淨未平倉＝買方未平倉口數減賣方未平倉口數；正數代表偏買方（藍色），負數代表偏賣方（橘色）。金額單位為元，依期交所公布的契約金額（千元）換算。大額交易人的週選擇權是全部週契約合計，無法拆到單一結算日。';
 }
 
+/* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
+function askToken(msg){
+  const s = $('#status'); s.hidden = false; s.className = 'msg err';
+  s.innerHTML = esc(msg) + '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">' +
+    '<input id="tokIn" type="password" placeholder="貼上 FinMind 憑證" autocomplete="off" style="flex:1;min-width:180px">' +
+    '<button id="tokSave" style="background:var(--accent);border-color:var(--accent);color:#fff">儲存並讀取</button></div>';
+  $('#tokSave').onclick = () => {
+    const t = $('#tokIn').value.trim(); if (!t) return;
+    let cur = {}; try { cur = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+    cur.token = t; try { localStorage.setItem('twchart.settings', JSON.stringify(cur)); } catch(e){}
+    SET.token = t; qCache.clear(); start();
+  };
+}
+
 /* ───────── 啟動 ───────── */
 $('#rangeSel').value = store.get('txo.range') || (innerWidth < 600 ? '0.05' : '0.08');
 $('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); if (DATA) render(); };
@@ -726,8 +744,8 @@ let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTime
 CUR = store.get('txo.cur');
 if (CUR !== 'ALL') CUR = null;                                       // 單一結算日每天會變，預設看最近一個
 
-(async () => {
-  if (!(SET.token || '').trim()){ setStatus('請先到看盤頁的「設定」填入 FinMind 憑證（贊助會員），這一頁會使用同一組憑證。', true); return; }
+async function start(){
+  if (!(SET.token || '').trim()){ askToken('這個瀏覽器還沒有 FinMind 憑證。手機上「加到主畫面的看盤 App」和「瀏覽器」的設定是分開存的，請在下面貼上一次即可。'); return; }
   try {
     TD = await tradingDates();
     if (!TD.length) throw new Error('取不到交易日');
@@ -743,8 +761,11 @@ if (CUR !== 'ALL') CUR = null;                                       // 單一�
     for (const d of TD.slice(-20).reverse()){ const o = document.createElement('option'); o.value = d; o.textContent = mdw(d); sel.appendChild(o); }
     sel.value = date;
     await loadDate(date);
-  } catch(e){ setStatus(e.message || String(e), true); }
-})();
+  } catch(e){
+    if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
+  }
+}
+start();
 </script>
 </body>
 </html>

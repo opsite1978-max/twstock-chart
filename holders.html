@@ -217,7 +217,7 @@ const FM = 'https://api.finmindtrade.com/api/v4/data';
 async function finmind(params){
   const qs = new URLSearchParams(params), tok = (SET.token || '').trim();
   let res;
-  try { res = await fetch(FM + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {}); }
+  try { res = await fetch(FM + '?' + (tok && qs.set('token', tok), qs)); }
   catch(e){ if (!tok) throw e; qs.set('token', tok); res = await fetch(FM + '?' + qs); }
   const j = await res.json().catch(() => null);
   if (!res.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('FinMind ' + res.status));

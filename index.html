@@ -971,7 +971,7 @@ async function finmind(params){
   const tok = (S.token || '').trim();
   let res;
   try {
-    res = await fetch(API + '?' + qs, tok ? { headers:{ Authorization:'Bearer ' + tok } } : {});
+    res = await fetch(API + '?' + (tok && qs.set('token', tok), qs));
   } catch(e){
     if (!tok) throw new Error('無法連線到 FinMind，請檢查網路');
     qs.set('token', tok);   // 部分環境不允許自訂標頭，改用網址參數帶憑證再試一次
