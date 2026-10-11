@@ -1,3 +1,6 @@
-10-11 23:51:58 brokers 1044 days to fetch 115
-10-11 23:51:59 STOP 已達 FinMind 每小時查詢上限
-10-11 23:51:59 fetch done, requests 4 time 0 s
+10-12 03:29:38 brokers 1044 days to fetch 115
+10-12 03:32:41 2026-10-01 branches 771 market makers excluded 22 in 183 s, requests 1044
+10-12 03:35:42 2026-09-30 branches 769 market makers excluded 23 in 180 s, requests 2088
+10-12 03:38:39 2026-09-29 branches 772 market makers excluded 21 in 177 s, requests 3132
+10-12 03:38:39 budget reached, requests 3132
+10-12 03:38:39 fetch done, requests 3132 time 541 s
