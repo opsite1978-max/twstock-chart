@@ -158,6 +158,28 @@
       <p class="note" id="histNote"></p>
     </section>
 
+    <section id="chipSec">
+      <h2>PC ratio 與散戶、主力多空
+        <span class="seg" id="chipSeg"><button data-n="63">3 個月</button><button data-n="126" class="on">6 個月</button><button data-n="260">1 年</button></span>
+      </h2>
+      <div class="verdict" id="chipNow" style="margin-top:4px"></div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgCh0"></div><svg id="svgCh0" role="img" aria-label="收盤價（指數基準）"></svg><div class="tip" id="tipCh0"></div>
+      </div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgCh1"></div><svg id="svgCh1" role="img" aria-label="選擇權賣權買權比"></svg><div class="tip" id="tipCh1"></div>
+      </div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgCh2"></div><svg id="svgCh2" role="img" aria-label="主力台指期淨未平倉"></svg><div class="tip" id="tipCh2"></div>
+      </div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgCh3"></div><svg id="svgCh3" role="img" aria-label="小台與微台散戶多空比"></svg><div class="tip" id="tipCh3"></div>
+      </div>
+      <p class="note">PC ratio＝賣權除以買權（未平倉口數、成交量），100% 以上代表賣權較多；台灣常見解讀是未平倉 PC ratio 高時賣方在下方撐盤、偏多。
+        主力：外資台指期淨未平倉（大台＋小台÷4＋微台÷20，換算成大台口數）、前十大交易人全部月份淨部位（買方減賣方）。
+        散戶多空比＝（全市場未平倉 − 三大法人多單）減（全市場未平倉 − 三大法人空單），再除以全市場未平倉；正數代表散戶偏多，常被當成反向指標。資料來源：期交所（經 FinMind），每天收盤後更新。</p>
+    </section>
+
     <section id="lotSec">
       <h2>結算日樂透回測<span class="muted">前一晚夜盤符合條件，結算日開盤買價外選擇權、放到結算</span></h2>
       <div class="setrow" style="margin-bottom:4px">
@@ -205,7 +227,7 @@
       計算方式：每個結算日用買權、賣權價格反推隱含波動率（Black-76 模型，遠期價由價平附近買賣權價差推算），再算出每個履約價的 Gamma。
       Gamma 曝險＝Gamma × 未平倉口數 × 每點 50 元 × 指數² × 1%，買權記為正、賣權記為負（業界常用、與截圖相同的慣例，假設造市與賣方站在相反方向）。<br>
       零 Gamma（翻轉點）：總曝險由負轉正的價位。指數在零 Gamma 之上，避險傾向「漲了賣、跌了買」，波動較容易收斂；在零 Gamma 之下則傾向追價，波動容易放大。
-      看漲牆是現價上方買權 Gamma 曝險最大的履約價（壓力），看跌牆是現價下方賣權 Gamma 曝險最大的履約價（支撐）；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價），再扣掉台指期與指數的價差（日盤收盤時台指期減最近結算日遠期價），和履約價放在同一個基準；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
+      看漲牆是現價上方買權 Gamma 曝險最大的履約價（壓力），看跌牆是現價下方賣權 Gamma 曝險最大的履約價（支撐）；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價）；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
     </footer>
   </div>
 </main>
@@ -483,8 +505,8 @@ function viewOf(list){
   const rows = [...map.values()].sort((a,b) => a.K - b.K);
   // 現價：台指期近月最新價（含夜盤）；取不到就用遠期價
   // 台指期和加權指數有價差：用「台指期日盤收盤 − 最近結算日遠期價」當價差，把台指期最新價換成指數基準，才能和履約價比較
-  const basis = DATA.fut ? DATA.fut.dayClose - DATA.exps[0].F : 0;
-  const P = DATA.fut ? DATA.fut.price - basis : F;
+  const basis = 0;                                                   // 現價直接用台指期最新價（不扣價差）
+  const P = DATA.fut ? DATA.fut.price : F;
   return { list, F, P, basis, rows, single:list.length === 1 ? list[0] : null };
 }
 
@@ -530,9 +552,9 @@ function render(){
   const card = (k, val, sub, sw) => `<div class="card"><div class="k">${sw ? `<i style="background:${sw}"></i>` : ''}${k}</div><div class="v">${val}</div><div class="s">${sub || ''}</div></div>`;
   const pcr = st.oiC ? st.oiP / st.oiC : null, vpcr = st.volC ? st.volP / st.volC : null;
   const futSub = !fut ? '取不到台指期，暫用遠期價' :
-    `台指期 ${fmtInt(fut.price)}（${fut.night != null ? '夜盤，' + signInt(fut.night - fut.dayClose) + ' 點' : '日盤收盤'}）扣掉價差 ${signInt(v.basis)} 點`;
+    fut.night != null ? `日盤收 ${fmtInt(fut.dayClose)}，夜盤 ${signInt(fut.night - fut.dayClose)} 點（${fut.nightContract.slice(4)}月）` : `日盤收盤（${fut.contract.slice(4)}月），夜盤還沒有資料`;
   $('#cards').innerHTML = [
-    card('現價（換成指數基準，含夜盤）', fmtInt(P), futSub),
+    card('台指期現價（含夜盤）', fmtInt(P), futSub),
     card('零 Gamma（翻轉點）', st.flip ? fmtInt(st.flip) : '範圍內沒有', st.flip ? (P >= st.flip ? '現價在上方：正 Gamma 區' : '現價在下方：負 Gamma 區') + `（差 ${signInt(P - st.flip)} 點）` : ''),
     card('看漲牆（上方壓力）', fmtInt(st.callWall.K), `現價上方買權 Gamma 最大，距 ${signInt(st.callWall.K - P)} 點；最大買權未平倉 ${fmtInt(st.oiCallMax.K)}`, css('--call')),
     card('看跌牆（下方支撐）', fmtInt(st.putWall.K), `現價下方賣權 Gamma 最大，距 ${signInt(st.putWall.K - P)} 點；最大賣權未平倉 ${fmtInt(st.oiPutMax.K)}`, css('--put')),
@@ -810,7 +832,7 @@ const MK = {
   put:   (p, lab) => ({ p, label:(lab || '看跌牆') + ' ' + fmtInt(p), color:css('--put'), sw:2 }),
   pain:  p => ({ p, label:'最大痛點 ' + fmtInt(p), color:css('--pain'), dash:'1.5 3', sw:2.5 }),
 };
-const LG = { price:['現價（指數基準，含夜盤）', 'dash'], flip:['零 Gamma', 'ln'], pain:['最大痛點', 'dot'] };
+const LG = { price:['台指期現價（含夜盤）', 'dash'], flip:['零 Gamma', 'ln'], pain:['最大痛點', 'dot'] };
 function lgItem(k){ const c = { price:css('--text'), flip:css('--flip'), pain:css('--pain') }[k]; return [LG[k][0], c, LG[k][1]]; }
 
 function drawGex(){
@@ -965,6 +987,7 @@ async function loadHistory(){
     HIST = (j.days || []).filter(d => d.c && d.gex != null);
     HIST.updated = j.updated;
     renderHistory();
+    if (CHIPS) renderChips2();
   } catch(e){ $('#histNow').textContent = '總 Gamma 曝險歷史還在計算中（第一次約需 20 分鐘），稍後重新整理。'; }
 }
 function renderHistory(){
@@ -1134,6 +1157,65 @@ function renderLottery(){
 document.querySelectorAll('#lotSide button').forEach(b => b.onclick = () => { LOTS = b.dataset.s; store.set('txo.lotSide', LOTS); renderLottery(); });
 ['#lotDist', '#lotPx', '#lotKind'].forEach(id => $(id).onchange = renderLottery);
 
+/* ───────── PC ratio 與散戶、主力多空（data/txo/chips.json＋history.json） ───────── */
+let CHIPS = null, CN = +(store.get('txo.chipN') || 126);
+async function loadChips(){
+  try {
+    const r = await fetch('data/txo/chips.json?t=' + Date.now()); if (!r.ok) throw 0;
+    const j = await r.json(); CHIPS = j.days || []; CHIPS.updated = j.updated;
+    renderChips2();
+  } catch(e){ $('#chipNow').textContent = '籌碼資料還在計算中，稍後重新整理。'; }
+}
+function renderChips2(){
+  if (!CHIPS || !CHIPS.length) return;
+  document.querySelectorAll('#chipSeg button').forEach(b => b.classList.toggle('on', +b.dataset.n === CN));
+  const H = new Map((HIST || []).map(h => [h.d, h]));
+  const all = CHIPS.map(c => { const h = H.get(c.d) || {}; return Object.assign({}, c, { px: h.ix || h.c || null, pcr: h.pcr != null ? h.pcr * 100 : null, pcrV: h.pcrV != null ? h.pcrV * 100 : null }); });
+  const D = all.slice(-CN);
+  const L = all[all.length - 1], P = all[all.length - 2] || {};
+  const chg = (k, d = 0) => L[k] == null || P[k] == null ? '' : `（${signInt(+(L[k] - P[k]).toFixed(d))}）`;
+  const pc = v => v == null ? '–' : v.toFixed(1) + '%';
+  const parts = [`${mdw(L.d)}：未平倉 PC ratio ${pc(L.pcr)}、成交量 PC ratio ${pc(L.pcrV)}`,
+    `外資台指期淨未平倉 ${signInt(L.fi)} 口${chg('fi')}`, L.t10 != null ? `前十大交易人淨部位 ${signInt(L.t10)} 口${chg('t10')}` : '',
+    L.mtxR != null ? `小台散戶多空比 ${L.mtxR > 0 ? '+' : ''}${L.mtxR.toFixed(1)}%（${L.mtxR > 0 ? '散戶偏多' : '散戶偏空'}）` : '',
+    L.tmfR != null ? `微台散戶多空比 ${L.tmfR > 0 ? '+' : ''}${L.tmfR.toFixed(1)}%` : ''].filter(Boolean);
+  $('#chipNow').innerHTML = esc(parts.join('，')) + `。<span class="muted">（資料計算於 ${esc(CHIPS.updated || '')}）</span>`;
+  const tip = r => `<b>${mdw(r.d)}</b><br>收盤（指數基準）${r.px ? fmtInt(r.px) : '–'}<br>PC ratio 未平倉 ${pc(r.pcr)}・成交量 ${pc(r.pcrV)}<br>` +
+    `外資淨未平倉 ${signInt(r.fi)} 口（大台 ${signInt(r.fiTX)}）・投信 ${signInt(r.it)}・自營商 ${signInt(r.dl)}<br>` +
+    `前十大交易人 ${signInt(r.t10)}・前五大 ${signInt(r.t5)}<br>散戶多空比 小台 ${r.mtxR != null ? r.mtxR.toFixed(1) + '%' : '–'}・微台 ${r.tmfR != null ? r.tmfR.toFixed(1) + '%' : '–'}`;
+  chipPanel('0', D, 130, [{ k:'px', name:'收盤（指數基準）', col:css('--text'), w:2 }], t => fmtInt(t), null, tip);
+  chipPanel('1', D, 170, [{ k:'pcr', name:'PC ratio（未平倉）', col:css('--curve'), w:2 }, { k:'pcrV', name:'PC ratio（成交量）', col:css('--flip'), w:1.4, dash:'4 3' }], t => t.toFixed(0) + '%', 100, tip);
+  chipPanel('2', D, 190, [{ k:'fi', name:'外資淨未平倉（大台口，正藍負橘）', bar:true }, { k:'t10', name:'前十大交易人淨部位', col:css('--text'), w:1.8 }], t => fmtInt(t), 0, tip);
+  chipPanel('3', D, 170, [{ k:'mtxR', name:'小台散戶多空比', col:css('--curve'), w:2 }, { k:'tmfR', name:'微台散戶多空比', col:css('--pain'), w:2 }], t => t.toFixed(0) + '%', 0, tip);
+}
+function chipPanel(id, D, Hh, series, yfmt, ref, tip){
+  const svg = $('#svgCh' + id), f = histFrame(svg, Hh), x = histX(f, D.length);
+  legend($('#lgCh' + id), series.map(s => s.bar ? [s.name, css('--call')] : [s.name, s.col, s.dash ? 'dash' : 'ln']));
+  const vals = D.flatMap(d => series.map(s => d[s.k])).filter(v => v != null && isFinite(v));
+  if (!vals.length){ el('text', { x:f.W / 2, y:f.H / 2, 'text-anchor':'middle', fill:css('--muted') }, svg, '沒有資料'); return; }
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (ref != null){ lo = Math.min(lo, ref); hi = Math.max(hi, ref); }
+  if (series.some(s => s.bar)){ lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  const pad = (hi - lo) * 0.08 || 1;
+  const y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih;
+  histDates(svg, f, D, x); yAxis(svg, f, y, lo - pad, hi + pad, yfmt);
+  if (ref != null) el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(ref), y2:y(ref), stroke:css('--muted'), 'stroke-width':1.2, 'stroke-dasharray':'2 3' }, svg);
+  const step = f.iw / D.length;
+  for (const s of series){
+    if (s.bar){
+      const w = Math.max(1, Math.min(10, step - 2));
+      D.forEach((d, i) => { if (d[s.k] != null) bar(svg, x(i) - w / 2, w, y(0), y(d[s.k]), d[s.k] >= 0 ? css('--call') : css('--put')); });
+      continue;
+    }
+    let p = '', pen = false;
+    D.forEach((d, i) => { const v = d[s.k]; if (v == null || !isFinite(v)){ pen = false; return; } p += (pen ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); pen = true; });
+    el('path', { d:p, fill:'none', stroke:s.col, 'stroke-width':s.w || 1.8, 'stroke-dasharray':s.dash || null, 'stroke-linejoin':'round' }, svg);
+  }
+  hover(svg, $('#tipCh' + id), f, x, [], o => tip(o.r),
+    mx => { const i = Math.max(0, Math.min(D.length - 1, Math.round((mx - f.m.l) / step - 0.5))); return { K:i, r:D[i] }; });
+}
+document.querySelectorAll('#chipSeg button').forEach(b => b.onclick = () => { CN = +b.dataset.n; store.set('txo.chipN', CN); renderChips2(); });
+
 /* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
 function askToken(msg){
   const s = $('#status'); s.hidden = false; s.className = 'msg err';
@@ -1153,7 +1235,7 @@ $('#rangeSel').value = store.get('txo.range') || (innerWidth < 600 ? '0.05' : '0
 $('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); if (DATA) render(); };
 document.querySelectorAll('#distSeg button').forEach(b => b.onclick = () => { DIST = b.dataset.m; store.set('txo.dist', DIST); if (DATA) drawDist(); });
 $('#dateSel').onchange = () => loadDate($('#dateSel').value).catch(e => setStatus(e.message, true));
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); }, 150); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); renderChips2(); renderLottery(); }, 150); });
 CUR = store.get('txo.cur');
 if (CUR !== 'ALL') CUR = null;                                       // 單一結算日每天會變，預設看最近一個
 
@@ -1174,7 +1256,7 @@ async function start(){
     for (const d of TD.slice(-20).reverse()){ const o = document.createElement('option'); o.value = d; o.textContent = mdw(d); sel.appendChild(o); }
     sel.value = date;
     await loadDate(date);
-    loadHistory(); loadLottery();
+    loadHistory(); loadLottery(); loadChips();
   } catch(e){
     if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
   }
