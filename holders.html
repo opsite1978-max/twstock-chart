@@ -102,7 +102,7 @@
   <a class="btn" id="back" href="./">← 看盤</a>
 </header>
 <main>
-  <div class="tabs"><button data-t="stock" class="on">個股籌碼</button><button data-t="screen">大戶買散戶賣</button><button data-t="layout">內部人＋主力佈局</button><button data-t="warrant">權證大買</button></div>
+  <div class="tabs"><button data-t="stock" class="on">個股籌碼</button><button data-t="screen">大戶買散戶賣</button><button data-t="layout">內部人＋主力佈局</button><button data-t="warrant">權證大買</button><button data-t="branch">高勝率分點</button></div>
   <div class="setrow" id="thrRow">
     <label>大戶 <select id="bigSel"><option value="100">100 張以上</option><option value="400">400 張以上</option><option value="1000">1000 張以上</option></select></label>
     <label>散戶 <select id="smallSel"><option value="5">5 張以下</option><option value="10">10 張以下</option><option value="50">50 張以下</option><option value="100">100 張以下</option></select></label>
@@ -166,6 +166,20 @@
       <label><select id="wMkt"><option value="">上市＋上櫃</option><option value="上市">只看上市</option><option value="上櫃">只看上櫃</option></select></label>
     </div>
     <div id="wOut"><div class="msg">載入中…</div></div>
+  </div>
+
+  <div id="tabBranch" hidden>
+    <div class="setrow">
+      <label>勝率看買進後 <select id="bH"><option value="5">5 日</option><option value="10" selected>10 日</option><option value="20">20 日</option></select></label>
+      <label>勝率 ≥ <input type="number" id="bWin" value="60" step="5" min="0" max="100"> %</label>
+      <label>平均報酬 ≥ <input type="number" id="bAvg" value="2" step="0.5"> %</label>
+      <label>歷史進場至少 <input type="number" id="bN" value="8" step="1" min="1"> 次</label>
+    </div>
+    <div class="setrow">
+      <label>近期＝最近 <select id="bDays"><option value="1">1</option><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option></select> 個交易日</label>
+      <label>每筆淨買至少 <input type="number" id="bMin" value="50" step="10" min="50"> 萬元</label>
+    </div>
+    <div id="bOut"><div class="msg">載入中…</div></div>
   </div>
 
   <footer>
@@ -742,6 +756,63 @@ function drawWarrant(){
   cv.onmousemove = show; cv.onclick = show; cv.ontouchstart = show; cv.onmouseleave = () => tip.style.display = 'none';
 }
 
+/* ───────── 高勝率權證分點 ───────── */
+let WB = null;
+async function loadBranch(){
+  if (!WB){ try { const r = await fetch('data/wbranch/summary.json?t=' + Date.now()); if (r.ok) WB = await r.json(); } catch(e){} }
+  if (!WB || !WB.branches){ $('#bOut').innerHTML = '<div class="msg">權證分點資料正在建立中：每小時會用你的 FinMind 帳號補抓約 4 到 5 個交易日的全部分點資料，回補 120 個交易日大約需要一天。資料累積到可以算勝率後，這裡就會出現結果。</div>'; return; }
+  runBranch();
+}
+function runBranch(){
+  const H = +$('#bH').value, minWin = +$('#bWin').value || 0, minAvg = +$('#bAvg').value, minN = +$('#bN').value || 1, nd = +$('#bDays').value, minAmt = +$('#bMin').value || 50;
+  const hi = WB.horizons.indexOf(H), base = 1 + hi * 3;
+  const good = {};
+  for (const [id, r] of Object.entries(WB.branches)){
+    const n = r[base], win = r[base + 1], avg = r[base + 2];
+    if (n >= minN && win != null && win >= minWin && avg != null && avg >= minAvg) good[id] = { id, name:r[0], n, win, avg };
+  }
+  const days = WB.recentDays.slice(-nd), dset = new Set(days);
+  const stocks = {}, inds = {}, bAct = {};
+  for (const [d, b, u, cn, pn] of WB.recent){
+    if (!dset.has(d) || !good[b] || cn < minAmt) continue;
+    const meta = WB.names[u] || [NAMES[u] || '', ''];
+    const st = stocks[u] || (stocks[u] = { code:u, name:meta[0], ind:meta[1], amt:0, br:{} });
+    st.amt += cn; st.br[b] = (st.br[b] || 0) + cn;
+    const ind = meta[1] || '其他';
+    const io = inds[ind] || (inds[ind] = { ind, amt:0, br:new Set(), st:new Set() });
+    io.amt += cn; io.br.add(b); io.st.add(u);
+    (bAct[b] || (bAct[b] = {}))[u] = ((bAct[b] || {})[u] || 0) + cn;
+  }
+  const nGood = Object.keys(good).length;
+  const span = `分點資料 ${WB.from} → ${WB.to}（${WB.days} 個交易日）・近期 ${days[0] || '–'} → ${days[days.length - 1] || '–'}・符合勝率條件的分點 <b style="color:var(--text)">${nGood}</b> 個`;
+  if (WB.days < 30) { $('#bOut').innerHTML = `<p class="small muted">${span}</p><div class="msg">目前只累積 ${WB.days} 個交易日，算勝率的樣本還太少，回補完成前結果僅供參考。</div>` + branchTables(stocks, inds, good, bAct, H); return; }
+  $('#bOut').innerHTML = `<p class="small muted" style="margin:0 0 6px">${span}</p>` + branchTables(stocks, inds, good, bAct, H);
+  $('#bOut').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => open(tr.dataset.c));
+}
+function branchTables(stocks, inds, good, bAct, H){
+  const sl = Object.values(stocks).sort((a, b) => Object.keys(b.br).length - Object.keys(a.br).length || b.amt - a.amt);
+  const il = Object.values(inds).sort((a, b) => b.br.size - a.br.size || b.amt - a.amt);
+  const gl = Object.values(good).sort((a, b) => b.win - a.win || b.avg - a.avg);
+  if (!sl.length) return '<div class="msg">最近這幾天，符合條件的高勝率分點沒有明顯買進認購權證。可以把勝率或報酬門檻調低、或把近期天數拉長。</div>';
+  return `<h2 style="margin-top:10px">類股排行 <span class="muted">高勝率分點近期集中買進的產業</span></h2>
+  <div class="tblwrap"><table><thead><tr><th class="l">產業</th><th>分點數</th><th>個股數</th><th>認購淨買</th></tr></thead><tbody>
+  ${il.slice(0, 15).map(x => `<tr><td class="l">${esc(x.ind)}</td><td><b>${x.br.size}</b></td><td>${x.st.size}</td><td class="up">${fmtWan(x.amt)}</td></tr>`).join('')}
+  </tbody></table></div>
+  <h2 style="margin-top:14px">個股 <span class="muted">依買進的高勝率分點數排序，點一列看個股籌碼</span></h2>
+  <div class="tblwrap"><table><thead><tr><th class="l">標的</th><th>分點數</th><th>認購淨買</th><th class="l">是哪些分點（${H} 日勝率）</th><th class="l">產業</th></tr></thead><tbody>
+  ${sl.slice(0, 100).map(x => `<tr class="click" data-c="${esc(x.code)}"><td class="l"><b>${esc(x.code)}</b> ${esc(x.name)}</td><td><b>${Object.keys(x.br).length}</b></td><td class="up">${fmtWan(x.amt)}</td>
+    <td class="l small">${Object.entries(x.br).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([b, v]) => `${esc(good[b].name)}（${good[b].win}%）${fmtWan(v)}`).join('、')}</td><td class="l muted">${esc(x.ind || '')}</td></tr>`).join('')}
+  </tbody></table></div>
+  <h2 style="margin-top:14px">高勝率分點清單 <span class="muted">前 40 名</span></h2>
+  <div class="tblwrap"><table><thead><tr><th class="l">分點</th><th>${H} 日勝率</th><th>平均報酬</th><th>歷史進場次數</th><th class="l">近期買進</th></tr></thead><tbody>
+  ${gl.slice(0, 40).map(g => `<tr><td class="l"><b>${esc(g.name)}</b> <span class="muted small">${esc(g.id)}</span></td><td class="up">${g.win}%</td><td>${pctS(g.avg)}</td><td>${g.n}</td>
+    <td class="l small">${bAct[g.id] ? Object.entries(bAct[g.id]).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([u, v]) => esc((WB.names[u] || [u])[0] || u) + ' ' + fmtWan(v)).join('、') : '<span class="muted">近期沒有</span>'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="note">「進場」＝某分點單日淨買某檔股票的認購權證達門檻金額；勝率＝這些進場之後 ${H} 個交易日，標的股票上漲的比例；平均報酬＝同期間標的股票的平均漲跌。發行商造市、自營的分點（單日交易數百檔權證）已排除。樣本少的分點勝率容易失真，建議歷史次數設 8 次以上；過去的勝率不代表未來。</p>`;
+}
+['bH','bWin','bAvg','bN','bDays','bMin'].forEach(id => $('#' + id).addEventListener('change', () => { if (WB) runBranch(); }));
+const pctS = (v, d = 1) => v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%';
+
 /* ───────── 權證大買 ───────── */
 let WSORT = { k:'net', dir:-1 };
 async function loadWar(){
@@ -801,12 +872,13 @@ try { const o = JSON.parse(store.get('holders.warrant') || 'null'); if (o) W_IDS
 /* ───────── 分頁、門檻、啟動 ───────── */
 function showTab(t){
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-  $('#tabStock').hidden = t !== 'stock'; $('#tabScreen').hidden = t !== 'screen'; $('#tabLayout').hidden = t !== 'layout'; $('#tabWarrant').hidden = t !== 'warrant';
-  $('#thrRow').hidden = t === 'warrant';   // 權證分頁用不到大戶、散戶門檻
+  $('#tabStock').hidden = t !== 'stock'; $('#tabScreen').hidden = t !== 'screen'; $('#tabLayout').hidden = t !== 'layout'; $('#tabWarrant').hidden = t !== 'warrant'; $('#tabBranch').hidden = t !== 'branch';
+  $('#thrRow').hidden = t === 'warrant' || t === 'branch';   // 權證分頁用不到大戶、散戶門檻
   store.set('holders.tab', t);
   if (t === 'screen') loadScreen();
   if (t === 'layout') loadLayout();
   if (t === 'warrant') loadWar();
+  if (t === 'branch') loadBranch();
 }
 document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; showTab(b.dataset.t);
   if (b.dataset.t === 'stock' && !CUR){ open(store.get('holders.last') || (INDEX.watch && INDEX.watch[0]) || '2330'); return; }
@@ -821,7 +893,7 @@ let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth ==
 (async () => {
   await loadIndex();
   const p = new URLSearchParams(location.search);
-  if (['screen', 'layout', 'warrant'].includes(p.get('tab'))){ showTab(p.get('tab')); return; }
+  if (['screen', 'layout', 'warrant', 'branch'].includes(p.get('tab'))){ showTab(p.get('tab')); return; }
   open(p.get('s') || store.get('holders.last') || (INDEX.watch && INDEX.watch[0]) || '2330');
 })();
 </script>
