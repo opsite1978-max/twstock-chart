@@ -12,13 +12,13 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
-    --call:#3987e5; --put:#d95926; --pain:#199e70; --flip:#a7afc0; --zoneP:#3987e512; --zoneN:#d9592614;
+    --call:#3987e5; --put:#d95926; --pain:#199e70; --curve:#9085e9; --flip:#a7afc0; --zoneP:#3987e512; --zoneN:#d9592614;
     color-scheme:dark;
   }
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
     --text:#1f2430; --muted:#667085;
-    --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --flip:#52514e; --zoneP:#2a78d60f; --zoneN:#eb683412;
+    --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --curve:#6250d6; --flip:#52514e; --zoneP:#2a78d60f; --zoneN:#eb683412;
     color-scheme:light;
   }
   *{box-sizing:border-box}
@@ -114,10 +114,6 @@
     <div class="cards" id="cards"></div>
     <div class="verdict" id="verdict"></div>
 
-    <section>
-      <h2>操作方向參考<span class="muted">依下列籌碼訊號自動計分，只是參考，不保證獲利</span></h2>
-      <div class="dir" id="dirBox"></div>
-    </section>
 
     <section>
       <h2>Gamma 曝險（各履約價）<span class="muted">指數每變動 1%，造市與賣方需要調整的避險金額</span></h2>
@@ -135,6 +131,11 @@
         <svg id="svgCurve" role="img" aria-label="總 Gamma 曝險隨指數變化的曲線"></svg>
         <div class="tip" id="tipCurve"></div>
       </div>
+    </section>
+
+    <section>
+      <h2>操作建議與損益曲線<span class="muted">依籌碼訊號自動計分，只是參考，不保證獲利</span></h2>
+      <div class="dir" id="dirBox"></div>
     </section>
 
     <section>
@@ -166,7 +167,7 @@
       計算方式：每個結算日用買權、賣權價格反推隱含波動率（Black-76 模型，遠期價由價平附近買賣權價差推算），再算出每個履約價的 Gamma。
       Gamma 曝險＝Gamma × 未平倉口數 × 每點 50 元 × 指數² × 1%，買權記為正、賣權記為負（業界常用、與截圖相同的慣例，假設造市與賣方站在相反方向）。<br>
       零 Gamma（翻轉點）：總曝險由負轉正的價位。指數在零 Gamma 之上，避險傾向「漲了賣、跌了買」，波動較容易收斂；在零 Gamma 之下則傾向追價，波動容易放大。
-      看漲牆、看跌牆是買權、賣權 Gamma 曝險最大的履約價，常被視為壓力與支撐；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價）；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
+      看漲牆是現價上方買權 Gamma 曝險最大的履約價（壓力），看跌牆是現價下方賣權 Gamma 曝險最大的履約價（支撐）；籌碼分布圖另外標出未平倉最多的買權、賣權履約價。最大痛點是讓全部買方到期價值最少的結算價。<br>現價用台指期近月的最新成交價（收盤後有夜盤就用夜盤價）；未平倉只在日盤收盤後更新，成交量含夜盤。操作方向參考是用固定規則把幾個籌碼訊號加總，只是參考，不保證走勢，也不是投資建議。
     </footer>
   </div>
 </main>
@@ -192,8 +193,8 @@ function fmtMoney(v, signed){
   if (v == null || isNaN(v)) return '–';
   const a = Math.abs(v), s = signed ? (v > 0 ? '+' : v < 0 ? '−' : '') : (v < 0 ? '−' : '');
   if (a >= 1e8) return s + (a / 1e8).toFixed(a >= 1e10 ? 0 : 2) + ' 億';
-  if (a >= 1e4) return s + Math.round(a / 1e4).toLocaleString('en-US') + ' 萬';
-  return s + Math.round(a);
+  if (a >= 1e4) return s + (a < 1e5 ? (a / 1e4).toFixed(1).replace(/\.0$/, '') : Math.round(a / 1e4).toLocaleString('en-US')) + ' 萬';
+  return s + Math.round(a).toLocaleString('en-US');
 }
 
 /* ───────── FinMind ───────── */
@@ -451,8 +452,10 @@ function stats(v){
   const oiC = rows.reduce((t,r) => t + r.cOi, 0), oiP = rows.reduce((t,r) => t + r.pOi, 0);
   const volC = rows.reduce((t,r) => t + r.cVol, 0), volP = rows.reduce((t,r) => t + r.pVol, 0);
   const net = rows.reduce((t,r) => t + r.gc + r.gp, 0);
-  const callWall = rows.reduce((a,b) => b.gc > a.gc ? b : a, rows[0]);
-  const putWall = rows.reduce((a,b) => b.gp < a.gp ? b : a, rows[0]);
+  // 看漲牆：現價上方買權 Gamma 曝險最大的履約價；看跌牆：現價下方賣權 Gamma 曝險最大的履約價（上方或下方沒有履約價時才不分位置）
+  const P0 = v.P, above = rows.filter(r => r.K >= P0), below = rows.filter(r => r.K <= P0);
+  const callWall = (above.length ? above : rows).reduce((a,b) => b.gc > a.gc ? b : a);
+  const putWall = (below.length ? below : rows).reduce((a,b) => b.gp < a.gp ? b : a);
   const oiCallMax = rows.reduce((a,b) => b.cOi > a.cOi ? b : a, rows[0]);
   const oiPutMax = rows.reduce((a,b) => b.pOi > a.pOi ? b : a, rows[0]);
   // 最大痛點
@@ -490,8 +493,8 @@ function render(){
   $('#cards').innerHTML = [
     card('台指期現價（含夜盤）', fmtInt(P), futSub),
     card('零 Gamma（翻轉點）', st.flip ? fmtInt(st.flip) : '範圍內沒有', st.flip ? (P >= st.flip ? '現價在上方：正 Gamma 區' : '現價在下方：負 Gamma 區') + `（差 ${signInt(P - st.flip)} 點）` : ''),
-    card('看漲牆（壓力）', fmtInt(st.callWall.K), `距現價 ${signInt(st.callWall.K - P)} 點；最大買權未平倉 ${fmtInt(st.oiCallMax.K)}`, css('--call')),
-    card('看跌牆（支撐）', fmtInt(st.putWall.K), `距現價 ${signInt(st.putWall.K - P)} 點；最大賣權未平倉 ${fmtInt(st.oiPutMax.K)}`, css('--put')),
+    card('看漲牆（上方壓力）', fmtInt(st.callWall.K), `現價上方買權 Gamma 最大，距 ${signInt(st.callWall.K - P)} 點；最大買權未平倉 ${fmtInt(st.oiCallMax.K)}`, css('--call')),
+    card('看跌牆（下方支撐）', fmtInt(st.putWall.K), `現價下方賣權 Gamma 最大，距 ${signInt(st.putWall.K - P)} 點；最大賣權未平倉 ${fmtInt(st.oiPutMax.K)}`, css('--put')),
     card('最大痛點', fmtInt(st.pain), `距現價 ${signInt(st.pain - P)} 點；結算在這裡買方價值最少`, css('--pain')),
     card('現價的總 Gamma 曝險', fmtMoney(st.netAtP, true), '指數每變動 1% 的避險金額'),
     card('未平倉 賣權／買權 比', pcr == null ? '–' : pcr.toFixed(2), '買權 ' + fmtInt(st.oiC) + '・賣權 ' + fmtInt(st.oiP) + ' 口'),
@@ -559,6 +562,7 @@ function renderDirection(){
   // 具體合約：偏多買價外一檔買權、偏空買價外一檔賣權
   const S = pick.S;
   let plan = '';
+  const PL = [];                                                      // 要畫損益曲線的合約
   const price = side => side.npx || side.px;
   if (bias === 'bull'){
     const s = S.find(x => x.K >= P && price(x.c) > 0);
@@ -566,6 +570,7 @@ function renderDirection(){
       const q = price(s.c), be = s.K + q;
       const nb = v.rows.filter(r => r.K > be && r.gc > 0).sort((a,b) => b.gc - a.gc)[0];
       const tgt = st.callWall.K > be ? st.callWall.K : nb ? nb.K : null, tgtLab = st.callWall.K > be ? '看漲牆' : '上方下一道買權牆';
+      PL.push({ call:true, K:s.K, q, be, tgt, name:fmtInt(s.K) + ' 買權' });
       plan = `<b>可考慮：買進 ${mdw(pick.exp)} 結算的 ${fmtInt(s.K)} 買權</b><br>` +
         `權利金約 ${q} 點（一口約 ${fmtInt(q * MULT)} 元${s.c.npx ? '，夜盤價' : '，日盤結算價'}）・損益兩平 ${fmtInt(be)}（現價 ${signInt(be - P)} 點）<br>` +
         (tgt ? `目標${tgtLab} ${fmtInt(tgt)}：到達時每口約賺 ${fmtInt((tgt - be) * MULT)} 元` : `損益兩平之上找不到明顯的買權牆，上漲目標不明確`) +
@@ -577,6 +582,7 @@ function renderDirection(){
       const q = price(s.p), be = s.K - q;
       const nb = v.rows.filter(r => r.K < be && r.gp < 0).sort((a,b) => a.gp - b.gp)[0];
       const tgt = st.putWall.K < be ? st.putWall.K : nb ? nb.K : null, tgtLab = st.putWall.K < be ? '看跌牆' : '下方下一道賣權牆';
+      PL.push({ call:false, K:s.K, q, be, tgt, name:fmtInt(s.K) + ' 賣權' });
       plan = `<b>可考慮：買進 ${mdw(pick.exp)} 結算的 ${fmtInt(s.K)} 賣權</b><br>` +
         `權利金約 ${q} 點（一口約 ${fmtInt(q * MULT)} 元${s.p.npx ? '，夜盤價' : '，日盤結算價'}）・損益兩平 ${fmtInt(be)}（現價 ${signInt(be - P)} 點）<br>` +
         (tgt ? `目標${tgtLab} ${fmtInt(tgt)}：到達時每口約賺 ${fmtInt((be - tgt) * MULT)} 元` : `損益兩平之下找不到明顯的賣權牆，下跌目標不明確`) +
@@ -588,6 +594,11 @@ function renderDirection(){
                : `可等突破看漲牆 ${fmtInt(st.callWall.K)} 再考慮買權，或跌破看跌牆 ${fmtInt(st.putWall.K)} 再考慮賣權。`;
     plan = negG ? `<b>方向訊號不一致，先觀望</b><br>現價在負 Gamma 區，波動可能放大。${cond}`
                 : `<b>方向訊號不一致，買方不利，先觀望</b><br>現價在正 Gamma 區，行情容易在 ${fmtInt(st.putWall.K)}～${fmtInt(st.callWall.K)} 之間盤整，買進選擇權會被時間價值慢慢吃掉。`;
+    // 觀望時也畫出「條件成立才進場」的兩個合約，讓你看到各自要漲跌多少才回本
+    const c = S.find(x => x.K >= P && price(x.c) > 0), pu = [...S].reverse().find(x => x.K <= P && price(x.p) > 0);
+    if (c) PL.push({ call:true, K:c.K, q:price(c.c), be:c.K + price(c.c), name:fmtInt(c.K) + ' 買權（條件成立才買）' });
+    if (pu) PL.push({ call:false, K:pu.K, q:price(pu.p), be:pu.K - price(pu.p), name:fmtInt(pu.K) + ' 賣權（條件成立才買）' });
+    if (PL.length) plan += '<br>' + PL.map(x => `${x.name}：權利金約 ${x.q} 點（一口 ${fmtInt(x.q * MULT)} 元），損益兩平 ${fmtInt(x.be)}（現價 ${signInt(x.be - P)} 點）`).join('<br>');
   }
   const warn = [];
   if (switched) warn.push(`你選的 ${mdw(v0.single.exp)} 結算日太近（${dayDiff(DATA.base, v0.single.exp) <= 0 ? '今天結算' : '只剩 1 天'}），買方時間價值流失最快，所以上面改用 ${mdw(pick.exp)} 結算的籌碼計分並選合約`);
@@ -601,8 +612,46 @@ function renderDirection(){
     `<div class="head"><span class="badge ${bias}">${lab}</span><span class="muted">總分 ${score > 0 ? '+' : ''}${score}（+2 以上偏多、−2 以下偏空）・依 ${mdw(pick.exp)} 結算（剩 ${left} 天）的籌碼計算</span></div>` +
     '<ul>' + F.map(([sc, t]) => `<li><span class="sc ${sc > 0 ? 'pos' : sc < 0 ? 'neg' : 'muted'}">${sc > 0 ? '+' + sc : sc < 0 ? '−' + Math.abs(sc) : '0'}</span>${esc(t)}</li>`).join('') + '</ul>' +
     (plan ? `<div class="plan">${plan}</div>` : '') +
+    (PL.length ? `<div class="legend" id="lgPay" style="margin-top:10px"></div><div style="position:relative"><svg id="svgPay" role="img" aria-label="建議合約在結算時的損益曲線"></svg><div class="tip" id="tipPay"></div></div>
+      <p class="note">損益曲線：橫軸是結算時的指數，縱軸是每口賺賠（元，已扣權利金）。實線是結算時的損益；虛線是用目前隱含波動率估計「明天」平倉的損益。</p>` : '') +
     (warn.length ? `<p class="note">${warn.map(esc).join('；')}。</p>` : '') +
     '<p class="note">這是依上面固定規則自動計算的參考，不是投資建議，也不保證獲利；我不是財務顧問。買進選擇權最多損失全部權利金，請自行判斷並控制部位。</p>';
+  if (PL.length) drawPayoff(PL, pick, st, P);
+}
+
+// 建議合約的損益曲線（結算時＋明天平倉估計），標出現價、兩道牆、最大痛點與損益兩平
+function drawPayoff(PL, pick, st, P){
+  const svg = $('#svgPay'); if (!svg) return;
+  const f = frame(svg, 230, [MK.price(P), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain)]), x = f.x;
+  legend($('#lgPay'), [...PL.map(p => [p.name, p.call ? css('--call') : css('--put'), 'ln']), lgItem('price'), lgItem('pain')]);
+  const N = 160, xs = Array.from({ length:N }, (_, i) => CTX.lo + (CTX.hi - CTX.lo) * i / (N - 1));
+  const Tleft = Math.max(0.2, dayDiff(DATA.base, pick.exp) - 1) / 365;   // 明天時剩下的時間
+  const ivAt = K => { const s = pick.S.find(z => z.K === K); return s ? s.iv : pick.atmIv; };
+  const ser = PL.map(p => ({ p, exp: xs.map(X => ((p.call ? Math.max(0, X - p.K) : Math.max(0, p.K - X)) - p.q) * MULT),
+                                 now: xs.map(X => (b76(X, p.K, Tleft, ivAt(p.K), p.call) - p.q) * MULT) }));
+  const all = ser.flatMap(s => s.exp.concat(s.now)), mn = Math.min(0, ...all), mx = Math.max(0, ...all), pad = (mx - mn) * 0.08 || 1;
+  const y = val => f.m.t + (mx + pad - val) / (mx - mn + 2 * pad) * f.ih;
+  xAxis(svg, f, x, CTX.lo, CTX.hi); yAxis(svg, f, y, mn - pad, mx + pad, t => fmtMoney(t));
+  const path = arr => arr.map((v, i) => (i ? 'L' : 'M') + x(xs[i]).toFixed(1) + ',' + y(v).toFixed(1)).join('');
+  for (const s of ser){
+    const col = s.p.call ? css('--call') : css('--put');
+    el('path', { d:path(s.now), fill:'none', stroke:col, 'stroke-width':1.5, 'stroke-dasharray':'4 3', 'stroke-opacity':.8 }, svg);
+    el('path', { d:path(s.exp), fill:'none', stroke:col, 'stroke-width':2.2, 'stroke-linejoin':'round' }, svg);
+    // 損益兩平點
+    const bx = x(s.p.be);
+    if (bx >= f.m.l && bx <= f.W - f.m.r){
+      el('circle', { cx:bx, cy:y(0), r:4.5, fill:col, stroke:css('--panel'), 'stroke-width':2 }, svg);
+      el('text', { x:bx, y:y(0) + (s.p.call ? -9 : 17), 'text-anchor':'middle', 'font-size':11, 'font-weight':600, fill:css('--text') }, svg, '兩平 ' + fmtInt(s.p.be));
+    }
+    // 目標價位的獲利
+    if (s.p.tgt){ const tx = x(s.p.tgt), tv = ((s.p.call ? s.p.tgt - s.p.K : s.p.K - s.p.tgt) - s.p.q) * MULT;
+      if (tx >= f.m.l && tx <= f.W - f.m.r){ el('circle', { cx:tx, cy:y(tv), r:4, fill:col, stroke:css('--panel'), 'stroke-width':2 }, svg);
+        el('text', { x:tx + (tx > f.W - 120 ? -6 : 6), y:y(tv) - 6, 'text-anchor':tx > f.W - 120 ? 'end' : 'start', 'font-size':11, 'font-weight':600, fill:css('--text') }, svg, '目標 ' + fmtMoney(tv, true) + '元'); } }
+  }
+  drawMarks(svg, f);
+  const rows = xs.map((X, i) => ({ K:X, i }));
+  hover(svg, $('#tipPay'), f, x, rows, r => `<b>結算指數 ${fmtInt(r.K)}</b><br>` + ser.map(s =>
+    `<i style="background:${s.p.call ? css('--call') : css('--put')}"></i>${esc(s.p.name)}：結算 ${fmtMoney(s.exp[r.i], true)}・明天約 ${fmtMoney(s.now[r.i], true)}`).join('<br>'));
 }
 
 /* SVG 小工具 */
@@ -740,23 +789,23 @@ function drawGex(){
 
 function drawCurve(){
   const { v, st } = CTX, svg = $('#svgCurve');
-  const f = frame(svg, 220, [MK.price(v.P), st.flip && MK.flip(st.flip)].filter(Boolean)), x = f.x;
-  legend($('#lgCurve'), [['總 Gamma 曝險', css('--call'), 'ln'], lgItem('price'), lgItem('flip')]);
+  const f = frame(svg, 240, [MK.price(v.P), st.flip && MK.flip(st.flip), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain)].filter(Boolean)), x = f.x;
+  legend($('#lgCurve'), [['總 Gamma 曝險', css('--curve'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], lgItem('price'), lgItem('flip'), lgItem('pain')]);
   const pts = st.curve.filter(([p]) => p >= CTX.lo && p <= CTX.hi);
   if (pts.length < 2) return;
   const ys = pts.map(p => p[1]), mn = Math.min(0, ...ys), mxv = Math.max(0, ...ys), pad = (mxv - mn) * 0.1 || 1;
   const y = val => f.m.t + (mxv + pad - val) / (mxv - mn + 2 * pad) * f.ih;
   zones(svg, f, x, st.flip);
   xAxis(svg, f, x, CTX.lo, CTX.hi); yAxis(svg, f, y, mn - pad, mxv + pad, t => fmtMoney(t));
-  el('path', { d: pts.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(''), fill:'none', stroke:css('--call'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
+  el('path', { d: pts.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
   drawMarks(svg, f);
   // 現價那一點直接標出數值
   const yP = y(st.netAtP), pxP = x(v.P);
   if (pxP >= f.m.l && pxP <= f.W - f.m.r){
-    el('circle', { cx:pxP, cy:yP, r:4.5, fill:css('--call'), stroke:css('--panel'), 'stroke-width':2 }, svg);
+    el('circle', { cx:pxP, cy:yP, r:4.5, fill:css('--curve'), stroke:css('--panel'), 'stroke-width':2 }, svg);
     el('text', { x:pxP + (pxP > f.W - 130 ? -8 : 8), y:yP + (st.netAtP >= 0 ? 16 : -8), 'text-anchor':pxP > f.W - 130 ? 'end' : 'start', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, fmtMoney(st.netAtP, true));
   }
-  const dot = el('circle', { r:4, fill:css('--call'), stroke:css('--panel'), 'stroke-width':2, visibility:'hidden' }, svg);
+  const dot = el('circle', { r:4, fill:css('--curve'), stroke:css('--panel'), 'stroke-width':2, visibility:'hidden' }, svg);
   hover(svg, $('#tipCurve'), f, x, pts, p => `<b>假設指數 ${fmtInt(p[0])}</b><br>總 Gamma 曝險 ${fmtMoney(p[1], true)}<br><span class="muted">${p[1] >= 0 ? '正 Gamma：避險盤穩定行情' : '負 Gamma：避險盤放大波動'}</span>`,
     mx => { const p = pts.reduce((a,b) => Math.abs(x(b[0]) - mx) < Math.abs(x(a[0]) - mx) ? b : a);
             dot.setAttribute('cx', x(p[0])); dot.setAttribute('cy', y(p[1])); dot.setAttribute('visibility', 'visible'); return p; });
