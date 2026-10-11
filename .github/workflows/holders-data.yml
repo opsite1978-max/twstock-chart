@@ -1,0 +1,69 @@
+name: 集保股權分散資料更新
+on:
+  schedule:
+    - cron: '47 * * * *'   # 每小時一次；歷史補齊之後，只在集保公布新的一週時才有事做
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/holders_scrape.py', '.github/workflows/holders-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: holders-data
+  cancel-in-progress: false
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 下載全市場最新一週（集保開放資料）
+        run: python3 scripts/holders_scrape.py latest
+      - name: 清掉測試用分支
+        run: git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" --delete probe-out 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with: { name: latest, path: data/holders, if-no-files-found: ignore, retention-days: 2 }
+
+  backfill:
+    needs: latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: latest, path: data/holders }
+      - name: 回補歷史週別（第 ${{ matrix.shard }} 組）
+        env:
+          BUDGET_SEC: '2400'
+        run: python3 scripts/holders_scrape.py backfill ${{ matrix.shard }} 6 out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 'hb-${{ matrix.shard }}', path: out, if-no-files-found: ignore, retention-days: 2 }
+
+  save:
+    needs: [latest, backfill]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - uses: actions/download-artifact@v4
+        with: { name: latest, path: data/holders }
+        continue-on-error: true
+      - uses: actions/download-artifact@v4
+        with: { path: hb, pattern: 'hb-*', merge-multiple: true }
+        continue-on-error: true
+      - name: 合併、產生選股資料並存回
+        run: |
+          mkdir -p data/holders
+          if ls hb/*.json >/dev/null 2>&1; then cp hb/*.json data/holders/; fi
+          cat hb/_log_*.txt > data/holders/_lastrun.txt 2>/dev/null || true
+          rm -f data/holders/_log_*.txt
+          python3 scripts/holders_scrape.py build
+          git add data/holders
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="holders-bot" -c user.email="holders-bot@users.noreply.github.com" commit -qm "集保股權分散資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
