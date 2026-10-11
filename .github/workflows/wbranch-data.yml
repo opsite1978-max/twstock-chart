@@ -26,7 +26,7 @@ jobs:
       - name: 抓權證分點（FinMind）
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
-          REQ_BUDGET: '4800'
+          REQ_BUDGET: '3200'
           TIME_BUDGET: '2400'
         run: python3 scripts/wbranch_scrape.py fetch raw
       - name: 存回原始資料分支

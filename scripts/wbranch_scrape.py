@@ -31,8 +31,18 @@ LOG = []
 _lock = threading.Lock()
 _nreq = [0]
 
+class RateLimited(Exception):
+    pass
+
+def clean(t):
+    """把任何可能的憑證片段從紀錄中移除"""
+    t = re.sub(r'"token_tail"\s*:\s*"[^"]*"', '"token_tail":"***"', str(t))
+    if TOKEN:
+        t = t.replace(TOKEN, '***').replace(TOKEN[-8:], '***')
+    return t
+
 def log(*a):
-    line = ' '.join(str(x) for x in a)
+    line = clean(' '.join(str(x) for x in a))
     print(line, flush=True)
     LOG.append(datetime.datetime.now(TW).strftime('%m-%d %H:%M:%S ') + line)
 
@@ -49,11 +59,13 @@ def api(path, params):
         except urllib.error.HTTPError as e:
             body = e.read().decode('utf-8', 'replace')[:200]
             if e.code in (402, 429) or 'limit' in body.lower():
-                log('rate limited, wait', body); time.sleep(120)
+                raise RateLimited('已達 FinMind 每小時查詢上限')
             elif e.code == 400 and 'level' in body.lower():
                 raise RuntimeError('FinMind 權限不足：' + body)
             else:
                 time.sleep(5 * (attempt + 1))
+        except RateLimited:
+            raise
         except Exception as e:
             time.sleep(5 * (attempt + 1))
     raise RuntimeError('request failed ' + path + str(params.get('securities_trader_id', '')))
@@ -105,7 +117,7 @@ def cmd_fetch(rawdir):
         t1 = time.time()
         try:
             data = fetch_day(day, ids)
-        except RuntimeError as e:
+        except (RuntimeError, RateLimited) as e:
             log('STOP', e); break
         # 排除造市／自營分點，只存一般分點
         mm = [b for b, a in data.items() if len(a) > MM_WARRANTS]
