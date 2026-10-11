@@ -1,4 +1,6 @@
-?? data/wbranch/
+ M data/wbranch/_lastrun_build.txt
+ M data/wbranch/_lastrun_fetch.txt
+ M data/wbranch/summary.json
 ?? raw/
 ?? scripts/__pycache__/warrant_scrape.cpython-312.pyc
 push ok=1
