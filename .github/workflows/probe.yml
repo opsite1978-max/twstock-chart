@@ -1,0 +1,26 @@
+name: probe-insti
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe
+        run: |
+          mkdir out; cd out
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128 Safari/537.36"
+          curl -sS -m 60 -A "$UA" -o twse.json -w "twse %{http_code} %{size_download}\n" "https://www.twse.com.tw/rwd/zh/fund/T86?date=20261008&selectType=ALLBUT0999&response=json" >> codes.txt 2>&1 || true
+          curl -sS -m 60 -A "$UA" -o tpex_new.json -w "tpex_new %{http_code} %{size_download}\n" "https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date=2026%2F10%2F08&response=json" >> codes.txt 2>&1 || true
+          curl -sS -m 60 -A "$UA" -o tpex_old.json -w "tpex_old %{http_code} %{size_download}\n" "https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&se=EW&t=D&d=115/10/08&o=json" >> codes.txt 2>&1 || true
+          curl -sS -m 60 -A "$UA" -o twse_oa.json -w "twse_openapi_t86 %{http_code} %{size_download}\n" "https://openapi.twse.com.tw/v1/fund/T86" >> codes.txt 2>&1 || true
+          curl -sS -m 60 -A "$UA" -o tpex_oa.json -w "tpex_openapi %{http_code} %{size_download}\n" "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading" >> codes.txt 2>&1 || true
+          for f in *.json; do echo "== $f"; head -c 900 $f; echo; done > heads.txt
+      - name: save
+        run: |
+          cd out; git init -q -b probe-out
+          git -c user.name=bot -c user.email=bot@x add -A; git -c user.name=bot -c user.email=bot@x commit -qm probe
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
