@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>策略選股</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --up:#ef5350; --down:#26a69a;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+  input,select,button,a.btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  button,a.btn{cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .strats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:4px 0 12px}
+  @media(min-width:760px){.strats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .st{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 11px;cursor:pointer;text-align:left;height:auto;display:block;width:100%}
+  .st b{display:block;font-size:14px}
+  .st span{display:block;font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .st.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+  .box h2{font-size:15px;margin:0 0 4px}
+  .desc{font-size:13px;color:var(--muted);margin:0 0 8px}
+  .setrow{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--muted);margin:4px 0}
+  .setrow label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .setrow input[type=number]{width:72px;height:30px;padding:3px 6px}
+  .setrow select{height:30px;padding:3px 6px}
+  .setrow input[type=checkbox]{height:auto;width:auto}
+  .bt{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:6px}
+  .bt > div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+  .bt .k{font-size:12px;color:var(--muted)}
+  .bt .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+  .bt .s{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .up{color:var(--up)} .dn{color:var(--down)}
+  .msg{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+  th{background:var(--panel);color:var(--muted);font-weight:500;position:sticky;top:0}
+  th:first-child,td:first-child,td.l,th.l{text-align:left}
+  th.sort{cursor:pointer} th.sort.on{color:var(--text)}
+  td a{color:var(--accent);text-decoration:none}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  footer{margin-top:22px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>策略選股</h1>
+  <span class="spacer"></span>
+  <a class="btn" href="holders.html?v=3">籌碼</a>
+  <a class="btn" id="back" href="./">← 看盤</a>
+</header>
+<main>
+  <div class="strats" id="strats"></div>
+  <div class="box" id="setBox"></div>
+  <div id="out"><div class="msg">載入資料中…</div></div>
+  <footer>
+    資料來源：證交所、櫃買中心每日收盤行情（未還原除權息），每個交易日傍晚自動更新；籌碼條件來自集保股權分散表與三大法人買賣超。
+    回測是用過去資料、照預設條件逐日找出訊號，看之後 5／10／20 個交易日的漲跌，未扣手續費與稅，過去的勝率不代表未來。
+  </footer>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+function fmtPx(v){ if (v == null || isNaN(v)) return '–'; if (Number.isInteger(v) || v >= 1000) return fmtInt(v); return v >= 100 ? v.toFixed(1).replace(/\.0$/,'') : v.toFixed(2).replace(/\.?0+$/,''); }
+const pct = (v, d = 1) => v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%';
+const sgn = v => v > 0 ? 'up' : v < 0 ? 'dn' : '';
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+$('#back').href = innerWidth < 700 ? 'mobile.html' : './';
+
+/* ───────── 策略定義：參數＋判斷（x 為該股最新一天的指標） ───────── */
+const STRATS = [
+  { id:'quietMa20', name:'量縮後帶量站上月線', short:'整理很久、量突然放大、剛站上 20 日線',
+    desc:'前一段時間成交量明顯萎縮（量縮），最近 5 日均量放大到 60 日均量的兩倍左右，股價剛站上月線（20 日均線）。常見於整理末端、資金重新進場的起漲點。',
+    params:[
+      { k:'x20max', lab:'剛站上月線（第 1 天到第 N 天）', type:'sel', opts:[[1,'第 1 天'],[2,'2 天內'],[3,'3 天內'],[5,'5 天內']], def:3 },
+      { k:'vr', lab:'5 日均量 ÷ 60 日均量 ≥', type:'num', def:2, step:0.1 },
+      { k:'quiet', lab:'先前量縮：前 60 日均量 ÷ 再往前 120 日均量 ≤', type:'num', def:0.8, step:0.05 },
+      { k:'rng', lab:'先前整理區間（最高最低差）≤', type:'sel', opts:[[0,'不限'],[20,'20%'],[30,'30%'],[40,'40%']], def:0 } ],
+    test:(x, p) => x.x20 >= 1 && x.x20 <= p.x20max && x.v5 >= p.vr * x.v60 && x.quiet != null && x.quiet <= p.quiet && (!p.rng || (x.rng != null && x.rng <= p.rng)) },
+  { id:'bullNew', name:'均線多頭排列剛成形', short:'5、10、20、60 日均線剛排成由上而下',
+    desc:'5 日線 > 10 日線 > 20 日線 > 60 日線，而且是今天剛形成（昨天還不是），同時量能溫和放大。代表短中期趨勢剛轉成一致向上。',
+    params:[ { k:'vr', lab:'5 日均量 ÷ 20 日均量 ≥', type:'num', def:1.2, step:0.1 } ],
+    test:(x, p) => x.bullNew && x.v5 >= p.vr * x.v20 },
+  { id:'break60', name:'帶量突破 60 日新高', short:'收盤創三個月新高、當天量放大',
+    desc:'今天收盤價高於過去 60 個交易日的所有收盤價，而且當天成交量至少是 20 日均量的兩倍，突破有量能支撐。',
+    params:[ { k:'vr', lab:'今日量 ÷ 20 日均量 ≥', type:'num', def:2, step:0.1 } ],
+    test:(x, p) => x.hi60 && x.v >= p.vr * x.v20 && x.chg > 0 },
+  { id:'bottom', name:'低檔爆量長紅', short:'股價在半年低點附近、爆量大漲',
+    desc:'股價距離 120 日最低點不遠，今天大漲而且成交量是平常的好幾倍，可能是低檔有買盤進駐。',
+    params:[
+      { k:'low', lab:'距 120 日低點 ≤', type:'num', def:15, step:1, unit:'%' },
+      { k:'chg', lab:'今日漲幅 ≥', type:'num', def:5, step:0.5, unit:'%' },
+      { k:'vr', lab:'今日量 ÷ 20 日均量 ≥', type:'num', def:3, step:0.5 } ],
+    test:(x, p) => x.lowdist != null && x.lowdist <= p.low && x.chg >= p.chg && x.v >= p.vr * x.v20 },
+  { id:'pullback', name:'多頭回測月線不破', short:'上升趨勢中拉回到 20 日線附近、量縮',
+    desc:'20 日線、60 日線都在往上，股價在 60 日線之上；最近 3 天曾拉回到月線附近（2% 以內）但收盤仍站在月線上，而且拉回時量縮。屬於順勢找買點。',
+    params:[ { k:'shrink', lab:'拉回時 5 日均量要小於 20 日均量', type:'chk', def:true } ],
+    test:(x, p) => x.ma20up && x.ma60up && x.c > x.ma60 && x.c > x.ma20 && x.touch20 && (!p.shrink || x.v5 < x.v20) },
+  { id:'firstVol', name:'長期整理後首次放量', short:'區間盤整、量縮很久，今天第一次爆量上漲',
+    desc:'前一段時間股價在窄幅區間整理、成交量萎縮，今天突然出量上漲。比第一個策略更早，不要求站上月線。',
+    params:[
+      { k:'quiet', lab:'先前量縮比 ≤', type:'num', def:0.7, step:0.05 },
+      { k:'rng', lab:'先前整理區間 ≤', type:'num', def:20, step:1, unit:'%' },
+      { k:'vr', lab:'今日量 ÷ 60 日均量 ≥', type:'num', def:3, step:0.5 },
+      { k:'chg', lab:'今日漲幅 ≥', type:'num', def:3, step:0.5, unit:'%' } ],
+    test:(x, p) => x.quiet != null && x.quiet <= p.quiet && x.rng != null && x.rng <= p.rng && x.v >= p.vr * x.v60 && x.chg >= p.chg },
+];
+const COMMON = [
+  { k:'minV20', lab:'20 日均量 ≥', type:'num', def:300, step:50, unit:'張' },
+  { k:'mkt', lab:'市場', type:'sel', opts:[['','上市＋上櫃'],['上市','只看上市'],['上櫃','只看上櫃']], def:'' },
+  { k:'inst', lab:'再加：法人（外資＋投信）近 10 日買超', type:'chk', def:false },
+  { k:'big', lab:'再加：集保大戶（400 張以上）近 4 週增加', type:'chk', def:false },
+];
+
+let CUR = store.get('strat.cur') || 'quietMa20';
+let P = {}; try { P = JSON.parse(store.get('strat.params') || '{}') || {}; } catch(e){}
+const pv = (sid, prm) => (P[sid] && P[sid][prm.k] != null) ? P[sid][prm.k] : prm.def;
+const cv = prm => (P._common && P._common[prm.k] != null) ? P._common[prm.k] : prm.def;
+let DATA = null, INST = null, HOLD = null, SORT = { k:'vr', dir:-1 };
+
+function renderStrats(){
+  $('#strats').innerHTML = STRATS.map(s => `<button class="st ${s.id === CUR ? 'on' : ''}" data-id="${s.id}"><b>${esc(s.name)}</b><span>${esc(s.short)}</span></button>`).join('');
+  $('#strats').onclick = e => { const b = e.target.closest('.st'); if (!b) return; CUR = b.dataset.id; store.set('strat.cur', CUR); SORT = { k:'vr', dir:-1 }; renderStrats(); renderSet(); run(); };
+}
+function field(prm, val, scope){
+  const id = 'p_' + scope + '_' + prm.k;
+  if (prm.type === 'chk') return `<label><input type="checkbox" id="${id}" ${val ? 'checked' : ''}>${esc(prm.lab)}</label>`;
+  if (prm.type === 'sel') return `<label>${esc(prm.lab)} <select id="${id}">${prm.opts.map(o => `<option value="${o[0]}" ${String(o[0]) === String(val) ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select></label>`;
+  return `<label>${esc(prm.lab)} <input type="number" id="${id}" value="${val}" step="${prm.step || 1}">${prm.unit ? ' ' + prm.unit : ''}</label>`;
+}
+function readField(prm, scope){
+  const el = $('#p_' + scope + '_' + prm.k); if (!el) return prm.def;
+  if (prm.type === 'chk') return el.checked;
+  if (prm.type === 'sel') return isNaN(+el.value) || el.value === '' ? el.value : +el.value;
+  return +el.value;
+}
+function btCard(s){
+  const b = DATA && DATA.backtest ? DATA.backtest[s.id] : null, bench = DATA && DATA.backtest ? DATA.backtest._bench : null;
+  if (!b || !b['10']) return '<p class="note">回測資料還在累積中（需要至少半年的每日資料）。</p>';
+  const cell = h => { const x = b[h], y = bench && bench[h]; if (!x) return `<div><div class="k">${h} 日後</div><div class="v">–</div></div>`;
+    return `<div><div class="k">${h} 個交易日後</div><div class="v ${x.win >= 55 ? 'up' : ''}">勝率 ${x.win}%</div><div class="s">平均 ${pct(x.avg, 2)}・中位數 ${pct(x.med, 2)}</div>${y ? `<div class="s">全部股票：勝率 ${y.win}%・平均 ${pct(y.avg, 2)}</div>` : ''}</div>`; };
+  return `<div class="small muted" style="margin-top:8px">預設條件回測（${DATA.btFrom} 起、20 日均量 ${DATA.btMinV20} 張以上，共 ${fmtInt(b['10'].n)} 次訊號）</div><div class="bt">${cell('5')}${cell('10')}${cell('20')}</div>`;
+}
+function renderSet(){
+  const s = STRATS.find(x => x.id === CUR);
+  $('#setBox').innerHTML = `<h2>${esc(s.name)}</h2><p class="desc">${esc(s.desc)}</p>
+    <div class="setrow">${s.params.map(p => field(p, pv(s.id, p), 's')).join('')}</div>
+    <div class="setrow">${COMMON.map(p => field(p, cv(p), 'c')).join('')}</div>
+    <div class="setrow"><button id="reset" style="height:28px;font-size:12px">恢復預設條件</button></div>
+    ${btCard(s)}`;
+  $('#setBox').onchange = () => {
+    P[s.id] = {}; s.params.forEach(p => P[s.id][p.k] = readField(p, 's'));
+    P._common = {}; COMMON.forEach(p => P._common[p.k] = readField(p, 'c'));
+    store.set('strat.params', JSON.stringify(P)); run();
+  };
+  $('#reset').onclick = () => { delete P[s.id]; delete P._common; store.set('strat.params', JSON.stringify(P)); renderSet(); run(); };
+}
+
+async function load(){
+  const get = async u => { try { const r = await fetch(u + '?t=' + Date.now()); return r.ok ? await r.json() : null; } catch(e){ return null; } };
+  [DATA, INST, HOLD] = await Promise.all([get('data/price/screen.json'), get('data/insti/summary.json'), get('data/holders/screen.json')]);
+  renderSet(); run();
+}
+function instNet10(code){ if (!INST || !INST.rows || !INST.rows[code]) return null; const r = INST.rows[code], k = INST.windows.indexOf(10), nw = INST.windows.length; return r[k] + r[nw + k]; }
+let HIDX = null;
+function bigChg4(code){
+  if (!HOLD) return null;
+  if (!HIDX){ HIDX = {}; const ci = {}; HOLD.cols.forEach((c, i) => ci[c] = i); for (const r of HOLD.rows) HIDX[r[ci.code]] = r[ci.b400]; }
+  const B = HIDX[code], n = HOLD.dates.length; if (!B) return null; const e = n - 1, s = n - 5;
+  return s >= 0 && B[e] != null && B[s] != null ? (B[e] - B[s]) / 100 : null;
+}
+function run(){
+  if (!DATA || !DATA.rows){ $('#out').innerHTML = '<div class="msg">股價資料還在建立中（第一次需要補抓約一年的每日行情），請稍後再來。</div>'; return; }
+  if (DATA.days < 130){ $('#out').innerHTML = `<div class="msg">每日行情目前累積 ${DATA.days} 天，還在補抓中，至少要 130 天才能計算 120 日均線等指標，請稍後再來。</div>`; return; }
+  const s = STRATS.find(x => x.id === CUR), p = {}; s.params.forEach(q => p[q.k] = pv(s.id, q));
+  const c = {}; COMMON.forEach(q => c[q.k] = cv(q));
+  const ci = {}; DATA.cols.forEach((k, i) => ci[k] = i);
+  const res = [];
+  for (const r of DATA.rows){
+    const x = {}; for (const k in ci) x[k] = r[ci[k]];
+    if (x.v20 == null || x.v20 < c.minV20) continue;
+    if (c.mkt && x.market !== c.mkt) continue;
+    if (!s.test(x, p)) continue;
+    x.inst = instNet10(x.code); x.big = bigChg4(x.code);
+    if (c.inst && !(x.inst > 0)) continue;
+    if (c.big && !(x.big > 0)) continue;
+    x.vr = x.v60 ? x.v5 / x.v60 : null; x.tr = x.v20 ? x.v / x.v20 : null;
+    res.push(x);
+  }
+  const k = SORT.k; res.sort((a, b) => ((a[k] ?? -1e18) < (b[k] ?? -1e18) ? -1 : (a[k] ?? -1e18) > (b[k] ?? -1e18) ? 1 : 0) * SORT.dir);
+  const th = (key, lab, cls) => `<th class="sort ${cls || ''} ${SORT.k === key ? 'on' : ''}" data-k="${key}">${lab}${SORT.k === key ? (SORT.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`;
+  const chart = innerWidth < 700 ? 'mobile.html' : 'index.html';
+  if (!res.length){ $('#out').innerHTML = `<p class="small muted">資料日期 ${DATA.latest}</p><div class="msg">今天沒有符合條件的股票。可以把條件放寬一點（例如量比調低、天數放寬），或換一個策略看看。</div>`; return; }
+  $('#out').innerHTML = `<p class="small muted" style="margin:0 0 6px">資料日期 ${DATA.latest}・符合 <b style="color:var(--text)">${res.length}</b> 檔・點股票名稱看 K 線，點「籌碼」看大戶、法人、內部人</p>
+  <div class="tblwrap"><table><thead><tr>${th('code','股票','l')}${th('chg','漲跌')}${th('vr','5日÷60日量')}${th('tr','今日÷20日量')}${th('x20','站上月線')}${th('quiet','量縮比')}${th('rng','整理幅度')}${th('ret20','近20日')}${th('inst','法人10日')}${th('big','大戶4週')}${th('c','收盤')}${th('v20','20日均量')}<th class="l">產業</th><th></th></tr></thead>
+  <tbody>${res.slice(0, 300).map(x => `<tr><td class="l"><a href="${chart}?s=${esc(x.code)}"><b>${esc(x.code)}</b> ${esc(x.name)}</a></td>
+    <td class="${sgn(x.chg)}">${pct(x.chg, 2)}</td><td><b>${x.vr == null ? '–' : x.vr.toFixed(2) + ' 倍'}</b></td><td>${x.tr == null ? '–' : x.tr.toFixed(1) + ' 倍'}</td>
+    <td>${x.x20 === 0 ? '月線下' : x.x20 === 99 ? '30 天以上' : '第 ' + x.x20 + ' 天'}</td><td>${x.quiet == null ? '–' : x.quiet.toFixed(2)}</td><td>${x.rng == null ? '–' : x.rng.toFixed(0) + '%'}</td>
+    <td class="${sgn(x.ret20)}">${pct(x.ret20)}</td><td class="${sgn(x.inst)}">${x.inst == null ? '–' : (x.inst > 0 ? '+' : '') + fmtInt(x.inst) + ' 張'}</td>
+    <td class="${sgn(x.big)}">${x.big == null ? '–' : (x.big > 0 ? '+' : '') + x.big.toFixed(2)}</td><td>${fmtPx(x.c)}</td><td>${fmtInt(x.v20)}</td>
+    <td class="l muted">${esc(x.ind || '')}</td><td><a href="holders.html?v=3&s=${esc(x.code)}">籌碼</a></td></tr>`).join('')}
+  </tbody></table></div>
+  <p class="note">量縮比＝近 5 日之前的 60 日均量 ÷ 再往前 120 日均量，越小代表先前越冷清；整理幅度＝同一段期間最高價與最低價相差幾 %；站上月線＝收盤連續站在 20 日均線上的第幾天；大戶 4 週＝400 張以上大戶持股比例增減（百分點）。</p>`;
+  $('#out').querySelector('thead').onclick = e => { const t = e.target.closest('th.sort'); if (!t) return;
+    SORT = SORT.k === t.dataset.k ? { k:SORT.k, dir:-SORT.dir } : { k:t.dataset.k, dir: t.dataset.k === 'code' || t.dataset.k === 'quiet' || t.dataset.k === 'rng' || t.dataset.k === 'x20' ? 1 : -1 }; run(); };
+}
+renderStrats(); renderSet(); load();
+</script>
+</body>
+</html>

@@ -130,6 +130,7 @@
     <button class="primary" id="loadBtn">看</button>
     <button id="setBtn" title="設定" aria-label="設定">⚙</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
+    <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
   </div>
   <div class="mrow">
     <div class="seg" id="tfSeg" role="group" aria-label="看盤週期">
@@ -2013,6 +2014,7 @@ layoutPanes();
 if (!TF[S.tf] || TF[S.tf].intraday) S.tf = 'D';
 buildPeriodOptions();
 $('adj').checked = !!S.adj; $('night').checked = !!S.night;
+{ const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
 if (S.lastSym) $('sym').value = S.lastSym;
 updateKindUI(parseSym(S.lastSym));
 applyList([]);
