@@ -1,0 +1,4 @@
+?? data/wbranch/
+?? raw/
+?? scripts/__pycache__/warrant_scrape.cpython-312.pyc
+push ok=1
