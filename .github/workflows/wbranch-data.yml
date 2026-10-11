@@ -41,7 +41,22 @@ jobs:
         run: python3 scripts/wbranch_scrape.py build raw
       - name: 存回專案
         run: |
+          git status --short | head -20 > /tmp/diag.txt
           git add data/wbranch
-          if git diff --cached --quiet; then echo "沒有新結果"; exit 0; fi
+          if git diff --cached --quiet; then echo "沒有新結果" | tee -a /tmp/diag.txt; exit 0; fi
           git -c user.name="wbranch-bot" -c user.email="wbranch-bot@users.noreply.github.com" commit -qm "權證分點勝率更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
-          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull -q --rebase origin main >> /tmp/diag.txt 2>&1 && git push -q origin HEAD:main >> /tmp/diag.txt 2>&1; then ok=1; break; fi
+            sleep $((RANDOM % 10 + 5))
+          done
+          echo "push ok=$ok" >> /tmp/diag.txt
+          [ "$ok" = 1 ]
+      - name: 診斷紀錄（存到原始資料分支）
+        if: always()
+        run: |
+          mkdir -p raw/_diag
+          cp /tmp/diag.txt raw/_diag/commit.txt 2>/dev/null || true
+          cp data/wbranch/_lastrun_*.txt raw/_diag/ 2>/dev/null || true
+          ls -la data/wbranch > raw/_diag/files.txt 2>&1 || true
+          cd raw && git add -A && (git -c user.name="wbranch-bot" -c user.email="wbranch-bot@users.noreply.github.com" commit -qm "診斷紀錄" || true) && git push -q origin wbranch-raw || true
