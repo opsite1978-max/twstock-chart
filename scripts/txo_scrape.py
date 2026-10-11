@@ -2,7 +2,7 @@
 """
 台指選擇權每日總 Gamma 曝險（GEX）歷史 → data/txo/history.json
 
-現價用台指期近月日盤收盤；各合約由買賣權價格反推的遠期價整體平移，讓最近結算日的遠期價等於台指期收盤。
+現價用台指期近月日盤收盤（和看盤軟體一樣，不扣價差）；各合約遠期價由買賣權價格反推，只用來算隱含波動率與 Gamma。
 
 每個交易日：用當天收盤後的全部台指選擇權（各結算日）未平倉與結算價，
 反推隱含波動率（Black-76），算出每個履約價的 Gamma 曝險，再整理成
@@ -171,7 +171,7 @@ def analyse_day(date, rows, P, cal):
             s['coi'] = int(r.get('open_interest') or 0); s['cpx'] = px
         else:
             s['poi'] = int(r.get('open_interest') or 0); s['ppx'] = px
-    # 先算每個合約由買賣權價格反推的遠期價，再整體平移，讓最近結算日的遠期價等於台指期收盤 P
+    # 每個合約由買賣權價格反推的遠期價
     def parity(S):
         F, best = None, 1e18
         for s in S:
@@ -180,13 +180,7 @@ def analyse_day(date, rows, P, cal):
                 if d < best:
                     best, F = d, s['K'] + s['cpx'] - s['ppx']
         return F
-    off = 0.0
-    if P:
-        for code, e in sorted(by.items(), key=lambda kv: kv[1]['exp']):
-            f0 = parity(sorted(e['S'].values(), key=lambda s: s['K']))
-            if f0 is not None and sum(s['coi'] + s['poi'] for s in e['S'].values()) > 0:
-                off = P - f0
-                break
+    off = 0.0                      # 不平移：遠期價只用來算隱含波動率與 Gamma，現價直接用台指期 P
     exps = []
     for code, e in by.items():
         S = sorted(e['S'].values(), key=lambda s: s['K'])
