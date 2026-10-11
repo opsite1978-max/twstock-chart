@@ -1,0 +1,27 @@
+name: 法人買賣超資料更新
+on:
+  schedule:
+    - cron: '35 8,10,13 * * 1-5'   # 台灣時間 16:35、18:35、21:35（交易日當天公布後）
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/insti_scrape.py', '.github/workflows/insti-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: insti-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓證交所、櫃買中心三大法人買賣超
+        run: python3 scripts/insti_scrape.py update
+      - name: 存回專案
+        run: |
+          git add data/insti
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="insti-bot" -c user.email="insti-bot@users.noreply.github.com" commit -qm "法人買賣超資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
