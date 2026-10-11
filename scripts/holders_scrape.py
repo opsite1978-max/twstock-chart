@@ -283,7 +283,7 @@ def cmd_build():
             cnt[k] = cnt.get(k, 0) + 1
     common = sorted(k for k, v in cnt.items() if v >= max(50, len(alld) * 0.3))[-SCREEN_WEEKS:]
     quotes = latest_quotes()
-    keys = ['b100', 'b400', 'b1000', 's5', 's10', 's50', 's100', 'ppl']
+    keys = ['b100', 'b400', 'b1000', 's5', 's10', 's50', 's100', 'ppl', 'lots']
     rows = []
     for c in sorted(alld):
         d = alld[c]
@@ -301,6 +301,7 @@ def cmd_build():
             for nm, rg in SMALL.items():
                 series['s' + nm].append(round(sum(pct[i] for i in rg) / 100))
             series['ppl'].append(rec[0])
+            series['lots'].append(round(rec[1] / 1000))
         if not have:
             continue
         u = names.get(c, {})

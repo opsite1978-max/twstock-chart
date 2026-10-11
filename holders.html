@@ -325,8 +325,9 @@ function draw(){
   // 末端標示
   const endLab = (v, c, txt, dy) => {
     const y = YB(v); g.beginPath(); g.arc(X(n - 1), y, 4, 0, 7); g.fillStyle = c; g.fill(); g.strokeStyle = col.bg; g.lineWidth = 2; g.stroke();
-    g.fillStyle = col.text; g.textAlign = 'left'; g.font = 'bold 11px -apple-system,"Noto Sans TC",sans-serif';
-    g.fillText(txt, x1 + 6, y + dy); g.font = '11px -apple-system,"Noto Sans TC",sans-serif';
+    g.font = 'bold 11px -apple-system,"Noto Sans TC",sans-serif';
+    const tw = g.measureText(txt).width; g.fillStyle = col.bg; g.fillRect(x1 + 3, y + dy - 8, tw + 8, 16);
+    g.fillStyle = col.text; g.textAlign = 'left'; g.fillText(txt, x1 + 6, y + dy); g.font = '11px -apple-system,"Noto Sans TC",sans-serif';
   };
   const yb = YB(db[n-1]), ys = YB(ds[n-1]), sep = Math.abs(yb - ys) < 14 ? (yb < ys ? -7 : 7) : 0;
   endLab(db[n-1], col.big, pp(db[n-1]), sep); endLab(ds[n-1], col.small, pp(ds[n-1]), -sep);
@@ -386,11 +387,12 @@ function weeksTable(S){
   <div class="tblwrap"><table><thead><tr><th>日期</th><th>週收盤</th><th>${bigLab()}</th><th>週增減</th><th>${smallLab()}</th><th>週增減</th><th>股東人數</th><th>週增減</th><th>人均張數</th><th>千張大戶人數</th></tr></thead><tbody>
   ${rows.map((s, k) => { const p = rows[k + 1];
     const d1 = p ? s.big - p.big : null, d2 = p ? s.small - p.small : null, d3 = p ? s.ppl - p.ppl : null;
-    return `<tr><td>${s.d}</td><td>${fmtPx(s.px)}</td><td><b class="num">${pct(s.big)}</b></td><td class="${sgn(d1)}">${pp(d1)}</td>
+    const cap = p && Math.abs(s.shares - p.shares) / p.shares > 0.05;
+    return `<tr><td>${s.d}${cap ? ' <span class="small" style="color:var(--small)">股本變動</span>' : ''}</td><td>${fmtPx(s.px)}</td><td><b class="num">${pct(s.big)}</b></td><td class="${sgn(d1)}">${pp(d1)}</td>
       <td><b class="num">${pct(s.small)}</b></td><td class="${sgn(-d2)}">${pp(d2)}</td><td>${fmtInt(s.ppl)}</td><td class="${sgn(-d3)}">${d3 == null ? '–' : (d3 > 0 ? '+' : '') + fmtInt(d3)}</td>
       <td>${(s.shares / s.ppl / 1000).toFixed(1)}</td><td>${fmtInt(s.k1000)}</td></tr>`; }).join('')}
   </tbody></table></div>
-  <p class="note">大戶增加標紅、散戶與股東人數減少標紅（對籌碼集中是加分）；反之標綠。</p>`;
+  <p class="note">大戶增加標紅、散戶與股東人數減少標紅（對籌碼集中是加分）；反之標綠。標「股本變動」的那週集保總張數變動超過 5%（減資、增資、換股等），當週的增減不代表真正的買賣。</p>`;
 }
 function distTable(S){
   const L = S[S.length - 1], P = S[Math.max(0, S.length - 5)];
@@ -413,14 +415,16 @@ async function loadScreen(){
 function runScreen(){
   const ci = SCR.ci, W = +$('#sWeeks').value, minB = +$('#sBig').value || 0, needS = $('#sSmall').checked, needP = $('#sPpl').checked,
         minV = +$('#sVol').value || 0, mkt = $('#sMkt').value, nd = SCR.dates.length;
-  const bi = ci['b' + BIGK], si = ci['s' + SMALLK], pi = ci.ppl;
+  const bi = ci['b' + BIGK], si = ci['s' + SMALLK], pi = ci.ppl, li = ci.lots;
   const res = [];
-  let usable = 0;
+  let usable = 0, skipped = 0;
   for (const r of SCR.rows){
     const B = r[bi], Sm = r[si], Pp = r[pi];
     const e = nd - 1, s = nd - 1 - W;
     if (s < 0 || B[e] == null || B[s] == null) continue;
     usable++;
+    // 期間內集保總張數變動超過 10%（減資、增資、合併、換股等），籌碼數字會失真，排除
+    if (li != null){ const T = r[li]; let bad = false; for (let k = s + 1; k <= e; k++) if (T[k] && T[k-1] && Math.abs(T[k] - T[k-1]) / T[k-1] > 0.1) bad = true; if (bad){ skipped++; continue; } }
     if (mkt && r[ci.market] !== mkt) continue;
     if (minV && r[ci.vol] != null && r[ci.vol] < minV) continue;   // 沒有成交量資料時不排除
     const db = (B[e] - B[s]) / 100, dsm = (Sm[e] - Sm[s]) / 100, dp = (Pp[e] - Pp[s]) / Pp[s] * 100;
@@ -436,7 +440,7 @@ function runScreen(){
   const th = (key, lab, cls) => `<th class="sort ${cls || ''} ${SORT.k === key ? 'on' : ''}" data-k="${key}">${lab}${SORT.k === key ? (SORT.dir < 0 ? ' ▾' : ' ▴') : ''}</th>`;
   const shown = res.slice(0, 300);
   if (!res.length){ $('#sOut').innerHTML = `<div class="msg">${from} → ${to} 沒有符合條件的股票，可以把「大戶增加至少」調低，或把比較期間拉長。</div>`; return; }
-  $('#sOut').innerHTML = `<p class="small muted" style="margin:0 0 6px">${from} → ${to}・符合 <b style="color:var(--text)">${res.length}</b> 檔（共比較 ${fmtInt(usable)} 檔有資料的股票）${res.length > 300 ? '，只列前 300 檔' : ''}・點一列看個股圖</p>
+  $('#sOut').innerHTML = `<p class="small muted" style="margin:0 0 6px">${from} → ${to}・符合 <b style="color:var(--text)">${res.length}</b> 檔（共比較 ${fmtInt(usable)} 檔有資料的股票${skipped ? '，另排除 ' + skipped + ' 檔期間內有減資、增資或換股' : ''}）${res.length > 300 ? '，只列前 300 檔' : ''}・點一列看個股圖</p>
   <div class="tblwrap"><table><thead><tr>${th('code','股票','l')}${th('db','大戶增減')}${th('dsm','散戶增減')}${th('dp','人數增減')}${th('big', '大戶持股')}${th('streak','大戶連增')}${th('close','收盤')}${th('vol','成交張')}<th class="l">產業</th></tr></thead>
   <tbody>${shown.map(x => `<tr class="click" data-c="${esc(x.code)}"><td class="l"><b>${esc(x.code)}</b> ${esc(x.name)}</td>
     <td class="up"><b class="num">${pp(x.db)}</b></td><td class="${sgn(-x.dsm)}">${pp(x.dsm)}</td><td class="${sgn(-x.dp)}">${pp(x.dp)}%</td>
