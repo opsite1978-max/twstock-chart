@@ -1,57 +1,54 @@
-10-11 21:34:34 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
-10-11 21:40:08 progress 200 ok 0 none 336 s
-10-11 21:45:38 progress 400 ok 0 none 666 s
-10-11 21:51:17 progress 600 ok 0 none 1005 s
-10-11 21:56:55 progress 800 ok 0 none 1343 s
-10-11 22:00:35   retry 3558 20260612 IncompleteRead IncompleteRead(73706 bytes read)
-10-11 22:03:11 progress 1000 ok 0 none 1719 s
-10-11 22:08:45 progress 1200 ok 0 none 2053 s
-10-11 22:14:20 progress 1400 ok 0 none 2388 s
-10-11 22:14:33 result shard 0 partial (time budget) requests 1408 ok 1408 none 0 files 343 in 2401 s
-10-11 21:34:33 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-11 21:40:30 progress 200 ok 0 none 359 s
-10-11 21:46:31 progress 400 ok 0 none 720 s
-10-11 21:52:34 progress 600 ok 0 none 1082 s
-10-11 21:58:37 progress 800 ok 0 none 1446 s
-10-11 22:04:31 progress 1000 ok 0 none 1800 s
-10-11 22:05:37   retry 5903 20260618 IncompleteRead IncompleteRead(65536 bytes read)
-10-11 22:11:10 progress 1200 ok 0 none 2199 s
-10-11 22:14:32 result shard 1 partial (time budget) requests 1312 ok 1312 none 0 files 362 in 2401 s
-10-11 21:34:34 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-11 21:39:48 progress 200 ok 0 none 316 s
-10-11 21:45:00 progress 400 ok 0 none 628 s
-10-11 21:50:11 progress 600 ok 0 none 939 s
-10-11 21:55:26 progress 800 ok 0 none 1253 s
-10-11 22:00:38 progress 1000 ok 0 none 1566 s
-10-11 22:05:51 progress 1200 ok 0 none 1878 s
-10-11 22:11:06 progress 1400 ok 0 none 2193 s
-10-11 22:14:32 result shard 2 partial (time budget) requests 1531 ok 1531 none 0 files 365 in 2400 s
-10-11 21:34:33 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
-10-11 21:40:35 progress 200 ok 0 none 364 s
-10-11 21:46:40 progress 400 ok 0 none 728 s
-10-11 21:52:42 progress 600 ok 0 none 1090 s
-10-11 21:58:46 progress 800 ok 0 none 1454 s
-10-11 22:04:50 progress 1000 ok 0 none 1818 s
-10-11 22:10:49 progress 1200 ok 0 none 2177 s
-10-11 22:14:32 result shard 3 partial (time budget) requests 1323 ok 1323 none 0 files 349 in 2401 s
-10-11 21:34:34 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
-10-11 21:39:17 progress 200 ok 0 none 284 s
-10-11 21:44:00 progress 400 ok 0 none 567 s
-10-11 21:48:42 progress 600 ok 0 none 848 s
-10-11 21:53:25 progress 800 ok 0 none 1132 s
-10-11 21:58:07 progress 999 ok 1 none 1414 s
-10-11 22:02:48 progress 1199 ok 1 none 1695 s
-10-11 22:07:34 progress 1399 ok 1 none 1981 s
-10-11 22:09:51   retry 8908 20260618 IncompleteRead IncompleteRead(65536 bytes read)
-10-11 22:12:58 progress 1599 ok 1 none 2305 s
-10-11 22:14:33 result shard 4 partial (time budget) requests 1668 ok 1667 none 1 files 358 in 2400 s
-10-11 21:34:35 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
-10-11 21:39:31 progress 200 ok 0 none 298 s
-10-11 21:44:25 progress 400 ok 0 none 592 s
-10-11 21:49:22 progress 600 ok 0 none 888 s
-10-11 21:54:25 progress 800 ok 0 none 1192 s
-10-11 21:59:21 progress 1000 ok 0 none 1488 s
-10-11 22:04:19 progress 1200 ok 0 none 1786 s
-10-11 22:09:12 progress 1400 ok 0 none 2078 s
-10-11 22:14:08 progress 1600 ok 0 none 2375 s
-10-11 22:14:34 result shard 5 partial (time budget) requests 1618 ok 1618 none 0 files 361 in 2401 s
+10-12 02:29:27 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
+10-12 02:35:34 progress 200 ok 0 none 369 s
+10-12 02:41:35 progress 400 ok 0 none 730 s
+10-12 02:47:40 progress 600 ok 0 none 1094 s
+10-12 02:53:40 progress 800 ok 0 none 1455 s
+10-12 02:59:43 progress 1000 ok 0 none 1818 s
+10-12 03:05:47 progress 1200 ok 0 none 2182 s
+10-12 03:09:26 result shard 0 partial (time budget) requests 1323 ok 1323 none 0 files 343 in 2401 s
+10-12 02:29:29 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-12 02:34:38 progress 200 ok 0 none 311 s
+10-12 02:39:40 progress 400 ok 0 none 613 s
+10-12 02:44:40 progress 600 ok 0 none 913 s
+10-12 02:49:42 progress 800 ok 0 none 1215 s
+10-12 02:54:42 progress 1000 ok 0 none 1515 s
+10-12 02:59:43 progress 1200 ok 0 none 1815 s
+10-12 03:04:44 progress 1400 ok 0 none 2117 s
+10-12 03:09:28 result shard 1 partial (time budget) requests 1590 ok 1590 none 0 files 362 in 2401 s
+10-12 02:29:27 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-12 02:35:27 progress 200 ok 0 none 361 s
+10-12 02:41:25 progress 400 ok 0 none 719 s
+10-12 02:47:19 progress 600 ok 0 none 1073 s
+10-12 02:53:21 progress 800 ok 0 none 1435 s
+10-12 02:59:16 progress 1000 ok 0 none 1790 s
+10-12 03:05:11 progress 1200 ok 0 none 2145 s
+10-12 03:09:27 result shard 2 partial (time budget) requests 1343 ok 1343 none 0 files 358 in 2401 s
+10-12 02:29:28 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
+10-12 02:35:02 progress 200 ok 0 none 336 s
+10-12 02:40:36 progress 400 ok 0 none 670 s
+10-12 02:46:11 progress 600 ok 0 none 1005 s
+10-12 02:51:48 progress 800 ok 0 none 1342 s
+10-12 02:57:25 progress 1000 ok 0 none 1679 s
+10-12 03:02:58 progress 1200 ok 0 none 2012 s
+10-12 03:08:31 progress 1400 ok 0 none 2345 s
+10-12 03:09:26 result shard 3 partial (time budget) requests 1434 ok 1434 none 0 files 349 in 2400 s
+10-12 02:29:28 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
+10-12 02:34:53 progress 200 ok 0 none 327 s
+10-12 02:40:16 progress 400 ok 0 none 650 s
+10-12 02:45:43 progress 600 ok 0 none 977 s
+10-12 02:51:09 progress 800 ok 0 none 1303 s
+10-12 02:56:34 progress 1000 ok 0 none 1627 s
+10-12 03:02:00 progress 1200 ok 0 none 1954 s
+10-12 03:07:25 progress 1400 ok 0 none 2279 s
+10-12 03:09:26 result shard 4 partial (time budget) requests 1475 ok 1475 none 0 files 355 in 2400 s
+10-12 02:29:28 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
+10-12 02:34:12 progress 200 ok 0 none 284 s
+10-12 02:35:40   retry 2642 20260605 IncompleteRead IncompleteRead(73706 bytes read)
+10-12 02:39:33 progress 400 ok 0 none 606 s
+10-12 02:44:15 progress 600 ok 0 none 888 s
+10-12 02:48:59 progress 800 ok 0 none 1171 s
+10-12 02:53:40 progress 1000 ok 0 none 1453 s
+10-12 02:58:23 progress 1200 ok 0 none 1736 s
+10-12 03:03:08 progress 1400 ok 0 none 2021 s
+10-12 03:07:46 progress 1600 ok 0 none 2299 s
+10-12 03:09:28 result shard 5 partial (time budget) requests 1672 ok 1672 none 0 files 354 in 2400 s
