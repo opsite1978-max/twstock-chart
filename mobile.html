@@ -161,6 +161,7 @@
   <div class="plabel" id="lbl-wt"></div>
   <div class="plabel" id="lbl-ztsv"></div>
   <div class="plabel" id="lbl-rsib"></div>
+  <div class="plabel" id="lbl-abyss"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「看」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -176,6 +177,7 @@
         <label class="chk"><input type="checkbox" data-ind="t3">Normalised T3 震盪指標</label>
         <label class="chk"><input type="checkbox" data-ind="wt">BotWT×3 波浪趨勢 × 三段波浪</label>
         <label class="chk"><input type="checkbox" data-ind="rsib">RSI 美國線（RSIB）</label>
+        <label class="chk"><input type="checkbox" data-ind="abyss">ABYSS v2 底部轉折（One TURN）</label>
       </div>
     </div>
 
@@ -326,6 +328,45 @@
           <button class="small" data-reset="rsib">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>ABYSS v2 底部轉折（One TURN）</summary>
+        <div class="stack">
+          <div class="kv"><span>參數預設</span><select data-k="abyss.preset" data-redraw="abyss">
+            <option value="auto">自動（依週期）</option>
+            <option value="D">台股日線</option><option value="H60">台指期 60 分</option><option value="H240">台指期 4 小時</option>
+            <option value="M15">台指期 15 分</option><option value="custom">自訂（用下方自訂數值）</option></select></div>
+          <div class="kv"><span>平滑濾波器</span><select data-k="abyss.mode" data-redraw="abyss"><option value="us">Ultimate Smoother（零延遲）</option><option value="ss">Super Smoother（最平滑）</option></select></div>
+          <div class="sub">TURN 條件</div>
+          <div class="kv"><span>四因子品質門檻</span><input type="number" data-k="abyss.qMin" data-redraw="abyss" min="0.4" max="0.9" step="0.01"></div>
+          <div class="kv"><span>曲率門檻（標準化加速度）</span><input type="number" data-k="abyss.accMin" data-redraw="abyss" min="0" max="2" step="0.05"></div>
+          <div class="kv"><span>頂點預測提前根數（0＝等主線勾起）</span><input type="number" data-k="abyss.leadBars" data-redraw="abyss" min="0" max="5" step="0.5"></div>
+          <div class="kv"><span>深淵線上限</span><input type="number" data-k="abyss.deepCap" data-redraw="abyss" min="10" max="45"></div>
+          <div class="kv"><span>深淵線百分位</span><input type="number" data-k="abyss.deepPct" data-redraw="abyss" min="2" max="30"></div>
+          <div class="kv"><span>追價上限（離波段低點幾倍真實波幅）</span><input type="number" data-k="abyss.chaseATR" data-redraw="abyss" min="0.5" max="6" step="0.5"></div>
+          <label class="chk"><input type="checkbox" data-k="abyss.strongBar" data-redraw="abyss">訊號 K 棒需收強</label>
+          <div class="sub">下跌趨勢防護</div>
+          <div class="kv"><span>強勢下跌判定（趨勢 Z 低於負此值）</span><input type="number" data-k="abyss.trendThr" data-redraw="abyss" min="0.5" max="3" step="0.1"></div>
+          <div class="kv"><span>大趨勢減速比例</span><input type="number" data-k="abyss.vFrac" data-redraw="abyss" min="0.1" max="2" step="0.05"></div>
+          <div class="kv"><span>背離最小差（主線點數）</span><input type="number" data-k="abyss.divMin" data-redraw="abyss" min="0" max="20" step="0.5"></div>
+          <div class="kv"><span>每次失敗提高品質門檻</span><input type="number" data-k="abyss.qStep" data-redraw="abyss" min="0" max="0.2" step="0.01"></div>
+          <div class="sub">自訂參數（預設選「自訂」才生效）</div>
+          <div class="kv"><span>主線平滑週期</span><input type="number" data-k="abyss.smooth" data-int data-redraw="abyss" min="3" max="60"></div>
+          <div class="kv"><span>成本乖離週期</span><input type="number" data-k="abyss.cost" data-int data-redraw="abyss" min="5" max="300"></div>
+          <div class="kv"><span>位階區間</span><input type="number" data-k="abyss.range" data-int data-redraw="abyss" min="10" max="500"></div>
+          <div class="kv"><span>曲率回歸視窗</span><input type="number" data-k="abyss.reg" data-int data-redraw="abyss" min="5" max="21"></div>
+          <div class="kv"><span>底部記憶根數</span><input type="number" data-k="abyss.mem" data-int data-redraw="abyss" min="3" max="100"></div>
+          <div class="kv"><span>自適應統計視窗</span><input type="number" data-k="abyss.pct" data-int data-redraw="abyss" min="60" max="1000"></div>
+          <div class="kv"><span>趨勢檢定視窗</span><input type="number" data-k="abyss.trend" data-int data-redraw="abyss" min="20" max="300"></div>
+          <div class="sub">外觀</div>
+          <div class="kv"><span>主線　上升／下降／粗細</span><span class="pair"><input type="color" data-k="abyss.colUp" data-redraw="abyss"><input type="color" data-k="abyss.colDn" data-redraw="abyss"><select class="wsel" data-k="abyss.lw" data-int data-redraw="abyss"></select></span></div>
+          <div class="kv"><span>TURN 顏色</span><input type="color" data-k="abyss.turnCol" data-redraw="abyss"></div>
+          <div class="kv"><span>深淵線顏色</span><input type="color" data-k="abyss.guideCol" data-redraw="abyss"></div>
+          <label class="chk"><input type="checkbox" data-k="abyss.showGuide" data-redraw="abyss">顯示深淵線與中軸</label>
+          <label class="chk"><input type="checkbox" data-k="abyss.mainSig" data-redraw="abyss">K 線圖上也標出 TURN</label>
+          <div class="hint">TURN 只用當根與過去資料計算，不會事後改位置。網站載入的 K 棒數有限，統計視窗最多用到總根數的六成。</div>
+          <button class="small" data-reset="abyss">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -465,13 +506,17 @@ const DEFAULTS = {
   bias:{ oscP:14, period:100, smoothing:100, showBias:true, showHA:false, showSd:false, sdLen:20, sdMult:3, bull:'#089981', bear:'#f23645', sdW:1 },
   rsib:{ len:14, std:false, mode:'bar', inner:'dyn', innerType:'sd', mult:1, upCol:'#2196f3', dnCol:'#ff5252', thick:'1', lineCol:'#a64d79', lineW:2,
           obLv:70, osLv:30, obCol:'#2196f3', osCol:'#ff5252', lvW:2, innerCol:'#c27ba0', innerW:1 },
+  abyss:{ preset:'auto', mode:'us', wCys:1, wMom:1, wPos:0.8, gain:1.5, deepCap:30, deepPct:10, resetLv:50, accMin:0.3, leadBars:1.5,
+          qMin:0.6, chaseATR:2.5, lineChase:20, strongBar:true, minGap:5, trendThr:1, vFrac:0.5, divMin:5, divWin:120, qStep:0.05, qDown:0.05,
+          useVol:true, reqVol:false, volFactor:1.1, smooth:10, cost:20, range:60, reg:7, mem:15, pct:250, trend:60,
+          colUp:'#2daed9', colDn:'#6178b2', lw:2, turnCol:'#00e676', guideCol:'#4db6ac', showGuide:true, mainSig:true },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
-  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:9
+  adj:false, night:false, tf:'D', periods:{}, lastSym:'', v:10
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const store = {
@@ -492,11 +537,12 @@ if ((S.v || 0) < 6){ S.ind = Object.assign({}, S.ind, { vpo:true, t3:true }); S.
 if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S.ovl = { topg:true, bias:true }; }
 if ((S.v || 0) < 8) S.ind = Object.assign({}, S.ind, { rsib:true });
 if ((S.v || 0) < 9) S.ovl = Object.assign({}, S.ovl, { bb3:true });
+if ((S.v || 0) < 10) S.ind = Object.assign({}, S.ind, { abyss:true });
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 9;
+S.v = 10;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1025,7 +1071,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1439,6 +1485,7 @@ function refreshMarkers(){
   let list = [];
   for (const k of OVL_ORDER) if (S.ovl[k] && OVL[k].vals) list = list.concat(OVL[k].markers());
   if (paneOf.wt !== undefined && IND.wt.vals && S.wt.mainSig) list = list.concat(IND.wt.mainMarkers());
+  if (paneOf.abyss !== undefined && IND.abyss.vals && S.abyss.mainSig) list = list.concat(IND.abyss.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -1631,6 +1678,278 @@ Object.assign(IND, {
       else if (x != null && x <= P.osLv) tag = `<span class="tag" style="background:${P.osCol}">超賣</span>`;
       return `RSIB (${P.len}) <b style="color:${col}">${fmt(x,1)}${x == null || p == null ? '' : x >= p ? ' ▲' : ' ▼'}</b>` +
         (P.inner !== 'off' ? `　<span style="color:${P.innerCol}">內帶 ${fmt(v.lo[i],1)}～${fmt(v.up[i],1)}</span>` : '') + tag;
+    },
+  },
+});
+
+/* ───────────── ABYSS ULTIMATE v2 | One TURN（與 Pine v6 版同一套公式） ───────────── */
+// 主線：成本乖離（量加權成本）＋ 均線差動能（對數價格 MACD）＋ 區間位階，皆以隨機漫步理論離散度標準化
+//       → tanh 壓縮成 0～100 → Ultimate Smoother（零延遲）或 Super Smoother
+// TURN：深淵事件 → 主線二次回歸曲率與頂點預測 → 四因子幾何平均（超跌×賣壓衰竭×動能修復×量價承接）
+//       → 下跌趨勢防護（強勢下跌須背離＋大趨勢減速；失敗後重新武裝但門檻提高）
+// 只用當根與過去資料，不會因後面的 K 棒改變過去的 TURN
+const ABYSS_PRESET = {              // 平滑、成本、位階、回歸、記憶、統計視窗、趨勢
+  D:    [10, 20, 60, 7, 15, 250, 60],
+  M15:  [12, 40, 96, 7, 20, 500, 80],
+  H60:  [10, 30, 80, 7, 16, 400, 60],
+  H240: [ 8, 20, 60, 6, 12, 300, 45],
+};
+const ABYSS_NAME = { D:'台股日線', M15:'台指期15分', H60:'台指期60分', H240:'台指期4小時', custom:'自訂' };
+function abyssFilter(src, len, ultimate){
+  const a1 = Math.exp(-Math.SQRT2 * Math.PI / len), b1 = 2 * a1 * Math.cos(Math.SQRT2 * Math.PI / len);
+  const c2 = b1, c3 = -a1 * a1, c1 = ultimate ? (1 + c2 - c3) / 4 : 1 - c2 - c3;
+  const out = new Array(src.length).fill(null);
+  for (let i = 0; i < src.length; i++){
+    const x = src[i];
+    if (x === null){ out[i] = null; continue; }
+    if (i < 2 || src[i-2] === null || src[i-1] === null || out[i-1] === null || out[i-2] === null){ out[i] = x; continue; }
+    out[i] = ultimate
+      ? (1 - c1) * x + (2 * c1 - c2) * src[i-1] - (c1 + c3) * src[i-2] + c2 * out[i-1] + c3 * out[i-2]
+      : c1 * (x + src[i-1]) / 2 + c2 * out[i-1] + c3 * out[i-2];
+  }
+  return out;
+}
+// 因果二次回歸：只用含當根往回 n 根，回傳當根的斜率 b1 與二次項係數 b2
+function abyssQuad(y, n){
+  const B1 = new Array(y.length).fill(null), B2 = new Array(y.length).fill(null);
+  let s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+  for (let k = 0; k < n; k++){ const x = -k; s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x; }
+  const s0 = n, det = s0 * (s2 * s4 - s3 * s3) - s1 * (s1 * s4 - s2 * s3) + s2 * (s1 * s3 - s2 * s2);
+  if (det === 0) return { b1:B1, b2:B2 };
+  for (let i = n - 1; i < y.length; i++){
+    const y0 = y[i]; if (y0 === null) continue;
+    let sy = 0, sxy = 0, sx2y = 0, ok = true;
+    for (let k = 0; k < n; k++){
+      const v = y[i-k]; if (v === null){ ok = false; break; }
+      const x = -k, d = v - y0; sy += d; sxy += x * d; sx2y += x * x * d;
+    }
+    if (!ok) continue;
+    B1[i] = (s0 * (sxy * s4 - s3 * sx2y) - sy * (s1 * s4 - s3 * s2) + s2 * (s1 * sx2y - sxy * s2)) / det;
+    B2[i] = (s0 * (s2 * sx2y - sxy * s3) - s1 * (s1 * sx2y - sxy * s2) + sy * (s1 * s3 - s2 * s2)) / det;
+  }
+  return { b1:B1, b2:B2 };
+}
+// ta.percentile_nearest_rank
+function abyssPct(arr, len, p){
+  const out = new Array(arr.length).fill(null);
+  const rank = Math.max(1, Math.ceil(p / 100 * len));
+  for (let i = len - 1; i < arr.length; i++){
+    const w = arr.slice(i - len + 1, i + 1);
+    if (w.some(x => x === null)) continue;
+    w.sort((a,b) => a - b); out[i] = w[rank - 1];
+  }
+  return out;
+}
+function abyssCalc(o, h, l, c, vol, P, tf){
+  const n = c.length;
+  const key = P.preset === 'auto' ? (tf === '60' ? 'H60' : tf === '240' ? 'H240' : 'D') : P.preset;
+  const pr = key === 'custom' ? [P.smooth, P.cost, P.range, P.reg, P.mem, P.pct, P.trend] : (ABYSS_PRESET[key] || ABYSS_PRESET.D);
+  let [smoothLen, costLen, rangeLen, regLen, memLen, pctLen, trendLen] = pr.map(x => Math.max(2, Math.round(+x || 2)));
+  // 網站載入的 K 棒數有限：統計視窗最多用到總根數的六成，否則永遠暖機不完
+  const pctUsed = Math.max(60, Math.min(pctLen, Math.floor(n * 0.6)));
+  const sigLen = 100, volLen = 20, fastLen = 12, slowLen = 26, sigMLen = 9;
+  const logi = x => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, x))));
+  const clampR = (x, a, b) => Math.max(a, Math.min(b, x));
+  const at = (arr, i) => i >= 0 ? arr[i] : null;
+
+  const v = vol.map(x => (x === null || x === undefined || isNaN(x)) ? 0 : x);
+  const lr = c.map((x,i) => i === 0 ? null : Math.log(x / c[i-1]));
+  const sdLr = taStdevN(lr, sigLen);
+  const sigma = sdLr.map(x => Math.max(nz(x), 1e-6));
+  const volBase = taSMA(v, volLen);
+  const volOK = volBase.map(x => !!P.useVol && x !== null && x > 0);
+  const hlc3 = c.map((x,i) => (h[i] + l[i] + x) / 3);
+  const sumPV = taSumN(hlc3.map((x,i) => x * v[i]), costLen), sumV = taSumN(v, costLen), smaCost = taSMAN(hlc3, costLen);
+  const kC = Math.sqrt((costLen - 1) * (2 * costLen - 1) / (6 * costLen));
+  const lp = c.map(x => Math.log(x));
+  const macdL = sub(taEMA(lp, fastLen), taEMA(lp, slowLen));
+  const hist = sub(macdL, taEMA(macdL, sigMLen));
+  const qf = 1 - 2 / (fastLen + 1), qs = 1 - 2 / (slowLen + 1);
+  const kM = Math.sqrt(Math.max(qs*qs/(1-qs*qs) + qf*qf/(1-qf*qf) - 2*qs*qf/(1-qs*qf), 1e-9));
+  const hh = taExtreme(h, rangeLen, true), ll = taExtreme(l, rangeLen, false);
+  const wSum = Math.max(P.wCys + P.wMom + P.wPos, 1e-6);
+  const raw = c.map((x,i) => {
+    const cost = volOK[i] && sumV[i] > 0 ? sumPV[i] / sumV[i] : smaCost[i];
+    if (cost === null || macdL[i] === null || hh[i] === null) return null;
+    const zC = Math.log(x / cost) / (sigma[i] * kC);
+    const zM = macdL[i] / (sigma[i] * kM);
+    const zR = hh[i] > ll[i] ? 2 * (2 * (x - ll[i]) / (hh[i] - ll[i]) - 1) : 0;
+    return 50 + 50 * Math.tanh((P.wCys * zC + P.wMom * zM + P.wPos * zR) / wSum / P.gain);
+  });
+  const osc = abyssFilter(raw, smoothLen, P.mode !== 'ss');
+
+  // 主線運動學
+  const { b1, b2 } = abyssQuad(osc, regLen);
+  const b2Sd = taStdevN(b2, pctUsed);
+  const pctLv = abyssPct(osc, pctUsed, P.deepPct);
+  const deep = pctLv.map(x => Math.min(P.deepCap, x === null ? P.deepCap : x));
+
+  // 賣壓衰竭 E
+  const dn2 = lr.map(x => Math.min(nz(x), 0) ** 2);
+  const dsS = taSMA(dn2, 5).map(x => x === null ? null : Math.sqrt(x));
+  const dsL = taSMA(dn2, 20).map(x => x === null ? null : Math.sqrt(x));
+  const dnMove = lr.map(x => Math.max(-nz(x), 0));
+  const dnVol = c.map((x,i) => i > 0 && x < c[i-1] ? v[i] : 0);
+  const sDm5 = taSumN(dnMove, 5), sDv5 = taSumN(dnVol, 5), sDm20 = taSumN(dnMove, 20), sDv20 = taSumN(dnVol, 20);
+  const impL = c.map((x,i) => {
+    const vb = Math.max(nz(volBase[i]), 1e-9);
+    return sDm20[i] === null ? null : sDm20[i] / Math.max(sDv20[i] / vb, 0.05);
+  });
+  // 量價承接 A
+  const clv = c.map((x,i) => h[i] > l[i] ? (2 * x - h[i] - l[i]) / (h[i] - l[i]) : 0);
+  const sCV = taSumN(clv.map((x,i) => x * v[i]), 3), sV3 = taSumN(v, 3), smaV3 = taSMA(v, 3), smaClv3 = taSMAN(clv, 3);
+  // 動能修復 M
+  const hSd = taStdevN(hist, pctUsed), hLow = taExtreme(hist, memLen, false);
+  // 大趨勢
+  const { b1:pb1, b2:pb2 } = abyssQuad(lp, trendLen);
+  // 真實波幅
+  const tr = c.map((x,i) => i === 0 ? h[i] - l[i] : Math.max(h[i] - l[i], Math.abs(h[i] - c[i-1]), Math.abs(l[i] - c[i-1])));
+  const atr = taRMA(tr, 14);
+
+  const out = { osc, deep, turn:new Array(n).fill(false), Q:new Array(n).fill(null), qReq:new Array(n).fill(null),
+                inEp:new Array(n).fill(false), defLow:new Array(n).fill(null), fail:new Array(n).fill(0),
+                preset: ABYSS_NAME[key] || key, pctUsed };
+  // 深淵事件狀態機（與 Pine 版逐行對應）
+  let inEp = false, turnUsed = false, turnLive = false, failMode = false, failCount = 0, lastFail = null;
+  let epLineMin = null, epLow = null, runMin = null, runLow = null, runMinBar = null, refTrough = null;
+  let defLow = null, turnTrough = null, prevEpMin = null, prevEpLow = null, prevEpEnd = null, lastTurn = null;
+
+  for (let i = 0; i < n; i++){
+    const x = osc[i];
+    if (x === null) continue;
+    const warm = i > pctUsed && b2Sd[i] !== null && pctLv[i] !== null && b1[i] !== null;
+
+    // ① 事件結束
+    if (inEp && x > P.resetLv){
+      prevEpMin = epLineMin; prevEpLow = epLow; prevEpEnd = i;
+      if (turnLive) failCount = 0;
+      inEp = false; turnUsed = false; turnLive = false; failMode = false; refTrough = null;
+    }
+    // ② 事件開始／追蹤
+    if (!inEp && warm && x < deep[i]){
+      inEp = true; epLineMin = x; epLow = l[i]; runMin = x; runLow = l[i]; runMinBar = i;
+      refTrough = null; turnUsed = false; turnLive = false; failMode = false;
+    } else if (inEp){
+      epLineMin = Math.min(epLineMin, x); epLow = Math.min(epLow, l[i]);
+      if (x < runMin){ runMin = x; runMinBar = i; }
+      runLow = Math.min(runLow, l[i]);
+    }
+    // ③ 失敗
+    if (inEp && turnLive && c[i] < defLow){
+      turnLive = false; turnUsed = false; failMode = true; failCount += 1; lastFail = i;
+      refTrough = refTrough === null ? turnTrough : Math.min(refTrough, turnTrough);
+      runMin = x; runLow = l[i]; runMinBar = i;
+    }
+    if (lastFail !== null && i - lastFail > P.divWin) failCount = 0;
+
+    // ④ TURN 判定
+    const s = sigma[i];
+    const accZ = nz(b2Sd[i]) > 0 ? b2[i] / b2Sd[i] : 0;
+    const leadTo = b1[i] === null ? 999 : b1[i] >= 0 ? 0 : b2[i] > 0 ? -b1[i] / (2 * b2[i]) : 999;
+    const kinOK = b2[i] !== null && b2[i] > 0 && accZ >= P.accMin && leadTo <= P.leadBars;
+
+    const dsP = at(dsL, i - 5), rho = nz(dsP) > 0 && dsS[i] !== null ? dsS[i] / dsP : 1;
+    const xE0 = -Math.log(clampR(rho, 0.05, 20));
+    const vb = Math.max(nz(volBase[i]), 1e-9);
+    const impS = sDm5[i] === null ? null : sDm5[i] / Math.max(sDv5[i] / vb, 0.05);
+    const impP = at(impL, i - 5), impR = nz(impP) > 0 && impS !== null ? impS / impP : 1;
+    const xE = volOK[i] ? 0.6 * xE0 - 0.4 * Math.log(clampR(impR, 0.05, 20)) : xE0;
+    const E = logi(xE / 0.35);
+
+    const mfm = nz(sV3[i]) > 0 ? sCV[i] / sV3[i] : 0;
+    const rv = nz(volBase[i]) > 0 && smaV3[i] !== null ? smaV3[i] / volBase[i] : 1;
+    const xA = volOK[i] ? mfm * (0.6 + 0.4 * Math.min(rv, 2.5)) : nz(smaClv3[i]);
+    const A = logi(xA / 0.25);
+
+    const hRise = hist[i] === null || hLow[i] === null ? 0 : (hist[i] - hLow[i]) / Math.max(nz(hSd[i]), 1e-12);
+    const M = logi((hRise - 0.6) / 0.35 + (i > 0 && hist[i] !== null && hist[i-1] !== null && hist[i] > hist[i-1] ? 0.5 : -0.5));
+
+    const cT = at(c, i - trendLen);
+    const trendZ = cT === null ? 0 : Math.log(c[i] / cT) / (s * Math.sqrt(trendLen));
+    const strongDown = trendZ < -P.trendThr;
+    const slowTo = pb1[i] === null ? 1e9 : pb1[i] >= 0 ? 0 : pb2[i] > 0 ? -pb1[i] / (2 * pb2[i]) : 1e9;
+    const slowOK = slowTo <= trendLen * P.vFrac;
+
+    const recentTrough = inEp && runMinBar !== null && i - runMinBar <= memLen;
+    const needDiv = failMode || strongDown, hasRef = refTrough !== null;
+    const recentPrev = prevEpEnd !== null && i - prevEpEnd <= P.divWin;
+    let divOK = true;
+    if (needDiv){
+      if (hasRef) divOK = runMin > refTrough + P.divMin;
+      else if (!failMode && recentPrev) divOK = epLineMin > prevEpMin + P.divMin || epLow > prevEpLow;
+      else divOK = !failMode;
+      divOK = divOK && slowOK;
+    }
+    const qReq = P.qMin + failCount * P.qStep + (strongDown && !hasRef && !recentPrev ? P.qDown : 0);
+    const D = logi((deep[i] - (epLineMin === null ? deep[i] : epLineMin)) / 6 + 0.4);
+    const Q = Math.exp((Math.log(D) + 1.2 * Math.log(E) + Math.log(A) + Math.log(M)) / 4.2);
+
+    const chaseOK = runLow !== null && atr[i] !== null && c[i] <= runLow + P.chaseATR * atr[i];
+    const capOK = x <= deep[i] + P.lineChase;
+    const barOK = !P.strongBar || (i > 0 && c[i] >= c[i-1] && clv[i] >= 0);
+    const volGate = !P.reqVol || !volOK[i] || (mfm > 0 && rv >= P.volFactor);
+    const gapOK = lastTurn === null || i - lastTurn > P.minGap;
+
+    const turn = warm && inEp && !turnUsed && recentTrough && kinOK && divOK && Q >= qReq && chaseOK && capOK && barOK && volGate && gapOK;
+    if (turn){ turnUsed = true; turnLive = true; defLow = runLow; turnTrough = runMin; lastTurn = i; }
+
+    // ⑤ 主線局部高點 → 上一個波谷定案
+    if (inEp && b1[i] !== null && b1[i] < 0 && nz(at(b1, i - 1)) >= 0){
+      refTrough = refTrough === null ? runMin : Math.min(refTrough, runMin);
+      runMin = x; runLow = l[i]; runMinBar = i;
+    }
+    out.turn[i] = turn; out.Q[i] = Q; out.qReq[i] = qReq; out.inEp[i] = inEp;
+    out.defLow[i] = turnLive ? defLow : null; out.fail[i] = failCount;
+  }
+  return out;
+}
+window.__ind = Object.assign(window.__ind || {}, { abyssCalc });
+
+Object.assign(IND, {
+  abyss: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries } = LC(), fr = fixedRange(0, 100);
+      this.s.deep = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+                                                  priceFormat:F1, autoscaleInfoProvider:fr }, p);
+      this.s.line = chart.addSeries(LineSeries, { priceLineVisible:false, lastValueVisible:true, crosshairMarkerRadius:3,
+                                                  priceFormat:F1, autoscaleInfoProvider:fr }, p);
+      this.mk = LC().createSeriesMarkers(this.s.line, []);
+      this.refs = [];
+    },
+    draw(){
+      const P = S.abyss;
+      const v = this.vals = abyssCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close),
+                                      bars.map(b => b.volume), P, S.tf);
+      this.s.line.applyOptions({ lineWidth:+P.lw });
+      this.s.line.setData(bars.map((b,i) => v.osc[i] === null || i < 100 ? { time:b.time }
+        : { time:b.time, value:v.osc[i], color: (i > 0 && v.osc[i-1] !== null && v.osc[i] < v.osc[i-1]) ? P.colDn : P.colUp }));
+      this.s.deep.setData(P.showGuide ? toLine(v.deep.map((d,i) => v.osc[i] === null || i < 100 ? null : d)) : []);
+      this.s.deep.applyOptions({ color:P.guideCol });
+      const { LineStyle } = LC(), L = this.s.line;
+      this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
+      if (P.showGuide) this.refs.push(L.createPriceLine({ price:50, color:hexA(S.col.text,.35), lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:false }));
+      const m = [];
+      v.turn.forEach((t,i) => { if (t && bars[i]) m.push({ time:bars[i].time, position:'atPriceBottom', price:v.osc[i], shape:'arrowUp', color:P.turnCol, text:'TURN' }); });
+      this.mk.setMarkers(m);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, out = []; if (!v) return out;
+      v.turn.forEach((t,i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:S.abyss.turnCol, text:'TURN' }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.abyss; if (!v) return '';
+      const x = v.osc[i], p = i > 0 ? v.osc[i-1] : null;
+      const col = x == null ? 'var(--text)' : (p != null && x < p ? P.colDn : P.colUp);
+      let tag = '';
+      if (v.turn[i]) tag = `<span class="tag" style="background:${P.turnCol};color:#000">TURN</span>`;
+      else if (v.inEp[i]) tag = `<span class="tag" style="background:${P.guideCol}">深淵事件中</span>`;
+      const q = v.Q[i] != null && v.inEp[i] ? `　品質 <b>${fmt(v.Q[i],2)}</b>／需 ${fmt(v.qReq[i],2)}` : '';
+      const d = v.defLow[i] != null ? `　防守低點 <b>${fmt(v.defLow[i])}</b>` : '';
+      return `ABYSS v2（${v.preset}） <b style="color:${col}">${fmt(x,1)}${x == null || p == null ? '' : x >= p ? ' ▲' : ' ▼'}</b>` +
+        (P.showGuide ? `　<span style="color:${P.guideCol}">深淵線 ${fmt(v.deep[i],1)}</span>` : '') + q + d + tag;
     },
   },
 });
@@ -1881,7 +2200,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -1894,6 +2213,7 @@ const RESETS = {
   t3:    ['t3'],
   wt:    ['wt'],
   rsib:  ['rsib'],
+  abyss: ['abyss'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
