@@ -138,6 +138,26 @@
       <div class="dir" id="dirBox"></div>
     </section>
 
+    <section id="histSec">
+      <h2>總 Gamma 曝險歷史（GEX 框架）
+        <span class="seg" id="histSeg"><button data-n="63">3 個月</button><button data-n="126" class="on">6 個月</button><button data-n="260">1 年</button></span>
+      </h2>
+      <div class="verdict" id="histNow" style="margin-top:4px"></div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgHistP"></div>
+        <svg id="svgHistP" role="img" aria-label="台指期收盤、零 Gamma、看漲牆、看跌牆的每日走勢，負 Gamma 的日子加底色"></svg>
+        <div class="tip" id="tipHistP"></div>
+      </div>
+      <div class="panel" style="margin-top:8px">
+        <div class="legend" id="lgHistG"></div>
+        <svg id="svgHistG" role="img" aria-label="每日總 Gamma 曝險"></svg>
+        <div class="tip" id="tipHistG"></div>
+      </div>
+      <h2 style="margin-top:12px">正 Gamma 與負 Gamma 之後，隔天怎麼走<span class="muted">用上面選的期間統計，台指期近月</span></h2>
+      <div class="tblx" id="histStats"></div>
+      <p class="note" id="histNote"></p>
+    </section>
+
     <section>
       <h2>籌碼分布
         <span class="seg" id="distSeg">
@@ -914,6 +934,114 @@ async function loadInst(date){
   $('#instNote').textContent = '淨未平倉＝買方未平倉口數減賣方未平倉口數；正數代表偏買方（藍色），負數代表偏賣方（橘色）。金額單位為元，依期交所公布的契約金額（千元）換算。大額交易人的週選擇權是全部週契約合計，無法拆到單一結算日。';
 }
 
+/* ───────── 總 Gamma 曝險歷史（GitHub 每天收盤後計算好的 data/txo/history.json） ───────── */
+let HIST = null, HN = +(store.get('txo.histN') || 126);
+async function loadHistory(){
+  try {
+    const r = await fetch('data/txo/history.json?t=' + Date.now());
+    if (!r.ok) throw new Error('還沒有歷史資料');
+    const j = await r.json();
+    HIST = (j.days || []).filter(d => d.c && d.gex != null);
+    HIST.updated = j.updated;
+    renderHistory();
+  } catch(e){ $('#histNow').textContent = '總 Gamma 曝險歷史還在計算中（第一次約需 20 分鐘），稍後重新整理。'; }
+}
+function renderHistory(){
+  if (!HIST || !HIST.length) return;
+  document.querySelectorAll('#histSeg button').forEach(b => b.classList.toggle('on', +b.dataset.n === HN));
+  const all = HIST, D = all.slice(-HN);
+  // 隔日結果（同一個近月合約才算，換月那天跳過）
+  const nx = new Map();
+  for (let i = 0; i + 1 < all.length; i++){
+    const a = all[i], b = all[i + 1];
+    if (a.fc !== b.fc) continue;
+    const prevC = i > 0 && all[i - 1].fc === a.fc ? all[i - 1].c : null;
+    nx.set(a.d, { ret:(b.c / a.c - 1) * 100, rng:(b.h - b.l) / a.c * 100, today: prevC ? (a.c / prevC - 1) * 100 : null,
+                  inside: b.c >= a.pw && b.c <= a.cw, holdPw: b.l >= a.pw, holdCw: b.h <= a.cw });
+  }
+  // 目前狀態
+  const last = all[all.length - 1];
+  let streak = 0; for (let i = all.length - 1; i >= 0 && (all[i].gex < 0) === (last.gex < 0); i--) streak++;
+  $('#histNow').innerHTML = `${mdw(last.d)} 收盤：台指期 ${fmtInt(last.c)}，總 Gamma 曝險 <b class="${last.gex < 0 ? 'neg' : 'pos'}">${fmtMoney(last.gex, true)}</b>，` +
+    `已連續 ${streak} 天${last.gex < 0 ? '負' : '正'} Gamma。零 Gamma ${last.flip ? fmtInt(last.flip) : '–'}、看漲牆 ${fmtInt(last.cw)}、看跌牆 ${fmtInt(last.pw)}、` +
+    `最近結算日（${mdw(last.nearExp)}）最大痛點 ${fmtInt(last.pain)}。<span class="muted">（歷史資料計算於 ${esc(HIST.updated || '')}，用日盤收盤價）</span>`;
+  drawHistPrice(D); drawHistGex(D);
+  // 統計
+  const grp = (name, f) => {
+    const xs = D.filter(f).map(d => nx.get(d.d)).filter(Boolean); const n = xs.length;
+    if (!n) return `<tr><td>${name}</td><td>0</td><td colspan="7" class="muted">期間內沒有這種日子</td></tr>`;
+    const avg = a => a.reduce((t, v) => t + v, 0) / a.length;
+    const pctOf = a => (a.length ? (a.filter(Boolean).length / a.length * 100).toFixed(0) + '%' : '–');
+    const big = xs.filter(x => x.today != null && Math.abs(x.today) >= 1);
+    const cont = xs.filter(x => x.today != null && Math.abs(x.today) >= 0.3);
+    return `<tr><td>${name}</td><td>${n}</td><td>${avg(xs.map(x => Math.abs(x.ret))).toFixed(2)}%</td><td>${avg(xs.map(x => x.rng)).toFixed(2)}%</td>` +
+      `<td>${pctOf(xs.map(x => Math.abs(x.ret) >= 1))}</td>` +
+      `<td>${big.length ? pctOf(big.map(x => Math.abs(x.ret) >= 1)) + `<span class="muted">（${big.length} 次）</span>` : '–'}</td>` +
+      `<td>${cont.length ? pctOf(cont.map(x => Math.sign(x.ret) === Math.sign(x.today))) : '–'}</td>` +
+      `<td>${pctOf(xs.map(x => x.inside))}</td><td>${pctOf(xs.map(x => x.holdPw))}／${pctOf(xs.map(x => x.holdCw))}</td></tr>`;
+  };
+  $('#histStats').innerHTML = '<table><thead><tr><th>當天狀態</th><th>天數</th><th>隔日平均漲跌幅</th><th>隔日平均振幅</th><th>隔日漲跌超過 1%</th>' +
+    '<th>當天大漲跌 1% 以上，隔日又超過 1%</th><th>隔日同方向延續</th><th>隔日收在兩道牆之間</th><th>隔日守住看跌牆／沒碰看漲牆</th></tr></thead><tbody>' +
+    grp('正 Gamma（總曝險 ≥ 0）', d => d.gex >= 0) + grp('負 Gamma（總曝險 < 0）', d => d.gex < 0) +
+    grp('全部', () => true) + '</tbody></table>';
+  $('#histNote').textContent = '漲跌幅與振幅都是台指期近月日盤；「同方向延續」只算當天漲跌超過 0.3% 的日子，看隔天是否同方向；換月那天前後不列入。' +
+    '如果負 Gamma 那一列的振幅、超過 1% 的比例、大漲跌後再大漲跌的比例明顯比正 Gamma 高，就代表「負 Gamma 時大漲大跌容易連續」在台指期也成立。樣本天數少時差異可能只是巧合。';
+}
+function histFrame(svg, H){
+  const W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520;
+  const m = { l: narrow ? 50 : 66, r: 12, t: 10, b: 26 };
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  return { W, H, m, iw: W - m.l - m.r, ih: H - m.t - m.b, narrow, marks:[] };
+}
+function histX(f, n){ const step = f.iw / Math.max(1, n); return i => f.m.l + step * (i + 0.5); }
+function histDates(svg, f, D, x){
+  const n = f.narrow ? 4 : 7, every = Math.max(1, Math.ceil(D.length / n));
+  for (let i = 0; i < D.length; i += every){
+    el('line', { x1:x(i), x2:x(i), y1:f.m.t, y2:f.H - f.m.b, stroke:css('--grid'), 'stroke-width':1 }, svg);
+    el('text', { x:x(i), y:f.H - 8, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, md(D[i].d));
+  }
+}
+function histTip(r){
+  return `<b>${mdw(r.d)}</b><br>台指期 ${fmtInt(r.c)}<br>總 Gamma 曝險 ${fmtMoney(r.gex, true)}（最近結算日 ${fmtMoney(r.gexNear, true)}）<br>` +
+    `零 Gamma ${r.flip ? fmtInt(r.flip) : '–'}・看漲牆 ${fmtInt(r.cw)}・看跌牆 ${fmtInt(r.pw)}<br>最大痛點 ${fmtInt(r.pain)}・賣權／買權比 ${r.pcr ?? '–'}・價平波動率 ${r.iv ?? '–'}%`;
+}
+function drawHistPrice(D){
+  const svg = $('#svgHistP'), f = histFrame(svg, 280), x = histX(f, D.length);
+  legend($('#lgHistP'), [['台指期收盤', css('--text'), 'ln'], ['零 Gamma', css('--flip'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], ['負 Gamma 的日子（底色）', css('--put') + '40']]);
+  const vals = D.flatMap(d => [d.c, d.h, d.l, d.cw, d.pw, d.flip].filter(v => v != null));
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.04;
+  const y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih;
+  const step = f.iw / D.length;
+  D.forEach((d, i) => { if (d.gex < 0) el('rect', { x:x(i) - step / 2, y:f.m.t, width:step + 0.5, height:f.ih, fill:css('--put'), 'fill-opacity':.16 }, svg); });
+  histDates(svg, f, D, x); yAxis(svg, f, y, lo - pad, hi + pad, t => fmtInt(t));
+  const line = (key, col, w, dash, stepLine) => {
+    let d = '', pen = false;
+    D.forEach((r, i) => { const v = r[key]; if (v == null){ pen = false; return; }
+      if (stepLine){ d += (pen ? 'L' + (x(i) - step / 2).toFixed(1) + ',' + y(v).toFixed(1) : 'M' + (x(i) - step / 2).toFixed(1) + ',' + y(v).toFixed(1)) + 'L' + (x(i) + step / 2).toFixed(1) + ',' + y(v).toFixed(1); }
+      else d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1);
+      pen = true; });
+    el('path', { d, fill:'none', stroke:col, 'stroke-width':w, 'stroke-dasharray':dash || null, 'stroke-linejoin':'round' }, svg);
+  };
+  line('cw', css('--call'), 1.5, null, true); line('pw', css('--put'), 1.5, null, true); line('flip', css('--flip'), 1.5, '4 3', true);
+  line('c', css('--text'), 2.2);
+  const lastI = D.length - 1;
+  el('circle', { cx:x(lastI), cy:y(D[lastI].c), r:4, fill:css('--text'), stroke:css('--panel'), 'stroke-width':2 }, svg);
+  hover(svg, $('#tipHistP'), f, x, D.map((r, i) => ({ K:i, r })), o => histTip(o.r),
+    mx => { const i = Math.max(0, Math.min(D.length - 1, Math.round((mx - f.m.l) / step - 0.5))); return { K:i, r:D[i] }; });
+}
+function drawHistGex(D){
+  const svg = $('#svgHistG'), f = histFrame(svg, 180), x = histX(f, D.length);
+  legend($('#lgHistG'), [['總 Gamma 曝險：正', css('--call')], ['負', css('--put')]]);
+  const m = Math.max(1, ...D.map(d => Math.abs(d.gex))) * 1.08;
+  const y = v => f.m.t + (m - v) / (2 * m) * f.ih;
+  histDates(svg, f, D, x); yAxis(svg, f, y, -m, m, t => fmtMoney(t));
+  const step = f.iw / D.length, w = Math.max(1, Math.min(10, step - 2));
+  D.forEach((d, i) => bar(svg, x(i) - w / 2, w, y(0), y(d.gex), d.gex >= 0 ? css('--call') : css('--put')));
+  hover(svg, $('#tipHistG'), f, x, D.map((r, i) => ({ K:i, r })), o => histTip(o.r),
+    mx => { const i = Math.max(0, Math.min(D.length - 1, Math.round((mx - f.m.l) / step - 0.5))); return { K:i, r:D[i] }; });
+}
+document.querySelectorAll('#histSeg button').forEach(b => b.onclick = () => { HN = +b.dataset.n; store.set('txo.histN', HN); renderHistory(); });
+
 /* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
 function askToken(msg){
   const s = $('#status'); s.hidden = false; s.className = 'msg err';
@@ -933,7 +1061,7 @@ $('#rangeSel').value = store.get('txo.range') || (innerWidth < 600 ? '0.05' : '0
 $('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); if (DATA) render(); };
 document.querySelectorAll('#distSeg button').forEach(b => b.onclick = () => { DIST = b.dataset.m; store.set('txo.dist', DIST); if (DATA) drawDist(); });
 $('#dateSel').onchange = () => loadDate($('#dateSel').value).catch(e => setStatus(e.message, true));
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); }, 150); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); }, 150); });
 CUR = store.get('txo.cur');
 if (CUR !== 'ALL') CUR = null;                                       // 單一結算日每天會變，預設看最近一個
 
@@ -954,6 +1082,7 @@ async function start(){
     for (const d of TD.slice(-20).reverse()){ const o = document.createElement('option'); o.value = d; o.textContent = mdw(d); sel.appendChild(o); }
     sel.value = date;
     await loadDate(date);
+    loadHistory();
   } catch(e){
     if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
   }
