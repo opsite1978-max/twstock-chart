@@ -258,7 +258,7 @@ function insLine(code){
 function showInsider(code){
   const w = $('#insWrap'), f = $('#insFrame'); w.hidden = false;
   if (f.dataset.ready === '1'){ try { f.contentWindow.postMessage({ insiderOpen: code }, location.origin); return; } catch(e){} }
-  f.src = 'insider.html?embed=1&s=' + encodeURIComponent(code);
+  f.src = 'insider.html?embed=1&v=3&s=' + encodeURIComponent(code);
   f.onload = () => { f.dataset.ready = '1'; };
 }
 addEventListener('message', e => {
