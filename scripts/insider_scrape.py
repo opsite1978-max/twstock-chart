@@ -344,8 +344,20 @@ def cmd_index():
             dump(d, DATA)  # 舊格式順便轉換
         ok = [k for k, v in d['months'].items() if v.get('s') == 'ok']
         u = names.get(d['code'], {})
+        # 最近 6 個已申報月份的集中市場淨買賣股數（同一人兼多職會重複揭露，先去重）
+        net = []
+        for ym in sorted(ok)[-6:]:
+            seen, tot = set(), 0
+            for r in d['months'][ym].get('c', []):
+                key = (r[1], r[2], tuple(r[3:]))
+                if key in seen:
+                    continue
+                seen.add(key)
+                tot += r[5] - r[8]
+            net.append([ym, tot])
         idx.append({'code': d['code'], 'name': d.get('name') or u.get('name', ''),
-                    'market': u.get('market') or d.get('market', ''), 'months': len(ok), 'latest': max(ok) if ok else ''})
+                    'market': u.get('market') or d.get('market', ''), 'months': len(ok), 'latest': max(ok) if ok else '',
+                    'net': net})
     have = {s['code'] for s in idx}
     total = len(set(names) | set(watch))
     with open(os.path.join(DATA, 'index.json'), 'w', encoding='utf-8') as f:

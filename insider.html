@@ -9,6 +9,9 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+  html.embed header,html.embed #chips,html.embed #cov,html.embed footer{display:none!important}
+  html.embed main{padding:0;max-width:none}
+  html.embed body{background:transparent}
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1e2533;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
@@ -102,6 +105,8 @@
 </main>
 <script>
 'use strict';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.documentElement.classList.add('embed');
 /* ───────── 設定：沿用看盤頁的 FinMind 憑證與深淺色 ───────── */
 let SET = {};
 try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
@@ -246,7 +251,7 @@ async function open(code){
   else if (INDEX && INDEX.stocks){ const hit = INDEX.stocks.find(s => s.name === code) || INDEX.stocks.find(s => (s.name || '').includes(code)); if (hit) code = hit.code; }
   if (!code) return;
   $('#q').value = code;
-  history.replaceState(null, '', '?s=' + code);
+  if (!EMBED) history.replaceState(null, '', '?s=' + code);
   try { localStorage.setItem('insider.last', code); } catch(e){}
   markChip(code);
   const out = $('#out');
@@ -647,6 +652,12 @@ $('#go').onclick = () => open($('#q').value);
 $('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
 $('#q').onchange = () => { if (/^[0-9]{4}[0-9A-Z]{0,2} /.test($('#q').value)) open($('#q').value); };
 let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR) render(); }, 200); });
+// 嵌入籌碼頁時：把自己的高度告訴外層頁面；外層換股票時直接呼叫 open()
+if (EMBED){
+  const post = () => { try { parent.postMessage({ insiderHeight: document.documentElement.scrollHeight }, location.origin); } catch(e){} };
+  new ResizeObserver(post).observe(document.body); addEventListener('load', post);
+  addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.insiderOpen) open(e.data.insiderOpen); });
+}
 (async () => {
   await loadIndex();
   const p = new URLSearchParams(location.search).get('s');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>大戶散戶籌碼</title>
+<title>籌碼分析</title>
 <meta name="theme-color" content="#131722">
 <link rel="manifest" href="manifest-m.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -85,6 +85,7 @@
   th.sort{cursor:pointer} th.sort.on{color:var(--text)}
   tr.click{cursor:pointer} tr.click:hover td{background:var(--panel)}
   b.num{font-weight:600}
+  #insWrap iframe{width:100%;border:0;display:block;height:600px;background:transparent}
   .verdict{font-size:13px;margin:8px 2px 0;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
   footer{margin-top:22px;font-size:12px;color:var(--muted)}
   [hidden]{display:none!important}
@@ -92,7 +93,7 @@
 </head>
 <body>
 <header>
-  <h1>大戶散戶</h1>
+  <h1>籌碼</h1>
   <input id="q" list="names" placeholder="代號或名稱" autocomplete="off" enterkeyhint="go"><datalist id="names"></datalist>
   <button class="primary" id="go">查詢</button>
   <span class="spacer"></span>
@@ -109,6 +110,10 @@
   <div id="tabStock">
     <div class="chips" id="chips"></div>
     <div id="out"><div class="msg">載入中…</div></div>
+    <section id="insWrap" hidden>
+      <h2 style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">內部人買賣 <span class="muted">董事、監察人、經理人、持股超過 10% 大股東的申報</span></h2>
+      <iframe id="insFrame" title="內部人買賣" loading="lazy"></iframe>
+    </section>
   </div>
 
   <div id="tabScreen" hidden>
@@ -117,6 +122,7 @@
       <label>大戶增加至少 <input type="number" id="sBig" value="0.5" step="0.1" min="0"> 個百分點</label>
       <label><input type="checkbox" id="sSmall" checked>散戶減少</label>
       <label><input type="checkbox" id="sPpl" checked>股東人數減少</label>
+      <label><input type="checkbox" id="sIns">內部人近 3 個月淨買進</label>
       <label>最新成交 ≥ <input type="number" id="sVol" value="100" step="50" min="0"> 張</label>
       <label><select id="sMkt"><option value="">上市＋上櫃</option><option value="上市">只看上市</option><option value="上櫃">只看上櫃</option></select></label>
     </div>
@@ -124,7 +130,7 @@
   </div>
 
   <footer>
-    資料來源：臺灣集中保管結算所「集保戶股權分散表」（每週公布一次，與神秘金字塔同一份資料），涵蓋全部上市、上櫃普通股；股價走勢來自 FinMind。
+    資料來源：臺灣集中保管結算所「集保戶股權分散表」（每週公布一次，與神秘金字塔同一份資料）與公開資訊觀測站「內部人持股異動事後申報表」，涵蓋全部上市、上櫃普通股；股價走勢來自 FinMind。
     持股比例是占集保庫存的比例；大戶、散戶的門檻以「持有張數」區分，可在上方切換。籌碼集中不代表一定上漲，請搭配其他資訊判斷。
   </footer>
 </main>
@@ -167,8 +173,26 @@ async function finmind(params){
 
 /* ───────── 清單 ───────── */
 let INDEX = { stocks:[] }, NAMES = {};
+let INS = {}, INS_LAST = '';
+async function loadInsider(){
+  try {
+    const r = await fetch('data/insider/index.json?t=' + Date.now()); if (!r.ok) return;
+    const j = await r.json();
+    for (const x of j.stocks || []){ INS[x.code] = x; if (x.latest > INS_LAST) INS_LAST = x.latest; }
+  } catch(e){}
+}
+function addMonths(ym, k){ let [y,m] = ym.split('-').map(Number); m += k; while(m < 1){ m += 12; y--; } while(m > 12){ m -= 12; y++; } return y + '-' + String(m).padStart(2,'0'); }
+function insNet(code, n){   // 最近 n 個月（以全市場最新申報月為準）內部人集中市場淨買賣張數；沒有資料回傳 null
+  const x = INS[code]; if (!x || !x.net || !INS_LAST) return null;
+  const from = addMonths(INS_LAST, -(n - 1)); let t = 0, has = false;
+  for (const [ym, v] of x.net) if (ym >= from && ym <= INS_LAST){ t += v; has = true; }
+  return has ? t / 1000 : null;
+}
+const fmtLot = v => v == null ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + (Math.abs(v) >= 10 || v === 0 ? fmtInt(Math.abs(v)) : Math.abs(v).toFixed(1).replace(/\.0$/, '')) + ' 張';
 async function loadIndex(){
+  const insP = loadInsider();
   try { const r = await fetch('data/holders/index.json?t=' + Date.now()); if (r.ok) INDEX = await r.json(); } catch(e){}
+  await insP;
   (INDEX.stocks || []).forEach(s => NAMES[s[0]] = s[1]);
   $('#names').innerHTML = (INDEX.stocks || []).map(s => `<option value="${esc(s[0])} ${esc(s[1])}">`).join('');
   const watch = INDEX.watch || [];
@@ -194,6 +218,7 @@ async function open(code){
   document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.c === code));
   const out = $('#out');
   out.innerHTML = '<div class="msg">讀取 ' + esc(code) + ' 的集保資料…</div>';
+  showInsider(code);
   let D = null;
   try { const r = await fetch('data/holders/' + code + '.json?t=' + Date.now()); if (r.ok) D = await r.json(); } catch(e){}
   const dates = D ? Object.keys(D.w).sort() : [];
@@ -224,6 +249,22 @@ function series(){
   });
 }
 
+function insLine(code){
+  const n3 = insNet(code, 3), n6 = insNet(code, 6);
+  if (n3 == null) return '';
+  const word = v => v > 0 ? '淨買 ' + fmtLot(v).replace('+', '') : v < 0 ? '淨賣 ' + fmtLot(v).replace('−', '') : '沒有淨買賣';
+  return `<br><b>內部人：</b><span class="${sgn(n3)}">近 3 個月${word(n3)}</span><span class="muted">・近 6 個月${word(n6)}（申報至 ${INS_LAST.replace('-', '/')}，明細在下方）</span>`;
+}
+function showInsider(code){
+  const w = $('#insWrap'), f = $('#insFrame'); w.hidden = false;
+  if (f.dataset.ready === '1'){ try { f.contentWindow.postMessage({ insiderOpen: code }, location.origin); return; } catch(e){} }
+  f.src = 'insider.html?embed=1&s=' + encodeURIComponent(code);
+  f.onload = () => { f.dataset.ready = '1'; };
+}
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || !e.data.insiderHeight) return;
+  $('#insFrame').style.height = Math.max(200, e.data.insiderHeight + 4) + 'px';
+});
 function card(color, k, v, sub){ return `<div class="card"><div class="k">${color ? `<i style="background:${color}"></i>` : ''}${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`; }
 function ago(S, n){ return S[Math.max(0, S.length - 1 - n)]; }
 
@@ -251,7 +292,7 @@ function render(){
       ${card('', '股東總人數', fmtInt(L.ppl), '1 週 ' + pp((L.ppl - w1.ppl) / w1.ppl * 100) + '%・4 週 ' + pp(dP4) + '%')}
       ${card('', '平均每人持股', fmtInt(L.shares / L.ppl / 1000 * 10) / 10 + ' 張', '1000 張以上大股東 ' + fmtInt(L.k1000) + ' 人')}
     </div>
-    <div class="verdict"><b>近 4 週：${verdict}</b><span class="muted">　${sig.join('、')}</span></div>
+    <div class="verdict"><b>近 4 週：${verdict}</b><span class="muted">　${sig.join('、')}</span>${insLine(C.code)}</div>
     <section>
       <h2>股價 × 大戶 × 散戶 <span class="seg" id="rng"><button data-n="13">3 個月</button><button data-n="26">半年</button><button data-n="60">1 年</button></span></h2>
       <div class="panel">
@@ -416,6 +457,7 @@ function runScreen(){
   const ci = SCR.ci, W = +$('#sWeeks').value, minB = +$('#sBig').value || 0, needS = $('#sSmall').checked, needP = $('#sPpl').checked,
         minV = +$('#sVol').value || 0, mkt = $('#sMkt').value, nd = SCR.dates.length;
   const bi = ci['b' + BIGK], si = ci['s' + SMALLK], pi = ci.ppl, li = ci.lots;
+  const needI = $('#sIns').checked;
   const res = [];
   let usable = 0, skipped = 0;
   for (const r of SCR.rows){
@@ -431,9 +473,11 @@ function runScreen(){
     if (db < minB) continue;
     if (needS && !(dsm < 0)) continue;
     if (needP && !(dp < 0)) continue;
+    const ins = insNet(r[ci.code], 3);
+    if (needI && !(ins > 0)) continue;
     let streak = 0; for (let k = e; k > 0 && B[k] != null && B[k-1] != null && B[k] > B[k-1]; k--) streak++;
     res.push({ code:r[ci.code], name:r[ci.name], ind:r[ci.ind], mkt:r[ci.market], close:r[ci.close], vol:r[ci.vol],
-               big:B[e] / 100, db, dsm, dp, streak });
+               big:B[e] / 100, db, dsm, dp, streak, ins });
   }
   const k = SORT.k; res.sort((a, b) => ((a[k] ?? -1e9) < (b[k] ?? -1e9) ? -1 : (a[k] ?? -1e9) > (b[k] ?? -1e9) ? 1 : 0) * SORT.dir);
   const from = SCR.dates[Math.max(0, nd - 1 - W)], to = SCR.dates[nd - 1];
@@ -441,19 +485,19 @@ function runScreen(){
   const shown = res.slice(0, 300);
   if (!res.length){ $('#sOut').innerHTML = `<div class="msg">${from} → ${to} 沒有符合條件的股票，可以把「大戶增加至少」調低，或把比較期間拉長。</div>`; return; }
   $('#sOut').innerHTML = `<p class="small muted" style="margin:0 0 6px">${from} → ${to}・符合 <b style="color:var(--text)">${res.length}</b> 檔（共比較 ${fmtInt(usable)} 檔有資料的股票${skipped ? '，另排除 ' + skipped + ' 檔期間內有減資、增資或換股' : ''}）${res.length > 300 ? '，只列前 300 檔' : ''}・點一列看個股圖</p>
-  <div class="tblwrap"><table><thead><tr>${th('code','股票','l')}${th('db','大戶增減')}${th('dsm','散戶增減')}${th('dp','人數增減')}${th('big', '大戶持股')}${th('streak','大戶連增')}${th('close','收盤')}${th('vol','成交張')}<th class="l">產業</th></tr></thead>
+  <div class="tblwrap"><table><thead><tr>${th('code','股票','l')}${th('db','大戶增減')}${th('dsm','散戶增減')}${th('dp','人數增減')}${th('ins','內部人近3月')}${th('big', '大戶持股')}${th('streak','大戶連增')}${th('close','收盤')}${th('vol','成交張')}<th class="l">產業</th></tr></thead>
   <tbody>${shown.map(x => `<tr class="click" data-c="${esc(x.code)}"><td class="l"><b>${esc(x.code)}</b> ${esc(x.name)}</td>
     <td class="up"><b class="num">${pp(x.db)}</b></td><td class="${sgn(-x.dsm)}">${pp(x.dsm)}</td><td class="${sgn(-x.dp)}">${pp(x.dp)}%</td>
-    <td>${pct(x.big)}</td><td>${x.streak ? x.streak + ' 週' : '–'}</td><td>${fmtPx(x.close)}</td><td>${x.vol == null ? '–' : fmtInt(x.vol)}</td><td class="l muted">${esc(x.ind || '')}</td></tr>`).join('')}
+    <td class="${sgn(x.ins)}">${fmtLot(x.ins)}</td><td>${pct(x.big)}</td><td>${x.streak ? x.streak + ' 週' : '–'}</td><td>${fmtPx(x.close)}</td><td>${x.vol == null ? '–' : fmtInt(x.vol)}</td><td class="l muted">${esc(x.ind || '')}</td></tr>`).join('')}
   </tbody></table></div>
-  <p class="note">大戶持股＝目前選的大戶門檻（上方可切換）。大戶、散戶增減的單位是「持股比例的百分點」；人數增減是股東總人數的變化百分比。收盤、成交張是最新一個交易日。條件越嚴（期間拉長、門檻提高），越能篩掉單週雜訊。</p>`;
+  <p class="note">大戶持股＝目前選的大戶門檻（上方可切換）。內部人近 3 月＝董監、經理人、大股東在集中市場的淨買賣張數（申報至 ${INS_LAST ? INS_LAST.replace('-', '/') : '–'}）。大戶、散戶增減的單位是「持股比例的百分點」；人數增減是股東總人數的變化百分比。收盤、成交張是最新一個交易日。條件越嚴（期間拉長、門檻提高），越能篩掉單週雜訊。</p>`;
   $('#sOut').querySelector('thead').onclick = e => { const t = e.target.closest('th.sort'); if (!t) return;
     SORT = SORT.k === t.dataset.k ? { k:SORT.k, dir:-SORT.dir } : { k:t.dataset.k, dir: t.dataset.k === 'code' ? 1 : (t.dataset.k === 'dsm' || t.dataset.k === 'dp' ? 1 : -1) }; runScreen(); };
   $('#sOut').querySelector('tbody').onclick = e => { const tr = e.target.closest('tr.click'); if (tr) open(tr.dataset.c); };
 }
-['sWeeks','sBig','sSmall','sPpl','sVol','sMkt'].forEach(id => $('#' + id).addEventListener('change', () => { saveScreenSet(); runScreen(); }));
-function saveScreenSet(){ store.set('holders.screen', JSON.stringify({ w:$('#sWeeks').value, b:$('#sBig').value, s:$('#sSmall').checked, p:$('#sPpl').checked, v:$('#sVol').value, m:$('#sMkt').value })); }
-try { const o = JSON.parse(store.get('holders.screen') || 'null'); if (o){ $('#sWeeks').value = o.w; $('#sBig').value = o.b; $('#sSmall').checked = o.s; $('#sPpl').checked = o.p; $('#sVol').value = o.v; $('#sMkt').value = o.m; } } catch(e){}
+['sWeeks','sBig','sSmall','sPpl','sIns','sVol','sMkt'].forEach(id => $('#' + id).addEventListener('change', () => { saveScreenSet(); runScreen(); }));
+function saveScreenSet(){ store.set('holders.screen', JSON.stringify({ w:$('#sWeeks').value, b:$('#sBig').value, s:$('#sSmall').checked, p:$('#sPpl').checked, i:$('#sIns').checked, v:$('#sVol').value, m:$('#sMkt').value })); }
+try { const o = JSON.parse(store.get('holders.screen') || 'null'); if (o){ $('#sWeeks').value = o.w; $('#sBig').value = o.b; $('#sSmall').checked = o.s;  $('#sPpl').checked = o.p; $('#sIns').checked = !!o.i; $('#sVol').value = o.v; $('#sMkt').value = o.m; } } catch(e){}
 
 /* ───────── 分頁、門檻、啟動 ───────── */
 function showTab(t){
