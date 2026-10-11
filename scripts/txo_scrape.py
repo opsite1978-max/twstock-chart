@@ -260,10 +260,13 @@ def analyse_day(date, rows, P, cal):
         if t < pv:
             pv, pain = t, x['K']
     oic = sum(r['coi'] for r in rows_all); oip = sum(r['poi'] for r in rows_all)
+    # 成交量賣權／買權比（日盤＋這一天的夜盤，全部合約）
+    vc = sum(int(r.get('volume') or 0) for r in rows if r.get('call_put') == 'call')
+    vp = sum(int(r.get('volume') or 0) for r in rows if r.get('call_put') == 'put')
     return {
         'gex': round(total_at(P, exps)), 'gexNear': round(total_at(P, [near])),
         'flip': round(flip) if flip else None, 'cw': cw, 'pw': pw, 'pain': pain,
-        'pcr': round(oip / oic, 3) if oic else None, 'iv': round(near['iv'] * 100, 2) if near['iv'] else None,
+        'pcr': round(oip / oic, 3) if oic else None, 'pcrV': round(vp / vc, 3) if vc else None, 'iv': round(near['iv'] * 100, 2) if near['iv'] else None,
         'near': near['code'], 'nearExp': near['exp'], 'oi': oic + oip, 'F': round(Fref, 1),
     }
 
@@ -296,7 +299,7 @@ def cmd_update():
     past = [d for d in cal if d <= today][-BACK_DAYS:]
     fut = fut_bars(past[0], today)
     log('trading days', len(past), 'have', len(hist), 'fut days', len(fut))
-    todo = [d for d in past if d not in hist or d == past[-1] and not hist[d].get('final')]
+    todo = [d for d in past if d not in hist or 'pcrV' not in hist[d] or d == past[-1] and not hist[d].get('final')]
     todo.sort(reverse=True)                          # 先算最近的
     done = 0
     try:
@@ -330,6 +333,53 @@ def cmd_update():
     log('done', done, 'requests', NREQ[0], 'total days', len(hist))
 
 
+def cmd_chips():
+    """台指期籌碼：三大法人、前十大交易人、小台與微台散戶多空比 → data/txo/chips.json"""
+    if not TOKEN:
+        log('沒有 FINMIND_TOKEN'); return
+    today = datetime.datetime.now(TW).date()
+    start = (today - datetime.timedelta(days=int(BACK_DAYS * 1.5) + 10)).isoformat()
+    W = {'TX': 1.0, 'MTX': 0.25, 'TMF': 0.05}           # 換算成大台口數
+    inst = {}
+    for fid in W:
+        for r in api({'dataset': 'TaiwanFuturesInstitutionalInvestors', 'data_id': fid, 'start_date': start}):
+            net = (r.get('long_open_interest_balance_volume') or 0) - (r.get('short_open_interest_balance_volume') or 0)
+            inst.setdefault(r['date'], {}).setdefault(fid, {})[r['institutional_investors']] = net
+    oi = {}
+    for fid in ('MTX', 'TMF'):
+        for r in api({'dataset': 'TaiwanFuturesDaily', 'data_id': fid, 'start_date': start}):
+            c = str(r.get('contract_date') or '')
+            if r.get('trading_session') != 'position' or '/' in c:
+                continue
+            oi.setdefault(r['date'], {}).setdefault(fid, 0)
+            oi[r['date']][fid] += int(r.get('open_interest') or 0)
+    big = {}
+    for r in api({'dataset': 'TaiwanFuturesOpenInterestLargeTraders', 'data_id': 'TX', 'start_date': start}):
+        if r.get('contract_type') != 'all':
+            continue
+        big[r['date']] = [r['buy_top10_trader_open_interest'] - r['sell_top10_trader_open_interest'],
+                          r['buy_top5_trader_open_interest'] - r['sell_top5_trader_open_interest'],
+                          r['buy_top10_specific_open_interest'] - r['sell_top10_specific_open_interest'], r['market_open_interest']]
+    days = []
+    for d in sorted(inst):
+        x = inst[d]; rec = {'d': d}
+        for who, key in (('外資', 'fi'), ('投信', 'it'), ('自營商', 'dl')):
+            rec[key] = round(sum(x.get(f, {}).get(who, 0) * w for f, w in W.items()), 1)
+        for fid, key in (('MTX', 'mtx'), ('TMF', 'tmf')):
+            tot = oi.get(d, {}).get(fid)
+            inst_net = sum(x.get(fid, {}).values())
+            if tot:
+                rec[key + 'R'] = round(-inst_net / tot * 100, 2)        # 散戶多空比（%）：散戶多單減空單，占全市場未平倉
+                rec[key + 'OI'] = tot
+        rec['fiTX'] = x.get('TX', {}).get('外資')
+        if d in big:
+            rec['t10'], rec['t5'], rec['s10'], rec['txOI'] = big[d]
+        days.append(rec)
+    json.dump({'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'days': days},
+              open(os.path.join(OUT, 'chips.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    log('chips days', len(days), 'requests', NREQ[0])
+
+
 def save(hist):
     days = [hist[d] for d in sorted(hist)]
     json.dump({'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'days': days},
@@ -340,5 +390,7 @@ def save(hist):
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'update':
         cmd_update()
+    elif len(sys.argv) > 1 and sys.argv[1] == 'chips':
+        cmd_chips()
     else:
         print(__doc__)

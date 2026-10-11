@@ -22,6 +22,10 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           REQ_BUDGET: '400'
         run: python3 scripts/txo_scrape.py update
+      - name: 台指期籌碼（法人、大額交易人、散戶多空比）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: python3 scripts/txo_scrape.py chips
       - name: 結算日樂透選擇權回測資料
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
