@@ -2,4 +2,25 @@
  M data/wbranch/_lastrun_fetch.txt
  M data/wbranch/summary.json
 ?? raw/
-push ok=1
+Committer identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: empty ident name (for <runner@runnervmmprz5.v4y24wvpnsfuti3wepf0coreea.gx.internal.cloudapp.net>) not allowed
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+error: cannot pull with rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+push ok=0

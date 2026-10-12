@@ -1,6 +1,6 @@
-10-12 13:44:49 brokers 1044 days to fetch 109
-10-12 13:48:12 2026-09-21 branches 772 market makers excluded 21 in 202 s, requests 1044
-10-12 13:51:37 2026-09-18 branches 770 market makers excluded 23 in 205 s, requests 2088
-10-12 13:54:56 2026-09-17 branches 772 market makers excluded 21 in 198 s, requests 3132
-10-12 13:54:56 budget reached, requests 3132
-10-12 13:54:56 fetch done, requests 3132 time 606 s
+10-12 23:11:32 brokers 1044 days to fetch 106
+10-12 23:14:34 2026-09-16 branches 772 market makers excluded 20 in 182 s, requests 1044
+10-12 23:17:37 2026-09-15 branches 773 market makers excluded 20 in 182 s, requests 2088
+10-12 23:20:36 2026-09-14 branches 774 market makers excluded 20 in 178 s, requests 3132
+10-12 23:20:36 budget reached, requests 3132
+10-12 23:20:36 fetch done, requests 3132 time 543 s
