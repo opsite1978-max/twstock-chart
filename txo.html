@@ -927,12 +927,11 @@ function lgItem(k){ const c = { price:css('--text'), flip:css('--flip'), pain:cs
 
 function drawGex(){
   const { v, st, rows } = CTX, svg = $('#svgGex');
-  const f = frame(svg, 300, [MK.price(v.P), st.flip && MK.flip(st.flip), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain), ...emMarks()].filter(Boolean)), x = f.x;
-  legend($('#lgGex'), [['買權（正）', css('--call')], ['賣權（負）', css('--put')], lgItem('price'), lgItem('flip'), lgItem('pain'), lgItem('em')]);
+  const f = frame(svg, 300, [MK.price(v.P), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain)]), x = f.x;
+  legend($('#lgGex'), [['買權（正）', css('--call')], ['賣權（負）', css('--put')], ['看漲牆（最大買權 Gamma）', css('--call'), 'ln'], ['看跌牆（最大賣權 Gamma）', css('--put'), 'ln'], lgItem('price'), lgItem('pain')]);
   if (!rows.length){ el('text', { x:f.W/2, y:f.H/2, 'text-anchor':'middle', fill:css('--muted') }, svg, '範圍內沒有履約價'); return; }
   const mx = Math.max(1, ...rows.map(r => Math.max(r.gc, -r.gp))) * 1.1;
   const y = val => f.m.t + (mx - val) / (2 * mx) * f.ih;
-  zones(svg, f, x, st.flip);
   xAxis(svg, f, x, CTX.lo, CTX.hi); yAxis(svg, f, y, -mx, mx, t => fmtMoney(t));
   const w = barWidth(f, rows, x), y0 = y(0);
   for (const r of rows){ bar(svg, x(r.K) - w/2, w, y0, y(r.gc), css('--call')); bar(svg, x(r.K) - w/2, w, y0, y(r.gp), css('--put')); }
@@ -942,13 +941,12 @@ function drawGex(){
 
 function drawCurve(){
   const { v, st } = CTX, svg = $('#svgCurve');
-  const f = frame(svg, 240, [MK.price(v.P), st.flip && MK.flip(st.flip), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain), ...emMarks()].filter(Boolean)), x = f.x;
-  legend($('#lgCurve'), [['總 Gamma 曝險', css('--curve'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], lgItem('price'), lgItem('flip'), lgItem('pain'), lgItem('em')]);
+  const f = frame(svg, 240, [MK.price(v.P), MK.call(st.callWall.K), MK.put(st.putWall.K), MK.pain(st.pain)]), x = f.x;
+  legend($('#lgCurve'), [['總 Gamma 曝險', css('--curve'), 'ln'], ['看漲牆', css('--call'), 'ln'], ['看跌牆', css('--put'), 'ln'], lgItem('price'), lgItem('pain')]);
   const pts = st.curve.filter(([p]) => p >= CTX.lo && p <= CTX.hi);
   if (pts.length < 2) return;
   const ys = pts.map(p => p[1]), mn = Math.min(0, ...ys), mxv = Math.max(0, ...ys), pad = (mxv - mn) * 0.1 || 1;
   const y = val => f.m.t + (mxv + pad - val) / (mxv - mn + 2 * pad) * f.ih;
-  zones(svg, f, x, st.flip);
   xAxis(svg, f, x, CTX.lo, CTX.hi); yAxis(svg, f, y, mn - pad, mxv + pad, t => fmtMoney(t));
   el('path', { d: pts.map((p, i) => (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
   drawMarks(svg, f);
