@@ -859,19 +859,19 @@ function renderSignal(){
   const LBL = { go:['可進場', css('--up')], wait:['觀望', css('--fut')], avoid:['避開', css('--down')] }[sig];
   $('#sigSub').textContent = `${md(L.d)} 收盤・${D.id} ${D.name}・分數 ${score > 0 ? '+' : ''}${score}／6`;
   // 儀表
-  { const svg = $('#svGauge'), W = 300, H = 178, cx = W / 2, cy = 150, r = 112, sw = 22; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.maxWidth = '340px'; svg.innerHTML = '';
+  { const svg = $('#svGauge'), W = 300, H = 222, cx = W / 2, cy = 138, r = 108, sw = 22; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.maxWidth = '340px'; svg.style.margin = '0 auto'; svg.innerHTML = '';
     const pt = (a, rr) => [cx + rr * Math.cos(a), cy - rr * Math.sin(a)];
     const arc = (a0, a1, col) => { const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r); el('path', { d:`M${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1}`, fill:'none', stroke:col, 'stroke-width':sw, 'stroke-opacity':0.9 }, svg); };
     const A = v => Math.PI * (1 - (v + 6) / 12);                       // 分數 −6 → 左、+6 → 右
-    arc(A(-6), A(-2) + 0.012, css('--down')); arc(A(-2) - 0.012, A(3) + 0.012, css('--fut')); arc(A(3) - 0.012, A(6), css('--up'));
-    [['避開', -4.3], ['觀望', 0.5], ['可進場', 4.6]].forEach(([t, v]) => { const [x, y] = pt(A(v), r + 26); el('text', { x, y:y + 4, 'text-anchor':'middle', 'font-size':12, fill:css('--muted') }, svg, t); });
+    arc(A(-6), A(-1.5) + 0.012, css('--down')); arc(A(-1.5) - 0.012, A(2.5) + 0.012, css('--fut')); arc(A(2.5) - 0.012, A(6), css('--up'));
+    [['避開', cx - r, cy + 22], ['觀望', cx, cy - r - 18], ['可進場', cx + r, cy + 22]].forEach(([t, x, y]) => el('text', { x, y, 'text-anchor':'middle', 'font-size':12.5, fill:css('--muted') }, svg, t));
     const a = A(Math.max(-6, Math.min(6, score))), [nx, ny] = pt(a, r - 18);
     el('line', { x1:cx, y1:cy, x2:nx, y2:ny, stroke:css('--text'), 'stroke-width':4, 'stroke-linecap':'round' }, svg);
     el('circle', { cx, cy, r:8, fill:css('--text') }, svg);
-    el('text', { x:cx, y:cy - 34, 'text-anchor':'middle', 'font-size':26, 'font-weight':800, fill:LBL[1] }, svg, LBL[0]);
-    el('text', { x:cx, y:cy - 14, 'text-anchor':'middle', 'font-size':12, fill:css('--muted') }, svg, `分數 ${score > 0 ? '+' : ''}${score}（−6～+6）`); }
+    el('text', { x:cx, y:cy + 50, 'text-anchor':'middle', 'font-size':28, 'font-weight':800, fill:LBL[1] }, svg, LBL[0]);
+    el('text', { x:cx, y:cy + 72, 'text-anchor':'middle', 'font-size':12, fill:css('--muted') }, svg, `分數 ${score > 0 ? '+' : ''}${score}（−6～+6）`); }
   // 六項條件
-  const ic = v => v > 0 ? ['●', css('--up'), '符合'] : v < 0 ? ['✕', css('--down'), '不符合'] : ['◐', css('--muted'), '中性'];
+  const ic = v => v > 0 ? ['●', css('--up'), '符合'] : v < 0 ? ['✕', css('--down'), '不符合'] : ['○', css('--muted'), '中性'];
   $('#sigChk').innerHTML = C.map(([t, v, d]) => { const k = ic(v); return `<div class="chk"><i style="color:${k[1]}">${k[0]}</i><span><b>${t}</b>　<span style="color:${k[1]}">${k[2]}</span></span><span class="d">${esc(d)}</span></div>`; }).join('');
   // 進場建議
   const fails = C.filter(x => x[1] < 0).map(x => x[0]);
