@@ -1,52 +1,6 @@
-10-11 16:49:31 2026-09-04 underlyings 693 otc unmatched traded 11
-10-11 16:50:17 2026-09-03 underlyings 699 otc unmatched traded 10
-10-11 16:51:42 2026-09-02 underlyings 689 otc unmatched traded 11
-10-11 16:52:31 2026-09-01 underlyings 703 otc unmatched traded 17
-10-11 16:53:12 2026-08-14 underlyings 708 otc unmatched traded 25
-10-11 16:54:19 2026-08-13 underlyings 719 otc unmatched traded 31
-10-11 16:55:01 2026-08-12 underlyings 714 otc unmatched traded 33
-10-11 16:55:41 2026-08-11 underlyings 703 otc unmatched traded 26
-10-11 16:56:22 2026-08-10 underlyings 717 otc unmatched traded 34
-10-11 16:57:04 2026-08-07 underlyings 701 otc unmatched traded 33
-10-11 16:57:46 2026-08-06 underlyings 705 otc unmatched traded 30
-10-11 16:58:28 2026-08-05 underlyings 709 otc unmatched traded 38
-10-11 16:59:10 2026-08-04 underlyings 685 otc unmatched traded 35
-10-11 16:59:53 2026-08-03 underlyings 684 otc unmatched traded 31
-10-11 17:00:52 2026-07-31 underlyings 695 otc unmatched traded 30
-10-11 17:01:35 2026-07-30 underlyings 674 otc unmatched traded 29
-10-11 17:03:03   retry https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20260729&type=0999P&response=json RemoteDisconnected Remote end closed connection without response
-10-11 17:03:43 2026-07-29 underlyings 697 otc unmatched traded 33
-10-11 17:04:32 2026-07-28 underlyings 693 otc unmatched traded 33
-10-11 17:05:58   retry https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20260727&type=0999P&response=json RemoteDisconnected Remote end closed connection without response
-10-11 17:06:48 2026-07-27 underlyings 680 otc unmatched traded 38
-10-11 17:07:37 2026-07-24 underlyings 676 otc unmatched traded 32
-10-11 17:08:25 2026-07-23 underlyings 681 otc unmatched traded 39
-10-11 17:09:08 2026-07-22 underlyings 697 otc unmatched traded 38
-10-11 17:10:29 2026-07-21 underlyings 692 otc unmatched traded 40
-10-11 17:11:14 2026-07-20 underlyings 693 otc unmatched traded 36
-10-11 17:11:59 2026-07-17 underlyings 703 otc unmatched traded 46
-10-11 17:12:49 2026-07-16 underlyings 700 otc unmatched traded 47
-10-11 17:13:33 2026-07-15 underlyings 697 otc unmatched traded 48
-10-11 17:14:16 2026-07-14 underlyings 714 otc unmatched traded 52
-10-11 17:15:01 2026-07-13 underlyings 702 otc unmatched traded 52
-10-11 17:15:46 2026-07-09 underlyings 679 otc unmatched traded 50
-10-11 17:16:31 2026-07-08 underlyings 689 otc unmatched traded 46
-10-11 17:17:10 2026-07-07 underlyings 700 otc unmatched traded 52
-10-11 17:17:57 2026-07-06 underlyings 704 otc unmatched traded 55
-10-11 17:18:33 2026-07-03 underlyings 664 otc unmatched traded 60
-10-11 17:18:52 2026-07-02 underlyings 641 otc unmatched traded 63
-10-11 17:19:25 2026-07-01 underlyings 651 otc unmatched traded 60
-10-11 17:19:44 2026-06-30 underlyings 660 otc unmatched traded 54
-10-11 17:20:15 2026-06-29 underlyings 649 otc unmatched traded 62
-10-11 17:20:38 2026-06-26 underlyings 659 otc unmatched traded 61
-10-11 17:21:08 2026-06-25 underlyings 651 otc unmatched traded 63
-10-11 17:21:37 2026-06-24 underlyings 653 otc unmatched traded 59
-10-11 17:22:07 2026-06-23 underlyings 651 otc unmatched traded 72
-10-11 17:22:25 2026-06-22 underlyings 666 otc unmatched traded 81
-10-11 17:22:56 2026-06-18 underlyings 660 otc unmatched traded 81
-10-11 17:23:26 2026-06-17 underlyings 648 otc unmatched traded 65
-10-11 17:23:47 2026-06-16 underlyings 659 otc unmatched traded 79
-10-11 17:23:47 time budget reached
-10-11 17:23:47 fetched days 46
-10-11 17:23:48 summary 803 underlyings 79 days, base 59
-10-11 17:25:55 detail files 803 detail days 20 meta 56979
+10-13 02:14:30 2026-10-12 underlyings 726 otc unmatched traded 0
+10-13 02:15:09 2026-09-04 underlyings 693 otc unmatched traded 11
+10-13 02:15:46 2026-09-03 underlyings 699 otc unmatched traded 10
+10-13 02:15:46 fetched days 3
+10-13 02:15:46 summary 806 underlyings 80 days, base 60
+10-13 02:24:28 detail files 806 detail days 20 meta 57076
