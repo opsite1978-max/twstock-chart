@@ -398,7 +398,7 @@ async function loadGex(){
   // 畫圖
   const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
   const lo = Math.min(S * 0.85, G[0].K), hi = Math.max(S * 1.15, G[G.length - 1].K);
-  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = 300, m = { l:narrow ? 52 : 64, r:10, t:74, b:24 };
+  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = narrow ? 320 : 300, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
   svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
   const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
   const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
@@ -409,10 +409,10 @@ async function loadGex(){
   for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
   const marks = [[cw.K, '看漲牆 ' + fmt(cw.K), css('--call'), null], [pw.K, '看跌牆 ' + fmt(pw.K), css('--put'), null], [S, '現價 ' + fmt(S, S < 100 ? 2 : 0), css('--text'), '5 3'], [pain, '最大痛點 ' + fmt(pain), css('--pain'), '1.5 3']]
     .filter(t => t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
-  const used = [[], [], []], lab = [];   // 標籤分三排，互不重疊
+  const used = narrow ? [[], [], [], []] : [[], [], []], lab = [];   // 標籤分三排，互不重疊
   marks.forEach(([p, t, c, d]) => { const px = x(p), w = t.length * 11 + 12;
     const tx = Math.min(Math.max(px, m.l + w / 2), Wd - m.r - w / 2), a = tx - w / 2, b = tx + w / 2;
-    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = 2; used[row].push([a, b]);
+    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = used.length - 1; used[row].push([a, b]);
     const ty = 12 + row * 20;
     el('line', { x1:px, x2:px, y1:ty + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
     lab.push([a, ty, w, c, tx, t]); });
