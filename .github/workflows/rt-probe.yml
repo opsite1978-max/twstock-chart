@@ -1,0 +1,45 @@
+name: 即時資料格式檢查（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 抓樣本
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir out && cat > p.py <<'PY'
+          import json, os, urllib.request, urllib.parse
+          tok = os.environ['FINMIND_TOKEN']
+          out = []
+          for path, q in [('taiwan_options_snapshot', {'data_id': 'TXO'}), ('taiwan_options_snapshot', {}),
+                          ('taiwan_futures_snapshot', {'data_id': 'TX'}), ('taiwan_futures_snapshot', {}),
+                          ('taiwan_stock_tick_snapshot', {'data_id': 'TAIEX'}), ('taiwan_stock_tick_snapshot', {'data_id': '2330'}),
+                          ('data', {'dataset': 'TaiwanOptionTick', 'data_id': 'TXO', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanFuturesTick', 'data_id': 'TX', 'start_date': '2026-10-12'})]:
+              q2 = dict(q, token=tok)
+              try:
+                  raw = urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q2), timeout=90).read()
+                  j = json.loads(raw)
+              except Exception as e:
+                  body = ''
+                  if hasattr(e, 'read'):
+                      try: body = e.read().decode()[:300]
+                      except Exception: pass
+                  out.append({'path': path, 'q': q, 'err': str(e)[:200], 'body': body}); continue
+              rows = j.get('data') or []
+              out.append({'path': path, 'q': q, 'status': j.get('status'), 'msg': j.get('msg'), 'n': len(rows) if isinstance(rows, list) else 'obj',
+                          'keys': list(rows[0].keys()) if isinstance(rows, list) and rows else None,
+                          'sample': rows[:3] if isinstance(rows, list) else rows,
+                          'last': rows[-2:] if isinstance(rows, list) else None})
+          open('out/rt.json', 'w').write(json.dumps(out, ensure_ascii=False, indent=1, default=str).replace(tok, '***'))
+          PY
+          python3 p.py
+      - name: 存結果
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
