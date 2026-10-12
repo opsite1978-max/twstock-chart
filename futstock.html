@@ -508,12 +508,12 @@ function drawGexCharts(){
     yGrid(svg, f, y, mx); xTicks(svg, f);
     el('path', { d:curve.map((c, i) => (i ? 'L' : 'M') + f.x(c[0]).toFixed(1) + ',' + y(c[1]).toFixed(1)).join(''), fill:'none', stroke:css('--oi'), 'stroke-width':2.4, 'stroke-linejoin':'round' }, svg);
     drawMarks(svg, f.lay, f.H, f.m);
+    if (S >= lo && S <= hi) el('circle', { cx:f.x(S), cy:y(GX.gexAt(S)), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
     // 每個零 Gamma 點都畫圓點並標股價（最靠近現價的那個另有上方標籤）
     for (const fp of GX.flips.filter(v => v >= lo && v <= hi)){ el('circle', { cx:f.x(fp), cy:y(0), r:5, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':2.5 }, svg);
       const t = fmt(fp, fp < 100 ? 2 : 1), tw = t.length * 7 + 10, tx = Math.min(Math.max(f.x(fp), f.m.l + tw / 2), f.Wd - f.m.r - tw / 2);
       el('rect', { x:tx - tw / 2, y:y(0) + 9, width:tw, height:16, rx:3, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':1 }, svg);
       el('text', { x:tx, y:y(0) + 21, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':700, fill:css('--text') }, svg, t); }
-    if (S >= lo && S <= hi) el('circle', { cx:f.x(S), cy:y(GX.gexAt(S)), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
     const tip = $('#tipC'), cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), dot = el('circle', { r:4, fill:css('--oi'), visibility:'hidden' }, svg);
     const hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
     hit.addEventListener('pointermove', ev => { const b = svg.getBoundingClientRect(), i = Math.max(0, Math.min(N - 1, Math.round(((ev.clientX - b.left) * f.Wd / b.width - f.m.l) / f.iw * (N - 1)))), [p, g] = curve[i];
