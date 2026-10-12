@@ -19,6 +19,7 @@ process.on('unhandledRejection', e => console.log('未處理的錯誤', scrub(e 
   const rows = [], t0 = Date.now();
   const tw = () => new Date(Date.now() + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 16);
   const out = path.join(__dirname, '..', 'data', 'futscreen', 'latest.json');
+  fs.mkdirSync(path.dirname(out), { recursive:true });
   const save = () => fs.writeFileSync(out, JSON.stringify({ updated:tw(), n:rows.length, total:list.length, rows }));
   for (const [k, it] of list.entries()){
     let r = null;
