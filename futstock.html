@@ -64,6 +64,12 @@
   th{color:var(--muted);font-weight:500;background:var(--panel)}
   td:first-child,th:first-child{text-align:left}
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .sum td{white-space:normal;text-align:left;vertical-align:top;line-height:1.6}
+  .sum td:first-child{white-space:nowrap;color:var(--muted)}
+  .sum td:nth-child(2){white-space:nowrap}
+  .sum b.pos,.strat b.pos{color:var(--call)} .sum b.neg{color:var(--put)}
+  .strat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;line-height:1.8;font-size:14px}
+  .strat .row{margin:4px 0}
   .flow{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
 </style>
 </head>
@@ -81,6 +87,16 @@
   <div id="app" hidden>
     <div class="cards" id="cards"></div>
     <div class="verdict" id="verdict"></div>
+
+    <section>
+      <h2>目前狀況統整<span class="muted" id="sumSub"></span></h2>
+      <div class="tblx sum" id="sumTbl"></div>
+    </section>
+
+    <section>
+      <h2>應對策略<span class="muted">依目前數字自動整理，僅供參考</span></h2>
+      <div class="strat" id="strat"></div>
+    </section>
 
     <section>
       <h2>現股、股期與價差<span class="muted">近半年，股期取近月合約；價差＝股期－現股</span></h2>
@@ -105,6 +121,7 @@
     <section>
       <h2>個股選擇權 Gamma 曝險<span class="muted" id="gexSub"></span></h2>
       <div class="panel"><div class="legend" id="lgG"></div><svg id="svG"></svg><div class="tip" id="tipG"></div></div>
+      <div class="panel"><div class="legend" id="lgC"></div><svg id="svC"></svg><div class="tip" id="tipC"></div></div>
       <p class="note" id="gexNote"></p>
     </section>
   </div>
@@ -240,10 +257,10 @@ async function load(){
       else if (exA < -3) r.st = ['neg', '超額逆價差', '有反向套利空間，但未平倉或借券還沒跟上'];
       else r.st = ['', '無明顯套利', '價差接近合理值'];
     }
-    D = { id, name:NAMES.get(id), c, rows, divs };
+    D = { id, name:NAMES.get(id), c, rows, divs, gex:null };
     setStatus(''); $('#app').hidden = false;
     render();
-    loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; });
+    loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; D.gex = { none:'個股選擇權讀取失敗' }; renderSummary(); });
   } catch(e){ setStatus(e.message || String(e), true); }
 }
 
@@ -266,7 +283,7 @@ function render(){
   $('#verdict').innerHTML = `<span class="badge" style="border-color:${col}">${L.st[1]}</span>${esc(L.st[2])}。` +
     `股期未平倉約等於 ${fmt(L.oi * SHARES / 1000)} 張現股，是近 20 日平均成交量的 ${(L.oi * SHARES / 1000 / avg(R.slice(-20).map(r => r.vol))).toFixed(1)} 倍；` +
     `距結算 ${left} 天，結算當天（${md(L.exp)}）收盤前是套利部位集中了結的時間。`;
-  drawCharts(); drawTable(); drawFlow();
+  drawCharts(); drawTable(); drawFlow(); renderSummary();
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0;
 
@@ -365,10 +382,22 @@ function drawFlow(){
 }
 
 /* ───────── 個股選擇權 Gamma ───────── */
+function drawMarks(svg, marks, x, H, m, Wd, narrow, top){
+  const used = narrow ? [[], [], [], []] : [[], [], []], lab = [];   // 標籤分排，互不重疊
+  marks.forEach(([p, t, c, d]) => { const px = x(p), w = t.length * 11 + 12;
+    const tx = Math.min(Math.max(px, m.l + w / 2), Wd - m.r - w / 2), a = tx - w / 2, b = tx + w / 2;
+    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = used.length - 1; used[row].push([a, b]);
+    const ty = (top || 12) + row * 20;
+    el('line', { x1:px, x2:px, y1:ty + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
+    lab.push([a, ty, w, c, tx, t]); });
+  for (const [a, ty, w, c, tx, t] of lab){ el('rect', { x:a, y:ty - 8, width:w, height:16, rx:3, fill:css('--panel'), stroke:c, 'stroke-width':1 }, svg);
+    el('text', { x:tx, y:ty + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); }
+}
 async function loadGex(){
-  const L = D.rows[D.rows.length - 1];
-  if (!D.c.opt){ $('#gexSub').textContent = ''; $('#gexNote').textContent = '這檔股票沒有個股選擇權，無法計算 Gamma。'; $('#svG').innerHTML = ''; $('#lgG').innerHTML = ''; return; }
+  const DD = D, L = D.rows[D.rows.length - 1];
+  if (!D.c.opt){ D.gex = { none:'這檔股票沒有個股選擇權' }; $('#gexSub').textContent = ''; $('#gexNote').textContent = '這檔股票沒有個股選擇權，無法計算 Gamma。'; for (const k of ['#svG', '#lgG', '#svC', '#lgC']) $(k).innerHTML = ''; renderSummary(); return; }
   const rows = await data({ dataset:'TaiwanOptionDaily', data_id:D.c.opt, start_date:L.d, end_date:L.d });
+  if (D !== DD) return;
   const pos = rows.filter(r => r.trading_session === 'position');
   const S = L.s, by = new Map();
   for (const r of pos){
@@ -378,48 +407,141 @@ async function loadGex(){
     const px = +r.settlement_price > 0 ? +r.settlement_price : +r.close > 0 ? +r.close : 0;
     if (r.call_put === 'call'){ s.coi = +r.open_interest || 0; s.cpx = px; } else { s.poi = +r.open_interest || 0; s.ppx = px; }
   }
-  const agg = new Map(); let oiTot = 0;
-  for (const [code, e] of by){
-    const T = Math.max(0.5, dayDiff(L.d, e.exp)) / 365, list = [...e.m.values()];
+  const agg = new Map(), legs = []; let oiTot = 0, ivAtm = null, ivDist = Infinity;
+  for (const [code, e] of [...by].sort((a, b) => a[1].exp.localeCompare(b[1].exp))){
+    const days = Math.max(0.5, dayDiff(L.d, e.exp)), T = days / 365, list = [...e.m.values()];
     for (const s of list){
       const call = s.K >= S; let v = call ? (s.cpx > 0 ? iv(s.cpx, S, s.K, T, true) : null) : (s.ppx > 0 ? iv(s.ppx, S, s.K, T, false) : null);
-      if (v == null) v = (s.cpx > 0 ? iv(s.cpx, S, s.K, T, true) : null) || (s.ppx > 0 ? iv(s.ppx, S, s.K, T, false) : null) || 0.35;
+      if (v == null) v = (s.cpx > 0 ? iv(s.cpx, S, s.K, T, true) : null) || (s.ppx > 0 ? iv(s.ppx, S, s.K, T, false) : null);
+      if (v != null && days >= 3 && Math.abs(s.K - S) < ivDist){ ivDist = Math.abs(s.K - S); ivAtm = v; }   // 價平隱含波動率（取最近、剩 3 天以上的合約）
+      if (v == null) v = 0.35;
       const g = gamma(S, s.K, T, v);
       let a = agg.get(s.K); if (!a){ a = { K:s.K, gc:0, gp:0, coi:0, poi:0 }; agg.set(s.K, a); }
       a.gc += g * s.coi * SHARES * S * S * 0.01; a.gp -= g * s.poi * SHARES * S * S * 0.01; a.coi += s.coi; a.poi += s.poi; oiTot += s.coi + s.poi;
+      if (s.coi || s.poi) legs.push({ K:s.K, T, v, n:s.coi - s.poi });
     }
   }
+  const gexAt = p => legs.reduce((t, l) => t + gamma(p, l.K, l.T, l.v) * l.n * SHARES * p * p * 0.01, 0);
   const G = [...agg.values()].filter(a => a.coi + a.poi > 0).sort((a, b) => a.K - b.K);
   $('#gexSub').textContent = `${D.c.opt}・${md(L.d)} 收盤・全部月份合計・未平倉 ${fmt(oiTot)} 口`;
-  if (!G.length){ $('#gexNote').textContent = '這檔個股選擇權目前沒有未平倉，無法計算 Gamma。'; $('#svG').innerHTML = ''; $('#lgG').innerHTML = ''; return; }
+  if (!G.length){ D.gex = { none:'個股選擇權沒有未平倉' }; $('#gexNote').textContent = '這檔個股選擇權目前沒有未平倉，無法計算 Gamma。'; for (const k of ['#svG', '#lgG', '#svC', '#lgC']) $(k).innerHTML = ''; renderSummary(); return; }
   const above = G.filter(a => a.K >= S), below = G.filter(a => a.K <= S);
   const cw = (above.length ? above : G).reduce((a, b) => b.gc > a.gc ? b : a), pw = (below.length ? below : G).reduce((a, b) => b.gp < a.gp ? b : a);
   let pain = null, pv = Infinity; for (const x of G){ let t = 0; for (const r of G){ if (x.K > r.K) t += r.coi * (x.K - r.K); else if (x.K < r.K) t += r.poi * (r.K - x.K); } if (t < pv){ pv = t; pain = x.K; } }
-  // 畫圖
-  const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
   const lo = Math.min(S * 0.85, G[0].K), hi = Math.max(S * 1.15, G[G.length - 1].K);
-  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = narrow ? 320 : 300, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
-  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
-  const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
-  const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
-  legend('#lgG', [['買權（正）', css('--call'), 'bar'], ['賣權（負）', css('--put'), 'bar'], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['現價', css('--text'), 'dash'], ['最大痛點', css('--pain'), 'dash']]);
-  for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
-  for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
-  let gap = Infinity; for (let i = 1; i < vis.length; i++) gap = Math.min(gap, x(vis[i].K) - x(vis[i - 1].K)); const bw = Math.max(1.5, Math.min(14, (isFinite(gap) ? gap : 20) - 2));
-  for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
+  // 總 Gamma 曲線：假設股價移到每個價位時，全部未平倉的 Gamma 曝險合計
+  const N = 161, curve = []; for (let i = 0; i < N; i++){ const p = lo + (hi - lo) * i / (N - 1); curve.push([p, gexAt(p)]); }
+  const flips = []; for (let i = 1; i < N; i++){ const [x0, y0] = curve[i - 1], [x1, y1] = curve[i]; if ((y0 < 0) !== (y1 < 0)) flips.push(x0 + (x1 - x0) * (0 - y0) / (y1 - y0)); }
+  const flip = flips.length ? flips.reduce((a, b) => Math.abs(b - S) < Math.abs(a - S) ? b : a) : null;
+  const gNow = gexAt(S);
+  D.gex = { S, cw:cw.K, pw:pw.K, pain, flip, gNow, ivAtm, oiTot };
   const marks = [[cw.K, '看漲牆 ' + fmt(cw.K), css('--call'), null], [pw.K, '看跌牆 ' + fmt(pw.K), css('--put'), null], [S, '現價 ' + fmt(S, S < 100 ? 2 : 0), css('--text'), '5 3'], [pain, '最大痛點 ' + fmt(pain), css('--pain'), '1.5 3']]
     .filter(t => t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
-  const used = narrow ? [[], [], [], []] : [[], [], []], lab = [];   // 標籤分三排，互不重疊
-  marks.forEach(([p, t, c, d]) => { const px = x(p), w = t.length * 11 + 12;
-    const tx = Math.min(Math.max(px, m.l + w / 2), Wd - m.r - w / 2), a = tx - w / 2, b = tx + w / 2;
-    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = used.length - 1; used[row].push([a, b]);
-    const ty = 12 + row * 20;
-    el('line', { x1:px, x2:px, y1:ty + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
-    lab.push([a, ty, w, c, tx, t]); });
-  for (const [a, ty, w, c, tx, t] of lab){ el('rect', { x:a, y:ty - 8, width:w, height:16, rx:3, fill:css('--panel'), stroke:c, 'stroke-width':1 }, svg);
-    el('text', { x:tx, y:ty + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); }
+  // 圖一：各履約價 Gamma 曝險
+  { const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
+    const vis = G.filter(a => a.K >= lo && a.K <= hi), H = narrow ? 320 : 300, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
+    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+    const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
+    const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
+    legend('#lgG', [['買權（正）', css('--call'), 'bar'], ['賣權（負）', css('--put'), 'bar'], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['現價', css('--text'), 'dash'], ['最大痛點', css('--pain'), 'dash']]);
+    for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
+    for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
+    let gap = Infinity; for (let i = 1; i < vis.length; i++) gap = Math.min(gap, x(vis[i].K) - x(vis[i - 1].K)); const bw = Math.max(1.5, Math.min(14, (isFinite(gap) ? gap : 20) - 2));
+    for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
+    drawMarks(svg, marks, x, H, m, Wd, narrow); }
+  // 圖二：總 Gamma 曲線
+  { const svg = $('#svC'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
+    const H = narrow ? 300 : 280, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
+    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+    const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
+    const mx = Math.max(1, ...curve.map(c => Math.abs(c[1]))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
+    legend('#lgC', [['總 Gamma 曝險', css('--oi')], ['正 Gamma 區（波動收斂）', css('--call'), 'bar'], ['負 Gamma 區（波動放大）', css('--put'), 'bar'], ['零 Gamma 翻轉點', css('--muted')]]);
+    // 正負區塊底色
+    for (let i = 1; i < N; i++){ const pos = curve[i][1] + curve[i - 1][1] >= 0; el('rect', { x:x(curve[i - 1][0]), y:m.t, width:Math.max(0.5, x(curve[i][0]) - x(curve[i - 1][0]) + 0.3), height:ih, fill:pos ? css('--call') : css('--put'), 'fill-opacity':0.07 }, svg); }
+    for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
+    for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
+    el('path', { d:curve.map((c, i) => (i ? 'L' : 'M') + x(c[0]).toFixed(1) + ',' + y(c[1]).toFixed(1)).join(''), fill:'none', stroke:css('--oi'), 'stroke-width':2.4, 'stroke-linejoin':'round' }, svg);
+    drawMarks(svg, marks, x, H, m, Wd, narrow);
+    for (const fp of flips){ el('circle', { cx:x(fp), cy:y(0), r:5, fill:css('--panel'), stroke:css('--text'), 'stroke-width':2 }, svg); el('text', { x:x(fp), y:y(0) + 18, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, '翻轉 ' + fmt(fp, fp < 100 ? 1 : 0)); }
+    el('circle', { cx:x(S), cy:y(gNow), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
+    // 游標
+    const tip = $('#tipC'), cross = el('line', { y1:m.t, y2:H - m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), dot = el('circle', { r:4, fill:css('--oi'), visibility:'hidden' }, svg);
+    const hit = el('rect', { x:m.l, y:0, width:iw, height:H, fill:'transparent' }, svg);
+    const move = ev => { const b = svg.getBoundingClientRect(), mxp = (ev.clientX - b.left) * Wd / b.width, i = Math.max(0, Math.min(N - 1, Math.round((mxp - m.l) / iw * (N - 1)))), [p, g] = curve[i];
+      cross.setAttribute('x1', x(p)); cross.setAttribute('x2', x(p)); cross.setAttribute('visibility', 'visible'); dot.setAttribute('cx', x(p)); dot.setAttribute('cy', y(g)); dot.setAttribute('visibility', 'visible');
+      tip.innerHTML = `股價 <b>${fmt(p, p < 100 ? 2 : 0)}</b>（${pc((p / S - 1) * 100, 1)}）<br>總 Gamma 曝險 ${fmtMoney(g, true)}<br>${g >= 0 ? '正 Gamma：造市避險逆勢，波動收斂' : '負 Gamma：造市避險順勢，波動放大'}`;
+      tip.style.display = 'block'; const pw2 = svg.parentElement.clientWidth; tip.style.left = Math.min(Math.max(4, x(p) * b.width / Wd + 14), pw2 - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; };
+    hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);
+    hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; }); }
   $('#gexNote').textContent = `看漲牆 ${fmt(cw.K)}（現價上方買權 Gamma 最大）、看跌牆 ${fmt(pw.K)}（現價下方賣權 Gamma 最大）、最大痛點 ${fmt(pain)}。` +
+    `曲線是「假設股價移到那個價位時」全部未平倉的 Gamma 曝險合計：曲線在零以上，造市商避險會逆勢操作（漲了賣、跌了買），股價較容易在牆之間震盪；跌到零以下，避險變成順勢（跌了再賣），波動容易放大。` +
+    `目前在現價的總曝險 ${fmtMoney(gNow, true)}` + (flip ? `，零 Gamma 翻轉點約 ${fmt(flip, flip < 100 ? 1 : 0)}` : '，看得到的範圍內沒有翻轉點') + '。' +
     `個股選擇權成交和未平倉都很少（這檔只有 ${fmt(oiTot)} 口），造市避險對現股的影響遠小於台指選擇權，只能當作輔助參考；隱含波動率算不出來的履約價先用 35% 估計。`;
+  renderSummary();
+}
+
+/* ───────── 目前狀況統整與應對策略 ───────── */
+function renderSummary(){
+  const R = D.rows, L = R[R.length - 1], g = D.gex, left = dayDiff(L.d, L.exp);
+  const nd = L.s < 100 ? 2 : 0, P = v => fmt(v, nd);
+  const ma = n => R.length >= n ? avg(R.slice(-n).map(r => r.s)) : null, ma20 = ma(20), ma60 = ma(60);
+  const rets = R.slice(-21).map((r, i, a) => i ? Math.log(r.s / a[i - 1].s) : null).filter(v => v != null);
+  const mu = avg(rets), hv = Math.sqrt(avg(rets.map(v => (v - mu) ** 2)) * 252);
+  const vol = g && g.ivAtm ? g.ivAtm : hv, em = L.s * vol * Math.sqrt(Math.max(1, left) / 365);
+  const adv = avg(R.slice(-20).map(r => r.vol)), fi5 = R.slice(-5).reduce((t, r) => t + (r.fi || 0), 0);
+  const p5 = R[Math.max(0, R.length - 6)], exTrend = Math.abs(L.exA5) - Math.abs(p5.exA5 || 0);
+  const hi20 = Math.max(...R.slice(-20).map(r => r.s)), lo20 = Math.min(...R.slice(-20).map(r => r.s));
+  const posArb = L.exA5 >= 0, st = L.st[1];
+  // 多空分數
+  let sc = 0; const why = [];
+  if (ma20){ if (L.s > ma20){ sc++; why.push('站上 20 日均線'); } else { sc--; why.push('在 20 日均線之下'); } }
+  if (ma20 && ma60){ if (ma20 > ma60){ sc++; why.push('20 日均線在 60 日之上'); } else { sc--; why.push('20 日均線在 60 日之下'); } }
+  if (Math.abs(fi5) > adv * 0.03){ if (fi5 > 0){ sc++; why.push('外資 5 日買超'); } else { sc--; why.push('外資 5 日賣超'); } }
+  if (st === '套利平倉'){ if (posArb){ sc--; why.push('正向套利在平倉、賣現股'); } else { sc++; why.push('反向套利在平倉、回補現股'); } }
+  if (left <= 5 && /建倉/.test(st)){ if (posArb){ sc--; why.push('結算週正向套利待平倉'); } else { sc++; why.push('結算週反向套利待回補'); } }
+  if (g && !g.none){ if (g.cw && (g.cw / L.s - 1) * 100 < 1.5){ sc -= 0.5; why.push('貼近看漲牆壓力'); } if (g.pw && (1 - g.pw / L.s) * 100 < 1.5){ sc += 0.5; why.push('貼近看跌牆支撐'); } }
+  const bias = sc >= 2 ? ['pos', '偏多'] : sc <= -2 ? ['neg', '偏空'] : ['', '中性（區間）'];
+  const gOK = g && !g.none, posG = gOK && g.gNow >= 0;
+  const sup = [gOK && g.pw < L.s ? ['看跌牆', g.pw] : null, ['預期波動下緣', L.s - em], ['20 日低點', lo20]].filter(Boolean).sort((a, b) => b[1] - a[1]);
+  const res = [gOK && g.cw > L.s ? ['看漲牆', g.cw] : null, ['預期波動上緣', L.s + em], ['20 日高點', hi20]].filter(Boolean).sort((a, b) => a[1] - b[1]);
+  const S1 = sup.find(x => x[1] < L.s) || sup[0], R1 = res.find(x => x[1] > L.s) || res[0];
+  // 統整表
+  const rowsT = [
+    ['套利狀態', `<b class="${L.st[0] === 'pos' ? 'pos' : L.st[0] === 'neg' ? 'neg' : ''}">${st}</b>`, L.st[2] + '。' + (posArb ? (/建倉/.test(st) ? `套利盤現在是買現股的避險買盤，結算（${md(L.exp)}）前後會轉成賣壓。` : st === '套利平倉' ? '套利盤正在賣現股出場，短線有賣壓。' : '') : (/建倉/.test(st) ? `套利盤現在是借券賣現股的賣壓，結算（${md(L.exp)}）前後會回補買進。` : st === '套利平倉' ? '套利盤正在買回現股還券，短線有買盤。' : ''))],
+    ['超額價差（年化）', `今天 ${pc(L.exAnn, 1)}／5 日 ${pc(L.exA5, 1)}`, Math.abs(L.exA5) < 3 ? '接近合理值，套利空間小。' : exTrend > 0 ? '還在擴大，套利盤可能繼續進場。' : '開始收斂，套利盤可能準備平倉。'],
+    ['股期未平倉', `${fmt(L.oi)} 口（5 日 ${sgn(L.dOi)}）`, `約 ${fmt(L.oi * SHARES / 1000)} 張現股，是 20 日均量的 ${(L.oi * SHARES / 1000 / adv).toFixed(1)} 倍。` + (L.dOi > 0 ? '部位在增加。' : L.dOi < 0 ? '部位在減少。' : '')],
+    ['自營商避險（5 日）', sgn(L.dh5) + ' 張', L.dh5 > 0 ? '避險買現股，對應賣出股期或選擇權。' : L.dh5 < 0 ? '避險賣現股，對應買進股期或選擇權。' : '沒有明顯動作。'],
+    ['借券賣出餘額', L.sbl != null ? `${fmt(L.sbl)} 張（5 日 ${sgn(L.dSbl)}）` : '–', L.dSbl > 0 ? '增加，放空或反向套利在進場。' : L.dSbl < 0 ? '減少，空方在回補。' : '持平。'],
+    ['外資（5 日）', sgn(fi5) + ' 張', fi5 > 0 ? '買超。' : fi5 < 0 ? '賣超。' : '持平。'],
+    ['均線趨勢', `20 日 ${P(ma20)}／60 日 ${P(ma60)}`, ma20 && ma60 ? (L.s > ma20 && ma20 > ma60 ? '多頭排列。' : L.s < ma20 && ma20 < ma60 ? '空頭排列。' : '方向不明，偏整理。') : '資料不足。'],
+    ['Gamma 環境', gOK ? `<b class="${posG ? 'pos' : 'neg'}">${posG ? '正 Gamma' : '負 Gamma'}</b>（${fmtMoney(g.gNow, true)}）` : (g ? '–' : '讀取中…'), gOK ? (posG ? '造市避險逆勢操作，波動較收斂，容易在牆之間來回。' : '造市避險順勢操作，波動容易放大，跌破支撐會加速。') : (g ? g.none : '')],
+    ['零 Gamma 翻轉點', gOK && g.flip ? P(g.flip) : '–', gOK && g.flip ? (L.s >= g.flip ? `現價在翻轉點之上 ${pc((L.s / g.flip - 1) * 100, 1)}，跌破後轉為負 Gamma。` : `現價在翻轉點之下 ${pc((L.s / g.flip - 1) * 100, 1)}，站回才轉為正 Gamma。`) : ''],
+    ['看漲牆／看跌牆', gOK ? `${P(g.cw)}／${P(g.pw)}` : '–', gOK ? `距看漲牆 ${pc((g.cw / L.s - 1) * 100, 1)}，距看跌牆 ${pc((g.pw / L.s - 1) * 100, 1)}。` : ''],
+    ['最大痛點', gOK ? P(g.pain) : '–', gOK ? `距現價 ${pc((g.pain / L.s - 1) * 100, 1)}；個股選擇權未平倉少，參考價值低。` : ''],
+    ['到結算的預期波動', `±${P(em)}（${(vol * 100).toFixed(0)}%）`, `依${g && g.ivAtm ? '價平隱含波動率' : '近 20 日歷史波動率'}估計，${left} 天後約 68% 機率落在 ${P(L.s - em)}～${P(L.s + em)}。`],
+  ];
+  $('#sumSub').textContent = `${md(L.d)} 收盤・距股期結算 ${left} 天`;
+  $('#sumTbl').innerHTML = '<table><thead><tr><th>項目</th><th>現況</th><th>判讀</th></tr></thead><tbody>' + rowsT.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('') + '</tbody></table>';
+  // 應對策略
+  const how = !gOK ? `沒有可用的選擇權 Gamma，以均線和預期波動區間為主：支撐 ${P(S1[1])}（${S1[0]}）、壓力 ${P(R1[1])}（${R1[0]}）。`
+    : posG ? `目前是正 Gamma，股價容易在 ${P(g.pw)}～${P(g.cw)} 之間震盪。適合區間操作：靠近看跌牆 ${P(g.pw)} 分批布局，接近看漲牆 ${P(g.cw)} 減碼，不追高。` + (g.flip && g.flip < L.s ? `若跌破零 Gamma 翻轉點 ${P(g.flip)}，環境轉為負 Gamma，改成保守。` : '')
+    : `目前是負 Gamma，波動容易放大，不要逆勢接刀。` + (g.flip && g.flip > L.s ? `等站回零 Gamma 翻轉點 ${P(g.flip)} 再考慮作多；` : '') + `跌破看跌牆 ${P(g.pw)} 可能加速下跌。`;
+  const stopL = Math.min(S1[1], L.s - em * 0.5) * 0.99, stopS = Math.max(R1[1], L.s + em * 0.5) * 1.01;
+  const plan = bias[1] === '偏多' ? `偏多操作：拉回 ${P(S1[1])} 附近承接，目標 ${P(R1[1])}，收盤跌破 ${P(stopL)} 停損。`
+    : bias[1] === '偏空' ? `偏空操作：反彈到 ${P(R1[1])} 附近不追、可減碼或避險（例如賣股期），目標 ${P(S1[1])}，收盤站上 ${P(stopS)} 停損。`
+    : `區間操作：${P(S1[1])} 附近偏買、${P(R1[1])} 附近偏賣，任一邊收盤突破 1% 以上再順勢跟進。`;
+  const arb = posArb
+    ? (/建倉|超額正/.test(st) ? `正向套利盤手上有現股多單，結算日 ${md(L.exp)} 收盤前最後 30 分鐘常有集中賣壓；手上有多單可在結算前一兩天先減碼，想買的可以等結算後賣壓消化再進。若超額正價差繼續擴大、未平倉同步增加，代表期貨端積極作多，短線反而有支撐。`
+      : st === '套利平倉' ? '套利盤正在賣現股出場，短線賣壓還沒結束，等股期未平倉止穩再進場。' : '目前沒有明顯套利部位，結算日影響不大。')
+    : (/建倉|超額逆/.test(st) ? `反向套利盤借券賣出現股，結算日 ${md(L.exp)} 前後會回補買進；股價若在結算前跌到支撐附近，可以留意回補帶來的止跌。若逆價差和借券同步擴大，下跌壓力還在，先不要接。`
+      : st === '套利平倉' ? '反向套利盤正在回補現股，短線有買盤支撐。' : '目前沒有明顯套利部位，結算日影響不大。');
+  $('#strat').innerHTML =
+    `<div class="row"><span class="badge" style="border-color:${bias[0] === 'pos' ? css('--up') : bias[0] === 'neg' ? css('--down') : css('--line')}">${bias[1]}</span>${why.length ? esc(why.join('、')) + '。' : ''}</div>` +
+    `<div class="row"><b>關鍵價位</b>　支撐 ${sup.filter(x => x[1] < L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}；壓力 ${res.filter(x => x[1] > L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}。</div>` +
+    `<div class="row"><b>操作方向</b>　${plan}</div>` +
+    `<div class="row"><b>Gamma 環境</b>　${how}</div>` +
+    `<div class="row"><b>套利與結算</b>　${arb}</div>` +
+    `<div class="row muted" style="font-size:12px">以上由公開數字自動整理，只是參考，不是投資建議；停損價＝支撐再往下 1%，請依自己的資金和風險調整。</div>`;
 }
 
 /* ───────── 啟動 ───────── */
