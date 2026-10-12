@@ -1,0 +1,43 @@
+name: 股期選股（進場燈號）
+on:
+  schedule:
+    - cron: '10 14 * * 1-5'   # 台灣時間 22:10（法人、借券資料公布後）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: futscreen
+  cancel-in-progress: false
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: 安裝瀏覽器
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: 逐檔計算進場燈號
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          NODE_PATH: /tmp/pw/node_modules
+        run: |
+          python3 -m http.server 8080 >/dev/null 2>&1 &
+          sleep 2
+          node scripts/futscreen.js
+      - name: 存回專案
+        run: |
+          git add data/futscreen
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="futscreen-bot" -c user.email="futscreen-bot@users.noreply.github.com" commit -qm "股期選股燈號更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ]

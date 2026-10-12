@@ -107,6 +107,7 @@
   <input id="sym" placeholder="股票代號或名稱，如 2330" autocomplete="off" enterkeyhint="go">
   <button class="primary" id="goBtn">分析</button>
   <span class="spacer"></span>
+  <button onclick="location.href='futscreen.html'">股期選股</button>
   <button onclick="location.href='txo.html'">台指選擇權</button>
   <button onclick="location.href='index.html'">看盤</button>
 </header>
@@ -315,7 +316,7 @@ async function load(){
     D = { id, name:NAMES.get(id), c, rows, divs, gex:null }; GX = null; ZG.z = null; FX = null; $('#zBar').hidden = true;
     setStatus(''); $('#app').hidden = false;
     render();
-    loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; D.gex = { none:'個股選擇權讀取失敗' }; renderSummary(); });
+    D.gexP = loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; D.gex = { none:'個股選擇權讀取失敗' }; renderSummary(); });
   } catch(e){ setStatus(e.message || String(e), true); }
 }
 
@@ -885,6 +886,8 @@ function renderSignal(){
     (C[4][1] < 0 || timing ? `<li><b>等結算</b>：${md(L.exp)} 結算後賣壓消化，且股期未平倉沒有再增加。</li>` : '') + `</ol>` + (timing ? timing : '');
   else adv = `<b>避開，不要買</b>。不符合：${fails.join('、')}。手上有持股，反彈到 <b>${Pf(T1)}</b> 附近可以減碼；收盤跌破 <b>${Pf(stop)}</b> 要停損。<br>轉強條件：` + (fx && fx.bal ? `收盤站回多空平衡點 ${fmt(fx.bal, nd ? 2 : 1)}，` : '') + `且扣除套利後主力轉為買超，再重新評估。`;
   $('#sigAdv').innerHTML = `<div class="adv">${adv}</div><div class="muted" style="font-size:11.5px;margin-top:6px">價位用股期價（現股 ${fmt(L.s, L.s < 100 ? 2 : 0)}，價差 ${sgn(L.f - L.s, L.s < 100 ? 2 : 1)} 元）。依收盤資料自動判斷，只是參考，不是投資建議。</div>`;
+  D.signal = { id:D.id, name:D.name, fut:D.c.fut, d:L.d, sig, score, chk:C.map(x => x[1]), why:C.map(x => x[2]), s:L.s, P, zLo, zHi, stop, T1, T2, rr:rrNow, rrZ:rrZone,
+    left:qa.left, exp:L.exp, a1:qa.a1, a2:qa.a2, a3:qa.a3, bal:fx && fx.bal, lw:fx && fx.lw, sw:fx && fx.sw, oi:L.oi, fv:L.fv, vol:L.vol, exA5:L.exA5 };
   // 價位圖
   { const svg = $('#svLadder'), W = Math.max(240, svg.parentElement.clientWidth), H = 300, m = { t:12, b:12, l:8, r:8 };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
@@ -980,6 +983,9 @@ function renderSummary(){
 
 /* ───────── 啟動 ───────── */
 $('#goBtn').onclick = load;
+// 給選股程式用：列出所有有股期的股票、分析一檔並回傳燈號
+window.__fsList = async () => { await loadCodes(); return [...CODES].map(([id, c]) => ({ id, name:NAMES.get(id), fut:c.fut })); };
+window.__fsAnalyze = async id => { D = null; $('#sym').value = id; await load(); if (!D || D.id !== id) return { id, err:$('#status').textContent || '失敗' }; await D.gexP; return D.signal || { id, err:'沒有燈號' }; };
 ['#svG', '#svC'].forEach(id => bindZoom($(id), ZG)); ['#svF', '#svF2'].forEach(id => bindZoom($(id), ZF));
 $('#zIn').onclick = () => zoomBy(ZG, 1 / 1.4); $('#zOut').onclick = () => zoomBy(ZG, 1.4); $('#zReset').onclick = () => { ZG.z = null; drawGexCharts(); };
 $('#fzIn').onclick = () => zoomBy(ZF, 1 / 1.4); $('#fzOut').onclick = () => zoomBy(ZF, 1.4); $('#fzReset').onclick = () => { ZF.z = null; drawFutCharts(); };
