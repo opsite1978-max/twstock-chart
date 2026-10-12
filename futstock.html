@@ -585,13 +585,21 @@ function buildFut(){
   const Lm = new Map(), Sm = new Map(), Vm = new Map();
   const spread = (map, r, q) => { const a = Math.floor(r.fl / step), b = Math.floor(r.fh / step), n = b - a + 1; for (let k = a; k <= b; k++) map.set(k, (map.get(k) || 0) + q / n); };
   const total = map => { let t = 0; for (const v of map.values()) t += v; return t; };
+  const exps = [...new Set(D.rows.map(r => r.exp))];
   for (let i = 1; i < W.length; i++){
     const r = W[i], p = W[i - 1], dOI = r.oi - p.oi, up = r.f > p.f || (r.f === p.f && r.f >= r.fo);
     spread(Vm, r, r.fv || 0);
     r.side = dOI > 0 ? (up ? '多方新倉' : '空方新倉') : dOI < 0 ? (up ? '空方回補' : '多方平倉') : '持平';
+    const settle = exps.some(e => e > p.d && e <= r.d);                // 跨過結算日：到期的部位多空同時消失，不算方向
+    if (settle) r.side = '結算換月';
     if (dOI > 0) spread(up ? Lm : Sm, r, dOI);
-    else if (dOI < 0){ const m = up ? Sm : Lm, t = total(m); if (t > 0){ const k = Math.max(0, 1 + dOI / t); for (const [kk, v] of m) m.set(kk, v * k); } }
+    else if (dOI < 0){
+      const ms = settle ? [Lm, Sm] : [up ? Sm : Lm], t = ms.reduce((u, m) => u + total(m), 0);
+      if (t > 0){ const k = Math.max(0, 1 + dOI / t); for (const m of ms) for (const [kk, v] of m) m.set(kk, v * k); }
+    }
   }
+  // 換算成目前全部未平倉：每一口未平倉都有一個主動建倉的一方
+  { const t = total(Lm) + total(Sm), k = t > 0 ? W[W.length - 1].oi / t : 0; for (const m of [Lm, Sm]) for (const [kk, v] of m) m.set(kk, v * k); }
   const keys = [...new Set([...Lm.keys(), ...Sm.keys(), ...Vm.keys()])].sort((a, b) => a - b);
   const bins = keys.map(k => ({ p:(k + 0.5) * step, l:Lm.get(k) || 0, s:Sm.get(k) || 0, v:Vm.get(k) || 0 }));
   const totL = bins.reduce((t, b) => t + b.l, 0), totS = bins.reduce((t, b) => t + b.s, 0);
@@ -657,17 +665,20 @@ function drawFutCharts(){
         `<br>被套空單 − 被套多單 ${sgn(v)} 口<br>${v >= 0 ? '空單被套較多：上漲容易引發回補（軋空）' : '多單被套較多：下跌容易引發停損（多殺多）'}`;
       tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, f.x(p) * r.width / f.Wd + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; });
     hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; }); }
-  $('#fzInfo').textContent = ZF.z ? `（已放大：${fmt(lo)}～${fmt(hi)}）` : '';
+  $('#fzInfo').textContent = ZF.z ? `（目前範圍：${fmt(lo)}～${fmt(hi)}，按「重設」看全部）` : '';
 }
 function renderFut(){
   FX = buildFut(); ZF.z = null;
   if (!FX){ $('#fzBar').hidden = true; $('#fpNote').textContent = '資料太少，無法計算。'; return; }
   $('#fzBar').hidden = false;
+  { const w = FX.P * 0.1, need = [FX.lw, FX.sw, FX.bal].filter(v => v != null);          // 預設只看現價上下 10%（並包含兩道牆與平衡點）
+    const lo = Math.max(FX.lo, Math.min(FX.P - w, ...need.map(v => v - FX.step * 2))), hi = Math.min(FX.hi, Math.max(FX.P + w, ...need.map(v => v + FX.step * 2)));
+    if (hi - lo < (FX.hi - FX.lo) * 0.9) ZF.z = { lo, hi }; }
   const nd = FX.P < 100 ? 2 : 0, Pf = v => fmt(v, nd);
   $('#fpSub').textContent = `${D.c.fut}・${md(FX.from)}～${md(FX.to)}（約半年）・每格 ${fmt(FX.step, FX.step < 1 ? 2 : 0)} 元`;
   drawFutCharts();
   $('#fpNote').innerHTML = `這兩張圖只用股期自己的價格、成交量與未平倉計算，不用選擇權。` +
-    `方法：每天看「價格漲跌 × 未平倉增減」判斷主動的一方（價漲＋未平倉增＝多方新倉、價跌＋未平倉增＝空方新倉；價漲＋未平倉減＝空方回補、價跌＋未平倉減＝多方平倉），新倉口數分到當天的最高價～最低價，平倉時依比例扣掉，留下來的就是目前多空部位大約的建倉價位。` +
+    `方法：每天看「價格漲跌 × 未平倉增減」判斷主動的一方（價漲＋未平倉增＝多方新倉、價跌＋未平倉增＝空方新倉；價漲＋未平倉減＝空方回補、價跌＋未平倉減＝多方平倉），新倉口數分到當天的最高價～最低價，平倉時依比例扣掉（結算日到期的部位多空同時扣），最後換算成目前的全部未平倉口數，留下來的就是目前多空部位大約的建倉價位。` +
     `上圖：紅色是多方留倉、綠色是空方留倉；<b>多方成本牆</b> ${Pf(FX.lw)} 是股期價下方多單最集中的價位（跌到這裡多方會防守，跌破會停損），<b>空方成本牆</b> ${Pf(FX.sw)} 是上方空單最集中的價位（漲到這裡空方會防守，突破會回補）。` +
     `下圖：假設股期走到每個價位時，「被套的空單」減「被套的多單」。曲線在零以上（紅底）代表空單被套較多，上漲時容易軋空；零以下（綠底）代表多單被套較多，下跌時容易多殺多；穿過零的地方就是<b>多空平衡點</b>${FX.bal ? ' ' + fmt(FX.bal, FX.P < 100 ? 2 : 1) : ''}。` +
     `多方平均成本約 ${Pf(FX.avgL)}、空方平均成本約 ${Pf(FX.avgS)}；目前股期 ${Pf(FX.P)}，被套空單約 ${fmt(FX.tS)} 口、被套多單約 ${fmt(FX.tL)} 口。` +
