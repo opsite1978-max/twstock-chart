@@ -126,20 +126,6 @@
       <p class="note" id="lvNote"></p>
     </section>
 
-    <section id="flowSec">
-      <h2>盤中多空力道（即時）<span class="muted">開啟即時更新後，每 15 秒累計一次台指期主動買賣</span></h2>
-      <div class="cards" id="flowCards"></div>
-      <div class="panel" style="margin-top:8px">
-        <div class="legend" id="lgFlow"></div>
-        <svg id="svgFlowP" role="img" aria-label="台指期盤中價格"></svg>
-        <svg id="svgFlowD" role="img" aria-label="台指期累計主動買賣淨口數"></svg>
-        <div class="tip" id="tipFlow"></div>
-      </div>
-      <p class="note">台指期主動買賣是估計值：每 15 秒比較一次成交量增加多少口，價格上漲（或成交在外盤）算主動買、下跌（或成交在內盤）算主動賣，累計成「淨主動買賣口數」。
-        中間沒抓到的逐筆成交會被合併判斷，所以只看方向與趨勢，不是精確數字；關掉網頁就停止累計，同一天重新開啟會接續。
-        選擇權資金流向用目前選的結算日：買權、賣權今天的累計成交金額（權利金 × 每點 50 元），買權金額明顯較多代表盤中資金偏向追多。</p>
-    </section>
-
 
     <section>
       <h2>Gamma 曝險（各履約價）<span class="muted">指數每變動 1%，造市與賣方需要調整的避險金額</span></h2>
@@ -1427,13 +1413,7 @@ async function liveTick(){
     if (!f) throw new Error('取不到台指期即時價');
     const byK = new Map(e.S.map(s => [s.K, s]));
     let n = 0;
-    const of = { cA:0, pA:0, cV:0, pV:0 };
     for (const r of orows){
-      const mm = /^[A-Z0-9]{3}(\d+)([A-X])(\d)$/.exec(r.options_id);
-      if (mm && (mm[2] + mm[3] === lp.cl || mm[2] + mm[3] === lp.pl)){
-        const c = mm[2] + mm[3] === lp.cl;
-        of[c ? 'cA' : 'pA'] += (r.total_amount || 0) * MULT; of[c ? 'cV' : 'pV'] += r.total_volume || 0;
-      }
       const m = /^[A-Z0-9]{3}(\d+)([A-X])(\d)$/.exec(r.options_id); if (!m) continue;
       const suf = m[2] + m[3], call = suf === lp.cl; if (!call && suf !== lp.pl) continue;
       const s = byK.get(+m[1]); if (!s) continue;
@@ -1452,7 +1432,6 @@ async function liveTick(){
     e.volC = e.S.reduce((t, s) => t + s.c.vol, 0); e.volP = e.S.reduce((t, s) => t + s.p.vol, 0);
     DATA.fut = Object.assign({}, DATA.fut || {}, { price:f.close, live:{ t:f.date, o:f.open, h:f.high, l:f.low, c:f.close } });
     DATA.liveIdx = F; DATA.base = twToday();
-    FLOW.opt = Object.assign(of, { code:e.code, t:f.date });
     render();
     $('#liveLine').textContent = `即時 ${f.date.slice(11, 19)} 更新・每分鐘自動重算（未平倉仍是前一交易日收盤的資料）`;
   } catch(err){
@@ -1463,12 +1442,8 @@ function setLive(on){
   LIVE.on = on; clearInterval(LIVE.timer);
   $('#liveBtn').textContent = on ? '停止即時更新' : '開啟即時更新';
   $('#liveBtn').style.background = on ? css('--accent') : ''; $('#liveBtn').style.color = on ? '#fff' : '';
-  clearInterval(LIVE.ftimer);
-  if (on){
-    liveTick(); LIVE.timer = setInterval(() => { if (!document.hidden) liveTick(); }, 60000);
-    flowTick(); LIVE.ftimer = setInterval(() => { if (!document.hidden) flowTick(); }, 15000);
-  } else $('#liveLine').textContent = '';
-  renderFlow();
+  if (on){ liveTick(); LIVE.timer = setInterval(() => { if (!document.hidden) liveTick(); }, 60000); }
+  else $('#liveLine').textContent = '';
 }
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
 ['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
@@ -1477,78 +1452,6 @@ $('#zReset').onclick = () => { ZOOM = null; if (DATA) render(); };
 $('#gwSel').value = GWM;
 $('#gwSel').onchange = () => { GWM = $('#gwSel').value; store.set('txo.gw', GWM); if (DATA){ reweight(); render(); } };
 
-
-/* ───────── 盤中多空力道：每 15 秒抓台指期即時成交，估計主動買賣 ───────── */
-const FLOW = (() => { try { const o = JSON.parse(localStorage.getItem('txo.flow') || 'null'); if (o && o.day === twToday()) return o; } catch(e){} return { day:twToday(), id:null, pts:[] }; })();
-FLOW.opt = null;
-function saveFlow(){ try { localStorage.setItem('txo.flow', JSON.stringify({ day:FLOW.day, id:FLOW.id, pts:FLOW.pts.slice(-3000) })); } catch(e){} }
-async function flowTick(){
-  if (!LIVE.on) return;
-  try {
-    const fr = await snap('taiwan_futures_snapshot', 'TX');
-    const f = fr.filter(r => /^TXF[A-L]\d$/.test(r.futures_id) && r.close > 0).sort((a, b) => b.total_volume - a.total_volume)[0];
-    if (!f) return;
-    if (FLOW.day !== twToday()){ FLOW.day = twToday(); FLOW.pts = []; }
-    if (FLOW.id !== f.futures_id){ FLOW.id = f.futures_id; FLOW.pts = []; }
-    const last = FLOW.pts[FLOW.pts.length - 1];
-    const pt = { t:f.date.slice(11, 19), p:f.close, v:f.total_volume, b:last ? last.b : 0, s:last ? last.s : 0 };
-    if (last){
-      const dv = f.total_volume - last.v;
-      if (dv < 0){ FLOW.pts = []; pt.b = pt.s = 0; }                    // 換盤（日盤／夜盤）成交量歸零，重新累計
-      else if (dv > 0){
-        const dir = f.close > last.p ? 1 : f.close < last.p ? -1 : f.TickType === 1 ? 1 : f.TickType === 2 ? -1 : 0;
-        if (dir > 0) pt.b += dv; else if (dir < 0) pt.s += dv; else { pt.b += dv / 2; pt.s += dv / 2; }
-      } else if (last.t === pt.t) return;
-    }
-    FLOW.pts.push(pt); saveFlow(); renderFlow();
-  } catch(e){}
-}
-function renderFlow(){
-  const box = $('#flowCards'); if (!box) return;
-  const P = FLOW.pts, L = P[P.length - 1], o = FLOW.opt;
-  const card = (k, val, sub, cls) => `<div class="card"><div class="k">${k}</div><div class="v ${cls || ''}">${val}</div><div class="s">${sub || ''}</div></div>`;
-  if (!L){
-    box.innerHTML = card('台指期主動買賣', '–', LIVE.on ? '累計中，15 秒後出現第一筆' : '請先按上方「開啟即時更新」');
-    ['#svgFlowP', '#svgFlowD'].forEach(id => $(id).innerHTML = ''); $('#lgFlow').innerHTML = ''; return;
-  }
-  const net = L.b - L.s, tot = L.b + L.s;
-  const back = P.find(x => x.t >= shiftT(L.t, -300)) || P[0], net5 = net - (back.b - back.s);
-  const cr = o && o.pA > 0 ? o.cA / o.pA : null;
-  box.innerHTML = [
-    card('台指期淨主動買賣（估計）', signInt(net) + ' 口', `主動買 ${fmtInt(L.b)}・主動賣 ${fmtInt(L.s)}（從 ${P[0].t} 起）`, net > 0 ? 'pos' : net < 0 ? 'neg' : ''),
-    card('買方力道占比', tot ? (L.b / tot * 100).toFixed(1) + '%' : '–', '50% 以上代表主動買較多'),
-    card('最近 5 分鐘淨主動買賣', signInt(net5) + ' 口', `${L.t} 台指期 ${fmtInt(L.p)}`, net5 > 0 ? 'pos' : net5 < 0 ? 'neg' : ''),
-    card('選擇權資金：買權／賣權成交金額', cr == null ? '–' : cr.toFixed(2), o ? `買權 ${fmtMoney(o.cA)}元・賣權 ${fmtMoney(o.pA)}元（${esc(o.code)}）` : '下次更新後出現', cr == null ? '' : cr > 1.2 ? 'pos' : cr < 0.83 ? 'neg' : ''),
-  ].join('');
-  // 兩張小圖共用時間軸：價格、累計淨主動買賣
-  legend($('#lgFlow'), [['台指期即時價', css('--text'), 'ln'], ['累計淨主動買賣（正藍負橘）', css('--call')]]);
-  const draw = (id, H, vals, isBar) => {
-    const svg = $(id), W = Math.max(300, svg.parentElement.clientWidth - 12), m = { l:W < 520 ? 50 : 66, r:12, t:8, b:isBar ? 22 : 6 };
-    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
-    const iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(2, vals.length);
-    let lo = Math.min(...vals), hi = Math.max(...vals); if (isBar){ lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
-    const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
-    const x = i => m.l + iw * i / (n - 1), y = v => m.t + (hi - v) / (hi - lo) * ih;
-    const f = { W, H, m, iw, ih, narrow:W < 520 };
-    yAxis(svg, f, y, lo, hi, t => fmtInt(t));
-    if (isBar){
-      const every = Math.max(1, Math.ceil(P.length / (f.narrow ? 4 : 7)));
-      P.forEach((p, i) => { if (i % every === 0) el('text', { x:x(i), y:H - 6, 'text-anchor':'middle', 'font-size':10.5, fill:css('--muted') }, svg, p.t.slice(0, 5)); });
-      let d = ''; vals.forEach((v, i) => d += (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1));
-      el('path', { d:d + `L${x(vals.length - 1)},${y(0)}L${x(0)},${y(0)}Z`, fill:css(vals[vals.length - 1] >= 0 ? '--call' : '--put'), 'fill-opacity':.25 }, svg);
-      el('path', { d, fill:'none', stroke:css(vals[vals.length - 1] >= 0 ? '--call' : '--put'), 'stroke-width':2 }, svg);
-    } else {
-      let d = ''; vals.forEach((v, i) => d += (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1));
-      el('path', { d, fill:'none', stroke:css('--text'), 'stroke-width':2 }, svg);
-    }
-    hover(svg, $('#tipFlow'), f, x, [], o2 => { const p = o2.r; return `<b>${p.t}</b><br>台指期 ${fmtInt(p.p)}<br>累計淨主動買賣 ${signInt(p.b - p.s)} 口<br><span class="muted">主動買 ${fmtInt(p.b)}・主動賣 ${fmtInt(p.s)}</span>`; },
-      mx => { const i = Math.max(0, Math.min(P.length - 1, Math.round((mx - m.l) / iw * (n - 1)))); return { K:i, r:P[i] }; });
-  };
-  draw('#svgFlowP', 130, P.map(p => p.p), false);
-  draw('#svgFlowD', 140, P.map(p => p.b - p.s), true);
-}
-function shiftT(t, sec){ const [h, mi, se] = t.split(':').map(Number); let x = h * 3600 + mi * 60 + se + sec; x = (x + 86400) % 86400;
-  return [Math.floor(x / 3600), Math.floor(x / 60) % 60, x % 60].map(v => String(v).padStart(2, '0')).join(':'); }
 /* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
 function askToken(msg){
   const s = $('#status'); s.hidden = false; s.className = 'msg err';
@@ -1568,7 +1471,7 @@ $('#rangeSel').value = store.get('txo.range') || (innerWidth < 600 ? '0.05' : '0
 $('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); ZOOM = null; if (DATA) render(); };
 document.querySelectorAll('#distSeg button').forEach(b => b.onclick = () => { DIST = b.dataset.m; store.set('txo.dist', DIST); if (DATA) drawDist(); });
 $('#dateSel').onchange = () => loadDate($('#dateSel').value).catch(e => setStatus(e.message, true));
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); renderChips2(); renderLottery(); renderFlow(); }, 150); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); renderChips2(); renderLottery(); }, 150); });
 CUR = store.get('txo.cur');
 if (CUR !== 'ALL') CUR = null;                                       // 單一結算日每天會變，預設看最近一個
 
@@ -1589,7 +1492,8 @@ async function start(){
     for (const d of TD.slice(-20).reverse()){ const o = document.createElement('option'); o.value = d; o.textContent = mdw(d); sel.appendChild(o); }
     sel.value = date;
     await loadDate(date);
-    loadHistory(); loadLottery(); loadChips(); renderFlow();
+    loadHistory(); loadLottery(); loadChips();
+    try { localStorage.removeItem('txo.flow'); } catch(e){}
   } catch(e){
     if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
   }
