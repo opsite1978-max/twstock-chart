@@ -15,11 +15,8 @@ jobs:
           import json, os, urllib.request, urllib.parse
           tok = os.environ['FINMIND_TOKEN']
           out = []
-          for path, q in [('taiwan_options_snapshot', {'data_id': 'TXO'}), ('taiwan_options_snapshot', {}),
-                          ('taiwan_futures_snapshot', {'data_id': 'TX'}), ('taiwan_futures_snapshot', {}),
-                          ('taiwan_stock_tick_snapshot', {'data_id': 'TAIEX'}), ('taiwan_stock_tick_snapshot', {'data_id': '2330'}),
-                          ('data', {'dataset': 'TaiwanOptionTick', 'data_id': 'TXO', 'start_date': '2026-10-12'}),
-                          ('data', {'dataset': 'TaiwanFuturesTick', 'data_id': 'TX', 'start_date': '2026-10-12'})]:
+          ids = ['TX1','TX2','TX3','TX4','TX5','TXU','TXV','TXW','TXX','TXY','TXZ','TXF','TXO']
+          for path, q in [('taiwan_options_snapshot', {'data_id': i}) for i in ids] + [('taiwan_stock_tick_snapshot', {'data_id': x}) for x in ('Y9999','TWII','IX0001','t00','TSE')]:
               q2 = dict(q, token=tok)
               try:
                   raw = urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q2), timeout=90).read()
@@ -31,6 +28,11 @@ jobs:
                       except Exception: pass
                   out.append({'path': path, 'q': q, 'err': str(e)[:200], 'body': body}); continue
               rows = j.get('data') or []
+              if isinstance(rows, list) and rows and 'options_id' in rows[0]:
+                  import collections, re
+                  pre = collections.Counter(re.sub(r'\d+[A-Z]\d$', '', r['options_id']) + '|' + r['options_id'][-2:] for r in rows)
+                  out.append({'path': path, 'q': q, 'n': len(rows), 'prefix': pre.most_common(30), 'ex': [r['options_id'] for r in rows[:6]], 'traded': [ (r['options_id'], r['close'], r['total_volume'], r['date']) for r in rows if r['total_volume']>1000][:8]})
+                  continue
               out.append({'path': path, 'q': q, 'status': j.get('status'), 'msg': j.get('msg'), 'n': len(rows) if isinstance(rows, list) else 'obj',
                           'keys': list(rows[0].keys()) if isinstance(rows, list) and rows else None,
                           'sample': rows[:3] if isinstance(rows, list) else rows,
