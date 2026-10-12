@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>江波圖</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --px:#e8eaf0; --vwap:#c98500; --ma:#9085e9;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --px:#1f2430; --vwap:#b07800; --ma:#6250d6;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+  button{cursor:pointer;white-space:nowrap}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  #sym{width:150px}
+  .spacer{flex:1}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:34px}
+  .seg button{border:0;border-radius:0;height:32px;padding:0 11px;background:var(--panel2);color:var(--muted)}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .title{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:4px 0 6px}
+  .title .nm{font-size:19px;font-weight:700}
+  .title .px{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .dn{color:var(--down)} .muted{color:var(--muted)} .small{font-size:12px}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .stats{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:6px}
+  .stats b{color:var(--text);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 6px 2px;position:relative}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 6px}
+  .legend i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:3px}
+  .legend i.bar{width:10px;height:10px;vertical-align:-1px;border-radius:2px}
+  svg{display:block;width:100%;touch-action:pan-y}
+  svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+  .tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:12px;line-height:1.6;min-width:150px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  .note{font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+  <h1>江波圖</h1>
+  <input id="sym" placeholder="代號或名稱，如 2330、TX" autocomplete="off" enterkeyhint="go">
+  <span class="seg" id="kindSeg"><button data-k="stock">股票</button><button data-k="fut">股期</button></span>
+  <button class="primary" id="goBtn">看</button>
+  <span class="spacer"></span>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">輸入股票代號（例如 2330），選「股票」看現股、選「股期」看個股期貨；輸入 TX 看台指期。</div>
+  <div id="app" hidden>
+    <div class="title"><span class="nm" id="nm"></span><span class="px" id="px"></span><span id="chg"></span><span class="small muted" id="upd"></span></div>
+    <div class="stats" id="stats"></div>
+    <div class="panel">
+      <div class="legend" id="lg"></div>
+      <svg id="svgP" role="img" aria-label="即時股價、均價線與 MA100"></svg>
+      <svg id="svgV" role="img" aria-label="每分鐘成交量"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <p class="note" id="note"></p>
+  </div>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const twNow = () => new Date(Date.now() + 8 * 3600e3);
+const twToday = () => twNow().toISOString().slice(0,10);
+const fmt = (v, d) => v == null || isNaN(v) ? '–' : (+v).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 });
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+/* ───────── FinMind ───────── */
+const API = 'https://api.finmindtrade.com/api/v4/';
+async function fm(path, params){
+  const tok = (SET.token || '').trim();
+  const qs = new URLSearchParams(params); if (tok) qs.set('token', tok);
+  let r;
+  try { r = await fetch(API + path + '?' + qs, { cache:'no-store' }); }
+  catch(e){ throw new Error('連不上 FinMind，請確認網路'); }
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完');
+  if (!r.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || r.status));
+  return j.data || [];
+}
+const data = p => fm('data', p);
+
+/* ───────── 代號、名稱、股期代碼 ───────── */
+let NAMES = null, FUTMAP = null;
+async function loadNames(){
+  if (NAMES) return;
+  NAMES = new Map(); FUTMAP = new Map();
+  const [info, fo] = await Promise.all([data({ dataset:'TaiwanStockInfo' }).catch(() => []), data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => [])]);
+  for (const r of info) if (!NAMES.has(r.stock_id)) NAMES.set(r.stock_id, r.stock_name);
+  // 股期代碼：名稱是「某某期貨」、三碼且最後一碼是 F（排除小型、ETF 等）
+  const byName = new Map();
+  for (const r of fo) if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) byName.set(r.name.replace(/期貨$/, ''), r.code);
+  for (const [id, nm] of NAMES) if (byName.has(nm)) FUTMAP.set(id, byName.get(nm));
+}
+function resolve(q){
+  q = q.trim(); if (!q) return null;
+  if (/^(TX|TXF|台指|台指期|大台)$/i.test(q)) return { id:'TX', name:'台指期', kind:'index' };
+  let id = (q.match(/^\d{4,6}[A-Z]?/i) || [])[0];
+  if (!id && NAMES) for (const [k, v] of NAMES) if (v === q){ id = k; break; }
+  if (!id) return null;
+  return { id:id.toUpperCase(), name:(NAMES && NAMES.get(id.toUpperCase())) || id };
+}
+
+/* ───────── 一分K：今天＋前一個交易日（前一天用來算 MA100 暖機與平盤價） ───────── */
+async function tradeDays(){
+  const rows = await data({ dataset:'TaiwanStockTradingDate', start_date:new Date(Date.now() - 20 * 864e5).toISOString().slice(0,10) });
+  return [...new Set(rows.map(r => r.date))].filter(d => d <= twToday()).sort();
+}
+const hm = s => String(s).slice(0,5);
+async function minuteBars(S, date){
+  if (S.mode === 'stock'){
+    const rows = await data({ dataset:'TaiwanStockKBar', data_id:S.id, start_date:date, end_date:date });
+    return rows.filter(r => r.close > 0 && hm(r.minute) <= '13:30').sort((a,b) => a.minute.localeCompare(b.minute))
+      .map(r => ({ t:hm(r.minute), o:+r.open, h:+r.high, l:+r.low, c:+r.close, v:+r.volume || 0 }));
+  }
+  const rows = await data({ dataset:'TaiwanFuturesKBar', data_id:S.code, start_date:date, end_date:date });
+  const day = rows.filter(r => r.close > 0 && /^\d{6}$/.test(String(r.contract_date).trim()) && hm(r.minute) >= '08:45' && hm(r.minute) <= '13:45');
+  const vol = new Map(); for (const r of day) vol.set(r.contract_date, (vol.get(r.contract_date) || 0) + (+r.volume || 0));
+  const main = [...vol.keys()].sort((a,b) => vol.get(b) - vol.get(a))[0];
+  return day.filter(r => r.contract_date === main).sort((a,b) => a.minute.localeCompare(b.minute))
+    .map(r => ({ t:hm(r.minute), o:+r.open, h:+r.high, l:+r.low, c:+r.close, v:+r.volume || 0 }));
+}
+
+/* ───────── 狀態 ───────── */
+const ST = { S:null, prev:[], today:[], date:null, prevClose:null, live:null, timer:null, lastVol:null };
+let KIND = store.get('jb.kind') || 'stock';
+function setStatus(t, err){ const s = $('#status'); s.hidden = !t; s.textContent = t || ''; s.className = 'msg' + (err ? ' err' : ''); }
+
+async function load(){
+  clearInterval(ST.timer);
+  if (!(SET.token || '').trim()){ setStatus('請先到看盤頁的「設定」填入 FinMind 憑證（贊助會員）。', true); return; }
+  try {
+    setStatus('讀取中…'); await loadNames();
+    const R = resolve($('#sym').value); if (!R){ setStatus('找不到這個代號', true); return; }
+    let S;
+    if (R.kind === 'index') S = { mode:'fut', id:'TX', code:'TX', name:'台指期（近月）', unit:'口' };
+    else if (KIND === 'fut'){
+      const code = FUTMAP.get(R.id); if (!code){ setStatus(`${R.id} ${R.name} 沒有個股期貨`, true); return; }
+      S = { mode:'fut', id:R.id, code, name:`${R.name}期貨（${code}）`, unit:'口' };
+    } else S = { mode:'stock', id:R.id, code:R.id, name:`${R.id} ${R.name}`, unit:'張' };
+    store.set('jb.sym', $('#sym').value.trim());
+    const days = await tradeDays();
+    // 最新有資料的交易日：今天沒有（盤中或還沒公布）就往前
+    let today = [], date = null, prev = [];
+    for (let k = days.length - 1; k >= Math.max(0, days.length - 4); k--){
+      const b = await minuteBars(S, days[k]);
+      if (b.length){ if (!date){ date = days[k]; today = b; } else { prev = b; break; } }
+      else if (!date && days[k] === twToday()){ date = days[k]; today = []; }   // 今天盤中：一分K收盤後才公布，先用即時報價累積
+    }
+    if (!date) throw new Error('最近幾天都沒有一分K資料');
+    if (!prev.length){ const i = days.indexOf(date); for (let k = i - 1; k >= Math.max(0, i - 3); k--){ prev = await minuteBars(S, days[k]); if (prev.length) break; } }
+    Object.assign(ST, { S, today, prev, date, prevClose: prev.length ? prev[prev.length - 1].c : null, live:null, lastVol:null });
+    setStatus(''); $('#app').hidden = false;
+    draw();
+    if (date === twToday() && inSession(S)){ poll(); ST.timer = setInterval(() => { if (!document.hidden) poll(); }, 10000); }
+  } catch(e){ setStatus(e.message || String(e), true); }
+}
+function inSession(S){ const t = twNow().toISOString().slice(11,16); return S.mode === 'stock' ? t >= '09:00' && t <= '13:35' : t >= '08:45' && t <= '13:50'; }
+
+// 盤中：每 10 秒抓即時報價，累積成一分鐘的點
+async function poll(){
+  const S = ST.S; if (!S) return;
+  try {
+    let q;
+    if (S.mode === 'stock'){ q = (await fm('taiwan_stock_tick_snapshot', { data_id:S.id }))[0]; }
+    else {
+      const rows = await fm('taiwan_futures_snapshot', { data_id:S.code });
+      q = rows.filter(r => new RegExp('^' + S.code + '[A-L]\\d$').test(r.futures_id) && r.close > 0).sort((a,b) => b.total_volume - a.total_volume)[0];
+    }
+    if (!q || !(q.close > 0)) return;
+    const t = String(q.date).slice(11,16);
+    if (ST.prevClose == null && q.change_price != null) ST.prevClose = q.close - q.change_price;
+    const unitDiv = S.mode === 'stock' ? 1 : 1;
+    const dv = ST.lastVol == null ? 0 : Math.max(0, q.total_volume - ST.lastVol) / unitDiv;
+    ST.lastVol = q.total_volume;
+    const last = ST.today[ST.today.length - 1];
+    if (last && last.t === t){ last.c = q.close; last.h = Math.max(last.h, q.close); last.l = Math.min(last.l, q.close); last.v += dv; }
+    else if (!last || t > last.t) ST.today.push({ t, o:q.close, h:q.close, l:q.close, c:q.close, v:dv, live:true });
+    ST.live = { t:String(q.date).slice(11,19), avg:q.average_price, o:q.open, h:q.high, l:q.low, vol:q.total_volume };
+    draw();
+  } catch(e){ $('#upd').textContent = '即時更新失敗：' + e.message; }
+}
+
+/* ───────── 畫圖：即時價、均價線、MA100、平盤線＋每分鐘量 ───────── */
+function draw(){
+  const { S, today, prev } = ST;
+  const L = ST.live, last = today[today.length - 1];
+  const all = prev.concat(today), off = prev.length;
+  // 均價線：從開盤累計 成交金額÷成交量（盤中有即時均價時最後一點用交易所的均價）
+  let pv = 0, vv = 0; const vwap = today.map(b => { pv += (b.h + b.l + b.c) / 3 * b.v; vv += b.v; return vv ? pv / vv : b.c; });
+  if (L && L.avg > 0 && vwap.length) vwap[vwap.length - 1] = L.avg;
+  // MA100：最近 100 根一分K收盤平均（不足 100 根時接前一個交易日）
+  const ma = today.map((b, i) => { const j = off + i; if (j < 99) return null; let s = 0; for (let k = j - 99; k <= j; k++) s += all[k].c; return s / 100; });
+  const pc = ST.prevClose;
+  $('#nm').textContent = S.name;
+  if (last){
+    const ch = pc ? last.c - pc : null;
+    $('#px').textContent = fmt(last.c, last.c < 100 ? 2 : 0); $('#px').className = 'px ' + (ch > 0 ? 'up' : ch < 0 ? 'dn' : '');
+    $('#chg').innerHTML = ch == null ? '' : `<span class="${ch > 0 ? 'up' : ch < 0 ? 'dn' : ''}">${ch > 0 ? '▲' : ch < 0 ? '▼' : ''}${fmt(Math.abs(ch), last.c < 100 ? 2 : 0)}（${(ch / pc * 100).toFixed(2)}%）</span>`;
+  } else { $('#px').textContent = '–'; $('#chg').textContent = ''; }
+  $('#upd').textContent = L ? `即時 ${L.t}（每 10 秒更新）` : `${ST.date.slice(5).replace('-', '/')} ${ST.date === twToday() ? '今天' : ''}收盤後資料`;
+  const hi = today.length ? Math.max(...today.map(b => b.h)) : null, lo = today.length ? Math.min(...today.map(b => b.l)) : null;
+  const totV = today.reduce((t, b) => t + b.v, 0);
+  $('#stats').innerHTML = [
+    ['開', L && L.o || (today[0] && today[0].o)], ['高', L && L.h || hi], ['低', L && L.l || lo], ['平盤', pc],
+    ['均價', vwap.length ? vwap[vwap.length - 1] : null], ['MA100', ma.length ? ma[ma.length - 1] : null],
+  ].map(([k, v]) => `<span>${k} <b>${fmt(v, v != null && v < 100 ? 2 : 0)}</b></span>`).join('') + `<span>量 <b>${fmt(L && S.mode === 'stock' ? L.vol : totV)}</b> ${S.unit}</span>`;
+  $('#lg').innerHTML = `<span><i style="background:${css('--px')}"></i>即時價</span><span><i style="background:${css('--vwap')}"></i>均價線</span><span><i style="background:${css('--ma')}"></i>MA100（一分鐘）</span><span><i style="background:${css('--muted')}"></i>平盤</span><span><i class="bar" style="background:${css('--up')}"></i><i class="bar" style="background:${css('--down')};margin-left:-3px"></i>每分鐘量（紅漲綠跌）</span>`;
+
+  // 橫軸：整個交易時段（股票 09:00–13:30、期貨 08:45–13:45），尚未發生的時間留白
+  const t0 = S.mode === 'stock' ? 540 : 525, t1 = S.mode === 'stock' ? 810 : 825;
+  const mins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const svg = $('#svgP'), W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520;
+  const H = narrow ? 300 : 360, m = { l:narrow ? 54 : 66, r:narrow ? 52 : 62, t:10, b:8 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const X = t => m.l + (mins(t) - t0) / (t1 - t0) * iw;
+  const vals = today.flatMap(b => [b.h, b.l]).concat(vwap, ma.filter(v => v != null), pc ? [pc] : []);
+  let ylo = Math.min(...vals), yhi = Math.max(...vals);
+  if (!isFinite(ylo)){ ylo = (pc || 100) * 0.99; yhi = (pc || 100) * 1.01; }
+  if (pc){ const d = Math.max(Math.abs(yhi - pc), Math.abs(pc - ylo)) * 1.08 || pc * 0.005; ylo = pc - d; yhi = pc + d; }   // 以平盤為中心上下對稱
+  const Y = v => m.t + (yhi - v) / (yhi - ylo) * ih;
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  const dec = (yhi < 100) ? 2 : 0;
+  for (let i = 0; i <= 4; i++){
+    const v = ylo + (yhi - ylo) * i / 4, y = Y(v);
+    el('line', { x1:m.l, x2:W - m.r, y1:y, y2:y, stroke:css('--grid'), 'stroke-width':1 }, svg);
+    el('text', { x:m.l - 6, y:y + 4, 'text-anchor':'end', 'font-size':11, fill: pc ? (v > pc + 1e-9 ? css('--up') : v < pc - 1e-9 ? css('--down') : css('--muted')) : css('--muted') }, svg, fmt(v, dec));
+    if (pc) el('text', { x:W - m.r + 6, y:y + 4, 'font-size':11, fill:css('--muted') }, svg, ((v / pc - 1) * 100).toFixed(2) + '%');
+  }
+  const hours = S.mode === 'stock' ? ['09:00','10:00','11:00','12:00','13:00'] : ['09:00','10:00','11:00','12:00','13:00'];
+  for (const h of hours) el('line', { x1:X(h), x2:X(h), y1:m.t, y2:H - m.b, stroke:css('--grid'), 'stroke-width':1 }, svg);
+  if (pc) el('line', { x1:m.l, x2:W - m.r, y1:Y(pc), y2:Y(pc), stroke:css('--muted'), 'stroke-width':1.2, 'stroke-dasharray':'4 3' }, svg);
+  const path = (arr, get) => { let d = '', pen = false; arr.forEach((b, i) => { const v = get(b, i); if (v == null){ pen = false; return; } d += (pen ? 'L' : 'M') + X(b.t).toFixed(1) + ',' + Y(v).toFixed(1); pen = true; }); return d; };
+  el('path', { d:path(today, (b, i) => ma[i]), fill:'none', stroke:css('--ma'), 'stroke-width':1.6 }, svg);
+  el('path', { d:path(today, (b, i) => vwap[i]), fill:'none', stroke:css('--vwap'), 'stroke-width':1.8 }, svg);
+  el('path', { d:path(today, b => b.c), fill:'none', stroke:css('--px'), 'stroke-width':1.8, 'stroke-linejoin':'round' }, svg);
+  if (last) el('circle', { cx:X(last.t), cy:Y(last.c), r:3.5, fill:css('--px') }, svg);
+
+  // 量
+  const sv = $('#svgV'), HV = narrow ? 90 : 110, mv = { t:6, b:22 };
+  sv.innerHTML = ''; sv.setAttribute('viewBox', `0 0 ${W} ${HV}`); sv.setAttribute('height', HV);
+  const vmax = Math.max(1, ...today.map(b => b.v)), bw = Math.max(1, iw / (t1 - t0) - 0.6);
+  today.forEach((b, i) => {
+    const p0 = i ? today[i - 1].c : (pc || b.o), up = b.c >= p0, h = (HV - mv.t - mv.b) * b.v / vmax;
+    el('rect', { x:X(b.t) - bw / 2, y:HV - mv.b - h, width:bw, height:Math.max(0.5, h), fill:up ? css('--up') : css('--down') }, sv);
+  });
+  el('text', { x:m.l - 6, y:mv.t + 9, 'text-anchor':'end', 'font-size':10.5, fill:css('--muted') }, sv, fmt(vmax));
+  for (const h of hours) el('text', { x:X(h), y:HV - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, sv, h);
+
+  // 滑鼠／手指：顯示當分鐘價格、均價、MA100、量
+  const tip = $('#tip'), cross = el('line', { y1:m.t, y2:H - m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg);
+  const hit = el('rect', { x:m.l, y:0, width:iw, height:H, fill:'transparent' }, svg);
+  const move = ev => {
+    if (!today.length) return;
+    const r = svg.getBoundingClientRect(), mx = (ev.clientX - r.left) * W / r.width;
+    let best = 0; today.forEach((b, i) => { if (Math.abs(X(b.t) - mx) < Math.abs(X(today[best].t) - mx)) best = i; });
+    const b = today[best], px = X(b.t);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('visibility', 'visible');
+    const ch = pc ? (b.c / pc - 1) * 100 : null;
+    tip.innerHTML = `<b>${b.t}</b>　${fmt(b.c, dec)}${ch != null ? `（<span class="${ch > 0 ? 'up' : ch < 0 ? 'dn' : ''}">${ch.toFixed(2)}%</span>）` : ''}<br>均價 ${fmt(vwap[best], dec)}・MA100 ${fmt(ma[best], dec)}<br>量 ${fmt(b.v)} ${S.unit}`;
+    tip.style.display = 'block';
+    const pw = svg.parentElement.clientWidth; tip.style.left = Math.min(Math.max(4, px * r.width / W + 14), pw - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px';
+  };
+  hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
+
+  $('#note').textContent = (ST.date === twToday() && !today.some(b => !b.live) && today.length ? `今天的一分K要收盤後 FinMind 才會公布，所以從打開網頁（${today[0].t}）開始用即時報價累積；收盤後重新整理就會看到完整走勢。` : '') +
+    `均價線＝開盤到該分鐘的成交量加權平均價；MA100＝最近 100 根一分K收盤價平均（開盤前段接前一個交易日計算）；平盤＝前一交易日收盤${S.mode === 'fut' ? '（期貨用前一日日盤最後成交價近似）' : ''}。` +
+    (S.mode === 'fut' ? '期貨只畫日盤 08:45–13:45，取當天成交量最大的月份合約。' : '');
+}
+
+/* ───────── 啟動 ───────── */
+function setKind(k){ KIND = k; store.set('jb.kind', k); document.querySelectorAll('#kindSeg button').forEach(b => b.classList.toggle('on', b.dataset.k === k)); }
+document.querySelectorAll('#kindSeg button').forEach(b => b.onclick = () => { setKind(b.dataset.k); if ($('#sym').value.trim()) load(); });
+$('#goBtn').onclick = load;
+$('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (ST.S) draw(); }, 150); });
+setKind(KIND);
+{ const q = new URLSearchParams(location.search); const s = q.get('s'); if (q.get('k')) setKind(q.get('k') === 'fut' ? 'fut' : 'stock');
+  $('#sym').value = s || store.get('jb.sym') || ''; if ($('#sym').value) load(); }
+</script>
+</body>
+</html>

@@ -21,10 +21,9 @@ jobs:
           (async () => {
             const b = await chromium.launch(); const log = [];
             for (const [url, vp, name, act] of [
-              ['https://opsite1978-max.github.io/twstock-chart/txo.html', {width:1280,height:900}, 'txo', null],
-              ['https://opsite1978-max.github.io/twstock-chart/txo.html', {width:390,height:844}, 'txo-m', null],
-              ['https://opsite1978-max.github.io/twstock-chart/index.html', {width:1280,height:900}, 'tx5', ['TX','5']],
-              ['https://opsite1978-max.github.io/twstock-chart/index.html', {width:1280,height:900}, '2330-60', ['2330','60']],
+              ['https://opsite1978-max.github.io/twstock-chart/intraday.html?s=2330&k=stock', {width:390,height:844}, 'jb-2330', null],
+              ['https://opsite1978-max.github.io/twstock-chart/intraday.html?s=2330&k=fut', {width:390,height:844}, 'jb-cdf', null],
+              ['https://opsite1978-max.github.io/twstock-chart/intraday.html?s=TX', {width:1280,height:900}, 'jb-tx', null],
             ]){
               const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage();
               pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + scrub(m.text())); });
@@ -34,10 +33,10 @@ jobs:
               await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
               await pg.goto(url + '?t=' + Date.now(), { waitUntil:'domcontentloaded' });
               if (act){ await pg.waitForTimeout(2500); await pg.fill('#sym', act[0]); await pg.click(`#tfSeg button[data-tf="${act[1]}"]`); await pg.click('#loadBtn'); }
-              await pg.waitForTimeout(25000);
+              await pg.waitForTimeout(15000);
               log.push(name + ' STATUS: ' + scrub(await pg.textContent('#status').catch(() => '?')));
-              if (name.startsWith('txo')) log.push(name + ' CARDS: ' + scrub((await pg.textContent('#cards').catch(() => '')).slice(0, 400)));
-              await pg.screenshot({ path:'../out/' + name + '.png', fullPage: name.startsWith('txo') });
+              if (name.startsWith('jb')) log.push(name + ' STATS: ' + scrub((await pg.textContent('#stats').catch(() => '')) + ' | ' + (await pg.textContent('#nm').catch(() => '')) + ' | ' + (await pg.textContent('#note').catch(() => '')))); if (name.startsWith('txo')) log.push(name + ' CARDS: ' + scrub((await pg.textContent('#cards').catch(() => '')).slice(0, 400)));
+              await pg.screenshot({ path:'../out/' + name + '.png', fullPage: false });
               await ctx.close();
             }
             require('fs').writeFileSync('../out/log.txt', log.join('\n'));
