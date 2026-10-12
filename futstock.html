@@ -213,7 +213,7 @@ async function load(){
       const f = fd.get(d), s = spot.get(d); if (!f) continue;
       const live = f.list.filter(r => expOf(String(r.contract_date).trim()) >= d && r.close > 0).sort((a, b) => String(a.contract_date).localeCompare(String(b.contract_date)));
       if (!live.length) continue;
-      const near = (dayDiff(d, expOf(String(live[0].contract_date).trim())) <= 0 && live[1]) ? live[1] : live[0];   // 結算日當天改看下一個月
+      const near = (dayDiff(d, expOf(String(live[0].contract_date).trim())) <= 5 && live[1]) ? live[1] : live[0];   // 距結算 5 天內改看下一個月，避免年化數字失真
       const exp = expOf(String(near.contract_date).trim()), T = Math.max(1, dayDiff(d, exp)) / 365;
       const dv = divs.filter(x => x.d > d && x.d <= exp).reduce((t, x) => t + x.amt, 0);
       const fair = s.close * RATE * T - dv;
@@ -398,7 +398,7 @@ async function loadGex(){
   // 畫圖
   const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
   const lo = Math.min(S * 0.85, G[0].K), hi = Math.max(S * 1.15, G[G.length - 1].K);
-  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = 280, m = { l:narrow ? 52 : 64, r:10, t:54, b:24 };
+  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = 300, m = { l:narrow ? 52 : 64, r:10, t:74, b:24 };
   svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
   const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
   const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
@@ -409,10 +409,15 @@ async function loadGex(){
   for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
   const marks = [[cw.K, '看漲牆 ' + fmt(cw.K), css('--call'), null], [pw.K, '看跌牆 ' + fmt(pw.K), css('--put'), null], [S, '現價 ' + fmt(S, S < 100 ? 2 : 0), css('--text'), '5 3'], [pain, '最大痛點 ' + fmt(pain), css('--pain'), '1.5 3']]
     .filter(t => t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
-  marks.forEach(([p, t, c, d], k) => { const px = x(p), row = k % 2;
-    el('line', { x1:px, x2:px, y1:8 + row * 20 + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
-    const tx = Math.min(Math.max(px, m.l + 50), Wd - m.r - 50); el('rect', { x:tx - 52, y:8 + row * 20 - 8, width:104, height:16, rx:3, fill:css('--panel') }, svg);
-    el('text', { x:tx, y:8 + row * 20 + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); });
+  const used = [[], [], []], lab = [];   // 標籤分三排，互不重疊
+  marks.forEach(([p, t, c, d]) => { const px = x(p), w = t.length * 11 + 12;
+    const tx = Math.min(Math.max(px, m.l + w / 2), Wd - m.r - w / 2), a = tx - w / 2, b = tx + w / 2;
+    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = 2; used[row].push([a, b]);
+    const ty = 12 + row * 20;
+    el('line', { x1:px, x2:px, y1:ty + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
+    lab.push([a, ty, w, c, tx, t]); });
+  for (const [a, ty, w, c, tx, t] of lab){ el('rect', { x:a, y:ty - 8, width:w, height:16, rx:3, fill:css('--panel'), stroke:c, 'stroke-width':1 }, svg);
+    el('text', { x:tx, y:ty + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); }
   $('#gexNote').textContent = `看漲牆 ${fmt(cw.K)}（現價上方買權 Gamma 最大）、看跌牆 ${fmt(pw.K)}（現價下方賣權 Gamma 最大）、最大痛點 ${fmt(pain)}。` +
     `個股選擇權成交和未平倉都很少（這檔只有 ${fmt(oiTot)} 口），造市避險對現股的影響遠小於台指選擇權，只能當作輔助參考；隱含波動率算不出來的履約價先用 35% 估計。`;
 }
