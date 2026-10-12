@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>股期籌碼與套利</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a;
+    --spot:#e8eaf0; --fut:#c98500; --fair:#a7afc0; --call:#3987e5; --put:#d95926; --pain:#199e70; --oi:#9085e9;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
+    --spot:#1f2430; --fut:#b07800; --fair:#52514e; --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --oi:#6250d6;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+  button{cursor:pointer;white-space:nowrap}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  #sym{width:150px}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .muted{color:var(--muted)} .small{font-size:12px} .pos{color:var(--call)} .neg{color:var(--put)}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+  .card .k{font-size:12px;color:var(--muted)}
+  .card .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;margin:1px 0}
+  .card .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .verdict{margin:10px 0 0;padding:10px 12px;border-left:3px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0;font-size:13.5px}
+  .badge{display:inline-block;font-weight:700;padding:1px 10px;border-radius:999px;border:2px solid var(--line);margin-right:6px}
+  section{margin-top:18px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600}
+  h2 .muted{font-weight:400;font-size:12px;margin-left:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 6px 2px;position:relative;margin-top:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 6px}
+  .legend i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:3px}
+  .legend i.bar{width:10px;height:10px;vertical-align:-1px;border-radius:2px}
+  .legend i.dash{height:0;border-top:2px dashed currentColor;background:none!important}
+  svg{display:block;width:100%;touch-action:pan-y;overflow:visible}
+  svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+  .tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:12px;line-height:1.6;min-width:170px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.7}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500;background:var(--panel)}
+  td:first-child,th:first-child{text-align:left}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>股期籌碼與套利</h1>
+  <input id="sym" placeholder="股票代號或名稱，如 2330" autocomplete="off" enterkeyhint="go">
+  <button class="primary" id="goBtn">分析</button>
+  <span class="spacer"></span>
+  <button onclick="location.href='txo.html'">台指選擇權</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">輸入有個股期貨的股票代號（例如 2330 台積電、2317 鴻海、2454 聯發科），分析現股與股期的價差、未平倉、自營商避險與借券賣出，判斷有沒有大戶在做套利，並畫出個股選擇權的 Gamma。</div>
+  <div id="app" hidden>
+    <div class="cards" id="cards"></div>
+    <div class="verdict" id="verdict"></div>
+
+    <section>
+      <h2>現股、股期與價差<span class="muted">近半年，股期取近月合約；價差＝股期－現股</span></h2>
+      <div class="panel"><div class="legend" id="lg1"></div><svg id="sv1"></svg><div class="tip" id="tip1"></div></div>
+      <div class="panel"><div class="legend" id="lg2"></div><svg id="sv2"></svg><div class="tip" id="tip2"></div></div>
+      <div class="panel"><div class="legend" id="lg3"></div><svg id="sv3"></svg><div class="tip" id="tip3"></div></div>
+      <div class="panel"><div class="legend" id="lg4"></div><svg id="sv4"></svg><div class="tip" id="tip4"></div></div>
+      <p class="note">合理價差＝現股 ×（資金成本年利率 1.6% × 到結算的時間）－ 結算前會除息的現金股利。實際價差比合理價差高很多（超額正價差），常見「買現股＋賣股期」的正向套利；比合理價差低很多（超額逆價差），常見「借券賣出現股＋買股期」的反向套利。期交所沒有公布個股期貨的法人與大額交易人部位，所以這裡用股期未平倉、自營商避險買賣超、借券賣出餘額三者一起推估。</p>
+    </section>
+
+    <section>
+      <h2>套利判斷<span class="muted">最近 20 個交易日</span></h2>
+      <div class="tblx" id="arbTbl"></div>
+    </section>
+
+    <section>
+      <h2>套利怎麼看、怎麼應對<span class="muted">依目前數字推算</span></h2>
+      <div class="flow"><svg id="svFlow" role="img" aria-label="套利建倉與平倉流程圖"></svg></div>
+      <p class="note" id="flowNote"></p>
+    </section>
+
+    <section>
+      <h2>個股選擇權 Gamma 曝險<span class="muted" id="gexSub"></span></h2>
+      <div class="panel"><div class="legend" id="lgG"></div><svg id="svG"></svg><div class="tip" id="tipG"></div></div>
+      <p class="note" id="gexNote"></p>
+    </section>
+  </div>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,10);
+const shiftDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0,10);
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const md = d => +d.slice(5,7) + '/' + +d.slice(8,10);
+const fmt = (v, d) => v == null || isNaN(v) ? '–' : (+v).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 });
+const sgn = (v, d) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+const pc = (v, d = 2) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%';
+function fmtMoney(v, signed){
+  if (v == null || isNaN(v)) return '–';
+  const a = Math.abs(v), s = signed ? (v > 0 ? '+' : v < 0 ? '−' : '') : (v < 0 ? '−' : '');
+  if (a >= 1e8) return s + (a / 1e8).toFixed(2) + ' 億';
+  if (a >= 1e4) return s + Math.round(a / 1e4).toLocaleString('en-US') + ' 萬';
+  return s + Math.round(a);
+}
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent, text){ const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+const RATE = 0.016, SHARES = 2000;                                   // 資金成本年利率、每口股期 2,000 股
+
+/* ───────── FinMind ───────── */
+async function data(params){
+  const tok = (SET.token || '').trim(), qs = new URLSearchParams(params); if (tok) qs.set('token', tok);
+  let r; try { r = await fetch('https://api.finmindtrade.com/api/v4/data?' + qs); } catch(e){ throw new Error('連不上 FinMind，請確認網路'); }
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完');
+  if (!r.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || r.status));
+  return j.data || [];
+}
+let NAMES = null, CODES = null;
+async function loadCodes(){
+  if (NAMES) return;
+  const [info, fo] = await Promise.all([data({ dataset:'TaiwanStockInfo' }).catch(() => []), data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => [])]);
+  NAMES = new Map(); for (const r of info) if (!NAMES.has(r.stock_id)) NAMES.set(r.stock_id, r.stock_name);
+  const fut = new Map(), opt = new Set();
+  for (const r of fo){
+    if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) fut.set(r.name.replace(/期貨$/, ''), r.code);
+    if (r.type === 'TaiwanOptionDaily' && /^[A-Z]{2}O$/.test(r.code)) opt.add(r.code);
+  }
+  CODES = new Map();
+  for (const [id, nm] of NAMES) if (fut.has(nm)){ const f = fut.get(nm), o = f.slice(0, 2) + 'O'; CODES.set(id, { fut:f, opt:opt.has(o) ? o : null }); }
+}
+
+/* ───────── 結算日（股期、個股選擇權月合約：第三個星期三） ───────── */
+function thirdWed(y, m){ const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(); return new Date(Date.UTC(y, m - 1, 1 + ((3 - first + 7) % 7) + 14)).toISOString().slice(0,10); }
+function expOf(code){ const m = /^(\d{4})(\d{2})(?:W(\d))?$/.exec(code); if (!m) return null; const y = +m[1], mo = +m[2];
+  if (!m[3]) return thirdWed(y, mo); const first = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay(); return new Date(Date.UTC(y, mo - 1, 1 + ((3 - first + 7) % 7) + (+m[3] - 1) * 7)).toISOString().slice(0,10); }
+
+/* ───────── 選擇權數學（Black-76，利率視為 0） ───────── */
+const SQ2PI = Math.sqrt(2 * Math.PI), npdf = x => Math.exp(-x * x / 2) / SQ2PI;
+function ncdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)); const y = 1 - npdf(x) * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))); return x >= 0 ? y : 1 - y; }
+function b76(F, K, T, v, call){ if (v <= 0 || T <= 0) return Math.max(0, call ? F - K : K - F); const sd = v * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd, d2 = d1 - sd; return call ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1); }
+function iv(price, F, K, T, call){ const intr = Math.max(0, call ? F - K : K - F); if (!(price > intr + 0.01) || T <= 0) return null; let lo = 0.01, hi = 4; if (b76(F, K, T, hi, call) < price) return null; for (let i = 0; i < 60; i++){ const m = (lo + hi) / 2; if (b76(F, K, T, m, call) > price) hi = m; else lo = m; } return (lo + hi) / 2; }
+function gamma(F, K, T, v){ if (!(v > 0) || !(T > 0)) return 0; const sd = v * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd; return npdf(d1) / (F * sd); }
+
+/* ───────── 讀資料、計算 ───────── */
+let D = null;
+function setStatus(t, err){ const s = $('#status'); s.hidden = !t; s.textContent = t || ''; s.className = 'msg' + (err ? ' err' : ''); }
+async function load(){
+  if (!(SET.token || '').trim()){ setStatus('請先到看盤頁的「設定」填入 FinMind 憑證（贊助會員）。', true); return; }
+  try {
+    setStatus('讀取中…'); $('#app').hidden = true;
+    await loadCodes();
+    const q = $('#sym').value.trim(); let id = (q.match(/^\d{4,6}/) || [])[0];
+    if (!id) for (const [k, v] of NAMES) if (v === q){ id = k; break; }
+    if (!id){ setStatus('找不到這個股票', true); return; }
+    const c = CODES.get(id); if (!c){ setStatus(`${id} ${NAMES.get(id) || ''} 沒有個股期貨`, true); return; }
+    store.set('fs.sym', q);
+    const start = shiftDay(twToday(), -200), today = twToday();
+    setStatus('讀取現股、股期、法人、借券、股利…');
+    const [px, fu, inst, sbl, div] = await Promise.all([
+      data({ dataset:'TaiwanStockPrice', data_id:id, start_date:start }),
+      data({ dataset:'TaiwanFuturesDaily', data_id:c.fut, start_date:start }),
+      data({ dataset:'TaiwanStockInstitutionalInvestorsBuySell', data_id:id, start_date:start }).catch(() => []),
+      data({ dataset:'TaiwanDailyShortSaleBalances', data_id:id, start_date:start }).catch(() => []),
+      data({ dataset:'TaiwanStockDividend', data_id:id, start_date:shiftDay(today, -800) }).catch(() => []),
+    ]);
+    // 股利：除息日 → 現金股利
+    const divs = [];
+    for (const r of div) if (r.CashExDividendTradingDate && r.CashEarningsDistribution > 0) divs.push({ d:r.CashExDividendTradingDate, amt:+r.CashEarningsDistribution + (+r.CashStatutorySurplus || 0) });
+    const spot = new Map(px.filter(r => r.close > 0).map(r => [r.date, r]));
+    // 股期：每天的近月合約（還沒到結算日、成交量最大的月合約）與全部月份未平倉
+    const fd = new Map();
+    for (const r of fu){
+      if (r.trading_session !== 'position') continue;
+      const cd = String(r.contract_date).trim(); if (!/^\d{6}$/.test(cd)) continue;
+      let e = fd.get(r.date); if (!e){ e = { oi:0, list:[] }; fd.set(r.date, e); }
+      e.oi += +r.open_interest || 0; e.list.push(r);
+    }
+    const ins = new Map();
+    for (const r of inst){ let e = ins.get(r.date); if (!e){ e = {}; ins.set(r.date, e); } e[r.name] = ((+r.buy || 0) - (+r.sell || 0)) / 1000; }
+    const sb = new Map(sbl.map(r => [r.date, (+r.SBLShortSalesCurrentDayBalance || 0) / 1000]));
+    const rows = [];
+    for (const d of [...spot.keys()].sort()){
+      const f = fd.get(d), s = spot.get(d); if (!f) continue;
+      const live = f.list.filter(r => expOf(String(r.contract_date).trim()) >= d && r.close > 0).sort((a, b) => String(a.contract_date).localeCompare(String(b.contract_date)));
+      if (!live.length) continue;
+      const near = (dayDiff(d, expOf(String(live[0].contract_date).trim())) <= 0 && live[1]) ? live[1] : live[0];   // 結算日當天改看下一個月
+      const exp = expOf(String(near.contract_date).trim()), T = Math.max(1, dayDiff(d, exp)) / 365;
+      const dv = divs.filter(x => x.d > d && x.d <= exp).reduce((t, x) => t + x.amt, 0);
+      const fair = s.close * RATE * T - dv;
+      const basis = near.close - s.close;
+      const e = ins.get(d) || {};
+      rows.push({ d, s:s.close, f:+near.close, fc:String(near.contract_date).trim(), exp, T, basis, fair, ex:basis - fair,
+                  exAnn:(basis - fair) / s.close / T * 100, bp:basis / s.close * 100, fp:fair / s.close * 100,
+                  oi:f.oi, vol:(+s.Trading_Volume || 0) / 1000, dh:e.Dealer_Hedging ?? null, ds:e.Dealer_self ?? null, fi:e.Foreign_Investor ?? null, sbl:sb.has(d) ? sb.get(d) : null, dv });
+    }
+    if (rows.length < 10) throw new Error('資料太少，無法分析');
+    // 套利判斷（5 日變化）
+    for (let i = 0; i < rows.length; i++){
+      const r = rows[i], p = rows[Math.max(0, i - 5)];
+      r.dOi = r.oi - p.oi;
+      r.dh5 = rows.slice(Math.max(0, i - 4), i + 1).reduce((t, x) => t + (x.dh || 0), 0);
+      r.dSbl = r.sbl != null && p.sbl != null ? r.sbl - p.sbl : null;
+      const exA = rows.slice(Math.max(0, i - 4), i + 1).reduce((t, x) => t + x.exAnn, 0) / Math.min(5, i + 1);
+      r.exA5 = exA;
+      const oiUp = r.dOi > Math.max(50, p.oi * 0.03), oiDn = r.dOi < -Math.max(50, p.oi * 0.03);
+      if (exA > 3 && oiUp && r.dh5 > 0) r.st = ['pos', '正向套利建倉', '超額正價差＋股期未平倉增加＋自營商避險買現股'];
+      else if (exA < -3 && oiUp && (r.dSbl > 0 || r.dh5 < 0)) r.st = ['neg', '反向套利建倉', '超額逆價差＋股期未平倉增加＋借券賣出或自營商避險賣現股'];
+      else if (oiDn && Math.abs(exA) < Math.abs(rows[Math.max(0, i - 5)].exA5 || 0)) r.st = ['flat', '套利平倉', '價差往合理值收斂＋股期未平倉減少'];
+      else if (exA > 3) r.st = ['pos', '超額正價差', '有正向套利空間，但未平倉或現股買盤還沒跟上'];
+      else if (exA < -3) r.st = ['neg', '超額逆價差', '有反向套利空間，但未平倉或借券還沒跟上'];
+      else r.st = ['', '無明顯套利', '價差接近合理值'];
+    }
+    D = { id, name:NAMES.get(id), c, rows, divs };
+    setStatus(''); $('#app').hidden = false;
+    render();
+    loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; });
+  } catch(e){ setStatus(e.message || String(e), true); }
+}
+
+/* ───────── 畫面 ───────── */
+function card(k, v, s, cls){ return `<div class="card"><div class="k">${k}</div><div class="v ${cls || ''}">${v}</div><div class="s">${s || ''}</div></div>`; }
+function render(){
+  const R = D.rows, L = R[R.length - 1], left = dayDiff(L.d, L.exp);
+  const nextDiv = D.divs.filter(x => x.d > L.d).sort((a, b) => a.d.localeCompare(b.d))[0];
+  $('#cards').innerHTML = [
+    card(`${D.id} ${esc(D.name)} 現股`, fmt(L.s, L.s < 100 ? 2 : 0), `${md(L.d)} 收盤・成交 ${fmt(L.vol)} 張`),
+    card(`股期近月（${D.c.fut}・${L.fc.slice(4)}月）`, fmt(L.f, L.f < 100 ? 2 : 0), `結算日 ${md(L.exp)}，剩 ${left} 天`),
+    card('實際價差', sgn(L.basis, L.s < 100 ? 2 : 1) + ' 元', `${pc(L.bp)}（股期－現股）`, L.basis > 0 ? 'pos' : L.basis < 0 ? 'neg' : ''),
+    card('合理價差', sgn(L.fair, 2) + ' 元', `資金成本 ${pc(L.s * RATE * L.T / L.s * 100)}` + (L.dv ? `，扣結算前股利 ${fmt(L.dv, 2)} 元` : '')),
+    card('超額價差（年化）', pc(L.exAnn, 1), `實際－合理 ${sgn(L.ex, 2)} 元；5 日平均 ${pc(L.exA5, 1)}`, L.exAnn > 3 ? 'pos' : L.exAnn < -3 ? 'neg' : ''),
+    card('股期未平倉（全部月份）', fmt(L.oi) + ' 口', `約 ${fmt(L.oi * SHARES / 1000)} 張現股；5 日 ${sgn(L.dOi)} 口`),
+    card('自營商避險（5 日）', sgn(L.dh5) + ' 張', `今天 ${sgn(L.dh)} 張；自行買賣 ${sgn(L.ds)} 張`),
+    card('借券賣出餘額', L.sbl != null ? fmt(L.sbl) + ' 張' : '–', `5 日 ${sgn(L.dSbl)} 張` + (nextDiv ? `；下次除息 ${md(nextDiv.d)}（${fmt(nextDiv.amt, 2)} 元）` : '')),
+  ].join('');
+  const col = L.st[0] === 'pos' ? css('--call') : L.st[0] === 'neg' ? css('--put') : css('--line');
+  $('#verdict').innerHTML = `<span class="badge" style="border-color:${col}">${L.st[1]}</span>${esc(L.st[2])}。` +
+    `股期未平倉約等於 ${fmt(L.oi * SHARES / 1000)} 張現股，是近 20 日平均成交量的 ${(L.oi * SHARES / 1000 / avg(R.slice(-20).map(r => r.vol))).toFixed(1)} 倍；` +
+    `距結算 ${left} 天，結算當天（${md(L.exp)}）收盤前是套利部位集中了結的時間。`;
+  drawCharts(); drawTable(); drawFlow();
+}
+const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0;
+
+function frame(svg, H){
+  const W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520;
+  const m = { l:narrow ? 52 : 64, r:10, t:8, b:22 };
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  return { W, H, m, iw:W - m.l - m.r, ih:H - m.t - m.b, narrow };
+}
+function ticks(lo, hi, n){ const span = hi - lo || 1, s0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(s0))); const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(s => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(6)); return out; }
+function axes(svg, f, R, x, y, lo, hi, yf){
+  for (const t of ticks(lo, hi, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid'), 'stroke-width':1, 'stroke-opacity':t === 0 ? .7 : 1 }, svg); el('text', { x:f.m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, yf(t)); }
+  const every = Math.max(1, Math.ceil(R.length / (f.narrow ? 4 : 8)));
+  R.forEach((r, i) => { if (i % every === 0) el('text', { x:x(i), y:f.H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, md(r.d)); });
+  // 結算日直線
+  R.forEach((r, i) => { if (i && R[i - 1].fc !== r.fc) el('line', { x1:x(i) - (x(1) - x(0)) / 2, x2:x(i) - (x(1) - x(0)) / 2, y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 3', 'stroke-width':1 }, svg); });
+}
+function line(svg, R, x, y, key, col, w, dash){ let d = '', pen = false; R.forEach((r, i) => { const v = r[key]; if (v == null || isNaN(v)){ pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); pen = true; }); el('path', { d, fill:'none', stroke:col, 'stroke-width':w || 1.8, 'stroke-dasharray':dash || null, 'stroke-linejoin':'round' }, svg); }
+function bars(svg, R, x, y, key, f, colFn){ const w = Math.max(1, Math.min(10, f.iw / R.length - 2)); R.forEach((r, i) => { const v = r[key]; if (v == null) return; const y0 = y(0), y1 = y(v); el('rect', { x:x(i) - w / 2, y:Math.min(y0, y1), width:w, height:Math.max(0.5, Math.abs(y1 - y0)), fill:colFn(v, r) }, svg); }); }
+function hoverAll(svg, tip, f, R, x){
+  const cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg);
+  const hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+  const move = ev => { const b = svg.getBoundingClientRect(), mx = (ev.clientX - b.left) * f.W / b.width, step = f.iw / R.length, i = Math.max(0, Math.min(R.length - 1, Math.round((mx - f.m.l) / step - 0.5))), r = R[i];
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    tip.innerHTML = `<b>${md(r.d)}</b>　${r.st[1]}<br>現股 ${fmt(r.s, 2)}・股期 ${fmt(r.f, 2)}（${r.fc.slice(4)}月）<br>價差 ${sgn(r.basis, 2)}（${pc(r.bp)}）・合理 ${pc(r.fp)}<br>超額年化 ${pc(r.exAnn, 1)}<br>股期未平倉 ${fmt(r.oi)} 口・自營商避險 ${sgn(r.dh)} 張<br>借券賣出餘額 ${fmt(r.sbl)} 張`;
+    tip.style.display = 'block'; const pw = svg.parentElement.clientWidth; tip.style.left = Math.min(Math.max(4, x(i) * b.width / f.W + 14), pw - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; };
+  hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
+}
+function legend(id, items){ $(id).innerHTML = items.map(([t, c, k]) => `<span><i class="${k || ''}" style="${k === 'dash' ? 'color:' + c : 'background:' + c}"></i>${esc(t)}</span>`).join(''); }
+function drawCharts(){
+  const R = D.rows.slice(-120);
+  const mk = (id, H) => { const svg = $(id), f = frame(svg, H), x = i => f.m.l + f.iw * (i + 0.5) / R.length; return { svg, f, x }; };
+  // 1 現股與股期
+  { const { svg, f, x } = mk('#sv1', 190); const vs = R.flatMap(r => [r.s, r.f]); const lo = Math.min(...vs), hi = Math.max(...vs), p = (hi - lo) * 0.06; const y = v => f.m.t + (hi + p - v) / (hi - lo + 2 * p) * f.ih;
+    legend('#lg1', [['現股收盤', css('--spot')], ['股期近月收盤', css('--fut')], ['結算換月', css('--muted'), 'dash']]);
+    axes(svg, f, R, x, y, lo - p, hi + p, t => fmt(t)); line(svg, R, x, y, 's', css('--spot'), 2); line(svg, R, x, y, 'f', css('--fut'), 1.6); hoverAll(svg, $('#tip1'), f, R, x); }
+  // 2 價差 % 與合理價差 %
+  { const { svg, f, x } = mk('#sv2', 170); const vs = R.flatMap(r => [r.bp, r.fp, 0]); const lo = Math.min(...vs), hi = Math.max(...vs), p = (hi - lo) * 0.1 || 0.1; const y = v => f.m.t + (hi + p - v) / (hi - lo + 2 * p) * f.ih;
+    legend('#lg2', [['實際價差（%）', css('--fut')], ['合理價差（%，含除息）', css('--fair'), 'dash']]);
+    axes(svg, f, R, x, y, lo - p, hi + p, t => t.toFixed(1) + '%'); line(svg, R, x, y, 'fp', css('--fair'), 1.6, '5 3'); line(svg, R, x, y, 'bp', css('--fut'), 2); hoverAll(svg, $('#tip2'), f, R, x); }
+  // 3 股期未平倉
+  { const { svg, f, x } = mk('#sv3', 150); const hi = Math.max(...R.map(r => r.oi)) * 1.08; const y = v => f.m.t + (hi - v) / hi * f.ih;
+    legend('#lg3', [['股期未平倉（全部月份，口）', css('--oi'), 'bar']]);
+    axes(svg, f, R, x, y, 0, hi, t => fmt(t)); bars(svg, R, x, y, 'oi', f, () => css('--oi')); hoverAll(svg, $('#tip3'), f, R, x); }
+  // 4 自營商避險買賣超（張）與借券賣出餘額變化（張）
+  { const { svg, f, x } = mk('#sv4', 160); R.forEach((r, i) => r.dsb1 = i && r.sbl != null && R[i - 1].sbl != null ? r.sbl - R[i - 1].sbl : null);
+    const vs = R.flatMap(r => [r.dh, r.dsb1]).filter(v => v != null); const m = Math.max(1, ...vs.map(Math.abs)) * 1.1; const y = v => f.m.t + (m - v) / (2 * m) * f.ih;
+    legend('#lg4', [['自營商避險買賣超（張，正藍負橘）', css('--call'), 'bar'], ['借券賣出餘額增減（張）', css('--text')]]);
+    axes(svg, f, R, x, y, -m, m, t => fmt(t)); bars(svg, R, x, y, 'dh', f, v => v >= 0 ? css('--call') : css('--put')); line(svg, R, x, y, 'dsb1', css('--text'), 1.6); hoverAll(svg, $('#tip4'), f, R, x); }
+}
+function drawTable(){
+  const R = D.rows.slice(-20).reverse();
+  $('#arbTbl').innerHTML = '<table><thead><tr><th>日期</th><th>判斷</th><th>價差</th><th>超額年化</th><th>股期未平倉</th><th>5 日增減</th><th>自營商避險</th><th>借券賣出餘額</th></tr></thead><tbody>' +
+    R.map(r => `<tr><td>${md(r.d)}</td><td class="${r.st[0] === 'pos' ? 'pos' : r.st[0] === 'neg' ? 'neg' : ''}">${r.st[1]}</td><td>${sgn(r.basis, 2)}</td><td>${pc(r.exAnn, 1)}</td><td>${fmt(r.oi)}</td><td>${sgn(r.dOi)}</td><td>${sgn(r.dh)}</td><td>${fmt(r.sbl)}</td></tr>`).join('') + '</tbody></table>';
+}
+
+/* ───────── 套利流程圖：建倉 → 收斂／結算 → 平倉，對現股的影響 ───────── */
+function drawFlow(){
+  const R = D.rows, L = R[R.length - 1], svg = $('#svFlow');
+  const W = Math.max(300, svg.parentElement.clientWidth - 16), narrow = W < 560;
+  // 推估套利口數：最近一次換月以來，股期未平倉增加的口數（不是精確數字）
+  let i0 = R.length - 1; while (i0 > 0 && R[i0 - 1].fc === L.fc) i0--;
+  const build = Math.max(0, L.oi - Math.min(...R.slice(i0).map(r => r.oi)));
+  const shares = build * SHARES / 1000, adv = avg(R.slice(-20).map(r => r.vol)), days = adv ? shares / adv : 0;
+  const posArb = L.exA5 >= 0;
+  const box = (x, y, w, h, title, lines, col) => {
+    el('rect', { x, y, width:w, height:h, rx:8, fill:css('--panel2'), stroke:col, 'stroke-width':2 }, svg);
+    el('text', { x:x + 10, y:y + 20, 'font-size':13, 'font-weight':700, fill:css('--text') }, svg, title);
+    lines.forEach((t, k) => el('text', { x:x + 10, y:y + 40 + k * 17, 'font-size':12, fill:css('--muted') }, svg, t));
+  };
+  const arrow = (x1, y1, x2, y2) => { el('line', { x1, y1, x2, y2, stroke:css('--muted'), 'stroke-width':2 }, svg); const a = Math.atan2(y2 - y1, x2 - x1); el('path', { d:`M${x2},${y2} L${x2 - 9 * Math.cos(a - 0.4)},${y2 - 9 * Math.sin(a - 0.4)} L${x2 - 9 * Math.cos(a + 0.4)},${y2 - 9 * Math.sin(a + 0.4)} Z`, fill:css('--muted') }, svg); };
+  const colA = posArb ? css('--call') : css('--put');
+  const B1 = posArb ? ['① 建倉：正向套利', ['買進現股 ＋ 賣出股期', `目前超額價差 ${pc(L.exA5, 1)}（年化）`, `推估部位約 ${fmt(build)} 口 ≈ ${fmt(shares)} 張`]]
+                    : ['① 建倉：反向套利', ['借券賣出現股 ＋ 買進股期', `目前超額價差 ${pc(L.exA5, 1)}（年化）`, `推估部位約 ${fmt(build)} 口 ≈ ${fmt(shares)} 張`]];
+  const B2 = ['② 等價差收斂', [posArb ? '股期與現股價差縮小就獲利' : '逆價差縮小（股期漲回）就獲利', `距結算 ${dayDiff(L.d, L.exp)} 天（${md(L.exp)}）`, '價差提早收斂也可能提早平倉']];
+  const B3 = posArb ? ['③ 平倉：賣出現股', ['結算前後賣掉現股、股期到期', `約 ${fmt(shares)} 張賣壓`, `≈ 平均成交量 ${days.toFixed(1)} 天`]]
+                    : ['③ 平倉：買回現股還券', ['結算前後買回現股、股期到期', `約 ${fmt(shares)} 張買盤`, `≈ 平均成交量 ${days.toFixed(1)} 天`]];
+  const H = narrow ? 420 : 170;
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  if (narrow){
+    const w = W - 20, h = 110; box(10, 6, w, h, B1[0], B1[1], colA); arrow(W / 2, 6 + h + 2, W / 2, 6 + h + 26);
+    box(10, 6 + h + 30, w, h, B2[0], B2[1], css('--fair')); arrow(W / 2, 6 + 2 * h + 32, W / 2, 6 + 2 * h + 56);
+    box(10, 6 + 2 * h + 60, w, h, B3[0], B3[1], colA);
+  } else {
+    const w = (W - 80) / 3, h = 120; box(10, 20, w, h, B1[0], B1[1], colA); arrow(10 + w + 4, 80, 10 + w + 26, 80);
+    box(40 + w, 20, w, h, B2[0], B2[1], css('--fair')); arrow(40 + 2 * w + 4, 80, 40 + 2 * w + 26, 80);
+    box(70 + 2 * w, 20, w, h, B3[0], B3[1], colA);
+  }
+  const strong = Math.abs(L.exA5) > 3 && build > 0;
+  $('#flowNote').innerHTML = (strong ? '' : '目前超額價差不大或未平倉沒有明顯增加，套利跡象弱，上面的數字只是推估上限。') +
+    (posArb
+      ? `怎麼應對正向套利：套利盤買現股是「避險買盤」，不是看好；價差收斂、股期未平倉開始下降時，他們會賣現股，現股容易轉弱，不要在這時追價。結算日（${md(L.exp)}）收盤前最後 30 分鐘常有集中賣壓，可以等結算後再看。若超額正價差持續擴大、股期未平倉同步增加，代表期貨端有人積極作多，現股短線反而有支撐。`
+      : `怎麼應對反向套利：套利盤借券賣現股是「避險賣壓」，不一定看壞；逆價差收斂、股期未平倉下降時，他們要買回現股還券，現股容易出現回補買盤。結算日（${md(L.exp)}）收盤前常有集中回補，短線可以留意止跌。若超額逆價差持續擴大、借券賣出同步增加，代表下跌壓力還在，先不要接。`) +
+    ' 推估部位＝本月合約以來股期未平倉從低點增加的口數 × 每口 2,000 股；實際可能包含一般投機部位，只能當成上限參考。';
+}
+
+/* ───────── 個股選擇權 Gamma ───────── */
+async function loadGex(){
+  const L = D.rows[D.rows.length - 1];
+  if (!D.c.opt){ $('#gexSub').textContent = ''; $('#gexNote').textContent = '這檔股票沒有個股選擇權，無法計算 Gamma。'; $('#svG').innerHTML = ''; $('#lgG').innerHTML = ''; return; }
+  const rows = await data({ dataset:'TaiwanOptionDaily', data_id:D.c.opt, start_date:L.d, end_date:L.d });
+  const pos = rows.filter(r => r.trading_session === 'position');
+  const S = L.s, by = new Map();
+  for (const r of pos){
+    const code = String(r.contract_date).trim(), exp = expOf(code); if (!exp || exp < L.d) continue;
+    const K = +r.strike_price; let e = by.get(code); if (!e){ e = { exp, m:new Map() }; by.set(code, e); }
+    let s = e.m.get(K); if (!s){ s = { K, coi:0, poi:0, cpx:0, ppx:0 }; e.m.set(K, s); }
+    const px = +r.settlement_price > 0 ? +r.settlement_price : +r.close > 0 ? +r.close : 0;
+    if (r.call_put === 'call'){ s.coi = +r.open_interest || 0; s.cpx = px; } else { s.poi = +r.open_interest || 0; s.ppx = px; }
+  }
+  const agg = new Map(); let oiTot = 0;
+  for (const [code, e] of by){
+    const T = Math.max(0.5, dayDiff(L.d, e.exp)) / 365, list = [...e.m.values()];
+    for (const s of list){
+      const call = s.K >= S; let v = call ? (s.cpx > 0 ? iv(s.cpx, S, s.K, T, true) : null) : (s.ppx > 0 ? iv(s.ppx, S, s.K, T, false) : null);
+      if (v == null) v = (s.cpx > 0 ? iv(s.cpx, S, s.K, T, true) : null) || (s.ppx > 0 ? iv(s.ppx, S, s.K, T, false) : null) || 0.35;
+      const g = gamma(S, s.K, T, v);
+      let a = agg.get(s.K); if (!a){ a = { K:s.K, gc:0, gp:0, coi:0, poi:0 }; agg.set(s.K, a); }
+      a.gc += g * s.coi * SHARES * S * S * 0.01; a.gp -= g * s.poi * SHARES * S * S * 0.01; a.coi += s.coi; a.poi += s.poi; oiTot += s.coi + s.poi;
+    }
+  }
+  const G = [...agg.values()].filter(a => a.coi + a.poi > 0).sort((a, b) => a.K - b.K);
+  $('#gexSub').textContent = `${D.c.opt}・${md(L.d)} 收盤・全部月份合計・未平倉 ${fmt(oiTot)} 口`;
+  if (!G.length){ $('#gexNote').textContent = '這檔個股選擇權目前沒有未平倉，無法計算 Gamma。'; $('#svG').innerHTML = ''; $('#lgG').innerHTML = ''; return; }
+  const above = G.filter(a => a.K >= S), below = G.filter(a => a.K <= S);
+  const cw = (above.length ? above : G).reduce((a, b) => b.gc > a.gc ? b : a), pw = (below.length ? below : G).reduce((a, b) => b.gp < a.gp ? b : a);
+  let pain = null, pv = Infinity; for (const x of G){ let t = 0; for (const r of G){ if (x.K > r.K) t += r.coi * (x.K - r.K); else if (x.K < r.K) t += r.poi * (r.K - x.K); } if (t < pv){ pv = t; pain = x.K; } }
+  // 畫圖
+  const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
+  const lo = Math.min(S * 0.85, G[0].K), hi = Math.max(S * 1.15, G[G.length - 1].K);
+  const vis = G.filter(a => a.K >= lo && a.K <= hi), H = 280, m = { l:narrow ? 52 : 64, r:10, t:54, b:24 };
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+  const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
+  const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
+  legend('#lgG', [['買權（正）', css('--call'), 'bar'], ['賣權（負）', css('--put'), 'bar'], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['現價', css('--text'), 'dash'], ['最大痛點', css('--pain'), 'dash']]);
+  for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
+  for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
+  let gap = Infinity; for (let i = 1; i < vis.length; i++) gap = Math.min(gap, x(vis[i].K) - x(vis[i - 1].K)); const bw = Math.max(1.5, Math.min(14, (isFinite(gap) ? gap : 20) - 2));
+  for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
+  const marks = [[cw.K, '看漲牆 ' + fmt(cw.K), css('--call'), null], [pw.K, '看跌牆 ' + fmt(pw.K), css('--put'), null], [S, '現價 ' + fmt(S, S < 100 ? 2 : 0), css('--text'), '5 3'], [pain, '最大痛點 ' + fmt(pain), css('--pain'), '1.5 3']]
+    .filter(t => t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
+  marks.forEach(([p, t, c, d], k) => { const px = x(p), row = k % 2;
+    el('line', { x1:px, x2:px, y1:8 + row * 20 + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
+    const tx = Math.min(Math.max(px, m.l + 50), Wd - m.r - 50); el('rect', { x:tx - 52, y:8 + row * 20 - 8, width:104, height:16, rx:3, fill:css('--panel') }, svg);
+    el('text', { x:tx, y:8 + row * 20 + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); });
+  $('#gexNote').textContent = `看漲牆 ${fmt(cw.K)}（現價上方買權 Gamma 最大）、看跌牆 ${fmt(pw.K)}（現價下方賣權 Gamma 最大）、最大痛點 ${fmt(pain)}。` +
+    `個股選擇權成交和未平倉都很少（這檔只有 ${fmt(oiTot)} 口），造市避險對現股的影響遠小於台指選擇權，只能當作輔助參考；隱含波動率算不出來的履約價先用 35% 估計。`;
+}
+
+/* ───────── 啟動 ───────── */
+$('#goBtn').onclick = load;
+$('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); loadGex().catch(() => {}); } }, 200); });
+{ const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
+</script>
+</body>
+</html>

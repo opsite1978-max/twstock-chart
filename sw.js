@@ -1,6 +1,6 @@
 // 讓看盤頁可以「安裝成 App」：外殼檔案離線可開，股價資料一律即時向 FinMind 取得
-const CACHE = 'twchart-v23';
-const SHELL = ['./', './index.html', './mobile.html', './holders.html', './insider.html', './txo.html', './strategy.html', './intraday.html', './manifest.webmanifest', './manifest-m.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'twchart-v24';
+const SHELL = ['./', './index.html', './mobile.html', './holders.html', './insider.html', './txo.html', './strategy.html', './intraday.html', './futstock.html', './manifest.webmanifest', './manifest-m.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

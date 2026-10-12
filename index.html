@@ -120,6 +120,7 @@
   <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
     <button id="txoBtn" title="台指選擇權籌碼：各結算日 Gamma 曝險、看漲牆、看跌牆、最大痛點" onclick="location.href='txo.html'">選擇權</button>
     <button id="jbBtn" title="江波圖：即時價、均價線、MA100（股票、個股期貨、台指期）" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}|TX/i);location.href='intraday.html'+(m?'?s='+m[0].toUpperCase():'')">江波</button>
+    <button id="fsBtn" title="股期籌碼與套利：價差、未平倉、自營避險、選擇權 Gamma" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}/);location.href='futstock.html'+(m?'?s='+m[0]:'')">股期</button>
   <span class="spacer"></span>
   <span id="status"></span>
 </header>
