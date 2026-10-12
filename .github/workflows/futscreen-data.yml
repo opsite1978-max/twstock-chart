@@ -1,7 +1,5 @@
 name: 股期選股（進場燈號）
 on:
-  schedule:
-    - cron: '10 14 * * 1-5'   # 台灣時間 22:10（法人、借券資料公布後）
   workflow_dispatch:
 permissions:
   contents: write
