@@ -28,8 +28,17 @@ jobs:
         run: |
           python3 -m http.server 8080 >/dev/null 2>&1 &
           sleep 2
-          node scripts/futscreen.js
+          set -o pipefail
+          node scripts/futscreen.js 2>&1 | tee /tmp/futscreen.log
+      - name: 保存執行紀錄（除錯用）
+        if: always()
+        run: |
+          mkdir -p /tmp/out && cp /tmp/futscreen.log /tmp/out/log.txt 2>/dev/null || echo none > /tmp/out/log.txt
+          cd /tmp/out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm log
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
       - name: 存回專案
+        if: always()
         run: |
           git add data/futscreen
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
