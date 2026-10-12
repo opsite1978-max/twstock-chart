@@ -81,6 +81,15 @@
   .seg button{border:0;border-radius:0;height:26px;padding:0 10px;background:var(--panel2);color:var(--text);font-size:13px;min-width:38px}
   .seg button+button{border-left:1px solid var(--line)}
   @media (max-width:560px){ .zhint{flex-basis:100%} }
+  td.up{color:var(--up)} td.dn{color:var(--down)}
+  .qa{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+  .qa h3{margin:0 0 8px;font-size:15px;font-weight:700}
+  .qa .ans{margin-bottom:6px;font-size:14px;line-height:1.7}
+  .qa ul{margin:4px 0 8px 18px;padding:0;line-height:1.75;font-size:13.5px}
+  .qa .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+  @media (max-width:760px){ .qa .g2{grid-template-columns:minmax(0,1fr)} }
+  .qa table{font-size:12.5px} .qa .cap{font-size:12px;color:var(--muted);margin:2px 0 4px}
+  .mx{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px} .mx span{border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:12.5px;background:var(--panel2)}
   .flow{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
 </style>
 </head>
@@ -98,6 +107,13 @@
   <div id="app" hidden>
     <div class="cards" id="cards"></div>
     <div class="verdict" id="verdict"></div>
+
+    <section>
+      <h2>三個關鍵問題<span class="muted">價差變化 × 未平倉變化 × 現股成交量 × 法人買賣超 交叉判讀</span></h2>
+      <div class="qa" id="qa1"></div>
+      <div class="qa" id="qa2"></div>
+      <div class="qa" id="qa3"></div>
+    </section>
 
     <section>
       <h2>目前狀況統整<span class="muted" id="sumSub"></span></h2>
@@ -221,7 +237,7 @@ async function load(){
     if (!id){ setStatus('找不到這個股票', true); return; }
     const c = CODES.get(id); if (!c){ setStatus(`${id} ${NAMES.get(id) || ''} 沒有個股期貨`, true); return; }
     store.set('fs.sym', q);
-    const start = shiftDay(twToday(), -200), today = twToday();
+    const start = shiftDay(twToday(), -420), today = twToday();      // 約 280 個交易日，用來做歷史統計
     setStatus('讀取現股、股期、法人、借券、股利…');
     const [px, fu, inst, sbl, div] = await Promise.all([
       data({ dataset:'TaiwanStockPrice', data_id:id, start_date:start }),
@@ -256,9 +272,12 @@ async function load(){
       const fair = s.close * RATE * T - dv;
       const basis = near.close - s.close;
       const e = ins.get(d) || {};
+      const nx = live[live.indexOf(near) + 1]; let ex2 = null;           // 次月合約的超額價差（判斷套利盤會轉倉還是平倉）
+      if (nx){ const e2 = expOf(String(nx.contract_date).trim()), T2 = Math.max(1, dayDiff(d, e2)) / 365, dv2 = divs.filter(x => x.d > d && x.d <= e2).reduce((t, x) => t + x.amt, 0);
+        ex2 = (nx.close - s.close - (s.close * RATE * T2 - dv2)) / s.close / T2 * 100; }
       rows.push({ d, s:s.close, f:+near.close, fo:+near.open || +near.close, fh:+near.max || +near.close, fl:+near.min || +near.close, fv:f.vol, fc:String(near.contract_date).trim(), exp, T, basis, fair, ex:basis - fair,
                   exAnn:(basis - fair) / s.close / T * 100, bp:basis / s.close * 100, fp:fair / s.close * 100,
-                  oi:f.oi, vol:(+s.Trading_Volume || 0) / 1000, dh:e.Dealer_Hedging ?? null, ds:e.Dealer_self ?? null, fi:e.Foreign_Investor ?? null, sbl:sb.has(d) ? sb.get(d) : null, dv });
+                  oi:f.oi, vol:(+s.Trading_Volume || 0) / 1000, dh:e.Dealer_Hedging ?? null, ds:e.Dealer_self ?? null, fi:e.Foreign_Investor != null || e.Foreign_Dealer_Self != null ? (e.Foreign_Investor || 0) + (e.Foreign_Dealer_Self || 0) : null, it:e.Investment_Trust ?? null, ex2, sbl:sb.has(d) ? sb.get(d) : null, dv });
     }
     if (rows.length < 10) throw new Error('資料太少，無法分析');
     // 套利判斷（5 日變化）
@@ -303,7 +322,7 @@ function render(){
   $('#verdict').innerHTML = `<span class="badge" style="border-color:${col}">${L.st[1]}</span>${esc(L.st[2])}。` +
     `股期未平倉約等於 ${fmt(L.oi * SHARES / 1000)} 張現股，是近 20 日平均成交量的 ${(L.oi * SHARES / 1000 / avg(R.slice(-20).map(r => r.vol))).toFixed(1)} 倍；` +
     `距結算 ${left} 天，結算當天（${md(L.exp)}）收盤前是套利部位集中了結的時間。`;
-  drawCharts(); drawTable(); drawFlow(); renderFut(); renderSummary();
+  drawCharts(); drawTable(); drawFlow(); renderFut(); renderQA(); renderSummary();
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0;
 
@@ -685,6 +704,106 @@ function renderFut(){
     `限制：每一口都有一多一空，這裡只是依價格方向推估「主動的一方」；個股期貨沒有公布大額交易人部位，數字是估計值。`;
 }
 
+/* ───────── 三個關鍵問題 ───────── */
+function badge(t, col){ return `<span class="badge" style="border-color:${col}">${t}</span>`; }
+const sum5 = (R, i, k) => R.slice(Math.max(0, i - 4), i + 1).reduce((t, r) => t + (r[k] || 0), 0);
+function renderQA(){
+  const R = D.rows, n = R.length, i = n - 1, L = R[i], p5 = R[Math.max(0, i - 5)], adv = avg(R.slice(-20).map(r => r.vol));
+  const UP = css('--up'), DN = css('--down'), WARN = css('--fut'), NEU = css('--line');
+  for (let j = 0; j < n; j++) R[j].fwd5 = j + 5 < n ? (R[j + 5].s / R[j].s - 1) * 100 : null;
+  // 共同的五日變化
+  const fi5 = sum5(R, i, 'fi'), it5 = sum5(R, i, 'it'), ds5 = sum5(R, i, 'ds'), dh5 = sum5(R, i, 'dh');
+  const inst5 = fi5 + it5 + ds5 + dh5, dOi = L.oi - p5.oi, ret5 = (L.s / p5.s - 1) * 100;
+  const vol5 = avg(R.slice(-5).map(r => r.vol)), volR = adv ? vol5 / adv : 1, dEx = L.exA5 - (p5.exA5 || 0);
+
+  /* 問題一：主力買盤還是套利買盤 */
+  // 正向套利：每多賣 1 口股期要買 2 張現股避險；反向套利相反
+  const arb5 = L.exA5 > 3 && dOi > 0 ? dOi * SHARES / 1000 : L.exA5 < -3 && dOi > 0 ? -dOi * SHARES / 1000 : 0;
+  const real5 = inst5 - arb5;
+  let a1;
+  if (inst5 > 0 && arb5 > 0 && real5 <= inst5 * 0.5) a1 = ['套利買盤為主', DN, `法人 5 日淨買 ${sgn(inst5)} 張，其中約 ${fmt(Math.min(arb5, inst5))} 張可以用股期新增空單的避險需求解釋（${(Math.min(1, arb5 / inst5) * 100).toFixed(0)}%），扣掉後真正看多的買盤只剩 ${sgn(real5)} 張。這種買盤到結算前後會反向賣出。`];
+  else if (inst5 > 0 && real5 > inst5 * 0.5) a1 = ['真正主力買盤為主', UP, `法人 5 日淨買 ${sgn(inst5)} 張，套利避險最多只能解釋 ${fmt(Math.max(0, arb5))} 張，扣掉後仍有 ${sgn(real5)} 張是單純買現股，屬於方向性的買盤。`];
+  else if (inst5 <= 0 && arb5 > 0) a1 = ['主力在賣，套利在撐', WARN, `法人 5 日淨賣 ${sgn(inst5)} 張；若沒有套利避險買盤（約 ${fmt(arb5)} 張），賣壓會更大。扣掉套利後主力實際賣 ${sgn(real5)} 張。`];
+  else if (inst5 <= 0) a1 = ['主力賣超', DN, `法人 5 日淨賣 ${sgn(inst5)} 張，沒有明顯的套利買盤，屬於方向性賣出。`];
+  else a1 = ['看不出來', NEU, '法人與股期變化都不大。'];
+  const conf1 = [`5 日股價 ${pc(ret5, 1)}、成交量是 20 日均量的 ${volR.toFixed(2)} 倍`, ret5 > 0 && volR > 1.1 ? '價漲量增，真實買盤的特徵較明顯' : ret5 > 0 && volR <= 1.1 ? '價漲但量沒放大，套利買盤（價格穩、量不大）的特徵較明顯' : ret5 <= 0 && volR > 1.1 ? '價跌量增，賣壓在出' : '價跌量縮，觀望'];
+  const items1 = [['外資', fi5], ['投信', it5], ['自營商自行買賣', ds5], ['自營商避險', dh5], ['推估套利買現股', arb5], ['扣除套利後的主力', real5]];
+  $('#qa1').innerHTML = `<h3>① 現在是真正的主力買盤，還是套利買盤？</h3><div class="ans">${badge(a1[0], a1[1])}${a1[2]}</div>` +
+    `<div class="g2"><div><ul><li>${conf1.join('；')}。</li><li>股期未平倉 5 日 ${sgn(dOi)} 口、超額價差（年化）5 日平均 ${pc(L.exA5, 1)}：${L.exA5 > 3 ? '正價差夠大，新增的股期空單大多由買現股的套利盤承接' : L.exA5 < -3 ? '逆價差夠大，新增的股期多單對應借券賣現股的套利盤' : '價差接近合理值，套利空間小，未平倉變化多半是方向性部位'}。</li>` +
+    `<li>推估方法：超額價差夠大時，股期 5 日新增口數 × 每口 2 張＝套利需要買（或賣）的現股張數；法人買超減掉這部分，才是方向性的買盤。外資的套利帳戶也算在外資裡，所以這是上限估計。</li></ul></div>` +
+    `<div><div class="cap">最近 5 個交易日買賣超（張）</div><svg id="svQ1"></svg></div></div>`;
+  { const svg = $('#svQ1'), Wd = Math.max(280, svg.parentElement.clientWidth), lw = 112, H = items1.length * 26 + 8, mx = Math.max(1, ...items1.map(x => Math.abs(x[1]))) * 1.15;
+    svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    const x0 = lw + (Wd - lw - 8) / 2, sc = v => v / mx * (Wd - lw - 8) / 2;
+    el('line', { x1:x0, x2:x0, y1:2, y2:H - 2, stroke:css('--muted') }, svg);
+    items1.forEach(([t, v], k) => { const y = 6 + k * 26, last = k === items1.length - 1, col = k === 4 ? css('--fut') : v >= 0 ? UP : DN;
+      el('text', { x:lw - 6, y:y + 13, 'text-anchor':'end', 'font-size':12, fill:css('--text'), 'font-weight':last ? 700 : 400 }, svg, t);
+      el('rect', { x:Math.min(x0, x0 + sc(v)), y, width:Math.max(1, Math.abs(sc(v))), height:18, rx:2, fill:col, 'fill-opacity':last ? 1 : 0.8 }, svg);
+      const tx = x0 + sc(v) + (v >= 0 ? 4 : -4), inside = Math.abs(sc(v)) > (Wd - lw) / 2 - 50;
+      el('text', { x:inside ? x0 + sc(v) / 2 : tx, y:y + 13, 'text-anchor':inside ? 'middle' : v >= 0 ? 'start' : 'end', 'font-size':11.5, fill:inside ? '#fff' : css('--text') }, svg, sgn(v)); }); }
+
+  /* 問題二：價差擴大是多頭強勢還是過熱 */
+  const hist = R.slice(5).map(r => r.exA5).filter(v => v != null && isFinite(v)), pct = hist.length ? hist.filter(v => v <= L.exA5).length / hist.length * 100 : 50;
+  const okR = R.slice(5).filter(r => r.fwd5 != null && isFinite(r.exA5)), qs = [...okR].map(r => r.exA5).sort((a, b) => a - b);
+  const qcut = [0.2, 0.4, 0.6, 0.8].map(q => qs[Math.floor(q * (qs.length - 1))]);
+  const qOf = v => qcut.filter(c => v > c).length;
+  const Q = [0, 1, 2, 3, 4].map(k => { const xs = okR.filter(r => qOf(r.exA5) === k).map(r => r.fwd5); return { n:xs.length, m:avg(xs), w:xs.length ? xs.filter(v => v > 0).length / xs.length * 100 : 0, lo:k ? qcut[k - 1] : qs[0], hi:k < 4 ? qcut[k] : qs[qs.length - 1] }; });
+  const qNow = qOf(L.exA5), allM = avg(okR.map(r => r.fwd5));
+  const fExp = dEx > 1 ? '擴大' : dEx < -1 ? '收斂' : '持平', fOi = dOi > Math.max(50, p5.oi * 0.03) ? '增加' : dOi < -Math.max(50, p5.oi * 0.03) ? '減少' : '持平';
+  const fVol = volR > 1.15 ? '放量' : volR < 0.85 ? '量縮' : '量平', fIn = inst5 > adv * 0.03 ? '買超' : inst5 < -adv * 0.03 ? '賣超' : '中性', fPx = ret5 > 0.5 ? '上漲' : ret5 < -0.5 ? '下跌' : '持平';
+  let a2;
+  if (Math.abs(L.exA5) < 3 && fExp !== '擴大') a2 = ['價差正常', NEU, '超額價差接近合理值，沒有過熱，也沒有特別強的期貨買盤。'];
+  else if (fExp === '擴大' && fOi === '增加' && fPx === '上漲' && fVol !== '量縮' && fIn === '買超') a2 = ['多頭強勢', UP, '價差擴大的同時，股期未平倉增加、現股價漲量增、法人買超，期貨與現貨一起往上，屬於健康的強勢。'];
+  else if (fExp === '擴大' && fOi === '增加') a2 = ['過熱警訊', WARN, `價差擴大、股期未平倉增加，但${[fVol === '量縮' ? '現股量縮' : '', fIn !== '買超' ? '法人沒有跟著買' : '', fPx !== '上漲' ? '股價沒有同步上漲' : ''].filter(Boolean).join('、') || '現貨力道不足'}：期貨端在追價、現貨沒跟上，容易回檔。`];
+  else if (fExp === '擴大' && fOi === '減少') a2 = ['空單回補（軋空）', UP, '價差擴大但未平倉減少，代表是股期空單回補把價格推高，短線強，但新買盤不多，持續性較弱。'];
+  else if (fExp !== '擴大' && fOi === '增加') a2 = ['上檔有壓', DN, '價差收斂或持平、未平倉卻增加，多半是期貨端新空單或套利盤進場賣股期，上方有壓力。'];
+  else if (fExp === '收斂' && fOi === '減少') a2 = ['降溫', NEU, '價差收斂、未平倉減少，多單或套利部位在了結，熱度下降。'];
+  else a2 = ['中性', NEU, '價差和未平倉沒有一致的方向。'];
+  const hot = pct >= 90 && L.exA5 > 3, qn = Q[qNow];
+  $('#qa2').innerHTML = `<h3>② 目前期現貨價差擴大，是多頭強勢還是過熱警訊？</h3><div class="ans">${badge(a2[0], a2[1])}${a2[2]}${hot ? `<b>另外，價差已在過去一年的前 ${(100 - pct).toFixed(0)}% 高檔，過熱風險偏高。</b>` : ''}</div>` +
+    `<div class="mx"><span>價差 5 日：${fExp}（${sgn(dEx, 1)}%）</span><span>股期未平倉：${fOi}（${sgn(dOi)} 口）</span><span>現股成交量：${fVol}（${volR.toFixed(2)} 倍）</span><span>法人：${fIn}（${sgn(inst5)} 張）</span><span>股價：${fPx}（${pc(ret5, 1)}）</span></div>` +
+    `<div class="g2"><div><ul><li>目前超額價差（5 日平均，年化）${pc(L.exA5, 1)}，在過去約 ${hist.length} 個交易日中排第 ${pct.toFixed(0)} 百分位。</li>` +
+    `<li>歷史統計：超額價差落在「${['最低', '偏低', '中間', '偏高', '最高'][qNow]} 20%」時（現在就在這一組），之後 5 個交易日現股平均 ${pc(qn.m, 2)}、上漲機率 ${qn.w.toFixed(0)}%（${qn.n} 次）；全部日子平均 ${pc(allM, 2)}。` +
+    (Q[4].m < allM - 0.3 ? '價差最高的那一組之後表現明顯較差，這檔股票的高價差偏向「過熱」訊號。' : Q[4].m > allM + 0.3 ? '價差最高的那一組之後表現較好，這檔股票的高價差偏向「強勢延續」。' : '高價差之後的表現和平常差不多，價差本身對方向的預測力不強。') + `</li></ul></div>` +
+    `<div><div class="cap">依超額價差分五組：之後 5 日現股平均報酬（%）</div><svg id="svQ2"></svg></div></div>`;
+  { const svg = $('#svQ2'), Wd = Math.max(280, svg.parentElement.clientWidth), H = 170, m = { l:40, r:8, t:14, b:40 }, iw = Wd - m.l - m.r, ih = H - m.t - m.b;
+    svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    const mx = Math.max(0.5, ...Q.map(q => Math.abs(q.m))) * 1.2, y = v => m.t + (mx - v) / (2 * mx) * ih, bw = iw / 5;
+    for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, t.toFixed(1)); }
+    Q.forEach((q, k) => { const x = m.l + bw * k + bw * 0.18, w = bw * 0.64, on = k === qNow;
+      el('rect', { x, y:Math.min(y(0), y(q.m)), width:w, height:Math.max(1, Math.abs(y(q.m) - y(0))), rx:2, fill:q.m >= 0 ? UP : DN, 'fill-opacity':on ? 1 : 0.45, stroke:on ? css('--text') : 'none', 'stroke-width':1.5 }, svg);
+      el('text', { x:x + w / 2, y:q.m >= 0 ? y(q.m) - 4 : y(q.m) + 12, 'text-anchor':'middle', 'font-size':11, fill:css('--text') }, svg, pc(q.m, 2));
+      el('text', { x:x + w / 2, y:H - 24, 'text-anchor':'middle', 'font-size':11, fill:on ? css('--text') : css('--muted'), 'font-weight':on ? 700 : 400 }, svg, ['最低', '偏低', '中間', '偏高', '最高'][k] + (on ? '（現在）' : ''));
+      el('text', { x:x + w / 2, y:H - 9, 'text-anchor':'middle', 'font-size':10.5, fill:css('--muted') }, svg, `${q.lo.toFixed(0)}～${q.hi.toFixed(0)}%`); }); }
+
+  /* 問題三：結算前是買盤支撐還是賣壓 */
+  const left = dayDiff(L.d, L.exp);
+  let i0 = i; while (i0 > 0 && R[i0 - 1].fc === L.fc) i0--;
+  const build = Math.max(0, L.oi - Math.min(...R.slice(i0).map(r => r.oi))), arbZ = build * SHARES / 1000, days = adv ? arbZ / adv : 0;
+  const roll = L.ex2 != null && (L.exA5 > 0 ? L.ex2 > 3 : L.ex2 < -3);
+  // 過去每次結算：前 5 日與後 3 日的現股表現
+  const evs = [];
+  for (const e of [...new Set(R.map(r => r.exp))].sort()){
+    if (e >= L.d) continue; let iE = -1; for (let j = 0; j < n; j++) if (R[j].d <= e) iE = j; if (iE < 5) continue;
+    const a = R[iE - 5], b = R[iE], c = R[Math.min(n - 1, iE + 3)];
+    evs.push({ e, st:a.st[1], ex:a.exA5, pre:(b.s / a.s - 1) * 100, post:iE + 3 < n ? (c.s / b.s - 1) * 100 : null, dOi:(R[Math.min(n - 1, iE + 1)].oi - a.oi) });
+  }
+  const evP = evs.filter(v => v.ex > 3), evO = evs.filter(v => v.ex <= 3);
+  let a3;
+  if (L.exA5 > 3 && build > 0 && days >= 0.2 && !roll) a3 = ['偏賣壓', DN, `正向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張現股，平均成交量 ${days.toFixed(1)} 天），次月價差${L.ex2 != null ? `只有 ${pc(L.ex2, 1)}（年化）` : '資料不足'}，轉倉不划算，結算（${md(L.exp)}，剩 ${left} 天）前後較可能賣現股了結。`];
+  else if (L.exA5 > 3 && build > 0 && roll) a3 = ['賣壓有限', WARN, `正向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張），但次月超額價差還有 ${pc(L.ex2, 1)}（年化），套利盤較可能「轉倉」到下個月，不一定賣現股；賣壓會比部位數字小。`];
+  else if (L.exA5 < -3 && build > 0) a3 = ['偏買盤支撐', UP, `反向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張），結算前後要買回現股還券${roll ? '；但次月逆價差還在，可能轉倉，回補力道會打折' : ''}。`];
+  else a3 = ['影響不大', NEU, `目前沒有明顯的套利部位（超額價差 ${pc(L.exA5, 1)}），結算（${md(L.exp)}）對現股的影響不大。`];
+  const hs = evP.length ? `過去 ${evs.length} 次結算中，有 ${evP.length} 次在結算前 5 天處於超額正價差：結算前 5 天現股平均 ${pc(avg(evP.map(v => v.pre)), 2)}、上漲 ${evP.filter(v => v.pre > 0).length} 次；其他 ${evO.length} 次平均 ${pc(avg(evO.map(v => v.pre)), 2)}。` : `過去 ${evs.length} 次結算前 5 天現股平均 ${pc(avg(evs.map(v => v.pre)), 2)}。`;
+  $('#qa3').innerHTML = `<h3>③ 期貨結算前，現股比較可能受到買盤支撐，還是賣壓？</h3><div class="ans">${badge(a3[0], a3[1])}${a3[2]}</div>` +
+    `<div class="g2"><div><ul><li>${hs}次數不多，只能當參考。</li><li>次月合約超額價差（年化）${pc(L.ex2, 1)}：${roll ? '還有套利空間，套利盤可以把部位移到下個月，結算日賣壓較小' : '空間不大，套利盤到期多半直接了結'}。</li>` +
+    `<li>看盤重點：結算日收盤前最後 30 分鐘（現股收盤價決定結算價）。結算後隔天看股期未平倉有沒有大降：大降代表套利盤真的出場；沒降代表轉倉。</li></ul></div>` +
+    `<div><div class="cap">過去結算日前後的現股表現</div><div class="tblx"><table><thead><tr><th>結算日</th><th>前 5 天狀態</th><th>超額價差</th><th>前 5 天</th><th>後 3 天</th></tr></thead><tbody>` +
+    evs.slice(-8).reverse().map(v => `<tr><td>${md(v.e)}</td><td>${v.st}</td><td>${pc(v.ex, 1)}</td><td class="${v.pre >= 0 ? 'up' : 'dn'}">${pc(v.pre, 1)}</td><td class="${v.post == null ? '' : v.post >= 0 ? 'up' : 'dn'}">${v.post == null ? '–' : pc(v.post, 1)}</td></tr>`).join('') +
+    `</tbody></table></div></div></div>`;
+  D.qa = { a1:a1[0], a2:a2[0], a3:a3[0], hot, left };
+}
+
 /* ───────── 目前狀況統整與應對策略 ───────── */
 function renderSummary(){
   const R = D.rows, L = R[R.length - 1], g = D.gex, left = dayDiff(L.d, L.exp);
@@ -703,8 +822,11 @@ function renderSummary(){
   if (ma20 && ma60){ if (ma20 > ma60){ sc++; why.push('20 日均線在 60 日之上'); } else { sc--; why.push('20 日均線在 60 日之下'); } }
   if (Math.abs(fi5) > adv * 0.03){ if (fi5 > 0){ sc++; why.push('外資 5 日買超'); } else { sc--; why.push('外資 5 日賣超'); } }
   if (st === '套利平倉'){ if (posArb){ sc--; why.push('正向套利在平倉、賣現股'); } else { sc++; why.push('反向套利在平倉、回補現股'); } }
-  if (left <= 5 && /建倉/.test(st)){ if (posArb){ sc--; why.push('結算週正向套利待平倉'); } else { sc++; why.push('結算週反向套利待回補'); } }
   const fx = FX, Pf = v => fmt(v, L.f < 100 ? 2 : 0);
+  const qa = D.qa || {};
+  if (qa.a2 === '多頭強勢'){ sc++; why.push('價差擴大屬多頭強勢'); } else if (qa.a2 === '過熱警訊' || qa.hot){ sc--; why.push('價差過熱'); }
+  if (qa.a1 === '真正主力買盤為主'){ sc++; why.push('主力真實買盤'); } else if (qa.a1 === '主力賣超' || qa.a1 === '主力在賣，套利在撐'){ sc--; why.push('扣除套利後主力在賣'); }
+  if (qa.a3 === '偏賣壓' && qa.left <= 7){ sc--; why.push('結算前偏賣壓'); } else if (qa.a3 === '偏買盤支撐' && qa.left <= 7){ sc++; why.push('結算前有回補支撐'); }
   if (fx && fx.bal){ if (L.f >= fx.bal){ sc++; why.push('股期在多空平衡點之上（空單被套較多）'); } else { sc--; why.push('股期在多空平衡點之下（多單被套較多）'); } }
   if (fx && fx.sw && (fx.sw / L.f - 1) * 100 < 1.5){ sc -= 0.5; why.push('貼近空方成本牆壓力'); }
   if (fx && fx.lw && (1 - fx.lw / L.f) * 100 < 1.5){ sc += 0.5; why.push('貼近多方成本牆支撐'); }
@@ -758,7 +880,7 @@ $('#goBtn').onclick = load;
 $('#zIn').onclick = () => zoomBy(ZG, 1 / 1.4); $('#zOut').onclick = () => zoomBy(ZG, 1.4); $('#zReset').onclick = () => { ZG.z = null; drawGexCharts(); };
 $('#fzIn').onclick = () => zoomBy(ZF, 1 / 1.4); $('#fzOut').onclick = () => zoomBy(ZF, 1.4); $('#fzReset').onclick = () => { ZF.z = null; drawFutCharts(); };
 $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); drawFutCharts(); drawGexCharts(); } }, 200); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); renderQA(); drawFutCharts(); drawGexCharts(); } }, 200); });
 { const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
 </script>
 </body>
