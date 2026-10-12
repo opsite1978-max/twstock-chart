@@ -1,0 +1,52 @@
+name: 即時資料格式檢查（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 抓樣本
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir out && cat > p.py <<'PY'
+          import json, os, urllib.request, urllib.parse, datetime
+          tok = os.environ['FINMIND_TOKEN']
+          out = [{'now': datetime.datetime.utcnow().isoformat()}]
+          for path, q in [('data', {'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanStockKBar', 'data_id': '2330', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanFuturesTick', 'data_id': 'TX', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanStockPriceTick', 'data_id': '2330', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanFuturesKBar', 'data_id': 'CDF', 'start_date': '2026-10-12'}),
+                          ('data', {'dataset': 'TaiwanFuturesDaily', 'data_id': 'CDF', 'start_date': '2026-10-08'}),
+                          ('taiwan_futures_snapshot', {'data_id': 'CDF'}),
+                          ('data', {'dataset': 'TaiwanFutOptDailyInfo', 'start_date': '2026-10-08'})]:
+              q2 = dict(q, token=tok)
+              try:
+                  j = json.loads(urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q2), timeout=120).read())
+              except Exception as e:
+                  body = ''
+                  if hasattr(e, 'read'):
+                      try: body = e.read().decode()[:200]
+                      except Exception: pass
+                  out.append({'path': path, 'q': q, 'err': str(e)[:150], 'body': body}); continue
+              rows = j.get('data') or []
+              info = {'path': path, 'q': q, 'n': len(rows), 'keys': list(rows[0].keys()) if rows else None, 'first': rows[:2], 'last': rows[-2:]}
+              if rows and 'minute' in rows[0]:
+                  info['min_max'] = [min(r['minute'] for r in rows), max(r['minute'] for r in rows)]
+                  info['dates'] = sorted(set(r['date'] for r in rows))
+              if rows and 'futures_id' in rows[0] and path != 'data':
+                  info['ids'] = sorted(set(r['futures_id'] for r in rows))[:20]
+              if q.get('dataset') == 'TaiwanFutOptDailyInfo':
+                  info['codes'] = [(r.get('code'), r.get('name'), r.get('type')) for r in rows][:400]
+              out.append(info)
+          open('out/rt.json', 'w').write(json.dumps(out, ensure_ascii=False, indent=1, default=str).replace(tok, '***'))
+          PY
+          python3 p.py
+      - name: 存結果
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
