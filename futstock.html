@@ -82,6 +82,14 @@
   .seg button+button{border-left:1px solid var(--line)}
   @media (max-width:560px){ .zhint{flex-basis:100%} }
   td.up{color:var(--up)} td.dn{color:var(--down)}
+  .sig{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+  .sig h2{margin-top:0}
+  .sigg{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.85fr);gap:16px;align-items:start}
+  @media (max-width:900px){ .sigg{grid-template-columns:minmax(0,1fr)} }
+  .sig .cap{font-size:12px;color:var(--muted);margin:0 0 4px}
+  .chk{display:grid;grid-template-columns:22px auto;gap:2px 6px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.55}
+  .chk:last-child{border-bottom:0} .chk i{font-style:normal;font-weight:700;text-align:center} .chk .d{grid-column:2;color:var(--muted);font-size:12.5px}
+  .adv{font-size:14px;line-height:1.8} .adv b{color:var(--text)} .adv ol{margin:4px 0 4px 20px;padding:0}
   .qa{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px}
   .qa h3{margin:0 0 8px;font-size:15px;font-weight:700}
   .qa .ans{margin-bottom:6px;font-size:14px;line-height:1.7}
@@ -105,6 +113,14 @@
 <main>
   <div id="status" class="msg">輸入有個股期貨的股票代號（例如 2330 台積電、2317 鴻海、2454 聯發科），分析現股與股期的價差、未平倉、自營商避險與借券賣出，判斷有沒有大戶在做套利，並畫出個股選擇權的 Gamma。</div>
   <div id="app" hidden>
+    <section class="sig" id="sig">
+      <h2>進場燈號<span class="muted" id="sigSub"></span></h2>
+      <div class="sigg">
+        <div class="sigL"><svg id="svGauge" role="img" aria-label="進場燈號儀表"></svg><div id="sigAdv"></div></div>
+        <div><div class="cap">六項條件</div><div id="sigChk"></div></div>
+        <div><div class="cap">價位圖（股期價）</div><svg id="svLadder" role="img" aria-label="進場、停損、目標價位圖"></svg></div>
+      </div>
+    </section>
     <div class="cards" id="cards"></div>
     <div class="verdict" id="verdict"></div>
 
@@ -806,7 +822,88 @@ function renderQA(){
     `<div><div class="cap">過去結算日前後的現股表現</div><div class="tblx"><table><thead><tr><th>結算日</th><th>前 5 天狀態</th><th>部位／均量</th><th>前 5 天</th><th>後 3 天</th></tr></thead><tbody>` +
     evs.slice(-8).reverse().map(v => `<tr><td>${md(v.e)}</td><td>${v.st}</td><td>${v.size.toFixed(2)} 天</td><td class="${v.pre >= 0 ? 'up' : 'dn'}">${pc(v.pre, 1)}</td><td class="${v.post == null ? '' : v.post >= 0 ? 'up' : 'dn'}">${v.post == null ? '–' : pc(v.post, 1)}</td></tr>`).join('') +
     `</tbody></table></div></div></div>`;
-  D.qa = { a1:a1[0], a2:a2[0], a3:a3[0], hot, left };
+  D.qa = { a1:a1[0], a2:a2[0], a3:a3[0], hot, left, big:days >= medS && L.exA5 > 0, preBig:evP.length ? avg(evP.map(v => v.pre)) : null, postBig:evP.length ? postAvg(evP) : null, nBig:evP.length };
+}
+
+/* ───────── 進場燈號：六項條件 → 可進場／觀望／避開，加上進場、停損、目標價位 ───────── */
+function renderSignal(){
+  const R = D.rows, L = R[R.length - 1], qa = D.qa || {}, fx = FX, sx = D.sumx; if (!sx) return;
+  const P = L.f, nd = P < 100 ? 2 : 0, Pf = v => fmt(v, nd), tick = P < 10 ? 0.01 : P < 50 ? 0.05 : P < 100 ? 0.1 : P < 500 ? 0.5 : P < 1000 ? 1 : 5;
+  const rd = (v, dir) => (dir > 0 ? Math.ceil(v / tick) : dir < 0 ? Math.floor(v / tick) : Math.round(v / tick)) * tick;
+  const em = sx.em * P / L.s;
+  // 價位：支撐＝多方成本牆（沒有就用 20 日低點），壓力＝空方成本牆／平衡點（取現價上方最近的）
+  const sup = fx && fx.lw && fx.lw < P ? fx.lw : Math.min(sx.lo20 * P / L.s, P * 0.97);
+  const ups = [fx && fx.sw, fx && fx.bal, sx.hi20 * P / L.s].filter(v => v && v > P * 1.003).sort((a, b) => a - b);
+  const T1 = ups[0] || P + em, T2 = Math.max(P + em, ups[1] || 0, T1 * 1.01);
+  const stop = rd(sup * 0.99, -1);
+  const near = (P - sup) / P * 100;
+  const zLo = rd(sup, 1), zHi = rd(near <= 2 ? P : sup + (P - sup) * 0.35, -1);
+  const rrNow = (T1 - P) / Math.max(tick, P - stop), rrZone = (T1 - (zLo + zHi) / 2) / Math.max(tick, (zLo + zHi) / 2 - stop);
+  // 六項條件：1 符合、0 中性、-1 不符合
+  const C = [];
+  const tr = sx.ma20 && sx.ma60 ? (L.s > sx.ma20 && sx.ma20 > sx.ma60 ? 1 : L.s < sx.ma20 && sx.ma20 < sx.ma60 ? -1 : 0) : 0;
+  C.push(['趨勢', tr, tr > 0 ? '多頭排列：現股在 20 日均線上、20 日在 60 日上' : tr < 0 ? '空頭排列：現股在 20 日均線下、20 日在 60 日下' : '均線糾結，方向不明']);
+  const m = qa.a1 === '真正主力買盤為主' ? 1 : qa.a1 === '主力賣超' || qa.a1 === '主力在賣，套利在撐' ? -1 : 0;
+  C.push(['主力買盤', m, m > 0 ? '扣除套利後，法人仍是方向性買超' : m < 0 ? '扣除套利後，主力在賣（' + qa.a1 + '）' : '主力方向不明顯（' + (qa.a1 || '–') + '）']);
+  const b = ['多頭強勢', '價差正常', '空單回補（軋空）'].includes(qa.a2) && !qa.hot ? 1 : qa.a2 === '過熱警訊' || qa.a2 === '上檔有壓' || qa.hot ? -1 : 0;
+  C.push(['價差', b, (qa.a2 || '–') + (qa.hot ? '，且在歷史高檔' : '') + (b > 0 ? '：沒有過熱' : b < 0 ? '：追價風險高' : '：期貨與現貨方向不一致')]);
+  const c = fx && fx.bal ? (P >= fx.bal ? 1 : -1) : 0;
+  C.push(['股期籌碼', c, fx && fx.bal ? (c > 0 ? `股期在多空平衡點 ${fmt(fx.bal, nd ? 2 : 1)} 之上，空單被套較多` : `股期在多空平衡點 ${fmt(fx.bal, nd ? 2 : 1)} 之下，多單被套較多，上方有解套賣壓`) : '沒有明確的多空平衡點']);
+  const st = qa.a3 === '偏賣壓' && qa.left <= 7 ? -1 : qa.a3 === '賣壓有限' || (qa.a3 === '偏賣壓' && qa.left > 7) ? 0 : 1;
+  C.push(['結算時機', st, `距結算 ${qa.left} 天，${qa.a3 || '–'}` + (st < 0 ? '：結算前容易有賣壓' : st === 0 ? '：要留意結算前後的賣壓' : '')]);
+  const pz = rrNow >= 1.5 ? 1 : rrNow >= 1 ? 0 : -1;
+  C.push(['價位風險報酬', pz, `現價買進：目標 ${Pf(T1)}（${pc((T1 / P - 1) * 100, 1)}）、停損 ${Pf(stop)}（${pc((stop / P - 1) * 100, 1)}），報酬風險比 ${rrNow.toFixed(1)}` + (pz < 0 ? '，不划算' : '')]);
+  const score = C.reduce((t, x) => t + x[1], 0);
+  const crit = C[4][1] < 0 || C[5][1] < 0;
+  const sig = score >= 3 && !crit ? 'go' : score <= -2 ? 'avoid' : 'wait';
+  const LBL = { go:['可進場', css('--up')], wait:['觀望', css('--fut')], avoid:['避開', css('--down')] }[sig];
+  $('#sigSub').textContent = `${md(L.d)} 收盤・${D.id} ${D.name}・分數 ${score > 0 ? '+' : ''}${score}／6`;
+  // 儀表
+  { const svg = $('#svGauge'), W = 300, H = 178, cx = W / 2, cy = 150, r = 112, sw = 22; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.maxWidth = '340px'; svg.innerHTML = '';
+    const pt = (a, rr) => [cx + rr * Math.cos(a), cy - rr * Math.sin(a)];
+    const arc = (a0, a1, col) => { const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r); el('path', { d:`M${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1}`, fill:'none', stroke:col, 'stroke-width':sw, 'stroke-opacity':0.9 }, svg); };
+    const A = v => Math.PI * (1 - (v + 6) / 12);                       // 分數 −6 → 左、+6 → 右
+    arc(A(-6), A(-2) + 0.012, css('--down')); arc(A(-2) - 0.012, A(3) + 0.012, css('--fut')); arc(A(3) - 0.012, A(6), css('--up'));
+    [['避開', -4.3], ['觀望', 0.5], ['可進場', 4.6]].forEach(([t, v]) => { const [x, y] = pt(A(v), r + 26); el('text', { x, y:y + 4, 'text-anchor':'middle', 'font-size':12, fill:css('--muted') }, svg, t); });
+    const a = A(Math.max(-6, Math.min(6, score))), [nx, ny] = pt(a, r - 18);
+    el('line', { x1:cx, y1:cy, x2:nx, y2:ny, stroke:css('--text'), 'stroke-width':4, 'stroke-linecap':'round' }, svg);
+    el('circle', { cx, cy, r:8, fill:css('--text') }, svg);
+    el('text', { x:cx, y:cy - 34, 'text-anchor':'middle', 'font-size':26, 'font-weight':800, fill:LBL[1] }, svg, LBL[0]);
+    el('text', { x:cx, y:cy - 14, 'text-anchor':'middle', 'font-size':12, fill:css('--muted') }, svg, `分數 ${score > 0 ? '+' : ''}${score}（−6～+6）`); }
+  // 六項條件
+  const ic = v => v > 0 ? ['●', css('--up'), '符合'] : v < 0 ? ['✕', css('--down'), '不符合'] : ['◐', css('--muted'), '中性'];
+  $('#sigChk').innerHTML = C.map(([t, v, d]) => { const k = ic(v); return `<div class="chk"><i style="color:${k[1]}">${k[0]}</i><span><b>${t}</b>　<span style="color:${k[1]}">${k[2]}</span></span><span class="d">${esc(d)}</span></div>`; }).join('');
+  // 進場建議
+  const fails = C.filter(x => x[1] < 0).map(x => x[0]);
+  const timing = qa.big && qa.postBig != null && qa.preBig != null && qa.postBig > qa.preBig ? `過去套利部位較大的 ${qa.nBig} 次結算，結算前 5 天現股平均 ${pc(qa.preBig, 1)}、結算後 3 天平均 ${pc(qa.postBig, 1)}；這次部位也偏大，進場時間可以考慮放在結算日（${md(L.exp)}）收盤前後。` : '';
+  let adv;
+  if (sig === 'go') adv = `<b>可以分批進場（偏多）</b><ol><li>第一筆 1/3：${near <= 2 ? `現價 ${Pf(P)} 附近` : `拉回 ${Pf(zHi)} 附近`}。</li><li>第二筆 1/3：拉回多方成本牆 ${Pf(zLo)}～${Pf(zHi)}。</li><li>第三筆 1/3：收盤突破 ${Pf(T1)} 且隔天守住再加。</li></ol>停損：收盤跌破 <b>${Pf(stop)}</b>（多方成本牆再往下 1%）。目標：<b>${Pf(T1)}</b>，突破後看 <b>${Pf(T2)}</b>。` + (timing ? `<br>${timing}` : '');
+  else if (sig === 'wait') adv = `<b>先觀望</b>，目前不符合：${fails.join('、') || '條件不夠一致'}。等下面任一個情況出現再進場：<ol>` +
+    `<li><b>拉回買</b>：股期拉回 ${Pf(zLo)}～${Pf(zHi)}（多方成本牆）不破，買 1/3，停損 ${Pf(stop)}，報酬風險比約 ${rrZone.toFixed(1)}。</li>` +
+    (fx && fx.bal && P < fx.bal ? `<li><b>突破買</b>：收盤站上多空平衡點 ${fmt(fx.bal, nd ? 2 : 1)}，空單轉為被套，再順勢跟進。</li>` : '') +
+    (qa.a1 !== '真正主力買盤為主' ? `<li><b>籌碼轉強</b>：扣除套利後主力轉為買超（看第 ① 題）。</li>` : '') +
+    (C[4][1] < 0 || timing ? `<li><b>等結算</b>：${md(L.exp)} 結算後賣壓消化，且股期未平倉沒有再增加。</li>` : '') + `</ol>` + (timing ? timing : '');
+  else adv = `<b>避開，不要買</b>。不符合：${fails.join('、')}。手上有持股，反彈到 <b>${Pf(T1)}</b> 附近可以減碼；收盤跌破 <b>${Pf(stop)}</b> 要停損。<br>轉強條件：` + (fx && fx.bal ? `收盤站回多空平衡點 ${fmt(fx.bal, nd ? 2 : 1)}，` : '') + `且扣除套利後主力轉為買超，再重新評估。`;
+  $('#sigAdv').innerHTML = `<div class="adv">${adv}</div><div class="muted" style="font-size:11.5px;margin-top:6px">價位用股期價（現股 ${fmt(L.s, L.s < 100 ? 2 : 0)}，價差 ${sgn(L.f - L.s, L.s < 100 ? 2 : 1)} 元）。依收盤資料自動判斷，只是參考，不是投資建議。</div>`;
+  // 價位圖
+  { const svg = $('#svLadder'), W = Math.max(240, svg.parentElement.clientWidth), H = 300, m = { t:12, b:12, l:8, r:8 };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    const lv = [[T2, '目標二', css('--up')], [T1, '目標一', css('--up')], fx && fx.bal ? [fx.bal, '多空平衡點', css('--oi')] : null, [P, '股期現價', css('--text')], [zHi, '進場區上緣', css('--fut')], [zLo, '進場區下緣', css('--fut')], [stop, '停損', css('--down')]].filter(Boolean);
+    const vs = lv.map(x => x[0]), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.06 || 1;
+    const y = v => m.t + (hi + pad - v) / (hi - lo + 2 * pad) * (H - m.t - m.b), ax = 70;
+    el('line', { x1:ax, x2:ax, y1:m.t, y2:H - m.b, stroke:css('--line'), 'stroke-width':2 }, svg);
+    el('rect', { x:ax - 10, y:y(zHi), width:20, height:Math.max(2, y(zLo) - y(zHi)), fill:css('--fut'), 'fill-opacity':0.35 }, svg);
+    el('rect', { x:ax - 6, y:y(T1), width:12, height:Math.max(2, y(P) - y(T1)), fill:css('--up'), 'fill-opacity':0.25 }, svg);
+    el('rect', { x:ax - 6, y:y(P), width:12, height:Math.max(2, y(stop) - y(P)), fill:css('--down'), 'fill-opacity':0.25 }, svg);
+    // 標籤避免重疊：依價位由高到低排，最小間距 18
+    const sorted = lv.map(x => ({ v:x[0], t:x[1], c:x[2], y:y(x[0]) })).sort((a, b) => a.y - b.y);
+    for (let k = 1; k < sorted.length; k++) if (sorted[k].y - sorted[k - 1].y < 18) sorted[k].y = sorted[k - 1].y + 18;
+    const over = sorted.length ? sorted[sorted.length - 1].y - (H - m.b - 4) : 0; if (over > 0) for (let k = sorted.length - 1; k >= 0; k--){ sorted[k].y -= over; if (k && sorted[k].y - sorted[k - 1].y < 18) sorted[k - 1].y = sorted[k].y - 18; }
+    for (const o of sorted){ const yy = y(o.v), isP = o.t === '股期現價';
+      el('line', { x1:ax - 14, x2:ax + 14, y1:yy, y2:yy, stroke:o.c, 'stroke-width':isP ? 3 : 2, 'stroke-dasharray':isP ? null : o.t === '多空平衡點' ? '5 3' : null }, svg);
+      el('path', { d:`M${ax + 14},${yy} L${ax + 26},${o.y}`, stroke:css('--muted'), 'stroke-width':1, fill:'none' }, svg);
+      el('text', { x:ax - 18, y:yy + 4, 'text-anchor':'end', 'font-size':11.5, fill:o.c, 'font-weight':isP ? 700 : 500 }, svg, fmt(o.v, nd));
+      el('text', { x:ax + 30, y:o.y + 4, 'font-size':12.5, fill:css('--text'), 'font-weight':isP ? 700 : 400 }, svg, `${o.t}${isP ? '' : '　' + pc((o.v / P - 1) * 100, 1)}`); } }
 }
 
 /* ───────── 目前狀況統整與應對策略 ───────── */
@@ -861,6 +958,7 @@ function renderSummary(){
     : !fx.bal ? `多方成本牆 ${Pf(fx.lw)}、空方成本牆 ${Pf(fx.sw)}，目前沒有明確的多空平衡點，以兩道牆當區間上下緣。`
     : L.f >= fx.bal ? `股期 ${Pf(L.f)} 在多空平衡點 ${fmt(fx.bal, L.f < 100 ? 2 : 1)} 之上，空單被套較多。守住平衡點偏多看待：拉回多方成本牆 ${Pf(fx.lw)} 附近是較好的買點；往空方成本牆 ${Pf(fx.sw)} 上去時，空單回補可能加速，突破後可以續抱。收盤跌破平衡點就轉為保守。`
     : `股期 ${Pf(L.f)} 在多空平衡點 ${fmt(fx.bal, L.f < 100 ? 2 : 1)} 之下，多單被套較多。反彈到平衡點～空方成本牆 ${Pf(fx.sw)} 之間容易遇到解套賣壓，不追；跌破多方成本牆 ${Pf(fx.lw)} 可能引發多殺多。收盤站回平衡點才轉多。`;
+  D.sumx = { ma20, ma60, em, lo20, hi20, vol, adv };
   const stopL = Math.min(S1[1], L.s - em * 0.5) * 0.99, stopS = Math.max(R1[1], L.s + em * 0.5) * 1.01;
   const plan = bias[1] === '偏多' ? `偏多操作：拉回 ${P(S1[1])} 附近承接，目標 ${P(R1[1])}，收盤跌破 ${P(stopL)} 停損。`
     : bias[1] === '偏空' ? `偏空操作：反彈到 ${P(R1[1])} 附近不追、可減碼或避險（例如賣股期），目標 ${P(S1[1])}，收盤站上 ${P(stopS)} 停損。`
@@ -877,6 +975,7 @@ function renderSummary(){
     `<div class="row"><b>股期籌碼</b>　${how}</div>` +
     `<div class="row"><b>套利與結算</b>　${arb}</div>` +
     `<div class="row muted" style="font-size:12px">以上由公開數字自動整理，只是參考，不是投資建議；停損價＝支撐再往下 1%，請依自己的資金和風險調整。</div>`;
+  renderSignal();
 }
 
 /* ───────── 啟動 ───────── */
@@ -885,7 +984,7 @@ $('#goBtn').onclick = load;
 $('#zIn').onclick = () => zoomBy(ZG, 1 / 1.4); $('#zOut').onclick = () => zoomBy(ZG, 1.4); $('#zReset').onclick = () => { ZG.z = null; drawGexCharts(); };
 $('#fzIn').onclick = () => zoomBy(ZF, 1 / 1.4); $('#fzOut').onclick = () => zoomBy(ZF, 1.4); $('#fzReset').onclick = () => { ZF.z = null; drawFutCharts(); };
 $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); renderQA(); drawFutCharts(); drawGexCharts(); } }, 200); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); renderQA(); drawFutCharts(); drawGexCharts(); renderSignal(); } }, 200); });
 { const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
 </script>
 </body>
