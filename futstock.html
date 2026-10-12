@@ -130,7 +130,15 @@
     </section>
 
     <section>
-      <h2>個股選擇權 Gamma 曝險<span class="muted" id="gexSub"></span></h2>
+      <h2>股期籌碼價位圖<span class="muted" id="fpSub"></span></h2>
+      <div class="zbar" id="fzBar" hidden>縮放 <span class="seg"><button id="fzIn" title="放大">＋</button><button id="fzOut" title="縮小">－</button><button id="fzReset">重設</button></span><span class="muted" id="fzInfo"></span><span class="muted small zhint">雙指開合或 Ctrl＋滾輪縮放，左右拖曳移動，點兩下重設</span></div>
+      <div class="panel"><div class="legend" id="lgF"></div><svg id="svF"></svg><div class="tip" id="tipF"></div></div>
+      <div class="panel"><div class="legend" id="lgF2"></div><svg id="svF2"></svg><div class="tip" id="tipF2"></div></div>
+      <p class="note" id="fpNote"></p>
+    </section>
+
+    <section>
+      <h2>個股選擇權 Gamma（參考）<span class="muted" id="gexSub"></span></h2>
       <div class="zbar" id="zBar" hidden>縮放 <span class="seg"><button id="zIn" title="放大">＋</button><button id="zOut" title="縮小">－</button><button id="zReset">重設</button></span><span class="muted" id="zInfo"></span><span class="muted small zhint">雙指開合或 Ctrl＋滾輪縮放，左右拖曳移動，點兩下重設</span></div>
       <div class="panel"><div class="legend" id="lgG"></div><svg id="svG"></svg><div class="tip" id="tipG"></div></div>
       <div class="panel"><div class="legend" id="lgC"></div><svg id="svC"></svg><div class="tip" id="tipC"></div></div>
@@ -231,8 +239,8 @@ async function load(){
     for (const r of fu){
       if (r.trading_session !== 'position') continue;
       const cd = String(r.contract_date).trim(); if (!/^\d{6}$/.test(cd)) continue;
-      let e = fd.get(r.date); if (!e){ e = { oi:0, list:[] }; fd.set(r.date, e); }
-      e.oi += +r.open_interest || 0; e.list.push(r);
+      let e = fd.get(r.date); if (!e){ e = { oi:0, vol:0, list:[] }; fd.set(r.date, e); }
+      e.oi += +r.open_interest || 0; e.vol += +r.volume || 0; e.list.push(r);
     }
     const ins = new Map();
     for (const r of inst){ let e = ins.get(r.date); if (!e){ e = {}; ins.set(r.date, e); } e[r.name] = ((+r.buy || 0) - (+r.sell || 0)) / 1000; }
@@ -248,7 +256,7 @@ async function load(){
       const fair = s.close * RATE * T - dv;
       const basis = near.close - s.close;
       const e = ins.get(d) || {};
-      rows.push({ d, s:s.close, f:+near.close, fc:String(near.contract_date).trim(), exp, T, basis, fair, ex:basis - fair,
+      rows.push({ d, s:s.close, f:+near.close, fo:+near.open || +near.close, fh:+near.max || +near.close, fl:+near.min || +near.close, fv:f.vol, fc:String(near.contract_date).trim(), exp, T, basis, fair, ex:basis - fair,
                   exAnn:(basis - fair) / s.close / T * 100, bp:basis / s.close * 100, fp:fair / s.close * 100,
                   oi:f.oi, vol:(+s.Trading_Volume || 0) / 1000, dh:e.Dealer_Hedging ?? null, ds:e.Dealer_self ?? null, fi:e.Foreign_Investor ?? null, sbl:sb.has(d) ? sb.get(d) : null, dv });
     }
@@ -269,7 +277,7 @@ async function load(){
       else if (exA < -3) r.st = ['neg', '超額逆價差', '有反向套利空間，但未平倉或借券還沒跟上'];
       else r.st = ['', '無明顯套利', '價差接近合理值'];
     }
-    D = { id, name:NAMES.get(id), c, rows, divs, gex:null }; GX = null; GZ = null; $('#zBar').hidden = true;
+    D = { id, name:NAMES.get(id), c, rows, divs, gex:null }; GX = null; ZG.z = null; FX = null; $('#zBar').hidden = true;
     setStatus(''); $('#app').hidden = false;
     render();
     loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; D.gex = { none:'個股選擇權讀取失敗' }; renderSummary(); });
@@ -295,7 +303,7 @@ function render(){
   $('#verdict').innerHTML = `<span class="badge" style="border-color:${col}">${L.st[1]}</span>${esc(L.st[2])}。` +
     `股期未平倉約等於 ${fmt(L.oi * SHARES / 1000)} 張現股，是近 20 日平均成交量的 ${(L.oi * SHARES / 1000 / avg(R.slice(-20).map(r => r.vol))).toFixed(1)} 倍；` +
     `距結算 ${left} 天，結算當天（${md(L.exp)}）收盤前是套利部位集中了結的時間。`;
-  drawCharts(); drawTable(); drawFlow(); renderSummary();
+  drawCharts(); drawTable(); drawFlow(); renderFut(); renderSummary();
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0;
 
@@ -452,7 +460,7 @@ async function loadGex(){
   D.gex = { S, cw:cw.K, pw:pw.K, pain, flip, gNow, ivAtm, oiTot };
   $('#zBar').hidden = false;
   GX = { G, gexAt, S, cw:cw.K, pw:pw.K, pain, flip, flips, lo, hi };
-  GZ = null;
+  ZG.z = null;
   drawGexCharts();
   $('#gexNote').textContent = `看漲牆 ${fmt(cw.K)}（現價上方買權 Gamma 最大）、看跌牆 ${fmt(pw.K)}（現價下方賣權 Gamma 最大）、最大痛點 ${fmt(pain)}。` +
     `曲線是「假設股價移到那個價位時」全部未平倉的 Gamma 曝險合計：曲線在零以上，造市商避險會逆勢操作（漲了賣、跌了買），股價較容易在牆之間震盪；跌到零以下，避險變成順勢（跌了再賣），波動容易放大。` +
@@ -462,7 +470,7 @@ async function loadGex(){
 }
 
 /* ───────── Gamma 兩張圖（可縮放） ───────── */
-let GX = null, GZ = null;                                             // GZ：目前顯示的價格範圍
+let GX = null;
 function gexMarks(lo, hi){
   const P = v => fmt(v, v < 100 ? 2 : 0);
   return [[GX.cw, '看漲牆 ' + P(GX.cw), css('--call'), null], [GX.pw, '看跌牆 ' + P(GX.pw), css('--put'), null], [GX.S, '現價 ' + P(GX.S), css('--text'), '5 3'],
@@ -471,7 +479,7 @@ function gexMarks(lo, hi){
 }
 function drawGexCharts(){
   if (!GX) return;
-  const lo = GZ ? GZ.lo : GX.lo, hi = GZ ? GZ.hi : GX.hi, S = GX.S, marks = gexMarks(lo, hi);
+  const { lo, hi } = zr(ZG), S = GX.S, marks = gexMarks(lo, hi);
   const setup = (svg, Hb) => { const Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520, m = { l:narrow ? 52 : 64, r:10, t:0, b:24 };
     const iw = Wd - m.l - m.r, x = p => m.l + (p - lo) / (hi - lo) * iw, lay = layoutMarks(marks, x, m, Wd);
     m.t = 12 + lay.rows * 20 + 6; const H = Hb + m.t, ih = H - m.t - m.b;
@@ -481,7 +489,7 @@ function drawGexCharts(){
     return { Wd, narrow, m, iw, ih, H, x, lay }; };
   const xTicks = (svg, f) => { for (const t of ticks(lo, hi, f.narrow ? 4 : 7)) el('text', { x:f.x(t), y:f.H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t, hi - lo < 10 ? 1 : 0)); };
   const yGrid = (svg, f, y, mx) => { for (const t of ticks(-mx, mx, 4)){ el('line', { x1:f.m.l, x2:f.Wd - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); } };
-  const zoomTxt = GZ ? `（已放大：${fmt(lo)}～${fmt(hi)}）` : '';
+  const zoomTxt = ZG.z ? `（已放大：${fmt(lo)}～${fmt(hi)}）` : '';
   // 圖一：各履約價 Gamma 曝險
   { const svg = $('#svG'), f = setup(svg, narrow0() ? 230 : 220);
     const vis = GX.G.filter(a => a.K >= lo && a.K <= hi);
@@ -524,40 +532,146 @@ function drawGexCharts(){
   $('#zInfo').textContent = zoomTxt;
 }
 const narrow0 = () => ($('#svG').parentElement.clientWidth - 12) < 520;
-// 縮放：兩張圖共用同一個價格範圍
-function setZoom(lo, hi){
-  if (!GX) return;
-  const full = GX.hi - GX.lo, minW = Math.max(GX.S * 0.01, full * 0.03);
+// 縮放：同一區的兩張圖共用同一個價格範圍；ZG＝選擇權 Gamma、ZF＝股期籌碼
+const ZG = { z:null, full:() => GX && [GX.lo, GX.hi], S:() => GX && GX.S, draw:() => drawGexCharts() };
+const ZF = { z:null, full:() => FX && [FX.lo, FX.hi], S:() => FX && FX.P, draw:() => drawFutCharts() };
+const zr = Z => { const f = Z.full(); return Z.z || { lo:f[0], hi:f[1] }; };
+function setZoom(Z, lo, hi){
+  const f = Z.full(); if (!f) return;
+  const full = f[1] - f[0], minW = Math.max(Z.S() * 0.01, full * 0.03);
   let w = Math.min(full, Math.max(minW, hi - lo)), c = (lo + hi) / 2;
-  c = Math.min(GX.hi - w / 2, Math.max(GX.lo + w / 2, c));
-  GZ = w >= full - 1e-9 ? null : { lo:c - w / 2, hi:c + w / 2 };
-  drawGexCharts();
+  c = Math.min(f[1] - w / 2, Math.max(f[0] + w / 2, c));
+  Z.z = w >= full - 1e-9 ? null : { lo:c - w / 2, hi:c + w / 2 };
+  Z.draw();
 }
-const curLo = () => GZ ? GZ.lo : GX.lo, curHi = () => GZ ? GZ.hi : GX.hi;
-function zoomBy(k, at){ if (!GX) return; const lo = curLo(), hi = curHi(), c = at == null ? (GX.S >= lo && GX.S <= hi ? GX.S : (lo + hi) / 2) : at; setZoom(c - (c - lo) * k, c + (hi - c) * k); }
-function bindZoom(svg){
+function zoomBy(Z, k, at){ if (!Z.full()) return; const { lo, hi } = zr(Z), S = Z.S(), c = at == null ? (S >= lo && S <= hi ? S : (lo + hi) / 2) : at; setZoom(Z, c - (c - lo) * k, c + (hi - c) * k); }
+function bindZoom(svg, Z){
   const pts = new Map(); let g0 = null;
-  const priceAt = cx => { const f = svg._f; if (!f) return null; const r = svg.getBoundingClientRect(), px = (cx - r.left) * f.W / r.width; return curLo() + (px - f.m.l) / f.iw * (curHi() - curLo()); };
+  const priceAt = cx => { const f = svg._f; if (!f) return null; const r = svg.getBoundingClientRect(), px = (cx - r.left) * f.W / r.width, { lo, hi } = zr(Z); return lo + (px - f.m.l) / f.iw * (hi - lo); };
   svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); g0 = null; });
   const end = e => { pts.delete(e.pointerId); g0 = null; };
   svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end); svg.addEventListener('pointerleave', end);
   svg.addEventListener('pointermove', e => {
-    if (!pts.has(e.pointerId) || !GX || !svg._f) return;
+    if (!pts.has(e.pointerId) || !Z.full() || !svg._f) return;
     pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
     const a = [...pts.values()];
-    if (!g0) g0 = { lo:curLo(), hi:curHi(), a:a.map(p => ({ ...p })), n:a.length };
+    if (!g0){ const { lo, hi } = zr(Z); g0 = { lo, hi, a:a.map(p => ({ ...p })), n:a.length }; }
     if (a.length >= 2 && g0.n >= 2){                                  // 雙指縮放
       const d0 = Math.abs(g0.a[0].x - g0.a[1].x) || 1, d1 = Math.abs(a[0].x - a[1].x) || 1;
       const r = svg.getBoundingClientRect(), f = svg._f, mid = g0.lo + (((g0.a[0].x + g0.a[1].x) / 2 - r.left) * f.W / r.width - f.m.l) / f.iw * (g0.hi - g0.lo), k = d0 / d1;
-      setZoom(mid - (mid - g0.lo) * k, mid + (g0.hi - mid) * k);
+      setZoom(Z, mid - (mid - g0.lo) * k, mid + (g0.hi - mid) * k);
     } else if ((a.length === 1 && e.pointerType !== 'mouse') || (e.buttons & 1)){   // 左右拖曳
       const dx = a[0].x - g0.a[0].x; if (Math.abs(dx) < 6) return;
       const r = svg.getBoundingClientRect(), shift = -dx * svg._f.W / r.width / svg._f.iw * (g0.hi - g0.lo);
-      setZoom(g0.lo + shift, g0.hi + shift);
+      setZoom(Z, g0.lo + shift, g0.hi + shift);
     }
   });
-  svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(e.deltaY > 0 ? 1.15 : 1 / 1.15, priceAt(e.clientX)); }, { passive:false });
-  svg.addEventListener('dblclick', () => { GZ = null; drawGexCharts(); });
+  svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(Z, e.deltaY > 0 ? 1.15 : 1 / 1.15, priceAt(e.clientX)); }, { passive:false });
+  svg.addEventListener('dblclick', () => { Z.z = null; Z.draw(); });
+}
+
+/* ───────── 股期籌碼價位圖：用股期自己的價格、成交量、未平倉 ─────────
+   每天依「價格漲跌 × 未平倉增減」判斷誰是主動的一方：
+     價漲＋未平倉增＝多方新倉　價跌＋未平倉增＝空方新倉
+     價漲＋未平倉減＝空方回補　價跌＋未平倉減＝多方平倉
+   新倉口數平均分到當天最高價～最低價的價格格子；平倉時把該方各格依比例扣掉。
+   結果＝目前還留在場上的多方、空方部位，大約在哪些價位建立（成本區）。 */
+let FX = null;
+function niceStep(raw){ const mag = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(x => x * mag).find(s => s >= raw) || 10 * mag; }
+function buildFut(){
+  const W = D.rows.slice(-120); if (W.length < 20) return null;
+  const P = W[W.length - 1].f;
+  const lo0 = Math.min(...W.map(r => r.fl)), hi0 = Math.max(...W.map(r => r.fh)), step = niceStep(Math.max(1e-6, hi0 - lo0) / 60);
+  const Lm = new Map(), Sm = new Map(), Vm = new Map();
+  const spread = (map, r, q) => { const a = Math.floor(r.fl / step), b = Math.floor(r.fh / step), n = b - a + 1; for (let k = a; k <= b; k++) map.set(k, (map.get(k) || 0) + q / n); };
+  const total = map => { let t = 0; for (const v of map.values()) t += v; return t; };
+  for (let i = 1; i < W.length; i++){
+    const r = W[i], p = W[i - 1], dOI = r.oi - p.oi, up = r.f > p.f || (r.f === p.f && r.f >= r.fo);
+    spread(Vm, r, r.fv || 0);
+    r.side = dOI > 0 ? (up ? '多方新倉' : '空方新倉') : dOI < 0 ? (up ? '空方回補' : '多方平倉') : '持平';
+    if (dOI > 0) spread(up ? Lm : Sm, r, dOI);
+    else if (dOI < 0){ const m = up ? Sm : Lm, t = total(m); if (t > 0){ const k = Math.max(0, 1 + dOI / t); for (const [kk, v] of m) m.set(kk, v * k); } }
+  }
+  const keys = [...new Set([...Lm.keys(), ...Sm.keys(), ...Vm.keys()])].sort((a, b) => a - b);
+  const bins = keys.map(k => ({ p:(k + 0.5) * step, l:Lm.get(k) || 0, s:Sm.get(k) || 0, v:Vm.get(k) || 0 }));
+  const totL = bins.reduce((t, b) => t + b.l, 0), totS = bins.reduce((t, b) => t + b.s, 0);
+  const below = bins.filter(b => b.p <= P && b.l > 0), above = bins.filter(b => b.p >= P && b.s > 0);
+  const lw = below.length ? below.reduce((a, b) => b.l > a.l ? b : a).p : null, sw = above.length ? above.reduce((a, b) => b.s > a.s ? b : a).p : null;
+  const avgL = totL ? bins.reduce((t, b) => t + b.l * b.p, 0) / totL : null, avgS = totS ? bins.reduce((t, b) => t + b.s * b.p, 0) / totS : null;
+  // 被套空單 − 被套多單：股價在 X 時，成本低於 X 的空單在賠、成本高於 X 的多單在賠
+  const cl = v => Math.max(0, Math.min(1, v));
+  const trapS = X => bins.reduce((t, b) => t + b.s * cl((X - (b.p - step / 2)) / step), 0);
+  const trapL = X => bins.reduce((t, b) => t + b.l * cl(((b.p + step / 2) - X) / step), 0);
+  const net = X => trapS(X) - trapL(X);
+  const lo = Math.min(lo0, P) - step, hi = Math.max(hi0, P) + step;
+  let bal = null; if (net(lo) < 0 && net(hi) > 0){ let a = lo, b = hi; for (let i = 0; i < 50; i++){ const m = (a + b) / 2; if (net(m) < 0) a = m; else b = m; } bal = (a + b) / 2; }
+  return { bins, step, P, lo, hi, lw, sw, avgL, avgS, bal, totL, totS, net, tS:trapS(P), tL:trapL(P), from:W[0].d, to:W[W.length - 1].d, W };
+}
+function drawFutCharts(){
+  if (!FX) return;
+  const { lo, hi } = zr(ZF), P = FX.P, nd = P < 100 ? 2 : 0, Pf = v => fmt(v, nd);
+  const marks = [[FX.lw, '多方成本牆 ' + Pf(FX.lw), css('--up'), null], [FX.sw, '空方成本牆 ' + Pf(FX.sw), css('--down'), null], [P, '股期 ' + fmt(P, P < 100 ? 2 : 0), css('--text'), '5 3'],
+                 FX.bal ? [FX.bal, '多空平衡點 ' + fmt(FX.bal, P < 100 ? 2 : 1), css('--oi'), '6 2 1 2'] : null].filter(t => t && t[0] != null && t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
+  const setup = (svg, Hb) => { const Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520, m = { l:narrow ? 52 : 64, r:10, t:0, b:24 };
+    const iw = Wd - m.l - m.r, x = p => m.l + (p - lo) / (hi - lo) * iw, lay = layoutMarks(marks, x, m, Wd);
+    m.t = 12 + lay.rows * 20 + 6; const H = Hb + m.t, ih = H - m.t - m.b;
+    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H); svg._f = { W:Wd, iw, m };
+    el('clipPath', { id:svg.id + 'Clip' }, el('defs', {}, svg)).appendChild(el('rect', { x:m.l, y:0, width:iw, height:H }));
+    return { Wd, narrow, m, iw, ih, H, x, lay }; };
+  const xTicks = (svg, f) => { for (const t of ticks(lo, hi, f.narrow ? 4 : 7)) el('text', { x:f.x(t), y:f.H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t, hi - lo < 10 ? 1 : 0)); };
+  const yGrid = (svg, f, y, mx, yf) => { for (const t of ticks(-mx, mx, 4)){ el('line', { x1:f.m.l, x2:f.Wd - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, yf(t)); } };
+  const narrow = $('#svF').parentElement.clientWidth - 12 < 520;
+  // 圖一：多方（上）、空方（下）留倉部位的價位分布
+  { const svg = $('#svF'), f = setup(svg, narrow ? 230 : 220), vis = FX.bins.filter(b => b.p >= lo - FX.step && b.p <= hi + FX.step);
+    const mx = Math.max(1, ...vis.map(b => Math.max(b.l, b.s))) * 1.1, y = v => f.m.t + (mx - v) / (2 * mx) * f.ih;
+    legend('#lgF', [['多方留倉（價漲＋未平倉增）', css('--up'), 'bar'], ['空方留倉（價跌＋未平倉增）', css('--down'), 'bar'], ['多方成本牆', css('--up')], ['空方成本牆', css('--down')], ['股期現價', css('--text'), 'dash'], ['多空平衡點', css('--oi'), 'dash']]);
+    yGrid(svg, f, y, mx, t => fmt(Math.abs(t)) + ' 口'); xTicks(svg, f);
+    const bw = Math.max(1.5, (f.x(FX.step) - f.x(0)) * 0.8), g = el('g', { 'clip-path':`url(#${svg.id}Clip)` }, svg);
+    for (const b of vis){ if (b.l > 0) el('rect', { x:f.x(b.p) - bw / 2, y:y(b.l), width:bw, height:Math.max(0.5, y(0) - y(b.l)), fill:css('--up') }, g); if (b.s > 0) el('rect', { x:f.x(b.p) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(-b.s) - y(0)), fill:css('--down') }, g); }
+    drawMarks(svg, f.lay, f.H, f.m);
+    const tip = $('#tipF'), hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+    hit.addEventListener('pointermove', ev => { if (!vis.length) return; const r = svg.getBoundingClientRect(), p = lo + ((ev.clientX - r.left) * f.Wd / r.width - f.m.l) / f.iw * (hi - lo);
+      const b = vis.reduce((u, v) => Math.abs(v.p - p) < Math.abs(u.p - p) ? v : u);
+      tip.innerHTML = `價位 <b>${fmt(b.p - FX.step / 2, nd)}～${fmt(b.p + FX.step / 2, nd)}</b><br>多方留倉約 ${fmt(b.l)} 口<br>空方留倉約 ${fmt(b.s)} 口<br>期間成交約 ${fmt(b.v)} 口`;
+      tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, f.x(b.p) * r.width / f.Wd + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; });
+    hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; }); }
+  // 圖二：被套空單 − 被套多單 曲線
+  { const svg = $('#svF2'), f = setup(svg, narrow ? 210 : 200);
+    const N = 161, curve = []; for (let i = 0; i < N; i++){ const p = lo + (hi - lo) * i / (N - 1); curve.push([p, FX.net(p)]); }
+    const mx = Math.max(1, ...curve.map(c => Math.abs(c[1]))) * 1.1, y = v => f.m.t + (mx - v) / (2 * mx) * f.ih;
+    legend('#lgF2', [['被套空單 − 被套多單（口）', css('--oi')], ['空單被套區（易軋空）', css('--up'), 'bar'], ['多單被套區（易多殺多）', css('--down'), 'bar'], ['多空平衡點', css('--oi'), 'dash']]);
+    for (let i = 1; i < N; i++){ const pos = curve[i][1] + curve[i - 1][1] >= 0; el('rect', { x:f.x(curve[i - 1][0]), y:f.m.t, width:Math.max(0.5, f.x(curve[i][0]) - f.x(curve[i - 1][0]) + 0.3), height:f.ih, fill:pos ? css('--up') : css('--down'), 'fill-opacity':0.07 }, svg); }
+    yGrid(svg, f, y, mx, t => sgn(t)); xTicks(svg, f);
+    el('path', { d:curve.map((c, i) => (i ? 'L' : 'M') + f.x(c[0]).toFixed(1) + ',' + y(c[1]).toFixed(1)).join(''), fill:'none', stroke:css('--oi'), 'stroke-width':2.4, 'stroke-linejoin':'round' }, svg);
+    drawMarks(svg, f.lay, f.H, f.m);
+    if (P >= lo && P <= hi) el('circle', { cx:f.x(P), cy:y(FX.net(P)), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
+    if (FX.bal && FX.bal >= lo && FX.bal <= hi){ const bx = f.x(FX.bal); el('circle', { cx:bx, cy:y(0), r:5, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':2.5 }, svg);
+      const t = fmt(FX.bal, P < 100 ? 2 : 1), tw = t.length * 7 + 10, tx = Math.min(Math.max(bx, f.m.l + tw / 2), f.Wd - f.m.r - tw / 2);
+      el('rect', { x:tx - tw / 2, y:y(0) + 9, width:tw, height:16, rx:3, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':1 }, svg);
+      el('text', { x:tx, y:y(0) + 21, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':700, fill:css('--text') }, svg, t); }
+    const tip = $('#tipF2'), cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), dot = el('circle', { r:4, fill:css('--oi'), visibility:'hidden' }, svg);
+    const hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+    hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(N - 1, Math.round(((ev.clientX - r.left) * f.Wd / r.width - f.m.l) / f.iw * (N - 1)))), [p, v] = curve[i];
+      cross.setAttribute('x1', f.x(p)); cross.setAttribute('x2', f.x(p)); cross.setAttribute('visibility', 'visible'); dot.setAttribute('cx', f.x(p)); dot.setAttribute('cy', y(v)); dot.setAttribute('visibility', 'visible');
+      tip.innerHTML = `股期 <b>${fmt(p, P < 100 ? 2 : 1)}</b>（${pc((p / P - 1) * 100, 1)}）` +
+        `<br>被套空單 − 被套多單 ${sgn(v)} 口<br>${v >= 0 ? '空單被套較多：上漲容易引發回補（軋空）' : '多單被套較多：下跌容易引發停損（多殺多）'}`;
+      tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, f.x(p) * r.width / f.Wd + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; });
+    hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; }); }
+  $('#fzInfo').textContent = ZF.z ? `（已放大：${fmt(lo)}～${fmt(hi)}）` : '';
+}
+function renderFut(){
+  FX = buildFut(); ZF.z = null;
+  if (!FX){ $('#fzBar').hidden = true; $('#fpNote').textContent = '資料太少，無法計算。'; return; }
+  $('#fzBar').hidden = false;
+  const nd = FX.P < 100 ? 2 : 0, Pf = v => fmt(v, nd);
+  $('#fpSub').textContent = `${D.c.fut}・${md(FX.from)}～${md(FX.to)}（約半年）・每格 ${fmt(FX.step, FX.step < 1 ? 2 : 0)} 元`;
+  drawFutCharts();
+  $('#fpNote').innerHTML = `這兩張圖只用股期自己的價格、成交量與未平倉計算，不用選擇權。` +
+    `方法：每天看「價格漲跌 × 未平倉增減」判斷主動的一方（價漲＋未平倉增＝多方新倉、價跌＋未平倉增＝空方新倉；價漲＋未平倉減＝空方回補、價跌＋未平倉減＝多方平倉），新倉口數分到當天的最高價～最低價，平倉時依比例扣掉，留下來的就是目前多空部位大約的建倉價位。` +
+    `上圖：紅色是多方留倉、綠色是空方留倉；<b>多方成本牆</b> ${Pf(FX.lw)} 是股期價下方多單最集中的價位（跌到這裡多方會防守，跌破會停損），<b>空方成本牆</b> ${Pf(FX.sw)} 是上方空單最集中的價位（漲到這裡空方會防守，突破會回補）。` +
+    `下圖：假設股期走到每個價位時，「被套的空單」減「被套的多單」。曲線在零以上（紅底）代表空單被套較多，上漲時容易軋空；零以下（綠底）代表多單被套較多，下跌時容易多殺多；穿過零的地方就是<b>多空平衡點</b>${FX.bal ? ' ' + fmt(FX.bal, FX.P < 100 ? 2 : 1) : ''}。` +
+    `多方平均成本約 ${Pf(FX.avgL)}、空方平均成本約 ${Pf(FX.avgS)}；目前股期 ${Pf(FX.P)}，被套空單約 ${fmt(FX.tS)} 口、被套多單約 ${fmt(FX.tL)} 口。` +
+    `限制：每一口都有一多一空，這裡只是依價格方向推估「主動的一方」；個股期貨沒有公布大額交易人部位，數字是估計值。`;
 }
 
 /* ───────── 目前狀況統整與應對策略 ───────── */
@@ -579,11 +693,14 @@ function renderSummary(){
   if (Math.abs(fi5) > adv * 0.03){ if (fi5 > 0){ sc++; why.push('外資 5 日買超'); } else { sc--; why.push('外資 5 日賣超'); } }
   if (st === '套利平倉'){ if (posArb){ sc--; why.push('正向套利在平倉、賣現股'); } else { sc++; why.push('反向套利在平倉、回補現股'); } }
   if (left <= 5 && /建倉/.test(st)){ if (posArb){ sc--; why.push('結算週正向套利待平倉'); } else { sc++; why.push('結算週反向套利待回補'); } }
-  if (g && !g.none){ if (g.cw && (g.cw / L.s - 1) * 100 < 1.5){ sc -= 0.5; why.push('貼近看漲牆壓力'); } if (g.pw && (1 - g.pw / L.s) * 100 < 1.5){ sc += 0.5; why.push('貼近看跌牆支撐'); } }
+  const fx = FX, Pf = v => fmt(v, L.f < 100 ? 2 : 0);
+  if (fx && fx.bal){ if (L.f >= fx.bal){ sc++; why.push('股期在多空平衡點之上（空單被套較多）'); } else { sc--; why.push('股期在多空平衡點之下（多單被套較多）'); } }
+  if (fx && fx.sw && (fx.sw / L.f - 1) * 100 < 1.5){ sc -= 0.5; why.push('貼近空方成本牆壓力'); }
+  if (fx && fx.lw && (1 - fx.lw / L.f) * 100 < 1.5){ sc += 0.5; why.push('貼近多方成本牆支撐'); }
   const bias = sc >= 2 ? ['pos', '偏多'] : sc <= -2 ? ['neg', '偏空'] : ['', '中性（區間）'];
   const gOK = g && !g.none, posG = gOK && g.gNow >= 0;
-  const sup = [gOK && g.pw < L.s ? ['看跌牆', g.pw] : null, ['預期波動下緣', L.s - em], ['20 日低點', lo20]].filter(Boolean).sort((a, b) => b[1] - a[1]);
-  const res = [gOK && g.cw > L.s ? ['看漲牆', g.cw] : null, ['預期波動上緣', L.s + em], ['20 日高點', hi20]].filter(Boolean).sort((a, b) => a[1] - b[1]);
+  const sup = [fx && fx.lw ? ['股期多方成本牆', fx.lw] : null, fx && fx.bal && fx.bal < L.f ? ['多空平衡點', fx.bal] : null, ['預期波動下緣', L.s - em], ['20 日低點', lo20]].filter(Boolean).sort((a, b) => b[1] - a[1]);
+  const res = [fx && fx.sw ? ['股期空方成本牆', fx.sw] : null, fx && fx.bal && fx.bal > L.f ? ['多空平衡點', fx.bal] : null, ['預期波動上緣', L.s + em], ['20 日高點', hi20]].filter(Boolean).sort((a, b) => a[1] - b[1]);
   const S1 = sup.find(x => x[1] < L.s) || sup[0], R1 = res.find(x => x[1] > L.s) || res[0];
   // 統整表
   const rowsT = [
@@ -594,18 +711,18 @@ function renderSummary(){
     ['借券賣出餘額', L.sbl != null ? `${fmt(L.sbl)} 張（5 日 ${sgn(L.dSbl)}）` : '–', L.dSbl > 0 ? '增加，放空或反向套利在進場。' : L.dSbl < 0 ? '減少，空方在回補。' : '持平。'],
     ['外資（5 日）', sgn(fi5) + ' 張', fi5 > 0 ? '買超。' : fi5 < 0 ? '賣超。' : '持平。'],
     ['均線趨勢', `20 日 ${fmt(ma20, L.s < 1000 ? 1 : 0)}／60 日 ${fmt(ma60, L.s < 1000 ? 1 : 0)}`, ma20 && ma60 ? (L.s > ma20 && ma20 > ma60 ? '多頭排列。' : L.s < ma20 && ma20 < ma60 ? '空頭排列。' : '方向不明，偏整理。') : '資料不足。'],
-    ['Gamma 環境', gOK ? `<b class="${posG ? 'pos' : 'neg'}">${posG ? '正 Gamma' : '負 Gamma'}</b>（${fmtMoney(g.gNow, true)}）` : (g ? '–' : '讀取中…'), gOK ? (posG ? '造市避險逆勢操作，波動較收斂，容易在牆之間來回。' : '造市避險順勢操作，波動容易放大，跌破支撐會加速。') : (g ? g.none : '')],
-    ['零 Gamma 翻轉點', gOK && g.flip ? P(g.flip) : '–', gOK && g.flip ? (L.s >= g.flip ? `現價在翻轉點之上 ${pc((L.s / g.flip - 1) * 100, 1)}，跌破後轉為負 Gamma。` : `現價在翻轉點之下 ${pc((L.s / g.flip - 1) * 100, 1)}，站回才轉為正 Gamma。`) : ''],
-    ['看漲牆／看跌牆', gOK ? `${P(g.cw)}／${P(g.pw)}` : '–', gOK ? `距看漲牆 ${pc((g.cw / L.s - 1) * 100, 1)}，距看跌牆 ${pc((g.pw / L.s - 1) * 100, 1)}。` : ''],
-    ['最大痛點', gOK ? P(g.pain) : '–', gOK ? `距現價 ${pc((g.pain / L.s - 1) * 100, 1)}；個股選擇權未平倉少，參考價值低。` : ''],
+    ['股期成本牆', fx ? `支撐 ${Pf(fx.lw)}／壓力 ${Pf(fx.sw)}` : '–', fx ? `多方成本牆（下方多單最集中）距股期 ${pc((fx.lw / L.f - 1) * 100, 1)}，空方成本牆（上方空單最集中）距 ${pc((fx.sw / L.f - 1) * 100, 1)}；多方平均成本 ${Pf(fx.avgL)}、空方平均成本 ${Pf(fx.avgS)}。` : ''],
+    ['多空平衡點', fx && fx.bal ? `<b class="${L.f >= fx.bal ? 'pos' : 'neg'}">${fmt(fx.bal, L.f < 100 ? 2 : 1)}</b>` : '–', fx && fx.bal ? (L.f >= fx.bal ? `股期 ${Pf(L.f)} 在平衡點之上，被套空單約 ${fmt(fx.tS)} 口多於被套多單 ${fmt(fx.tL)} 口，上漲時空單回補容易助漲（軋空）。` : `股期 ${Pf(L.f)} 在平衡點之下，被套多單約 ${fmt(fx.tL)} 口多於被套空單 ${fmt(fx.tS)} 口，下跌時多單停損容易加速（多殺多）。`) : ''],
+    ['選擇權 Gamma（參考）', gOK ? `<b class="${posG ? 'pos' : 'neg'}">${posG ? '正 Gamma' : '負 Gamma'}</b>` + (g.flip ? `，零 Gamma ${fmt(g.flip, L.s < 100 ? 2 : 1)}` : '') : (g ? '–' : '讀取中…'), gOK ? `看漲牆 ${P(g.cw)}、看跌牆 ${P(g.pw)}、最大痛點 ${P(g.pain)}；個股選擇權未平倉只有 ${fmt(g.oiTot)} 口，只當輔助。` : (g ? g.none : '')],
     ['到結算的預期波動', `±${P(em)}（${(vol * 100).toFixed(0)}%）`, `依${g && g.ivAtm ? '價平隱含波動率' : '近 20 日歷史波動率'}估計，${left} 天後約 68% 機率落在 ${P(L.s - em)}～${P(L.s + em)}。`],
   ];
   $('#sumSub').textContent = `${md(L.d)} 收盤・距股期結算 ${left} 天`;
   $('#sumTbl').innerHTML = '<table><thead><tr><th>項目</th><th>現況</th><th>判讀</th></tr></thead><tbody>' + rowsT.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('') + '</tbody></table>';
   // 應對策略
-  const how = !gOK ? `沒有可用的選擇權 Gamma，以均線和預期波動區間為主：支撐 ${P(S1[1])}（${S1[0]}）、壓力 ${P(R1[1])}（${R1[0]}）。`
-    : posG ? `目前是正 Gamma，股價容易在 ${P(g.pw)}～${P(g.cw)} 之間震盪。適合區間操作：靠近看跌牆 ${P(g.pw)} 分批布局，接近看漲牆 ${P(g.cw)} 減碼，不追高。` + (g.flip && g.flip < L.s ? `若跌破零 Gamma 翻轉點 ${P(g.flip)}，環境轉為負 Gamma，改成保守。` : '')
-    : `目前是負 Gamma，波動容易放大，不要逆勢接刀。` + (g.flip && g.flip > L.s ? `等站回零 Gamma 翻轉點 ${P(g.flip)} 再考慮作多；` : '') + `跌破看跌牆 ${P(g.pw)} 可能加速下跌。`;
+  const how = !fx ? '股期資料不足，以均線和預期波動區間為主。'
+    : !fx.bal ? `多方成本牆 ${Pf(fx.lw)}、空方成本牆 ${Pf(fx.sw)}，目前沒有明確的多空平衡點，以兩道牆當區間上下緣。`
+    : L.f >= fx.bal ? `股期 ${Pf(L.f)} 在多空平衡點 ${fmt(fx.bal, L.f < 100 ? 2 : 1)} 之上，空單被套較多。守住平衡點偏多看待：拉回多方成本牆 ${Pf(fx.lw)} 附近是較好的買點；往空方成本牆 ${Pf(fx.sw)} 上去時，空單回補可能加速，突破後可以續抱。收盤跌破平衡點就轉為保守。`
+    : `股期 ${Pf(L.f)} 在多空平衡點 ${fmt(fx.bal, L.f < 100 ? 2 : 1)} 之下，多單被套較多。反彈到平衡點～空方成本牆 ${Pf(fx.sw)} 之間容易遇到解套賣壓，不追；跌破多方成本牆 ${Pf(fx.lw)} 可能引發多殺多。收盤站回平衡點才轉多。`;
   const stopL = Math.min(S1[1], L.s - em * 0.5) * 0.99, stopS = Math.max(R1[1], L.s + em * 0.5) * 1.01;
   const plan = bias[1] === '偏多' ? `偏多操作：拉回 ${P(S1[1])} 附近承接，目標 ${P(R1[1])}，收盤跌破 ${P(stopL)} 停損。`
     : bias[1] === '偏空' ? `偏空操作：反彈到 ${P(R1[1])} 附近不追、可減碼或避險（例如賣股期），目標 ${P(S1[1])}，收盤站上 ${P(stopS)} 停損。`
@@ -619,17 +736,18 @@ function renderSummary(){
     `<div class="row"><span class="badge" style="border-color:${bias[0] === 'pos' ? css('--up') : bias[0] === 'neg' ? css('--down') : css('--line')}">${bias[1]}</span>${why.length ? esc(why.join('、')) + '。' : ''}</div>` +
     `<div class="row"><b>關鍵價位</b>　支撐 ${sup.filter(x => x[1] < L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}；壓力 ${res.filter(x => x[1] > L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}。</div>` +
     `<div class="row"><b>操作方向</b>　${plan}</div>` +
-    `<div class="row"><b>Gamma 環境</b>　${how}</div>` +
+    `<div class="row"><b>股期籌碼</b>　${how}</div>` +
     `<div class="row"><b>套利與結算</b>　${arb}</div>` +
     `<div class="row muted" style="font-size:12px">以上由公開數字自動整理，只是參考，不是投資建議；停損價＝支撐再往下 1%，請依自己的資金和風險調整。</div>`;
 }
 
 /* ───────── 啟動 ───────── */
 $('#goBtn').onclick = load;
-['#svG', '#svC'].forEach(id => bindZoom($(id)));
-$('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4); $('#zReset').onclick = () => { GZ = null; drawGexCharts(); };
+['#svG', '#svC'].forEach(id => bindZoom($(id), ZG)); ['#svF', '#svF2'].forEach(id => bindZoom($(id), ZF));
+$('#zIn').onclick = () => zoomBy(ZG, 1 / 1.4); $('#zOut').onclick = () => zoomBy(ZG, 1.4); $('#zReset').onclick = () => { ZG.z = null; drawGexCharts(); };
+$('#fzIn').onclick = () => zoomBy(ZF, 1 / 1.4); $('#fzOut').onclick = () => zoomBy(ZF, 1.4); $('#fzReset').onclick = () => { ZF.z = null; drawFutCharts(); };
 $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); drawGexCharts(); } }, 200); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); drawFutCharts(); drawGexCharts(); } }, 200); });
 { const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
 </script>
 </body>
