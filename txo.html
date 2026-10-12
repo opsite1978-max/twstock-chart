@@ -129,6 +129,11 @@
 
     <section>
       <h2>Gamma 曝險（各履約價）<span class="muted">指數每變動 1%，造市與賣方需要調整的避險金額</span></h2>
+      <div class="setrow" style="margin:0 0 6px">
+        <label>口數權重 <select id="gwSel"><option value="oi">未平倉</option><option value="vol">成交量（即時時為今天盤中）</option><option value="both">未平倉＋成交量</option></select></label>
+        <span>縮放 <span class="seg"><button id="zIn" title="放大">＋</button><button id="zOut" title="縮小">－</button><button id="zReset">重設</button></span></span>
+        <span class="small">手機可雙指縮放、左右拖曳；電腦可按住 Ctrl 滾輪縮放</span>
+      </div>
       <div class="panel">
         <div class="legend" id="lgGex"></div>
         <svg id="svgGex" role="img" aria-label="各履約價買權與賣權的 Gamma 曝險"></svg>
@@ -440,6 +445,12 @@ function analyse(code, strikesMap, date, nextTD, off){
            hasPrev:S.some(s => s.c.prevOi != null) };
 }
 
+// Gamma 曝險的口數權重：未平倉（前一交易日收盤）、成交量（即時模式為今天盤中，否則為資料日日盤＋夜盤），或兩者合計
+let GWM = store.get('txo.gw') || 'oi';
+const GW = side => GWM === 'vol' ? (side.vol || 0) : GWM === 'both' ? (side.oi || 0) + (side.vol || 0) : (side.oi || 0);
+function reweight(){
+  for (const e of DATA.exps) for (const s of e.S){ const g = gamma(e.F, s.K, e.T, s.iv); s.gc = gexOf(g, GW(s.c), e.F); s.gp = -gexOf(g, GW(s.p), e.F); }
+}
 // 隱含波動率（用價外那一邊，缺的前後內插）與各履約價 Gamma 曝險；回傳價平隱含波動率，算不出來回傳 false
 function calcGreeks(S, F, T, pxOf){
   for (const s of S){
@@ -460,7 +471,7 @@ function calcGreeks(S, F, T, pxOf){
   }
   for (const s of S){
     const g = gamma(F, s.K, T, s.iv);
-    s.gc = gexOf(g, s.c.oi, F); s.gp = -gexOf(g, s.p.oi, F);
+    s.gc = gexOf(g, GW(s.c), F); s.gp = -gexOf(g, GW(s.p), F);
   }
   return S.reduce((a,b) => Math.abs(b.K - F) < Math.abs(a.K - F) ? b : a).iv;
 }
@@ -470,7 +481,7 @@ function totalGexAt(list, x, Fref){
   let t = 0;
   for (const a of list){
     const Fx = a.F * x / Fref;                                       // 各結算日遠期價與參考價同比例移動
-    for (const s of a.S){ const net = s.c.oi - s.p.oi; if (!net) continue; t += gexOf(gamma(Fx, s.K, a.T, s.iv), net, Fx); }
+    for (const s of a.S){ const net = GW(s.c) - GW(s.p); if (!net) continue; t += gexOf(gamma(Fx, s.K, a.T, s.iv), net, Fx); }
   }
   return t;
 }
@@ -609,13 +620,49 @@ function render(){
   $('#verdict').textContent = parts.join('');
 
   const range = +$('#rangeSel').value;
-  const lo = P * (1 - range), hi = P * (1 + range);
+  const C0 = v.Q;
+  let lo = C0 * (1 - range), hi = C0 * (1 + range);
+  if (ZOOM){ lo = ZOOM.lo; hi = ZOOM.hi; }
   const rows = v.rows.filter(r => r.K >= lo && r.K <= hi);
   CTX = { v, st, rows, lo, hi, EM };
   if (EM) $('#verdict').textContent += `依選擇權價格推算，到 ${mdw(EM.exp)} 結算的預期高低區間約 ${fmtInt(EM.lo)}～${fmtInt(EM.hi)}（約 68% 機率）。`;
   drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection();
 }
-let CTX = null, INST = null;
+let CTX = null, INST = null, ZOOM = null;
+// 縮放：三張履約價圖共用同一個橫軸範圍
+function setZoom(lo, hi){
+  if (!CTX) return;
+  const c = CTX.v.Q, minH = c * 0.004, maxH = c * 0.12;
+  let h = Math.min(maxH, Math.max(minH, (hi - lo) / 2)), m = (lo + hi) / 2;
+  m = Math.min(c * 1.12 - h, Math.max(c * 0.88 + h, m));
+  ZOOM = { lo:m - h, hi:m + h };
+  CTX.lo = ZOOM.lo; CTX.hi = ZOOM.hi; CTX.rows = CTX.v.rows.filter(r => r.K >= ZOOM.lo && r.K <= ZOOM.hi);
+  drawGex(); drawCurve(); drawDist();
+}
+function zoomBy(k, at){ if (!CTX) return; const c = at == null ? (CTX.lo + CTX.hi) / 2 : at; setZoom(c - (c - CTX.lo) * k, c + (CTX.hi - c) * k); }
+function bindZoom(svg){
+  const pts = new Map(); let g0 = null;
+  const priceAt = cx => { const f = svg._f; if (!f) return null; const r = svg.getBoundingClientRect(), px = (cx - r.left) * f.W / r.width; return CTX.lo + (px - f.m.l) / f.iw * (CTX.hi - CTX.lo); };
+  svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); g0 = null; });
+  const end = e => { pts.delete(e.pointerId); g0 = null; };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end); svg.addEventListener('pointerleave', end);
+  svg.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !CTX || !svg._f) return;
+    pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const a = [...pts.values()];
+    if (!g0) g0 = { lo:CTX.lo, hi:CTX.hi, a:a.map(p => ({ ...p })), n:a.length };
+    if (a.length >= 2 && g0.n >= 2){                                  // 雙指縮放
+      const d0 = Math.abs(g0.a[0].x - g0.a[1].x) || 1, d1 = Math.abs(a[0].x - a[1].x) || 1;
+      const mid = priceAt((g0.a[0].x + g0.a[1].x) / 2), k = d0 / d1;
+      setZoom(mid - (mid - g0.lo) * k, mid + (g0.hi - mid) * k);
+    } else if (a.length === 1 && e.pointerType !== 'mouse' || (e.buttons & 1)){   // 左右拖曳
+      const dx = a[0].x - g0.a[0].x; if (Math.abs(dx) < 6) return;
+      const r = svg.getBoundingClientRect(), shift = -dx * svg._f.W / r.width / svg._f.iw * (g0.hi - g0.lo);
+      setZoom(g0.lo + shift, g0.hi + shift);
+    }
+  });
+  svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(e.deltaY > 0 ? 1.15 : 1 / 1.15, priceAt(e.clientX)); }, { passive:false });
+}
 
 /* ───────── 操作方向參考（規則計分） ───────── */
 function renderDirection(){
@@ -847,7 +894,9 @@ function frame(svg, H, items){
   m.t = 10 + ends.length * 16;
   const Ht = H + ends.length * 16;
   svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${Ht}`); svg.setAttribute('height', Ht);
-  return { W, H:Ht, m, iw, ih: Ht - m.t - m.b, narrow, x, marks:vis };
+  const fr = { W, H:Ht, m, iw, ih: Ht - m.t - m.b, narrow, x, marks:vis };
+  svg._f = fr;
+  return fr;
 }
 function drawMarks(svg, f){
   const ly = it => 4 + it.row * 16 + 8;                              // 這一排標籤的中線
@@ -1394,6 +1443,11 @@ function setLive(on){
   else $('#liveLine').textContent = '';
 }
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
+['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
+$('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4);
+$('#zReset').onclick = () => { ZOOM = null; if (DATA) render(); };
+$('#gwSel').value = GWM;
+$('#gwSel').onchange = () => { GWM = $('#gwSel').value; store.set('txo.gw', GWM); if (DATA){ reweight(); render(); } };
 
 /* ───────── 憑證：這個瀏覽器沒有時，直接在這裡輸入（存回看盤頁同一份設定） ───────── */
 function askToken(msg){
@@ -1411,7 +1465,7 @@ function askToken(msg){
 
 /* ───────── 啟動 ───────── */
 $('#rangeSel').value = store.get('txo.range') || (innerWidth < 600 ? '0.05' : '0.08');
-$('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); if (DATA) render(); };
+$('#rangeSel').onchange = () => { store.set('txo.range', $('#rangeSel').value); ZOOM = null; if (DATA) render(); };
 document.querySelectorAll('#distSeg button').forEach(b => b.onclick = () => { DIST = b.dataset.m; store.set('txo.dist', DIST); if (DATA) drawDist(); });
 $('#dateSel').onchange = () => loadDate($('#dateSel').value).catch(e => setStatus(e.message, true));
 let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA) render(); renderHistory(); renderChips2(); renderLottery(); }, 150); });
