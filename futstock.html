@@ -65,7 +65,13 @@
   td:first-child,th:first-child{text-align:left}
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   .sum td{white-space:normal;text-align:left;vertical-align:top;line-height:1.6}
+  .sum th{text-align:left}
   .sum td:first-child{white-space:nowrap;color:var(--muted)}
+  @media (max-width:560px){
+    .sum thead{display:none} .sum tr{display:block;padding:7px 10px;border-bottom:1px solid var(--line)}
+    .sum td{display:inline;border:0;padding:0;white-space:normal!important}
+    .sum td:first-child::after{content:'：'} .sum td:nth-child(3){display:block;margin-top:2px}
+  }
   .sum td:nth-child(2){white-space:nowrap}
   .sum b.pos,.strat b.pos{color:var(--call)} .sum b.neg{color:var(--put)}
   .strat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;line-height:1.8;font-size:14px}
@@ -508,12 +514,12 @@ function renderSummary(){
   // 統整表
   const rowsT = [
     ['套利狀態', `<b class="${L.st[0] === 'pos' ? 'pos' : L.st[0] === 'neg' ? 'neg' : ''}">${st}</b>`, L.st[2] + '。' + (posArb ? (/建倉/.test(st) ? `套利盤現在是買現股的避險買盤，結算（${md(L.exp)}）前後會轉成賣壓。` : st === '套利平倉' ? '套利盤正在賣現股出場，短線有賣壓。' : '') : (/建倉/.test(st) ? `套利盤現在是借券賣現股的賣壓，結算（${md(L.exp)}）前後會回補買進。` : st === '套利平倉' ? '套利盤正在買回現股還券，短線有買盤。' : ''))],
-    ['超額價差（年化）', `今天 ${pc(L.exAnn, 1)}／5 日 ${pc(L.exA5, 1)}`, Math.abs(L.exA5) < 3 ? '接近合理值，套利空間小。' : exTrend > 0 ? '還在擴大，套利盤可能繼續進場。' : '開始收斂，套利盤可能準備平倉。'],
+    ['超額價差（年化）', `今天 ${pc(L.exAnn, 1)}／5 日 ${pc(L.exA5, 1)}`, Math.abs(L.exA5) < 3 ? '接近合理值，套利空間小。' : (Math.sign(L.exAnn) !== Math.sign(L.exA5) || Math.abs(L.exAnn) < Math.abs(L.exA5) * 0.5) ? '今天已明顯收斂，套利盤可能準備平倉，留意股期未平倉是否開始下降。' : exTrend > 0 ? '還在擴大，套利盤可能繼續進場。' : '開始收斂，套利盤可能準備平倉。'],
     ['股期未平倉', `${fmt(L.oi)} 口（5 日 ${sgn(L.dOi)}）`, `約 ${fmt(L.oi * SHARES / 1000)} 張現股，是 20 日均量的 ${(L.oi * SHARES / 1000 / adv).toFixed(1)} 倍。` + (L.dOi > 0 ? '部位在增加。' : L.dOi < 0 ? '部位在減少。' : '')],
     ['自營商避險（5 日）', sgn(L.dh5) + ' 張', L.dh5 > 0 ? '避險買現股，對應賣出股期或選擇權。' : L.dh5 < 0 ? '避險賣現股，對應買進股期或選擇權。' : '沒有明顯動作。'],
     ['借券賣出餘額', L.sbl != null ? `${fmt(L.sbl)} 張（5 日 ${sgn(L.dSbl)}）` : '–', L.dSbl > 0 ? '增加，放空或反向套利在進場。' : L.dSbl < 0 ? '減少，空方在回補。' : '持平。'],
     ['外資（5 日）', sgn(fi5) + ' 張', fi5 > 0 ? '買超。' : fi5 < 0 ? '賣超。' : '持平。'],
-    ['均線趨勢', `20 日 ${P(ma20)}／60 日 ${P(ma60)}`, ma20 && ma60 ? (L.s > ma20 && ma20 > ma60 ? '多頭排列。' : L.s < ma20 && ma20 < ma60 ? '空頭排列。' : '方向不明，偏整理。') : '資料不足。'],
+    ['均線趨勢', `20 日 ${fmt(ma20, L.s < 1000 ? 1 : 0)}／60 日 ${fmt(ma60, L.s < 1000 ? 1 : 0)}`, ma20 && ma60 ? (L.s > ma20 && ma20 > ma60 ? '多頭排列。' : L.s < ma20 && ma20 < ma60 ? '空頭排列。' : '方向不明，偏整理。') : '資料不足。'],
     ['Gamma 環境', gOK ? `<b class="${posG ? 'pos' : 'neg'}">${posG ? '正 Gamma' : '負 Gamma'}</b>（${fmtMoney(g.gNow, true)}）` : (g ? '–' : '讀取中…'), gOK ? (posG ? '造市避險逆勢操作，波動較收斂，容易在牆之間來回。' : '造市避險順勢操作，波動容易放大，跌破支撐會加速。') : (g ? g.none : '')],
     ['零 Gamma 翻轉點', gOK && g.flip ? P(g.flip) : '–', gOK && g.flip ? (L.s >= g.flip ? `現價在翻轉點之上 ${pc((L.s / g.flip - 1) * 100, 1)}，跌破後轉為負 Gamma。` : `現價在翻轉點之下 ${pc((L.s / g.flip - 1) * 100, 1)}，站回才轉為正 Gamma。`) : ''],
     ['看漲牆／看跌牆', gOK ? `${P(g.cw)}／${P(g.pw)}` : '–', gOK ? `距看漲牆 ${pc((g.cw / L.s - 1) * 100, 1)}，距看跌牆 ${pc((g.pw / L.s - 1) * 100, 1)}。` : ''],
