@@ -76,6 +76,11 @@
   .sum b.pos,.strat b.pos{color:var(--call)} .sum b.neg{color:var(--put)}
   .strat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;line-height:1.8;font-size:14px}
   .strat .row{margin:4px 0}
+  .zbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 2px 8px;font-size:13px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:28px;vertical-align:middle}
+  .seg button{border:0;border-radius:0;height:26px;padding:0 10px;background:var(--panel2);color:var(--text);font-size:13px;min-width:38px}
+  .seg button+button{border-left:1px solid var(--line)}
+  @media (max-width:560px){ .zhint{flex-basis:100%} }
   .flow{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
 </style>
 </head>
@@ -126,6 +131,7 @@
 
     <section>
       <h2>個股選擇權 Gamma 曝險<span class="muted" id="gexSub"></span></h2>
+      <div class="zbar" id="zBar" hidden>縮放 <span class="seg"><button id="zIn" title="放大">＋</button><button id="zOut" title="縮小">－</button><button id="zReset">重設</button></span><span class="muted" id="zInfo"></span><span class="muted small zhint">雙指開合或 Ctrl＋滾輪縮放，左右拖曳移動，點兩下重設</span></div>
       <div class="panel"><div class="legend" id="lgG"></div><svg id="svG"></svg><div class="tip" id="tipG"></div></div>
       <div class="panel"><div class="legend" id="lgC"></div><svg id="svC"></svg><div class="tip" id="tipC"></div></div>
       <p class="note" id="gexNote"></p>
@@ -263,7 +269,7 @@ async function load(){
       else if (exA < -3) r.st = ['neg', '超額逆價差', '有反向套利空間，但未平倉或借券還沒跟上'];
       else r.st = ['', '無明顯套利', '價差接近合理值'];
     }
-    D = { id, name:NAMES.get(id), c, rows, divs, gex:null };
+    D = { id, name:NAMES.get(id), c, rows, divs, gex:null }; GX = null; GZ = null; $('#zBar').hidden = true;
     setStatus(''); $('#app').hidden = false;
     render();
     loadGex().catch(e => { $('#gexNote').textContent = '個股選擇權讀取失敗：' + e.message; D.gex = { none:'個股選擇權讀取失敗' }; renderSummary(); });
@@ -388,16 +394,19 @@ function drawFlow(){
 }
 
 /* ───────── 個股選擇權 Gamma ───────── */
-function drawMarks(svg, marks, x, H, m, Wd, narrow, top){
-  const used = narrow ? [[], [], [], []] : [[], [], []], lab = [];   // 標籤分排，互不重疊
+// 標籤排版：先決定每個標籤放第幾排（互不重疊），回傳需要的排數
+function layoutMarks(marks, x, m, Wd){
+  const used = [], lab = [];
   marks.forEach(([p, t, c, d]) => { const px = x(p), w = t.length * 11 + 12;
     const tx = Math.min(Math.max(px, m.l + w / 2), Wd - m.r - w / 2), a = tx - w / 2, b = tx + w / 2;
-    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0) row = used.length - 1; used[row].push([a, b]);
-    const ty = (top || 12) + row * 20;
-    el('line', { x1:px, x2:px, y1:ty + 6, y2:H - m.b, stroke:c, 'stroke-width':2, 'stroke-dasharray':d }, svg);
-    lab.push([a, ty, w, c, tx, t]); });
-  for (const [a, ty, w, c, tx, t] of lab){ el('rect', { x:a, y:ty - 8, width:w, height:16, rx:3, fill:css('--panel'), stroke:c, 'stroke-width':1 }, svg);
-    el('text', { x:tx, y:ty + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); }
+    let row = used.findIndex(r => r.every(([u, v]) => b + 4 < u || a - 4 > v)); if (row < 0){ row = used.length; used.push([]); } used[row].push([a, b]);
+    lab.push({ px, a, w, tx, row, t, c, d }); });
+  return { lab, rows:Math.max(1, used.length) };
+}
+function drawMarks(svg, lay, H, m){
+  for (const L of lay.lab) el('line', { x1:L.px, x2:L.px, y1:12 + L.row * 20 + 6, y2:H - m.b, stroke:L.c, 'stroke-width':2, 'stroke-dasharray':L.d }, svg);
+  for (const L of lay.lab){ const ty = 12 + L.row * 20; el('rect', { x:L.a, y:ty - 8, width:L.w, height:16, rx:3, fill:css('--panel'), stroke:L.c, 'stroke-width':1 }, svg);
+    el('text', { x:L.tx, y:ty + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, L.t); }
 }
 async function loadGex(){
   const DD = D, L = D.rows[D.rows.length - 1];
@@ -441,49 +450,114 @@ async function loadGex(){
   const flip = flips.length ? flips.reduce((a, b) => Math.abs(b - S) < Math.abs(a - S) ? b : a) : null;
   const gNow = gexAt(S);
   D.gex = { S, cw:cw.K, pw:pw.K, pain, flip, gNow, ivAtm, oiTot };
-  const marks = [[cw.K, '看漲牆 ' + fmt(cw.K), css('--call'), null], [pw.K, '看跌牆 ' + fmt(pw.K), css('--put'), null], [S, '現價 ' + fmt(S, S < 100 ? 2 : 0), css('--text'), '5 3'], [pain, '最大痛點 ' + fmt(pain), css('--pain'), '1.5 3']]
-    .filter(t => t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
-  // 圖一：各履約價 Gamma 曝險
-  { const svg = $('#svG'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
-    const vis = G.filter(a => a.K >= lo && a.K <= hi), H = narrow ? 320 : 300, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
-    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
-    const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
-    const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
-    legend('#lgG', [['買權（正）', css('--call'), 'bar'], ['賣權（負）', css('--put'), 'bar'], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['現價', css('--text'), 'dash'], ['最大痛點', css('--pain'), 'dash']]);
-    for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
-    for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
-    let gap = Infinity; for (let i = 1; i < vis.length; i++) gap = Math.min(gap, x(vis[i].K) - x(vis[i - 1].K)); const bw = Math.max(1.5, Math.min(14, (isFinite(gap) ? gap : 20) - 2));
-    for (const a of vis){ el('rect', { x:x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, svg); el('rect', { x:x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, svg); }
-    drawMarks(svg, marks, x, H, m, Wd, narrow); }
-  // 圖二：總 Gamma 曲線
-  { const svg = $('#svC'), Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520;
-    const H = narrow ? 300 : 280, m = { l:narrow ? 52 : 64, r:10, t:narrow ? 94 : 74, b:24 };
-    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
-    const iw = Wd - m.l - m.r, ih = H - m.t - m.b, x = p => m.l + (p - lo) / (hi - lo) * iw;
-    const mx = Math.max(1, ...curve.map(c => Math.abs(c[1]))) * 1.1, y = v => m.t + (mx - v) / (2 * mx) * ih;
-    legend('#lgC', [['總 Gamma 曝險', css('--oi')], ['正 Gamma 區（波動收斂）', css('--call'), 'bar'], ['負 Gamma 區（波動放大）', css('--put'), 'bar'], ['零 Gamma 翻轉點', css('--muted')]]);
-    // 正負區塊底色
-    for (let i = 1; i < N; i++){ const pos = curve[i][1] + curve[i - 1][1] >= 0; el('rect', { x:x(curve[i - 1][0]), y:m.t, width:Math.max(0.5, x(curve[i][0]) - x(curve[i - 1][0]) + 0.3), height:ih, fill:pos ? css('--call') : css('--put'), 'fill-opacity':0.07 }, svg); }
-    for (const t of ticks(-mx, mx, 4)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); }
-    for (const t of ticks(lo, hi, narrow ? 4 : 7)) el('text', { x:x(t), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t));
-    el('path', { d:curve.map((c, i) => (i ? 'L' : 'M') + x(c[0]).toFixed(1) + ',' + y(c[1]).toFixed(1)).join(''), fill:'none', stroke:css('--oi'), 'stroke-width':2.4, 'stroke-linejoin':'round' }, svg);
-    drawMarks(svg, marks, x, H, m, Wd, narrow);
-    for (const fp of flips){ el('circle', { cx:x(fp), cy:y(0), r:5, fill:css('--panel'), stroke:css('--text'), 'stroke-width':2 }, svg); el('text', { x:x(fp), y:y(0) + 18, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, '翻轉 ' + fmt(fp, fp < 100 ? 1 : 0)); }
-    el('circle', { cx:x(S), cy:y(gNow), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
-    // 游標
-    const tip = $('#tipC'), cross = el('line', { y1:m.t, y2:H - m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), dot = el('circle', { r:4, fill:css('--oi'), visibility:'hidden' }, svg);
-    const hit = el('rect', { x:m.l, y:0, width:iw, height:H, fill:'transparent' }, svg);
-    const move = ev => { const b = svg.getBoundingClientRect(), mxp = (ev.clientX - b.left) * Wd / b.width, i = Math.max(0, Math.min(N - 1, Math.round((mxp - m.l) / iw * (N - 1)))), [p, g] = curve[i];
-      cross.setAttribute('x1', x(p)); cross.setAttribute('x2', x(p)); cross.setAttribute('visibility', 'visible'); dot.setAttribute('cx', x(p)); dot.setAttribute('cy', y(g)); dot.setAttribute('visibility', 'visible');
-      tip.innerHTML = `股價 <b>${fmt(p, p < 100 ? 2 : 0)}</b>（${pc((p / S - 1) * 100, 1)}）<br>總 Gamma 曝險 ${fmtMoney(g, true)}<br>${g >= 0 ? '正 Gamma：造市避險逆勢，波動收斂' : '負 Gamma：造市避險順勢，波動放大'}`;
-      tip.style.display = 'block'; const pw2 = svg.parentElement.clientWidth; tip.style.left = Math.min(Math.max(4, x(p) * b.width / Wd + 14), pw2 - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; };
-    hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);
-    hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; }); }
+  $('#zBar').hidden = false;
+  GX = { G, gexAt, S, cw:cw.K, pw:pw.K, pain, flip, flips, lo, hi };
+  GZ = null;
+  drawGexCharts();
   $('#gexNote').textContent = `看漲牆 ${fmt(cw.K)}（現價上方買權 Gamma 最大）、看跌牆 ${fmt(pw.K)}（現價下方賣權 Gamma 最大）、最大痛點 ${fmt(pain)}。` +
     `曲線是「假設股價移到那個價位時」全部未平倉的 Gamma 曝險合計：曲線在零以上，造市商避險會逆勢操作（漲了賣、跌了買），股價較容易在牆之間震盪；跌到零以下，避險變成順勢（跌了再賣），波動容易放大。` +
     `目前在現價的總曝險 ${fmtMoney(gNow, true)}` + (flip ? `，零 Gamma 翻轉點約 ${fmt(flip, flip < 100 ? 1 : 0)}` : '，看得到的範圍內沒有翻轉點') + '。' +
     `個股選擇權成交和未平倉都很少（這檔只有 ${fmt(oiTot)} 口），造市避險對現股的影響遠小於台指選擇權，只能當作輔助參考；隱含波動率算不出來的履約價先用 35% 估計。`;
   renderSummary();
+}
+
+/* ───────── Gamma 兩張圖（可縮放） ───────── */
+let GX = null, GZ = null;                                             // GZ：目前顯示的價格範圍
+function gexMarks(lo, hi){
+  const P = v => fmt(v, v < 100 ? 2 : 0);
+  return [[GX.cw, '看漲牆 ' + P(GX.cw), css('--call'), null], [GX.pw, '看跌牆 ' + P(GX.pw), css('--put'), null], [GX.S, '現價 ' + P(GX.S), css('--text'), '5 3'],
+          [GX.pain, '最大痛點 ' + P(GX.pain), css('--pain'), '1.5 3'], GX.flip ? [GX.flip, '零 Gamma ' + fmt(GX.flip, GX.flip < 100 ? 2 : 1), css('--oi'), '6 2 1 2'] : null]
+    .filter(t => t && t[0] >= lo && t[0] <= hi).sort((a, b) => a[0] - b[0]);
+}
+function drawGexCharts(){
+  if (!GX) return;
+  const lo = GZ ? GZ.lo : GX.lo, hi = GZ ? GZ.hi : GX.hi, S = GX.S, marks = gexMarks(lo, hi);
+  const setup = (svg, Hb) => { const Wd = Math.max(300, svg.parentElement.clientWidth - 12), narrow = Wd < 520, m = { l:narrow ? 52 : 64, r:10, t:0, b:24 };
+    const iw = Wd - m.l - m.r, x = p => m.l + (p - lo) / (hi - lo) * iw, lay = layoutMarks(marks, x, m, Wd);
+    m.t = 12 + lay.rows * 20 + 6; const H = Hb + m.t, ih = H - m.t - m.b;
+    svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+    svg._f = { W:Wd, iw, m };
+    el('clipPath', { id:svg.id + 'Clip' }, el('defs', {}, svg)).appendChild(el('rect', { x:m.l, y:0, width:iw, height:H }));
+    return { Wd, narrow, m, iw, ih, H, x, lay }; };
+  const xTicks = (svg, f) => { for (const t of ticks(lo, hi, f.narrow ? 4 : 7)) el('text', { x:f.x(t), y:f.H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmt(t, hi - lo < 10 ? 1 : 0)); };
+  const yGrid = (svg, f, y, mx) => { for (const t of ticks(-mx, mx, 4)){ el('line', { x1:f.m.l, x2:f.Wd - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 6, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtMoney(t)); } };
+  const zoomTxt = GZ ? `（已放大：${fmt(lo)}～${fmt(hi)}）` : '';
+  // 圖一：各履約價 Gamma 曝險
+  { const svg = $('#svG'), f = setup(svg, narrow0() ? 230 : 220);
+    const vis = GX.G.filter(a => a.K >= lo && a.K <= hi);
+    const mx = Math.max(1, ...vis.map(a => Math.max(a.gc, -a.gp))) * 1.1, y = v => f.m.t + (mx - v) / (2 * mx) * f.ih;
+    legend('#lgG', [['買權（正）', css('--call'), 'bar'], ['賣權（負）', css('--put'), 'bar'], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['現價', css('--text'), 'dash'], ['最大痛點', css('--pain'), 'dash'], ['零 Gamma', css('--oi'), 'dash']]);
+    yGrid(svg, f, y, mx); xTicks(svg, f);
+    let gap = Infinity; for (let i = 1; i < vis.length; i++) gap = Math.min(gap, f.x(vis[i].K) - f.x(vis[i - 1].K)); const bw = Math.max(1.5, Math.min(24, (isFinite(gap) ? gap : 20) * 0.7));
+    const g = el('g', { 'clip-path':`url(#${svg.id}Clip)` }, svg);
+    for (const a of vis){ el('rect', { x:f.x(a.K) - bw / 2, y:y(a.gc), width:bw, height:Math.max(0.5, y(0) - y(a.gc)), fill:css('--call') }, g); el('rect', { x:f.x(a.K) - bw / 2, y:y(0), width:bw, height:Math.max(0.5, y(a.gp) - y(0)), fill:css('--put') }, g); }
+    drawMarks(svg, f.lay, f.H, f.m);
+    // 游標：顯示最近的履約價
+    const tip = $('#tipG'), hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+    hit.addEventListener('pointermove', ev => { if (!vis.length) return; const b = svg.getBoundingClientRect(), p = lo + ((ev.clientX - b.left) * f.Wd / b.width - f.m.l) / f.iw * (hi - lo);
+      const a = vis.reduce((u, v) => Math.abs(v.K - p) < Math.abs(u.K - p) ? v : u);
+      tip.innerHTML = `履約價 <b>${fmt(a.K, a.K < 100 ? 2 : 1)}</b><br>買權 Gamma ${fmtMoney(a.gc, true)}（未平倉 ${fmt(a.coi)} 口）<br>賣權 Gamma ${fmtMoney(a.gp, true)}（未平倉 ${fmt(a.poi)} 口）`;
+      tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, f.x(a.K) * b.width / f.Wd + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; });
+    hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; }); }
+  // 圖二：總 Gamma 曲線（依目前範圍重新計算）
+  { const svg = $('#svC'), f = setup(svg, narrow0() ? 210 : 200);
+    const N = 161, curve = []; for (let i = 0; i < N; i++){ const p = lo + (hi - lo) * i / (N - 1); curve.push([p, GX.gexAt(p)]); }
+    const mx = Math.max(1, ...curve.map(c => Math.abs(c[1]))) * 1.1, y = v => f.m.t + (mx - v) / (2 * mx) * f.ih;
+    legend('#lgC', [['總 Gamma 曝險', css('--oi')], ['正 Gamma 區（波動收斂）', css('--call'), 'bar'], ['負 Gamma 區（波動放大）', css('--put'), 'bar'], ['零 Gamma 翻轉點', css('--oi'), 'dash']]);
+    for (let i = 1; i < N; i++){ const pos = curve[i][1] + curve[i - 1][1] >= 0; el('rect', { x:f.x(curve[i - 1][0]), y:f.m.t, width:Math.max(0.5, f.x(curve[i][0]) - f.x(curve[i - 1][0]) + 0.3), height:f.ih, fill:pos ? css('--call') : css('--put'), 'fill-opacity':0.07 }, svg); }
+    yGrid(svg, f, y, mx); xTicks(svg, f);
+    el('path', { d:curve.map((c, i) => (i ? 'L' : 'M') + f.x(c[0]).toFixed(1) + ',' + y(c[1]).toFixed(1)).join(''), fill:'none', stroke:css('--oi'), 'stroke-width':2.4, 'stroke-linejoin':'round' }, svg);
+    drawMarks(svg, f.lay, f.H, f.m);
+    // 每個零 Gamma 點都畫圓點並標股價（最靠近現價的那個另有上方標籤）
+    for (const fp of GX.flips.filter(v => v >= lo && v <= hi)){ el('circle', { cx:f.x(fp), cy:y(0), r:5, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':2.5 }, svg);
+      const t = fmt(fp, fp < 100 ? 2 : 1), tw = t.length * 7 + 10, tx = Math.min(Math.max(f.x(fp), f.m.l + tw / 2), f.Wd - f.m.r - tw / 2);
+      el('rect', { x:tx - tw / 2, y:y(0) + 9, width:tw, height:16, rx:3, fill:css('--panel'), stroke:css('--oi'), 'stroke-width':1 }, svg);
+      el('text', { x:tx, y:y(0) + 21, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':700, fill:css('--text') }, svg, t); }
+    if (S >= lo && S <= hi) el('circle', { cx:f.x(S), cy:y(GX.gexAt(S)), r:5, fill:css('--oi'), stroke:css('--panel'), 'stroke-width':1.5 }, svg);
+    const tip = $('#tipC'), cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), dot = el('circle', { r:4, fill:css('--oi'), visibility:'hidden' }, svg);
+    const hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+    hit.addEventListener('pointermove', ev => { const b = svg.getBoundingClientRect(), i = Math.max(0, Math.min(N - 1, Math.round(((ev.clientX - b.left) * f.Wd / b.width - f.m.l) / f.iw * (N - 1)))), [p, g] = curve[i];
+      cross.setAttribute('x1', f.x(p)); cross.setAttribute('x2', f.x(p)); cross.setAttribute('visibility', 'visible'); dot.setAttribute('cx', f.x(p)); dot.setAttribute('cy', y(g)); dot.setAttribute('visibility', 'visible');
+      tip.innerHTML = `股價 <b>${fmt(p, p < 100 ? 2 : 1)}</b>（${pc((p / S - 1) * 100, 1)}）<br>總 Gamma 曝險 ${fmtMoney(g, true)}<br>${g >= 0 ? '正 Gamma：造市避險逆勢，波動收斂' : '負 Gamma：造市避險順勢，波動放大'}`;
+      tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, f.x(p) * b.width / f.Wd + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '40px'; });
+    hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; }); }
+  $('#zInfo').textContent = zoomTxt;
+}
+const narrow0 = () => ($('#svG').parentElement.clientWidth - 12) < 520;
+// 縮放：兩張圖共用同一個價格範圍
+function setZoom(lo, hi){
+  if (!GX) return;
+  const full = GX.hi - GX.lo, minW = Math.max(GX.S * 0.01, full * 0.03);
+  let w = Math.min(full, Math.max(minW, hi - lo)), c = (lo + hi) / 2;
+  c = Math.min(GX.hi - w / 2, Math.max(GX.lo + w / 2, c));
+  GZ = w >= full - 1e-9 ? null : { lo:c - w / 2, hi:c + w / 2 };
+  drawGexCharts();
+}
+const curLo = () => GZ ? GZ.lo : GX.lo, curHi = () => GZ ? GZ.hi : GX.hi;
+function zoomBy(k, at){ if (!GX) return; const lo = curLo(), hi = curHi(), c = at == null ? (GX.S >= lo && GX.S <= hi ? GX.S : (lo + hi) / 2) : at; setZoom(c - (c - lo) * k, c + (hi - c) * k); }
+function bindZoom(svg){
+  const pts = new Map(); let g0 = null;
+  const priceAt = cx => { const f = svg._f; if (!f) return null; const r = svg.getBoundingClientRect(), px = (cx - r.left) * f.W / r.width; return curLo() + (px - f.m.l) / f.iw * (curHi() - curLo()); };
+  svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x:e.clientX, y:e.clientY }); g0 = null; });
+  const end = e => { pts.delete(e.pointerId); g0 = null; };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end); svg.addEventListener('pointerleave', end);
+  svg.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !GX || !svg._f) return;
+    pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const a = [...pts.values()];
+    if (!g0) g0 = { lo:curLo(), hi:curHi(), a:a.map(p => ({ ...p })), n:a.length };
+    if (a.length >= 2 && g0.n >= 2){                                  // 雙指縮放
+      const d0 = Math.abs(g0.a[0].x - g0.a[1].x) || 1, d1 = Math.abs(a[0].x - a[1].x) || 1;
+      const r = svg.getBoundingClientRect(), f = svg._f, mid = g0.lo + (((g0.a[0].x + g0.a[1].x) / 2 - r.left) * f.W / r.width - f.m.l) / f.iw * (g0.hi - g0.lo), k = d0 / d1;
+      setZoom(mid - (mid - g0.lo) * k, mid + (g0.hi - mid) * k);
+    } else if ((a.length === 1 && e.pointerType !== 'mouse') || (e.buttons & 1)){   // 左右拖曳
+      const dx = a[0].x - g0.a[0].x; if (Math.abs(dx) < 6) return;
+      const r = svg.getBoundingClientRect(), shift = -dx * svg._f.W / r.width / svg._f.iw * (g0.hi - g0.lo);
+      setZoom(g0.lo + shift, g0.hi + shift);
+    }
+  });
+  svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(e.deltaY > 0 ? 1.15 : 1 / 1.15, priceAt(e.clientX)); }, { passive:false });
+  svg.addEventListener('dblclick', () => { GZ = null; drawGexCharts(); });
 }
 
 /* ───────── 目前狀況統整與應對策略 ───────── */
@@ -552,8 +626,10 @@ function renderSummary(){
 
 /* ───────── 啟動 ───────── */
 $('#goBtn').onclick = load;
+['#svG', '#svC'].forEach(id => bindZoom($(id)));
+$('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4); $('#zReset').onclick = () => { GZ = null; drawGexCharts(); };
 $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); loadGex().catch(() => {}); } }, 200); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); drawGexCharts(); } }, 200); });
 { const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
 </script>
 </body>
