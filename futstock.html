@@ -754,6 +754,7 @@ function renderQA(){
   let a2;
   if (Math.abs(L.exA5) < 3 && fExp !== '擴大') a2 = ['價差正常', NEU, '超額價差接近合理值，沒有過熱，也沒有特別強的期貨買盤。'];
   else if (fExp === '擴大' && fOi === '增加' && fPx === '上漲' && fVol !== '量縮' && fIn === '買超') a2 = ['多頭強勢', UP, '價差擴大的同時，股期未平倉增加、現股價漲量增、法人買超，期貨與現貨一起往上，屬於健康的強勢。'];
+  else if (fExp === '擴大' && fOi === '增加' && fPx === '下跌' && fIn === '賣超') a2 = ['期現背離', WARN, '價差擴大、股期未平倉增加，但現股下跌、法人賣超：期貨端有人逢低作多，現貨賣壓卻還很重。這不是過熱，而是期貨比現貨樂觀；要等現股止跌、法人賣超縮小才算轉強。'];
   else if (fExp === '擴大' && fOi === '增加') a2 = ['過熱警訊', WARN, `價差擴大、股期未平倉增加，但${[fVol === '量縮' ? '現股量縮' : '', fIn !== '買超' ? '法人沒有跟著買' : '', fPx !== '上漲' ? '股價沒有同步上漲' : ''].filter(Boolean).join('、') || '現貨力道不足'}：期貨端在追價、現貨沒跟上，容易回檔。`];
   else if (fExp === '擴大' && fOi === '減少') a2 = ['空單回補（軋空）', UP, '價差擴大但未平倉減少，代表是股期空單回補把價格推高，短線強，但新買盤不多，持續性較弱。'];
   else if (fExp !== '擴大' && fOi === '增加') a2 = ['上檔有壓', DN, '價差收斂或持平、未平倉卻增加，多半是期貨端新空單或套利盤進場賣股期，上方有壓力。'];
@@ -786,20 +787,24 @@ function renderQA(){
   for (const e of [...new Set(R.map(r => r.exp))].sort()){
     if (e >= L.d) continue; let iE = -1; for (let j = 0; j < n; j++) if (R[j].d <= e) iE = j; if (iE < 5) continue;
     const a = R[iE - 5], b = R[iE], c = R[Math.min(n - 1, iE + 3)];
-    evs.push({ e, st:a.st[1], ex:a.exA5, pre:(b.s / a.s - 1) * 100, post:iE + 3 < n ? (c.s / b.s - 1) * 100 : null, dOi:(R[Math.min(n - 1, iE + 1)].oi - a.oi) });
+    let j0 = iE - 5; while (j0 > 0 && R[j0 - 1].fc === a.fc) j0--;
+    const bld = Math.max(0, a.oi - Math.min(...R.slice(j0, iE - 4).map(r => r.oi))), adv0 = avg(R.slice(Math.max(0, iE - 25), iE - 4).map(r => r.vol));
+    evs.push({ e, st:a.st[1], ex:a.exA5, size:adv0 ? bld * SHARES / 1000 / adv0 : 0, pre:(b.s / a.s - 1) * 100, post:iE + 3 < n ? (c.s / b.s - 1) * 100 : null, dOi:(R[Math.min(n - 1, iE + 1)].oi - a.oi) });
   }
-  const evP = evs.filter(v => v.ex > 3), evO = evs.filter(v => v.ex <= 3);
+  const medS = [...evs.map(v => v.size)].sort((a, b) => a - b)[Math.floor(evs.length / 2)] || 0;
+  const evP = evs.filter(v => v.size >= medS && v.ex > 0), evO = evs.filter(v => !(v.size >= medS && v.ex > 0));
+  const postAvg = a => { const xs = a.map(v => v.post).filter(v => v != null); return xs.length ? avg(xs) : null; };
   let a3;
   if (L.exA5 > 3 && build > 0 && days >= 0.2 && !roll) a3 = ['偏賣壓', DN, `正向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張現股，平均成交量 ${days.toFixed(1)} 天），次月價差${L.ex2 != null ? `只有 ${pc(L.ex2, 1)}（年化）` : '資料不足'}，轉倉不划算，結算（${md(L.exp)}，剩 ${left} 天）前後較可能賣現股了結。`];
   else if (L.exA5 > 3 && build > 0 && roll) a3 = ['賣壓有限', WARN, `正向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張），但次月超額價差還有 ${pc(L.ex2, 1)}（年化），套利盤較可能「轉倉」到下個月，不一定賣現股；賣壓會比部位數字小。`];
   else if (L.exA5 < -3 && build > 0) a3 = ['偏買盤支撐', UP, `反向套利部位約 ${fmt(build)} 口（≈ ${fmt(arbZ)} 張），結算前後要買回現股還券${roll ? '；但次月逆價差還在，可能轉倉，回補力道會打折' : ''}。`];
   else a3 = ['影響不大', NEU, `目前沒有明顯的套利部位（超額價差 ${pc(L.exA5, 1)}），結算（${md(L.exp)}）對現股的影響不大。`];
-  const hs = evP.length ? `過去 ${evs.length} 次結算中，有 ${evP.length} 次在結算前 5 天處於超額正價差：結算前 5 天現股平均 ${pc(avg(evP.map(v => v.pre)), 2)}、上漲 ${evP.filter(v => v.pre > 0).length} 次；其他 ${evO.length} 次平均 ${pc(avg(evO.map(v => v.pre)), 2)}。` : `過去 ${evs.length} 次結算前 5 天現股平均 ${pc(avg(evs.map(v => v.pre)), 2)}。`;
+  const hs = evP.length && evO.length ? `過去 ${evs.length} 次結算，依「結算前 5 天的正向套利部位大小（相對成交量）」分兩組：部位較大的 ${evP.length} 次，結算前 5 天現股平均 ${pc(avg(evP.map(v => v.pre)), 2)}（上漲 ${evP.filter(v => v.pre > 0).length} 次）、結算後 3 天平均 ${pc(postAvg(evP), 2)}；部位較小的 ${evO.length} 次，結算前 5 天平均 ${pc(avg(evO.map(v => v.pre)), 2)}、結算後 3 天 ${pc(postAvg(evO), 2)}。目前部位約平均成交量 ${days.toFixed(2)} 天，屬於${days >= medS ? '較大' : '較小'}的一組。` : `過去 ${evs.length} 次結算前 5 天現股平均 ${pc(avg(evs.map(v => v.pre)), 2)}。`;
   $('#qa3').innerHTML = `<h3>③ 期貨結算前，現股比較可能受到買盤支撐，還是賣壓？</h3><div class="ans">${badge(a3[0], a3[1])}${a3[2]}</div>` +
     `<div class="g2"><div><ul><li>${hs}次數不多，只能當參考。</li><li>次月合約超額價差（年化）${pc(L.ex2, 1)}：${roll ? '還有套利空間，套利盤可以把部位移到下個月，結算日賣壓較小' : '空間不大，套利盤到期多半直接了結'}。</li>` +
     `<li>看盤重點：結算日收盤前最後 30 分鐘（現股收盤價決定結算價）。結算後隔天看股期未平倉有沒有大降：大降代表套利盤真的出場；沒降代表轉倉。</li></ul></div>` +
-    `<div><div class="cap">過去結算日前後的現股表現</div><div class="tblx"><table><thead><tr><th>結算日</th><th>前 5 天狀態</th><th>超額價差</th><th>前 5 天</th><th>後 3 天</th></tr></thead><tbody>` +
-    evs.slice(-8).reverse().map(v => `<tr><td>${md(v.e)}</td><td>${v.st}</td><td>${pc(v.ex, 1)}</td><td class="${v.pre >= 0 ? 'up' : 'dn'}">${pc(v.pre, 1)}</td><td class="${v.post == null ? '' : v.post >= 0 ? 'up' : 'dn'}">${v.post == null ? '–' : pc(v.post, 1)}</td></tr>`).join('') +
+    `<div><div class="cap">過去結算日前後的現股表現</div><div class="tblx"><table><thead><tr><th>結算日</th><th>前 5 天狀態</th><th>部位／均量</th><th>前 5 天</th><th>後 3 天</th></tr></thead><tbody>` +
+    evs.slice(-8).reverse().map(v => `<tr><td>${md(v.e)}</td><td>${v.st}</td><td>${v.size.toFixed(2)} 天</td><td class="${v.pre >= 0 ? 'up' : 'dn'}">${pc(v.pre, 1)}</td><td class="${v.post == null ? '' : v.post >= 0 ? 'up' : 'dn'}">${v.post == null ? '–' : pc(v.post, 1)}</td></tr>`).join('') +
     `</tbody></table></div></div></div>`;
   D.qa = { a1:a1[0], a2:a2[0], a3:a3[0], hot, left };
 }
@@ -837,7 +842,7 @@ function renderSummary(){
   const S1 = sup.find(x => x[1] < L.s) || sup[0], R1 = res.find(x => x[1] > L.s) || res[0];
   // 統整表
   const rowsT = [
-    ['套利狀態', `<b class="${L.st[0] === 'pos' ? 'pos' : L.st[0] === 'neg' ? 'neg' : ''}">${st}</b>`, L.st[2] + '。' + (posArb ? (/建倉/.test(st) ? `套利盤現在是買現股的避險買盤，結算（${md(L.exp)}）前後會轉成賣壓。` : st === '套利平倉' ? '套利盤正在賣現股出場，短線有賣壓。' : '') : (/建倉/.test(st) ? `套利盤現在是借券賣現股的賣壓，結算（${md(L.exp)}）前後會回補買進。` : st === '套利平倉' ? '套利盤正在買回現股還券，短線有買盤。' : ''))],
+    ['套利狀態', `<b class="${L.st[0] === 'pos' ? 'pos' : L.st[0] === 'neg' ? 'neg' : ''}">${st}</b>`, L.st[2] + '。' + (posArb ? (/建倉/.test(st) ? `套利盤現在是買現股的避險買盤，結算（${md(L.exp)}）前後可能轉成賣壓（見第 ③ 題：轉倉或了結）。` : st === '套利平倉' ? '套利盤正在賣現股出場，短線有賣壓。' : '') : (/建倉/.test(st) ? `套利盤現在是借券賣現股的賣壓，結算（${md(L.exp)}）前後會回補買進。` : st === '套利平倉' ? '套利盤正在買回現股還券，短線有買盤。' : ''))],
     ['超額價差（年化）', `今天 ${pc(L.exAnn, 1)}／5 日 ${pc(L.exA5, 1)}`, Math.abs(L.exA5) < 3 ? '接近合理值，套利空間小。' : (Math.sign(L.exAnn) !== Math.sign(L.exA5) || Math.abs(L.exAnn) < Math.abs(L.exA5) * 0.5) ? '今天已明顯收斂，套利盤可能準備平倉，留意股期未平倉是否開始下降。' : exTrend > 0 ? '還在擴大，套利盤可能繼續進場。' : '開始收斂，套利盤可能準備平倉。'],
     ['股期未平倉', `${fmt(L.oi)} 口（5 日 ${sgn(L.dOi)}）`, `約 ${fmt(L.oi * SHARES / 1000)} 張現股，是 20 日均量的 ${(L.oi * SHARES / 1000 / adv).toFixed(1)} 倍。` + (L.dOi > 0 ? '部位在增加。' : L.dOi < 0 ? '部位在減少。' : '')],
     ['自營商避險（5 日）', sgn(L.dh5) + ' 張', L.dh5 > 0 ? '避險買現股，對應賣出股期或選擇權。' : L.dh5 < 0 ? '避險賣現股，對應買進股期或選擇權。' : '沒有明顯動作。'],
@@ -860,11 +865,11 @@ function renderSummary(){
   const plan = bias[1] === '偏多' ? `偏多操作：拉回 ${P(S1[1])} 附近承接，目標 ${P(R1[1])}，收盤跌破 ${P(stopL)} 停損。`
     : bias[1] === '偏空' ? `偏空操作：反彈到 ${P(R1[1])} 附近不追、可減碼或避險（例如賣股期），目標 ${P(S1[1])}，收盤站上 ${P(stopS)} 停損。`
     : `區間操作：${P(S1[1])} 附近偏買、${P(R1[1])} 附近偏賣，任一邊收盤突破 1% 以上再順勢跟進。`;
-  const arb = posArb
-    ? (/建倉|超額正/.test(st) ? `正向套利盤手上有現股多單，結算日 ${md(L.exp)} 收盤前最後 30 分鐘常有集中賣壓；手上有多單可在結算前一兩天先減碼，想買的可以等結算後賣壓消化再進。若超額正價差繼續擴大、未平倉同步增加，代表期貨端積極作多，短線反而有支撐。`
-      : st === '套利平倉' ? '套利盤正在賣現股出場，短線賣壓還沒結束，等股期未平倉止穩再進場。' : '目前沒有明顯套利部位，結算日影響不大。')
-    : (/建倉|超額逆/.test(st) ? `反向套利盤借券賣出現股，結算日 ${md(L.exp)} 前後會回補買進；股價若在結算前跌到支撐附近，可以留意回補帶來的止跌。若逆價差和借券同步擴大，下跌壓力還在，先不要接。`
-      : st === '套利平倉' ? '反向套利盤正在回補現股，短線有買盤支撐。' : '目前沒有明顯套利部位，結算日影響不大。');
+  const q3 = (D.qa || {}).a3;
+  const arb = q3 === '偏賣壓' ? `結算日 ${md(L.exp)}（剩 ${left} 天）前後偏賣壓：正向套利盤轉倉不划算，較可能賣現股了結，收盤前最後 30 分鐘最明顯。手上有多單可在結算前一兩天先減碼，想買的等結算後賣壓消化再進。`
+    : q3 === '賣壓有限' ? `正向套利部位不小，但次月價差還有空間，套利盤較可能轉倉，結算日 ${md(L.exp)} 的賣壓應該有限。結算後隔天確認股期未平倉沒有大降即可；若大降，代表真的出場，再保守一點。`
+    : q3 === '偏買盤支撐' ? `反向套利盤結算日 ${md(L.exp)} 前後要買回現股還券，股價跌到支撐附近時可以留意回補帶來的止跌。`
+    : `目前沒有明顯套利部位，結算日 ${md(L.exp)} 對現股影響不大。`;
   $('#strat').innerHTML =
     `<div class="row"><span class="badge" style="border-color:${bias[0] === 'pos' ? css('--up') : bias[0] === 'neg' ? css('--down') : css('--line')}">${bias[1]}</span>${why.length ? esc(why.join('、')) + '。' : ''}</div>` +
     `<div class="row"><b>關鍵價位</b>　支撐 ${sup.filter(x => x[1] < L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}；壓力 ${res.filter(x => x[1] > L.s).map(x => `${P(x[1])}（${x[0]}）`).join('、') || '–'}。</div>` +
