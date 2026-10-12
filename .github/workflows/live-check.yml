@@ -31,7 +31,7 @@ jobs:
               pg.on('requestfailed', r => log.push(name + ' failed: ' + scrub(r.url()).slice(0,160) + ' ' + (r.failure() || {}).errorText));
               pg.on('response', r => { if (r.url().includes('finmind')) log.push(name + ' resp ' + r.status() + ' ' + scrub(r.url()).slice(0,140)); });
               await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
-              await pg.goto(url + '?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.goto(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now(), { waitUntil:'domcontentloaded' });
               if (act){ await pg.waitForTimeout(2500); await pg.fill('#sym', act[0]); await pg.click(`#tfSeg button[data-tf="${act[1]}"]`); await pg.click('#loadBtn'); }
               await pg.waitForTimeout(15000);
               log.push(name + ' STATUS: ' + scrub(await pg.textContent('#status').catch(() => '?')));
