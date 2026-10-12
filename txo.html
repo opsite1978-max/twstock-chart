@@ -117,7 +117,9 @@
     <div class="verdict" id="verdict"></div>
 
     <section>
-      <h2>台指期日K與撐壓位<span class="muted">預期高低區間、最大痛點、零 Gamma、最大買權／賣權未平倉</span></h2>
+      <h2>台指期K線與撐壓位
+        <span class="seg" id="lvSeg"><button data-tf="60">60分</button><button data-tf="240">4小時</button><button data-tf="D">日</button></span>
+        <span class="muted">含夜盤；預期高低區間、最大痛點、零 Gamma、最大買權／賣權未平倉</span></h2>
       <div class="panel">
         <div class="legend" id="lgLv"></div>
         <svg id="svgLv" role="img" aria-label="台指期日K線與各撐壓價位"></svg>
@@ -1306,16 +1308,146 @@ function chipPanel(id, D, Hh, series, yfmt, ref, tip){
 document.querySelectorAll('#chipSeg button').forEach(b => b.onclick = () => { CN = +b.dataset.n; store.set('txo.chipN', CN); renderChips2(); });
 
 
+
+/* ───────── 台指期 60 分／4 小時 K 棒（FinMind 一分K，與看盤頁共用瀏覽器快取） ───────── */
+const slash = d => d.replace(/-/g,'/');
+function parseHM(s){ s = String(s || '').trim().split(' ').pop(); const p = s.split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+const kdb = (() => { let p = null; return () => p || (p = new Promise(res => {
+  try {
+    const r = indexedDB.open('twchart-kbar', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('d');
+    r.onsuccess = () => {
+      const db = r.result;
+      try { const q = db.transaction('d').objectStore('d').count();          // 太多就整個清掉重來，避免無限長大
+            q.onsuccess = () => { if (q.result > 4000) try { db.transaction('d','readwrite').objectStore('d').clear(); } catch(e){} }; } catch(e){}
+      res(db);
+    };
+    r.onerror = r.onblocked = () => res(null);
+  } catch(e){ res(null); }
+})); })();
+async function kGet(k){
+  const db = await kdb(); if (!db) return null;
+  return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } });
+}
+async function kPut(k, v){ const db = await kdb(); if (!db) return; try { db.transaction('d','readwrite').objectStore('d').put(v, k); } catch(e){} }
+
+// 一天的一分K精簡成 [分鐘, 開, 高, 低, 收, 量, 合約序號]；期貨只留當天成交量最大的兩個月合約（換月日兩個都要）
+function compactK(rows, fut){
+  let cs = [];
+  if (fut){
+    const vol = new Map();
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); if (/^\d{6}$/.test(c)) vol.set(c, (vol.get(c) || 0) + (+r.volume || 0)); }
+    cs = [...vol.keys()].sort((a,b) => vol.get(b) - vol.get(a)).slice(0, 2);
+  }
+  const out = [];
+  for (const r of rows){
+    if (!(r.close > 0)) continue;
+    let ci = 0;
+    if (fut){ ci = cs.indexOf(String(r.contract_date || '').trim()); if (ci < 0) continue; }
+    out.push([parseHM(r.minute), +r.open, +r.high, +r.low, +r.close, +r.volume || 0, ci]);
+  }
+  out.sort((a,b) => a[0] - b[0]);
+  return { c:cs, r:out };
+}
+const kMem = new Map();
+function kbarDay(sym, date){
+  const fut = sym.kind === 'fut', key = (fut ? 'F:' : 'S:') + sym.id + ':' + date;
+  if (kMem.has(key)) return kMem.get(key);
+  const today = twToday();
+  const stable = fut ? date <= shiftDay(today, -2) : date < today;       // 期貨夜盤跨到隔天，多等一天才存
+  const p = (async () => {
+    if (stable){ const v = await kGet(key); if (v && v.r) return v; }
+    const rows = await finmind({ dataset: fut ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar', data_id:sym.id, start_date:date });
+    const v = compactK(rows, fut);
+    if (stable && v.r.length) kPut(key, v);
+    return v;
+  })();
+  kMem.set(key, p); p.catch(() => kMem.delete(key));
+  return p;
+}
+
+// 一分K → 5／15／30／60 分、4 小時 K 棒
+// 每個交易時段各自從開盤起算（股票 09:00；台指期日盤 08:45、夜盤 15:00），與 TradingView 對齊方式相同
+// 夜盤 15:00 到隔天 05:00 算同一段，用當段成交量最大的月合約
+function intradayBars(dates, perDay, sym, P, night, firstDate){
+  const fut = sym.kind === 'fut', sess = new Map();
+  dates.forEach((date, i) => {
+    const day = perDay[i]; if (!day || !day.r) return;
+    for (const r of day.r){
+      const m = r[0]; let k, a, e, sDate = date, ext = m;
+      if (!fut){ if (m < 540 || m > 810) continue; k = 'D'; a = 540; e = 810; }           // 股票 09:00–13:30（14:30 盤後定價不算）
+      else if (m >= 525 && m <= 825){ k = 'D'; a = 525; e = 825; }                         // 期貨日盤 08:45–13:45
+      else if (night && m >= 900){ k = 'N'; a = 900; e = 1740; }                           // 夜盤前段 15:00–24:00
+      else if (night && m < 300){ k = 'N'; a = 900; e = 1740; sDate = shiftDay(date, -1); ext = m + 1440; }  // 夜盤後段 00:00–05:00
+      else continue;
+      if (sDate < firstDate) continue;                                                      // 第一天之前那段夜盤只抓到一半，不畫
+      const sk = sDate + k;
+      let s = sess.get(sk); if (!s){ s = { sDate, a, e, rows:[], vol:new Map() }; sess.set(sk, s); }
+      const c = fut ? day.c[r[6]] : '';
+      s.rows.push([ext, r[1], r[2], r[3], r[4], r[5], c]); s.vol.set(c, (s.vol.get(c) || 0) + r[5]);
+    }
+  });
+  const out = [];
+  for (const s of sess.values()){
+    const main = [...s.vol.keys()].sort((x,y) => s.vol.get(y) - s.vol.get(x))[0];
+    const rows = s.rows.filter(r => r[6] === main).sort((x,y) => x[0] - y[0]);
+    const [yy, mo, dd] = s.sDate.split('-').map(Number);
+    let cur = null, curB = null;
+    for (const [m, o, h, l, cl, v] of rows){
+      const mm = Math.min(Math.max(m, s.a), s.e - 1);
+      const b = s.a + Math.floor((mm - s.a) / P) * P;
+      if (b !== curB){
+        const time = Date.UTC(yy, mo-1, dd, 0, b) / 1000, iso = new Date(time * 1000).toISOString();
+        cur = { date:iso.slice(0,10), time, label:slash(iso.slice(0,10)) + ' ' + iso.slice(11,16),
+                open:o, high:h, low:l, close:cl, volume:v, contract:main || undefined };
+        out.push(cur); curB = b;
+      } else {
+        cur.high = Math.max(cur.high, h); cur.low = Math.min(cur.low, l); cur.close = cl; cur.volume += v;
+      }
+    }
+  }
+  return out.sort((x,y) => x.time - y.time);
+}
+
+
+const LV = { tf: store.get('txo.lvTf') || '60', bars:{}, loading:{} };
+async function loadIntra(tf){
+  if (LV.bars[tf] || LV.loading[tf]) return;
+  LV.loading[tf] = true;
+  try {
+    const sym = { kind:'fut', id:'TX' }, P = tf === '240' ? 240 : 60, n = tf === '240' ? 45 : 16;
+    const today = twToday(), dates = (CAL.length ? CAL : TD).filter(d => d <= today).slice(-n);
+    const set = new Set(dates), list = dates.slice();
+    for (const d of dates){ const nd = shiftDay(d, 1); if (!set.has(nd) && nd <= today){ set.add(nd); list.push(nd); } }
+    list.sort();
+    const per = [];
+    for (let i = 0; i < list.length; i += 6){                          // 一次 6 天，避免同時送出太多查詢
+      const chunk = await Promise.all(list.slice(i, i + 6).map(d => kbarDay(sym, d).catch(() => null)));
+      per.push(...chunk);
+      $('#lvNote').textContent = `讀取台指期分K ${Math.min(list.length, i + 6)}/${list.length} 天…（第一次比較久，之後會存在瀏覽器）`;
+    }
+    LV.bars[tf] = intradayBars(list, per, sym, P, true, dates[0]);
+  } catch(e){ LV.bars[tf] = []; $('#lvNote').textContent = '分K讀取失敗：' + e.message; }
+  finally { LV.loading[tf] = false; if (CTX) drawLevels(); }
+}
 /* ───────── 台指期日K與撐壓位（水平線：預期高低區間、最大痛點、零 Gamma、最大買權／賣權未平倉） ───────── */
 function drawLevels(){
   const svg = $('#svgLv'); if (!svg || !CTX) return;
   const { v, st, EM } = CTX, fut = DATA.fut;
-  const W0 = Math.max(300, svg.parentElement.clientWidth - 12), N = W0 < 520 ? 14 : 22;
-  // K 棒：GitHub 每天算好的台指期日盤（history.json），到資料日為止；再接上之後的夜盤
-  let bars = (HIST || []).filter(d => d.d <= DATA.date && d.o).slice(-N).map(d => ({ lab:md(d.d), d:d.d, o:d.o, h:d.h, l:d.l, c:d.c }));
-  if (fut && (!bars.length || bars[bars.length - 1].d < DATA.date))
-    bars.push({ lab:md(DATA.date), d:DATA.date, o:fut.dayClose, h:fut.dayClose, l:fut.dayClose, c:fut.dayClose, only:true });
-  if (fut && fut.nightBar) bars.push(Object.assign({ lab:'夜盤', d:'夜盤', night:true }, fut.nightBar));
+  document.querySelectorAll('#lvSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === LV.tf));
+  const W0 = Math.max(300, svg.parentElement.clientWidth - 12), intra = LV.tf !== 'D';
+  const N = !intra ? (W0 < 520 ? 14 : 22) : LV.tf === '240' ? (W0 < 520 ? 30 : 55) : (W0 < 520 ? 40 : 80);
+  let bars;
+  if (intra){
+    if (!LV.bars[LV.tf]){ svg.innerHTML = ''; $('#lvNote').textContent = '讀取台指期分K中…'; loadIntra(LV.tf); return; }
+    bars = LV.bars[LV.tf].slice(-N).map(b => ({ lab:md(b.date) + ' ' + b.label.slice(-5), d:b.date, o:b.open, h:b.high, l:b.low, c:b.close, night:+b.label.slice(-5, -3) >= 15 || +b.label.slice(-5, -3) < 8 }));
+  } else {
+    // K 棒：GitHub 每天算好的台指期日盤（history.json），到資料日為止；再接上之後的夜盤
+    bars = (HIST || []).filter(d => d.d <= DATA.date && d.o).slice(-N).map(d => ({ lab:md(d.d), d:d.d, o:d.o, h:d.h, l:d.l, c:d.c }));
+    if (fut && (!bars.length || bars[bars.length - 1].d < DATA.date))
+      bars.push({ lab:md(DATA.date), d:DATA.date, o:fut.dayClose, h:fut.dayClose, l:fut.dayClose, c:fut.dayClose, only:true });
+    if (fut && fut.nightBar) bars.push(Object.assign({ lab:'夜盤', d:'夜盤', night:true, nb:true }, fut.nightBar));
+  }
   if (fut && fut.live) bars.push({ lab:'今天', d:'今天', live:true, o:fut.live.o, h:fut.live.h, l:fut.live.l, c:fut.live.c });
   if (!bars.length){ svg.innerHTML = ''; $('#lvNote').textContent = '台指期日K資料還在計算中，稍後重新整理。'; return; }
   const L = [];                                                       // [價位, 名稱, 顏色, 虛線, 粗細]
@@ -1328,7 +1460,7 @@ function drawLevels(){
   if (DATA.liveIdx) L.push([DATA.liveIdx, nw ? '推算指數' : '選擇權推算指數', css('--curve'), '3 2', 1.6]);
   legend($('#lgLv'), [['K 棒（紅漲綠跌）', css('--up')], ['預期高低區間', css('--em'), 'dash'], ['最大痛點', css('--pain'), 'dot'], ['零 Gamma', css('--flip'), 'ln'], ['最大買權未平倉', css('--call'), 'ln'], ['最大賣權未平倉', css('--put'), 'ln']]);
   // 縱軸：以現價為中心，涵蓋最近 8 根 K 棒和 4% 以內的價位（看撐壓用，較早的 K 棒超出範圍會被裁掉）；更遠的價位在上下邊緣用箭頭標示
-  const P = v.P, recent = bars.slice(-10);
+  const P = v.P, recent = bars.slice(intra ? -24 : -10);
   let lo = Math.min(P, ...recent.map(b => b.l)), hi = Math.max(P, ...recent.map(b => b.h));
   for (const [p] of L) if (Math.abs(p - P) <= P * 0.04){ lo = Math.min(lo, p); hi = Math.max(hi, p); }
   const pad = Math.max((hi - lo) * 0.08, P * 0.003); lo -= pad; hi += pad;
@@ -1340,8 +1472,8 @@ function drawLevels(){
   // 格線與右側價格刻度
   for (const t of niceTicks(lo, hi, 6)){ el('line', { x1:m.l, x2:W0 - m.r, y1:y(t), y2:y(t), stroke:css('--grid'), 'stroke-width':1 }, svg);
     el('text', { x:W0 - m.r + 4, y:y(t) + 4, 'font-size':10.5, fill:css('--muted') }, svg, fmtInt(t)); }
-  const every = Math.max(1, Math.ceil(bars.length / (narrow ? 5 : 8)));
-  bars.forEach((b, i) => { if (i % every === 0 || b.night) el('text', { x:x(i), y:H - 7, 'text-anchor':'middle', 'font-size':10.5, fill:b.night ? css('--text') : css('--muted') }, svg, b.lab); });
+  const every = Math.max(1, Math.ceil(bars.length / Math.max(2, Math.floor(iw / (intra ? 78 : 48)))));
+  bars.forEach((b, i) => { if (i % every === 0 || b.nb) el('text', { x:x(i), y:H - 7, 'text-anchor':'middle', 'font-size':10.5, fill:b.nb ? css('--text') : css('--muted') }, svg, b.lab); });
   // 預期區間底色
   if (EM) el('rect', { x:m.l, y:y(Math.min(hi, EM.hi)), width:iw, height:Math.max(0, y(Math.max(lo, EM.lo)) - y(Math.min(hi, EM.hi))), fill:css('--em'), 'fill-opacity':.08 }, svg);
   // K 棒（紅漲綠跌，夜盤用空心），超出縱軸範圍的部分裁掉
@@ -1353,7 +1485,7 @@ function drawLevels(){
     const up = b.c >= b.o, col = up ? css('--up') : css('--down');
     el('line', { x1:x(i), x2:x(i), y1:y(b.h), y2:y(b.l), stroke:col, 'stroke-width':1.2 }, gK);
     const top = y(Math.max(b.o, b.c)), hgt = Math.max(1, Math.abs(y(b.o) - y(b.c)));
-    el('rect', { x:x(i) - bw / 2, y:top, width:bw, height:hgt, fill:b.night ? css('--panel') : col, stroke:col, 'stroke-width':b.night ? 1.5 : 0 }, gK);
+    el('rect', { x:x(i) - bw / 2, y:top, width:bw, height:hgt, fill:b.nb ? css('--panel') : col, stroke:col, 'stroke-width':b.nb ? 1.5 : 0 }, gK);
   });
   // 水平線與右側標籤（標籤彼此錯開，不重疊）
   const tags = [];
@@ -1375,7 +1507,7 @@ function drawLevels(){
   }
   el('line', { x1:m.l, x2:W0 - m.r, y1:y(P), y2:y(P), stroke:css('--text'), 'stroke-width':1, 'stroke-dasharray':'2 3' }, svg);
   hover(svg, $('#tipLv'), Object.assign(f, { iw }), x, [], o => { const b = o.r;
-      return `<b>${b.night ? '夜盤（' + mdw(DATA.date) + ' 晚上）' : b.live ? '今天（即時）' : mdw(b.d)}</b><br>開 ${fmtInt(b.o)}・高 ${fmtInt(b.h)}<br>低 ${fmtInt(b.l)}・收 ${fmtInt(b.c)}` + (b.only ? '<br><span class="muted">只有收盤價</span>' : ''); },
+      return `<b>${b.nb ? '夜盤（' + mdw(DATA.date) + ' 晚上）' : b.live ? '今天（即時）' : intra ? b.lab + (b.night ? '（夜盤）' : '') : mdw(b.d)}</b><br>開 ${fmtInt(b.o)}・高 ${fmtInt(b.h)}<br>低 ${fmtInt(b.l)}・收 ${fmtInt(b.c)}` + (b.only ? '<br><span class="muted">只有收盤價</span>' : ''); },
     mx => { const i = Math.max(0, Math.min(bars.length - 1, Math.round((mx - m.l) / step - 0.5))); return { K:i, r:bars[i] }; });
   const sel = v.single ? `${mdw(v.single.exp)} 結算（${v.single.info.label}）` : '全部結算日合計';
   $('#lvNote').textContent = `水平線依上方選的 ${sel} 計算；預期高低區間是用隱含波動率推算到結算時約 68% 機率的範圍。最大買權未平倉常被當成壓力、最大賣權未平倉常被當成支撐；超出畫面的價位在上下邊緣用箭頭標示。`;
@@ -1444,6 +1576,7 @@ function setLive(on){
   else $('#liveLine').textContent = '';
 }
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
+document.querySelectorAll('#lvSeg button').forEach(b => b.onclick = () => { LV.tf = b.dataset.tf; store.set('txo.lvTf', LV.tf); drawLevels(); });
 ['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
 $('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4);
 $('#zReset').onclick = () => { ZOOM = null; if (DATA) render(); };
