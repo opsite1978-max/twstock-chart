@@ -23,18 +23,16 @@ jobs:
           import datetime
           td = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
           D = 'https://api.finmindtrade.com/api/v4/data?'
-          for name, url in [
-              ('user_info', 'https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': t})),
-              ('futK_today', D + urllib.parse.urlencode({'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': td, 'token': t})),
-              ('idx5s_today', D + urllib.parse.urlencode({'dataset': 'TaiwanVariousIndicators5Seconds', 'start_date': td, 'token': t})),
-              ('taiexK_today', D + urllib.parse.urlencode({'dataset': 'TaiwanStockKBar', 'data_id': 'TAIEX', 'start_date': td, 'token': t})),
-              ('fut_snap', 'https://api.finmindtrade.com/api/v4/taiwan_futures_snapshot?' + urllib.parse.urlencode({'data_id': 'TXF', 'token': t})),
-          ]:
-              st, body = get(url)
+          def cnt(url, key):
               try:
-                  j = json.loads(body if len(body) < 600 else '{}')
-              except Exception: j = {}
-              print(name, st, body.replace(t, '***')[:700] if t else body[:700])
+                  with urllib.request.urlopen(url, timeout=60) as r: j = json.loads(r.read().decode())
+              except Exception as e: return 'ERR ' + str(e)[:120]
+              d = j.get('data') or []
+              ev = [x for x in d if str(x.get(key, ''))[-8:] >= '15:00:00' or str(x.get(key,'')) >= '15:00:00']
+              last = max((str(x.get(key, '')) for x in d), default='')
+              return f"status={j.get('status')} msg={j.get('msg')} rows={len(d)} night_rows={len(ev)} max_{key}={last}"
+          print('futK', cnt(D + urllib.parse.urlencode({'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': td, 'token': t}), 'minute'))
+          print('futTick', cnt(D + urllib.parse.urlencode({'dataset': 'TaiwanFuturesTick', 'data_id': 'TX', 'start_date': td, 'token': t}), 'date'))
           PY
           cat out/log.txt | sed 's/[A-Za-z0-9._-]\{40,\}/***/g'
       - name: 保存結果
