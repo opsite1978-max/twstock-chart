@@ -81,6 +81,18 @@
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   details summary{cursor:pointer;color:var(--muted);font-size:13px;margin:8px 0 6px}
   .pos{color:var(--call)} .neg{color:var(--put)}
+  .gs{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px}
+  .gs .it{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.65}
+  .gs .it:last-child{border-bottom:0}
+  .gs .bd{display:inline-block;min-width:76px;text-align:center;font-weight:700;font-size:12.5px;padding:1px 8px;border-radius:999px;border:2px solid var(--line);align-self:start;margin-top:2px}
+  .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:8px}
+  @media (max-width:760px){ .g2{grid-template-columns:minmax(0,1fr)} }
+  .cap{font-size:12px;color:var(--muted);margin:2px 2px 4px}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .tblx table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .tblx th,.tblx td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  .tblx th{color:var(--muted);font-weight:500} .tblx td:first-child,.tblx th:first-child{text-align:left;white-space:normal}
+  .h3{font-size:14px;margin:14px 0 4px;font-weight:600} .h3 .muted{font-weight:400;font-size:12px;margin-left:6px}
   .dir{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
   .dir .head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:6px}
   .dir .badge{font-size:17px;font-weight:700;padding:2px 12px;border-radius:999px;border:2px solid var(--line)}
@@ -163,6 +175,19 @@
         <svg id="svgCurve" role="img" aria-label="總 Gamma 曝險隨指數變化的曲線"></svg>
         <div class="tip" id="tipCurve"></div>
       </div>
+    </section>
+
+    <section id="gsSec">
+      <h2>Gamma 結構判讀<span class="muted">牆的撐壓、零 Gamma 附近的波動、牆距與波動、Gamma 堆積（磁吸）；附過去一年驗證</span></h2>
+      <div class="gs" id="gsSum"></div>
+      <div class="panel"><div class="legend" id="lgPos"></div><svg id="svgPos" role="img" aria-label="現價和看漲牆、看跌牆、零 Gamma、堆積區的相對位置"></svg></div>
+      <div class="g2">
+        <div><div class="cap">過去一年驗證（台指期日盤，隔天的走勢）</div><div class="tblx" id="gsVal"></div></div>
+        <div><div class="cap">牆距（看漲牆－看跌牆，占指數 %）與之後 5 天的平均振幅</div><div class="panel" style="margin-top:0"><div class="legend" id="lgWW"></div><svg id="svgWW"></svg><div class="tip" id="tipWW"></div></div></div>
+      </div>
+      <h3 class="h3">Gamma 堆積區（磁吸點）<span class="muted">每一列是一個結算日，顏色越深 Gamma 越集中；藍＝買權為主、橘＝賣權為主</span></h3>
+      <div class="panel"><div class="legend" id="lgHeat"></div><svg id="svgHeat" role="img" aria-label="各結算日、各履約價的 Gamma 集中程度"></svg><div class="tip" id="tipHeat"></div></div>
+      <p class="note" id="gsNote"></p>
     </section>
 
     <section>
@@ -641,7 +666,7 @@ function render(){
   const rows = v.rows.filter(r => r.K >= lo && r.K <= hi);
   CTX = { v, st, rows, lo, hi, EM };
   if (EM) $('#verdict').textContent += `依選擇權價格推算，到 ${mdw(EM.exp)} 結算的預期高低區間約 ${fmtInt(EM.lo)}～${fmtInt(EM.hi)}（約 68% 機率）。`;
-  drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection();
+  drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection(); renderGS();
 }
 let CTX = null, INST = null, ZOOM = null;
 // 縮放：三張履約價圖共用同一個橫軸範圍
@@ -1090,6 +1115,164 @@ async function loadInst(date){
   $('#instNote').textContent = '淨未平倉＝買方未平倉口數減賣方未平倉口數；正數代表偏買方（藍色），負數代表偏賣方（橘色）。金額單位為元，依期交所公布的契約金額（千元）換算。大額交易人的週選擇權是全部週契約合計，無法拆到單一結算日。';
 }
 
+
+/* ───────── Gamma 結構判讀 ─────────
+   1. 位置：現價離看漲牆、看跌牆、零 Gamma 多遠（以「一天的預期波動」為單位，＝現價 × 價平隱含波動率 ÷ √252）
+   2. 過去一年驗證（history.json，台指期日盤）：接近看漲牆隔天有沒有被擋、接近看跌牆有沒有撐住、接近零 Gamma 隔天振幅有沒有比較大
+   3. 牆距：看漲牆－看跌牆占指數 %；分三組看之後 5 天的平均振幅，驗證「牆距擴大＝波動增加」
+   4. Gamma 堆積：所有結算日、各履約價的 Gamma 集中程度；找出跨多個結算日的集中區（磁吸點）與比前一天新增最多的區域 */
+function gsHistStats(){
+  if (!HIST || HIST.length < 30) return null;
+  const H = HIST, rng = d => (d.h - d.l) / d.c * 100;
+  const sig = d => d.c * ((d.iv || 18) / 100) / Math.sqrt(252);
+  const R = { cw:{ n:0, touch:0, held:0 }, pw:{ n:0, touch:0, held:0 }, flipNear:[], all:[], neg:[], pos:[], ww:[] };
+  for (let i = 0; i < H.length - 1; i++){
+    const d = H[i], n = H[i + 1], sd = sig(d), r1 = rng(n);
+    R.all.push(r1);
+    if (d.cw && d.cw >= d.c && d.cw - d.c <= sd * 0.5){ R.cw.n++; if (n.h >= d.cw){ R.cw.touch++; if (n.c < d.cw) R.cw.held++; } }
+    if (d.pw && d.pw <= d.c && d.c - d.pw <= sd * 0.5){ R.pw.n++; if (n.l <= d.pw){ R.pw.touch++; if (n.c > d.pw) R.pw.held++; } }
+    if (d.flip){ if (Math.abs(d.c - d.flip) <= sd * 0.3) R.flipNear.push(r1); (d.c < d.flip ? R.neg : R.pos).push(r1); }
+    if (d.cw && d.pw && i + 5 < H.length){
+      const w = (d.cw - d.pw) / d.c * 100, f5 = avg(H.slice(i + 1, i + 6).map(rng));
+      const p5 = i >= 5 && H[i - 5].cw && H[i - 5].pw ? (H[i - 5].cw - H[i - 5].pw) / H[i - 5].c * 100 : null;
+      R.ww.push({ d:d.d, w, f5, dw:p5 == null ? null : w - p5 });
+    }
+  }
+  return R;
+}
+const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+function renderGS(){
+  if (!CTX || !DATA) return;
+  const { v, st } = CTX, Q = v.Q, QN = DATA.liveIdx ? '推算指數' : '現價';
+  const eE = v.single || DATA.exps[0], iv = eE.atmIv || 0.18, sd = Q * iv / Math.sqrt(252);
+  const cw = st.callWall.K, pw = st.putWall.K, flip = st.flip, HS = gsHistStats();
+  const UP = css('--call'), DN = css('--put'), WARN = css('--em'), NEU = css('--line');
+  const pc = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(2) + '%';
+  /* ── Gamma 堆積（所有結算日） ── */
+  const lo = CTX.lo, hi = CTX.hi, Ks = [...new Set(DATA.exps.flatMap(e => e.S.map(s => s.K)))].filter(K => K >= lo && K <= hi).sort((a, b) => a - b);
+  const rowsH = DATA.exps.map(e => { const m = new Map(); let mx = 0;
+    for (const s of e.S){ if (s.K < lo || s.K > hi) continue; const a = s.gc - s.gp, net = s.gc + s.gp, g = gamma(e.F, s.K, e.T, s.iv);
+      const now = gexOf(g, s.c.oi || 0, e.F) + gexOf(g, s.p.oi || 0, e.F), prev = s.c.prevOi == null ? null : gexOf(g, s.c.prevOi || 0, e.F) + gexOf(g, s.p.prevOi || 0, e.F);
+      m.set(s.K, { a, net, d:prev == null ? 0 : now - prev }); mx = Math.max(mx, a); }
+    return { e, m, mx }; });
+  const tot = Ks.map(K => ({ K, a:rowsH.reduce((t, r) => t + ((r.m.get(K) || {}).a || 0), 0), d:rowsH.reduce((t, r) => t + ((r.m.get(K) || {}).d || 0), 0) }));
+  const peaks = tot.filter((x, i) => x.a > 0 && (i === 0 || x.a >= tot[i - 1].a) && (i === tot.length - 1 || x.a >= tot[i + 1].a)).sort((a, b) => b.a - a.a);
+  const zones = [];
+  for (const p of peaks){
+    if (zones.length >= 3) break;
+    if (zones.some(z => Math.abs(z.K - p.K) < Q * 0.01)) continue;
+    if (zones.length && p.a < zones[0].a * 0.35) break;
+    const i0 = tot.indexOf(p); let a = i0, b = i0;
+    while (a > 0 && tot[a - 1].a >= p.a * 0.6) a--; while (b < tot.length - 1 && tot[b + 1].a >= p.a * 0.6) b++;
+    const band = tot.slice(a, b + 1), nExp = rowsH.filter(r => r.mx > 0 && band.some(x => ((r.m.get(x.K) || {}).a || 0) >= r.mx * 0.25)).length;
+    zones.push({ K:p.K, a:p.a, lo:tot[a].K, hi:tot[b].K, nExp, d:band.reduce((t, x) => t + x.d, 0) });
+  }
+  const newZ = (() => { let best = null; for (let i = 0; i < tot.length; i++){ const d = tot.slice(Math.max(0, i - 1), i + 2).reduce((t, x) => t + x.d, 0); if (d > 0 && (!best || d > best.d)) best = { K:tot[i].K, d }; } return best; })();
+  /* ── 牆距 ── */
+  const ww = (cw - pw) / Q * 100, WW = HS ? HS.ww : [], wHist = WW.map(x => x.w).sort((a, b) => a - b);
+  const wPct = wHist.length ? wHist.filter(x => x <= ww).length / wHist.length * 100 : null;
+  const lastH = HIST && HIST.length > 5 ? HIST[HIST.length - 1].d === DATA.date ? HIST[HIST.length - 6] : HIST[HIST.length - 5] : null;
+  const ww5 = lastH && lastH.cw && lastH.pw ? (lastH.cw - lastH.pw) / lastH.c * 100 : null, dww = ww5 == null ? null : ww - ww5;
+  const terc = (() => { if (WW.length < 30) return null; const s2 = [...WW].sort((a, b) => a.w - b.w), k = Math.floor(s2.length / 3);
+    return [s2.slice(0, k), s2.slice(k, 2 * k), s2.slice(2 * k)].map(g => ({ lo:g[0].w, hi:g[g.length - 1].w, f5:avg(g.map(x => x.f5)), n:g.length })); })();
+  const grow = WW.filter(x => x.dw != null && x.dw > 0.3), shrink = WW.filter(x => x.dw != null && x.dw < -0.3);
+  /* ── 摘要 ── */
+  const items = [];
+  const dc = cw - Q, dp = Q - pw, inS = x => (x / sd).toFixed(1);
+  const holdTxt = (o, kind) => { if (!o || o.touch < 8) return ''; const r = Math.round(o.held / o.touch * 100);
+    return `過去一年收盤時接近${kind} ${o.n} 次，隔天碰到 ${o.touch} 次，其中 ${o.held} 次${kind === '看漲牆' ? '收在牆下（擋住' : '收在牆上（撐住'} ${r}%）。` +
+      (r >= 55 ? `台指的${kind}多半${kind === '看漲牆' ? '擋得住' : '撐得住'}。` : r <= 45 ? `台指碰到${kind}後多半${kind === '看漲牆' ? '會突破' : '會跌破'}，不要把它當成絕對的${kind === '看漲牆' ? '壓力' : '支撐'}，要等收盤確認。` : '一半一半，要等收盤確認。'); };
+  if (dc <= sd * 0.5) items.push(['接近看漲牆', DN, `${QN} ${fmtInt(Q)} 離看漲牆 ${fmtInt(cw)} 只差 ${fmtInt(dc)} 點（約 ${inS(dc)} 天的預期波動），照理上方會遇到阻力。` + holdTxt(HS && HS.cw, '看漲牆')]);
+  if (dp <= sd * 0.5) items.push(['接近看跌牆', UP, `${QN} 離看跌牆 ${fmtInt(pw)} 只差 ${fmtInt(dp)} 點（約 ${inS(dp)} 天的預期波動），照理下方會有支撐。` + holdTxt(HS && HS.pw, '看跌牆')]);
+  if (dc > sd * 0.5 && dp > sd * 0.5) items.push(['兩牆之間', NEU, `${QN} 在看跌牆 ${fmtInt(pw)}（−${fmtInt(dp)} 點）和看漲牆 ${fmtInt(cw)}（+${fmtInt(dc)} 點）之間，離兩邊都超過半天的預期波動（約 ${fmtInt(sd / 2)} 點），暫時沒有貼近任何一道牆。` + (HS && HS.cw.touch >= 8 ? `參考：過去一年碰到看漲牆後擋住 ${Math.round(HS.cw.held / HS.cw.touch * 100)}%、碰到看跌牆後撐住 ${Math.round(HS.pw.held / Math.max(1, HS.pw.touch) * 100)}%。` : '')]);
+  if (flip){ const df = Q - flip, near = Math.abs(df) <= sd * 0.3;
+    const fa = HS && HS.flipNear.length >= 5 ? `過去一年貼近零 Gamma 的 ${HS.flipNear.length} 天，隔天振幅平均 ${avg(HS.flipNear).toFixed(2)}%，全部日子平均 ${avg(HS.all).toFixed(2)}%；在零 Gamma 之下（負 Gamma）平均 ${avg(HS.neg).toFixed(2)}%、之上 ${avg(HS.pos).toFixed(2)}%。` : '';
+    items.push([near ? '零 Gamma 附近' : df >= 0 ? '正 Gamma 區' : '負 Gamma 區', near ? WARN : df >= 0 ? UP : DN,
+      `${QN}離零 Gamma ${fmtInt(flip)} ${df >= 0 ? '+' : '−'}${fmtInt(Math.abs(df))} 點。` + (near ? '正在多空翻轉的位置附近，避險方向容易來回切換，波動通常較大，部位要縮小、停損要放寬。' : df >= 0 ? '在正 Gamma 區，避險盤漲時賣、跌時買，走勢較容易被壓在兩牆之間。' : '在負 Gamma 區，避險盤追漲殺跌，波動容易放大。') + fa]); }
+  { const tx = dww == null ? '' : `，和 5 個交易日前比 ${dww >= 0 ? '擴大' : '縮小'} ${Math.abs(dww).toFixed(2)} 個百分點`;
+    const ev = terc ? `過去一年依牆距分三組，之後 5 天平均振幅：窄 ${terc[0].f5.toFixed(2)}%、中 ${terc[1].f5.toFixed(2)}%、寬 ${terc[2].f5.toFixed(2)}%` + (grow.length > 5 && shrink.length > 5 ? `；牆距正在擴大時 ${avg(grow.map(x => x.f5)).toFixed(2)}%、正在縮小時 ${avg(shrink.map(x => x.f5)).toFixed(2)}%` : '') + '。' + (terc[2].f5 > terc[0].f5 * 1.1 ? '台指的資料支持「牆距寬＝之後波動大」。' : '台指的資料看不太出牆距寬窄和之後波動的關係，這一條參考就好。') : '';
+    const wide = dww != null && dww > 0.3, narrow = dww != null && dww < -0.3;
+    items.push([wide ? '牆距擴大' : narrow ? '牆距縮小' : '牆距持平', wide ? WARN : narrow ? UP : NEU, `看漲牆－看跌牆 ${fmtInt(cw - pw)} 點（${ww.toFixed(2)}%）${tx}` + (wPct != null ? `，在過去一年排第 ${wPct.toFixed(0)} 百分位` : '') + '。' + (wide ? '牆距擴大通常代表市場預期波動變大。' : narrow ? '牆距縮小通常代表市場趨於穩定、區間收斂。' : '') + ev]); }
+  if (zones.length){ const z = zones[0], mid = (z.lo + z.hi) / 2, dz = mid - Q;
+    items.push(['Gamma 堆積', css('--curve'), `最大的 Gamma 堆積區在 ${fmtInt(z.lo)}${z.hi > z.lo ? '～' + fmtInt(z.hi) : ''}（跨 ${z.nExp} 個結算日），在${QN}${dz >= 0 ? '上方' : '下方'} ${fmtInt(Math.abs(dz))} 點。堆積區常像磁鐵，價格靠近時容易被吸住、在附近盤整，結算日前後更明顯（這一條目前沒有歷史可以驗證）。` +
+      (zones.length > 1 ? `其他堆積區：${zones.slice(1).map(x => fmtInt(x.lo) + (x.hi > x.lo ? '～' + fmtInt(x.hi) : '') + `（${x.nExp} 個結算日）`).join('、')}。` : '') +
+      (newZ ? `比前一天新增最多 Gamma 的位置在 ${fmtInt(newZ.K)} 附近，是新形成的集中區。` : '')]); }
+  $('#gsSum').innerHTML = items.map(([t, c, d]) => `<div class="it"><span class="bd" style="border-color:${c}">${t}</span><span>${d}</span></div>`).join('');
+  /* ── 位置圖 ── */
+  { const svg = $('#svgPos'), W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520, H = 118, m = { l:12, r:12 };
+    const pts = [cw, pw, Q, flip, ...zones.flatMap(z => [z.lo, z.hi])].filter(x => x != null);
+    let a = Math.min(...pts), b = Math.max(...pts); const pad = (b - a) * 0.08 || Q * 0.01; a -= pad; b += pad;
+    const x = p => m.l + (p - a) / (b - a) * (W - m.l - m.r), yb = 62;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    el('rect', { x:m.l, y:yb - 7, width:W - m.l - m.r, height:14, rx:7, fill:css('--grid') }, svg);
+    const band = (p0, p1, col, op) => el('rect', { x:x(Math.max(a, p0)), y:yb - 7, width:Math.max(2, x(Math.min(b, p1)) - x(Math.max(a, p0))), height:14, fill:col, 'fill-opacity':op }, svg);
+    band(cw - sd * 0.5, cw, DN, .35); band(pw, pw + sd * 0.5, UP, .35); if (flip) band(flip - sd * 0.3, flip + sd * 0.3, WARN, .4);
+    zones.forEach(z => band(z.lo - 25, z.hi + 25, css('--curve'), .55));
+    const lab = [[cw, '看漲牆 ' + fmtInt(cw), UP, 0], [pw, '看跌牆 ' + fmtInt(pw), DN, 0], flip ? [flip, '零Gamma ' + fmtInt(flip), WARN, 1] : null, [Q, QN + ' ' + fmtInt(Q), css('--text'), 2]].filter(Boolean);
+    for (const [p, t, c, k] of lab){ const px = x(p), up = k !== 1, ty = up ? yb - 22 - (k === 2 ? 16 : 0) : yb + 30, w = t.length * 7.4 + 10, tx = Math.min(Math.max(px, m.l + w / 2), W - m.r - w / 2);
+      el('line', { x1:px, x2:px, y1:up ? ty + 4 : yb, y2:up ? yb + 7 : ty - 12, stroke:c, 'stroke-width':k === 2 ? 3 : 2 }, svg);
+      el('text', { x:tx, y:ty, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':k === 2 ? 700 : 600, fill:css('--text') }, svg, t); }
+    zones.forEach((z, i) => { const px = x((z.lo + z.hi) / 2); el('text', { x:px, y:yb + (flip && Math.abs(x(flip) - px) < 70 ? 46 : 30), 'text-anchor':'middle', 'font-size':11, fill:css('--curve'), 'font-weight':600 }, svg, '堆積' + (i + 1)); });
+    legend($('#lgPos'), [['阻力區（看漲牆下方半天波動）', DN + '88'], ['支撐區（看跌牆上方半天波動）', UP + '88'], ['零 Gamma 波動區', WARN + '99'], ['Gamma 堆積區', css('--curve')]]); }
+  /* ── 驗證表 ── */
+  $('#gsVal').innerHTML = !HS ? '<div class="msg" style="margin:8px">歷史資料讀取中…</div>' : '<table><thead><tr><th>情況（收盤時）</th><th>次數</th><th>隔天結果</th></tr></thead><tbody>' +
+    `<tr><td>離看漲牆半天波動以內</td><td>${HS.cw.n}</td><td>碰到牆 ${HS.cw.touch} 次，收在牆下 ${HS.cw.held} 次${HS.cw.touch ? `（${Math.round(HS.cw.held / HS.cw.touch * 100)}%）` : ''}</td></tr>` +
+    `<tr><td>離看跌牆半天波動以內</td><td>${HS.pw.n}</td><td>碰到牆 ${HS.pw.touch} 次，收在牆上 ${HS.pw.held} 次${HS.pw.touch ? `（${Math.round(HS.pw.held / HS.pw.touch * 100)}%）` : ''}</td></tr>` +
+    `<tr><td>貼近零 Gamma（0.3 天波動以內）</td><td>${HS.flipNear.length}</td><td>振幅平均 ${HS.flipNear.length ? avg(HS.flipNear).toFixed(2) + '%' : '–'}</td></tr>` +
+    `<tr><td>在零 Gamma 之下（負 Gamma）</td><td>${HS.neg.length}</td><td>振幅平均 ${HS.neg.length ? avg(HS.neg).toFixed(2) + '%' : '–'}</td></tr>` +
+    `<tr><td>在零 Gamma 之上（正 Gamma）</td><td>${HS.pos.length}</td><td>振幅平均 ${HS.pos.length ? avg(HS.pos).toFixed(2) + '%' : '–'}</td></tr>` +
+    `<tr><td>全部交易日</td><td>${HS.all.length}</td><td>振幅平均 ${avg(HS.all).toFixed(2)}%</td></tr></tbody></table>`;
+  /* ── 牆距圖 ── */
+  { const svg = $('#svgWW'), D = WW.slice(-126), W = Math.max(280, svg.parentElement.clientWidth - 12), H = 190, m = { l:40, r:10, t:10, b:22 };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    legend($('#lgWW'), [['牆距 %（粗線＝5 日平均、細線＝每天）', css('--curve')], ['之後 5 天平均振幅 %', css('--em'), 'dash'], ['今天牆距', css('--text')]]);
+    if (D.length > 5){
+      const vs = D.flatMap(d => [d.w, d.f5]).concat([ww]), mx = Math.max(...vs) * 1.08, iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const x = i => m.l + iw * i / (D.length - 1), y = val => m.t + (mx - val) / mx * ih;
+      for (const t of niceTicks(0, mx, 4)){ el('line', { x1:m.l, x2:W - m.r, y1:y(t), y2:y(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, t.toFixed(1) + '%'); }
+      [0, Math.floor(D.length / 2), D.length - 1].forEach(i => el('text', { x:x(i), y:H - 6, 'text-anchor':i ? i === D.length - 1 ? 'end' : 'middle' : 'start', 'font-size':11, fill:css('--muted') }, svg, mdw(D[i].d)));
+      el('path', { d:D.map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.f5).toFixed(1)).join(''), fill:'none', stroke:css('--em'), 'stroke-width':1.6, 'stroke-dasharray':'5 3' }, svg);
+      el('path', { d:D.map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.w).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':1, 'stroke-opacity':.35 }, svg);
+      const sm = D.map((d, i) => avg(D.slice(Math.max(0, i - 4), i + 1).map(z => z.w)));
+      el('path', { d:sm.map((w, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(w).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2.2 }, svg);
+      el('line', { x1:m.l, x2:W - m.r, y1:y(ww), y2:y(ww), stroke:css('--text'), 'stroke-width':1, 'stroke-dasharray':'2 3' }, svg);
+      el('text', { x:m.l + 4, y:y(ww) - 4, 'font-size':11, fill:css('--text') }, svg, '今天 ' + ww.toFixed(2) + '%');
+      const tip = $('#tipWW'), hit = el('rect', { x:m.l, y:0, width:iw, height:H, fill:'transparent' }, svg);
+      hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(D.length - 1, Math.round(((ev.clientX - r.left) * W / r.width - m.l) / iw * (D.length - 1)))), d = D[i];
+        tip.innerHTML = `<b>${mdw(d.d)}</b><br>牆距 ${d.w.toFixed(2)}%${d.dw != null ? `（5 日 ${d.dw >= 0 ? '+' : '−'}${Math.abs(d.dw).toFixed(2)}）` : ''}<br>之後 5 天平均振幅 ${d.f5.toFixed(2)}%`;
+        tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(i) * r.width / W + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
+      hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+    } else el('text', { x:W / 2, y:H / 2, 'text-anchor':'middle', fill:css('--muted') }, svg, '歷史資料讀取中…'); }
+  /* ── 堆積熱度圖 ── */
+  { const svg = $('#svgHeat'), W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520, lw = narrow ? 52 : 132, rh = narrow ? 18 : 20;
+    const nR = rowsH.length, totH = 70, H = 26 + nR * rh + 8 + totH + 22, iw = W - lw - 10;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+    const x = K => lw + (K - lo) / (hi - lo) * iw, cwid = Math.max(2, Ks.length > 1 ? iw / (Ks.length) : 10);
+    const mxAll = Math.max(1, ...rowsH.map(r => r.mx));
+    zones.forEach((z, i) => { el('rect', { x:x(z.lo) - cwid / 2, y:18, width:x(z.hi) - x(z.lo) + cwid, height:H - 40, fill:css('--curve'), 'fill-opacity':.1, stroke:css('--curve'), 'stroke-width':1, 'stroke-dasharray':'3 2' }, svg);
+      el('text', { x:x((z.lo + z.hi) / 2), y:13, 'text-anchor':'middle', 'font-size':11, 'font-weight':700, fill:css('--curve') }, svg, '堆積' + (i + 1) + (narrow ? '' : ' ' + fmtInt((z.lo + z.hi) / 2))); });
+    rowsH.forEach((r, i) => { const y0 = 26 + i * rh;
+      el('text', { x:lw - 6, y:y0 + rh / 2 + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, mdw(r.e.exp).replace(/（.）/, '') + (narrow ? '' : ' ' + r.e.info.label.replace(/選擇權|合約|（|）/g, ' ').replace(/\s+/g, ' ').trim()));
+      for (const K of Ks){ const c = r.m.get(K); if (!c || c.a <= 0) continue; const op = Math.pow(c.a / mxAll, 0.6);
+        el('rect', { x:x(K) - cwid / 2 + 0.5, y:y0 + 1, width:Math.max(1, cwid - 1), height:rh - 2, fill:c.net >= 0 ? css('--call') : css('--put'), 'fill-opacity':Math.max(.04, op) }, svg); } });
+    const yT = 26 + nR * rh + 8, mxT = Math.max(1, ...tot.map(t => t.a));
+    el('text', { x:lw - 6, y:yT + totH / 2, 'text-anchor':'end', 'font-size':11, fill:css('--text'), 'font-weight':600 }, svg, '合計');
+    for (const t of tot){ const h = t.a / mxT * (totH - 6); el('rect', { x:x(t.K) - cwid / 2 + 0.5, y:yT + totH - h, width:Math.max(1, cwid - 1), height:h, fill:css('--curve'), 'fill-opacity':.85 }, svg); }
+    if (newZ){ const px = x(newZ.K); el('text', { x:px, y:yT + 10, 'text-anchor':'middle', 'font-size':10.5, fill:css('--em'), 'font-weight':700 }, svg, '▼新增'); }
+    const qx = x(Q); if (qx >= lw && qx <= W - 10){ el('line', { x1:qx, x2:qx, y1:20, y2:yT + totH, stroke:css('--text'), 'stroke-width':1.6, 'stroke-dasharray':'5 3' }, svg); }
+    for (const t of niceTicks(lo, hi, narrow ? 4 : 8)){ const px = x(t); if (px < lw || px > W - 10) continue; el('text', { x:px, y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, svg, fmtInt(t)); }
+    legend($('#lgHeat'), [['買權 Gamma 為主', css('--call')], ['賣權 Gamma 為主', css('--put')], ['合計（全部結算日）', css('--curve')], [QN, css('--text'), 'dash'], ['堆積區（框起來）', css('--curve') + '55']]);
+    const tip = $('#tipHeat'), hit = el('rect', { x:lw, y:0, width:iw, height:H, fill:'transparent' }, svg);
+    hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), mxp = (ev.clientX - r.left) * W / r.width, my = (ev.clientY - r.top) * H / r.height;
+      const K = Ks.reduce((u, k) => Math.abs(x(k) - mxp) < Math.abs(x(u) - mxp) ? k : u, Ks[0]); if (K == null) return;
+      const ri = Math.floor((my - 26) / rh), row = rowsH[ri], t = tot.find(z => z.K === K);
+      tip.innerHTML = `<b>履約價 ${fmtInt(K)}</b>` + (row && row.m.get(K) ? `<br>${mdw(row.e.exp)} 結算：${fmtMoney(row.m.get(K).a)}（${row.m.get(K).net >= 0 ? '買權' : '賣權'}為主）` : '') +
+        `<br>全部結算日合計 ${fmtMoney(t ? t.a : 0)}` + (t && t.d ? `<br>比前一天 ${fmtMoney(t.d, true)}` : '');
+      tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(K) * r.width / W + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = Math.max(20, my * r.height / H - 10) + 'px'; });
+    hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; }); }
+  $('#gsNote').textContent = `「一天的預期波動」＝${QN} × 價平隱含波動率（${(iv * 100).toFixed(1)}%）÷ √252 ≈ ${fmtInt(sd)} 點，用來判斷「接近」。堆積區＝把所有結算日的買權、賣權 Gamma 曝險（絕對值）加總後的高峰，往兩旁延伸到高峰 60% 的範圍；「跨幾個結算日」＝有幾個結算日在這一區也有明顯集中。過去一年驗證用 GitHub 每天收盤後算好的資料（台指期日盤，牆和零 Gamma 用當天收盤的籌碼）。這些都是統計上的傾向，不保證下一次也一樣。`;
+}
+
 /* ───────── 總 Gamma 曝險歷史（GitHub 每天收盤後計算好的 data/txo/history.json） ───────── */
 let HIST = null, HN = +(store.get('txo.histN') || 126);
 async function loadHistory(){
@@ -1100,6 +1283,7 @@ async function loadHistory(){
     HIST = (j.days || []).filter(d => d.c && d.gex != null);
     HIST.updated = j.updated;
     renderHistory();
+    if (CTX) renderGS();
     if (CHIPS) renderChips2();
     if (CTX) drawLevels();
   } catch(e){ $('#histNow').textContent = '總 Gamma 曝險歷史還在計算中（第一次約需 20 分鐘），稍後重新整理。'; }
