@@ -215,6 +215,7 @@
         <div class="sub" hidden>疊加指標</div>
         <label class="chk"><input type="checkbox" data-ovl="topg">Top G 高低通道與轉折（BigBeluga）</label>
         <label class="chk"><input type="checkbox" data-ovl="bias">Bias Finder 多空偏向帶（UAlgo）</label>
+        <label class="chk"><input type="checkbox" data-ovl="ribbon">經典布林多空彩帶（壓力帶、支撐帶、WAN、多空彩帶）</label>
         <label class="chk"><input type="checkbox" data-ovl="bb3">布林 2／3 倍標準差 ＋ EMA 多空線</label>
         <div class="line bb" id="bbRow" hidden><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
       </div>
@@ -459,6 +460,19 @@
         </div>
       </details>
       <details>
+        <summary>經典布林多空彩帶（主圖）</summary>
+        <div class="stack">
+          <label class="chk"><input type="checkbox" data-k="ribbon.showRes" data-redraw="ribbon">顯示金黃色壓力帶</label>
+          <label class="chk"><input type="checkbox" data-k="ribbon.showSup" data-redraw="ribbon">顯示藍紫色支撐帶</label>
+          <label class="chk"><input type="checkbox" data-k="ribbon.showTrend" data-redraw="ribbon">顯示多空趨勢彩帶（多方粉紫、空方綠）</label>
+          <label class="chk"><input type="checkbox" data-k="ribbon.showWAN" data-redraw="ribbon">顯示 WAN 動能線（上升洋紅、下降灰）</label>
+          <div class="kv"><span>WAN 動能線粗細</span><span class="pair"><select class="wsel" data-k="ribbon.wanW" data-int data-redraw="ribbon"></select></span></div>
+          <label class="chk"><input type="checkbox" data-k="ribbon.showKD" data-redraw="ribbon">顯示 KD 轉折價格線（K 轉折、日交叉、KK80）</label>
+          <div class="kv"><span>壓力／支撐帶透明度（0～90）</span><input type="number" data-k="ribbon.alpha" data-int data-redraw="ribbon" min="0" max="90"></div>
+          <button class="small" data-reset="ribbon">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>布林 2／3 倍標準差 ＋ EMA 多空線（主圖）</summary>
         <div class="stack">
           <label class="chk"><input type="checkbox" data-k="bb3.showEma" data-redraw="bb3">顯示 EMA 多空線</label>
@@ -538,8 +552,9 @@ const DEFAULTS = {
           useVol:true, reqVol:false, volFactor:1.1, smooth:10, cost:20, range:60, reg:7, mem:15, pct:250, trend:60,
           cMidUp:'#2daed9', cMidDn:'#6178b2', cDeepUp:'#00e676', cDeepDn:'#1e8f5e', cHiUp:'#ff5252', cHiDn:'#ff9800',
           deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
+  ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
-  ovl:{ topg:true, bias:true, bb3:true }, fontSize:12, lvlW:2,
+  ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
@@ -566,11 +581,12 @@ if ((S.v || 0) < 7){ S.ind = Object.assign({}, S.ind, { wt:true, ztsv:true }); S
 if ((S.v || 0) < 8) S.ind = Object.assign({}, S.ind, { rsib:true });
 if ((S.v || 0) < 9) S.ovl = Object.assign({}, S.ovl, { bb3:true });
 if ((S.v || 0) < 10) S.ind = Object.assign({}, S.ind, { abyss:true });
+if ((S.v || 0) < 11) S.ovl = Object.assign({}, S.ovl, { ribbon:true });
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 10;
+S.v = 11;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1409,7 +1425,7 @@ class BandFillView {
             const d = it[i]; if (!d || !d.color) continue;
             const x = ts.logicalToCoordinate(i); if (x === null) continue;
             const y1 = Y(d.up, true), y2 = Y(d.lo, false); if (y1 === null || y2 === null) continue;
-            ctx.fillStyle = d.color; ctx.fillRect(x - w / 2, Math.min(y1, y2), w, Math.abs(y2 - y1));
+            const hgt = Math.max(src.minH || 0, Math.abs(y2 - y1)), ww = w * (src.wf || 1); ctx.fillStyle = d.color; ctx.fillRect(x - ww / 2, (y1 + y2) / 2 - hgt / 2, ww, hgt);
           }
           return;
         }
@@ -2038,6 +2054,111 @@ Object.assign(OVL, {
 });
 OVL_ORDER.push('bb3');
 
+/* ───────────── 經典布林多空彩帶（原版還原 v1，主圖） ─────────────
+   壓力帶：布林 = 最高(最低價 14 根最低的 14 根最高…) → HHV(HHV(L,14),60)
+     上緣 = EMA(EMA(布林,16) − 2×標準差(布林,16), 20)；下緣 = EMA(EMA(布林,14) + 2×標準差(布林,14), 5)
+   支撐帶：布林1 = LLV(LLV(L,14),60)
+     上緣 = EMA(EMA(布林1,16) − 2×標準差, 5)；下緣 = EMA(EMA(布林1,14) + 2×標準差, 20)
+   WAN 動能線：EMA((收+高+低)/3, 10)，比前一根高＝上升（洋紅）、低＝下降（灰）
+   WANA 多空彩帶：加權價 (3×收+低+開+高)/6 的 20 期加權（原版分母 210，缺第 19 根，照原版保留）
+     多方：WANA3 > 1.005×WANA4；空方：WANA3 < WANA5 時 WANA3 ≤ 1.015×WANA4，否則 WANA3 ≤ 1.005×WANA4
+   KD 轉折價（預設不顯示）：原版隱藏計算 */
+function cnSma(arr, n, m){                         // 中國公式 SMA(X,N,M) = (M×X + (N−M)×前值) / N
+  const out = new Array(arr.length).fill(null); let prev = null;
+  for (let i = 0; i < arr.length; i++){
+    const x = arr[i];
+    if (x === null || x === undefined || isNaN(x)){ prev = null; continue; }
+    prev = prev === null ? x : (m * x + (n - m) * prev) / n; out[i] = prev;
+  }
+  return out;
+}
+function ribbonCalc(open, high, low, close){
+  const N = close.length, nul = () => new Array(N).fill(null);
+  const bandOf = (src, a1, a2) => {                // EMA(EMA(src,16) − 2σ, a1) 與 EMA(EMA(src,14) + 2σ, a2)
+    const e16 = taEMA(src, 16), s16 = taStdevN(src, 16), e14 = taEMA(src, 14), s14 = taStdevN(src, 14);
+    const u = taEMA(e16.map((e,i) => e === null || s16[i] === null ? null : e - 2 * s16[i]), a1);
+    const l = taEMA(e14.map((e,i) => e === null || s14[i] === null ? null : e + 2 * s14[i]), a2);
+    return [u, l];
+  };
+  const bullin = taExtreme(taExtreme(low, 14, true), 60, true);
+  const bullin1 = taExtreme(taExtreme(low, 14, false), 60, false);
+  const [resU, resL] = bandOf(bullin, 20, 5), [supU, supL] = bandOf(bullin1, 5, 20);
+  const res = resU.map((u,i) => u !== null && u > 0 && resL[i] !== null ? { up:Math.max(u, resL[i]), lo:Math.min(u, resL[i]) } : null);
+  const sup = supU.map((u,i) => u !== null && u > 0 && supL[i] !== null ? { up:Math.max(u, supL[i]), lo:Math.min(u, supL[i]) } : null);
+  const wan3 = taEMA(close.map((c,i) => (c + high[i] + low[i]) / 3), 10), wan4 = wan3.map((x,i) => i ? wan3[i-1] : null);
+  const wana2 = close.map((c,i) => (3 * c + low[i] + open[i] + high[i]) / 6), wana3 = nul();
+  for (let i = 20; i < N; i++){ let s = 0; for (let k = 0; k <= 18; k++) s += (20 - k) * wana2[i-k]; s += wana2[i-20]; wana3[i] = s / 210; }
+  const wana4 = taSMAN(wana3, 10), wana5 = taEMA(taSMA(close, 3), 12);
+  const trend = wana3.map((w,i) => {
+    if (w === null || wana4[i] === null) return 0;
+    const bull = w > 1.005 * wana4[i];
+    const bear = wana5[i] !== null && w < wana5[i] ? w <= 1.015 * wana4[i] : w <= 1.005 * wana4[i];
+    return bull ? 1 : bear ? -1 : 0;                // 原版兩個都成立時，多方彩帶畫在上層
+  });
+  // KD 轉折價
+  const hh9 = taExtreme(high, 9, true), ll9 = taExtreme(low, 9, false);
+  const rg = hh9.map((h,i) => h === null ? null : h - ll9[i]);
+  const rsv = close.map((c,i) => rg[i] === null || rg[i] === 0 ? null : (c - ll9[i]) / rg[i] * 100);
+  const q = 2 / 3, hk = rsv.map((_,i) => { if (i < 5) return null; const k = [1,2,3,4,5].map(j => rsv[i-j]); if (k.some(x => x === null)) return null;
+    return q * k[0] + q ** 2 * k[1] + q ** 3 * k[2] + q ** 4 * k[3] + 3 * q ** 5 * k[4]; });
+  const toPx = v => v.map((x,i) => x === null || rg[i] === null ? null : x * rg[i] / 100 + ll9[i]);
+  const kS = cnSma(rsv, 3, 1), dS = cnSma(kS, 3, 1);
+  const kTurn = cnSma(toPx(kS.map((k,i) => k === null || hk[i] === null ? null : 3 * k - hk[i])), 3, 1);
+  const dCross = cnSma(toPx(dS.map((d,i) => d === null || hk[i] === null ? null : 3 * d - hk[i])), 3, 1);
+  const kk80 = cnSma(toPx(hk.map(h => h === null ? null : 240 - h)), 3, 1);
+  return { res, sup, wan3, wan4, wana3, wana4, trend, kTurn, dCross, kk80 };
+}
+Object.assign(OVL, {
+  ribbon: {
+    s:{}, vals:null, bands:{},
+    create(){
+      const { LineSeries } = LC(), o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, lineWidth:1 });
+      this.s.resT = chart.addSeries(LineSeries, Object.assign(o(), { color:'#E8B44F' }), 0);
+      this.s.resB = chart.addSeries(LineSeries, Object.assign(o(), { color:'#A78A68' }), 0);
+      this.s.supT = chart.addSeries(LineSeries, Object.assign(o(), { color:'#3158DE' }), 0);
+      this.s.supB = chart.addSeries(LineSeries, Object.assign(o(), { color:'#D42ED8' }), 0);
+      this.s.trendHost = chart.addSeries(LineSeries, Object.assign(o(), { color:CLEAR }), 0);
+      this.s.wan = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:2 }), 0);
+      this.s.kTurn = chart.addSeries(LineSeries, Object.assign(o(), { color:'#00bcd4' }), 0);
+      this.s.dCross = chart.addSeries(LineSeries, Object.assign(o(), { color:'#ffeb3b' }), 0);
+      this.s.kk80 = chart.addSeries(LineSeries, Object.assign(o(), { color:'#ff9800' }), 0);
+      this.bands = { res:new BandFill('poly'), sup:new BandFill('poly'), trend:new BandFill('rect') };
+      this.bands.trend.minH = 2; this.bands.trend.wf = 0.75;
+      this.s.resB.attachPrimitive(this.bands.res); this.s.supB.attachPrimitive(this.bands.sup); this.s.trendHost.attachPrimitive(this.bands.trend);
+    },
+    draw(){
+      const P = S.ribbon, v = this.vals = ribbonCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close));
+      const a = 1 - Math.max(0, Math.min(90, +P.alpha)) / 100, pick = (arr, k) => arr.map(x => x ? x[k] : null);
+      this.s.resT.setData(toLine(pick(v.res, 'up'))); this.s.resB.setData(toLine(pick(v.res, 'lo')));
+      this.s.supT.setData(toLine(pick(v.sup, 'up'))); this.s.supB.setData(toLine(pick(v.sup, 'lo')));
+      [this.s.resT, this.s.resB].forEach(s => s.applyOptions({ visible:!!P.showRes }));
+      [this.s.supT, this.s.supB].forEach(s => s.applyOptions({ visible:!!P.showSup }));
+      this.bands.res.setItems(P.showRes ? v.res.map(x => x ? { up:x.up, lo:x.lo, color:hexA('#D5A34A', a) } : null) : []);
+      this.bands.sup.setItems(P.showSup ? v.sup.map(x => x ? { up:x.up, lo:x.lo, color:hexA('#2339D8', a) } : null) : []);
+      this.s.trendHost.setData(toLine(v.wana3));
+      this.bands.trend.setItems(P.showTrend ? v.trend.map((t,i) => t && v.wana3[i] !== null && v.wana4[i] !== null
+        ? { up:Math.max(v.wana3[i], v.wana4[i]), lo:Math.min(v.wana3[i], v.wana4[i]), color:t > 0 ? '#FFB5FF' : hexA('#008800', .95) } : null) : []);
+      this.s.wan.setData(bars.map((b,i) => v.wan3[i] === null ? { time:b.time } : { time:b.time, value:v.wan3[i], color:v.wan4[i] !== null && v.wan3[i] > v.wan4[i] ? '#FF00FF' : '#786C76' }));
+      this.s.wan.applyOptions({ visible:!!P.showWAN, lineWidth:+P.wanW || 2 });
+      this.s.kTurn.setData(toLine(v.kTurn)); this.s.dCross.setData(toLine(v.dCross)); this.s.kk80.setData(toLine(v.kk80));
+      [this.s.kTurn, this.s.dCross, this.s.kk80].forEach(s => s.applyOptions({ visible:!!P.showKD }));
+    },
+    markers(){ return []; },
+    legend(i){
+      const v = this.vals, P = S.ribbon; if (!v) return '';
+      let h = '';
+      if (P.showTrend){ const t = v.trend[i]; h += `<span style="color:${t > 0 ? '#FFB5FF' : t < 0 ? '#2e9e2e' : 'var(--muted)'}">彩帶 ${t > 0 ? '多方' : t < 0 ? '空方' : '中性'}</span>`; }
+      if (P.showWAN && v.wan3[i] !== null){ const up = v.wan4[i] !== null && v.wan3[i] > v.wan4[i]; h += `<span style="color:${up ? '#FF00FF' : '#786C76'}">WAN ${fmt(v.wan3[i])} ${up ? '上升' : '下降'}</span>`; }
+      if (P.showRes && v.res[i]) h += `<span style="color:#E8B44F">壓力帶 ${fmt(v.res[i].lo)}～${fmt(v.res[i].up)}</span>`;
+      if (P.showSup && v.sup[i]) h += `<span style="color:#6f86ff">支撐帶 ${fmt(v.sup[i].lo)}～${fmt(v.sup[i].up)}</span>`;
+      if (P.showKD) h += `<span style="color:#00bcd4">K轉折 ${fmt(v.kTurn[i])}</span><span style="color:#ffeb3b">日交叉 ${fmt(v.dCross[i])}</span><span style="color:#ff9800">KK80 ${fmt(v.kk80[i])}</span>`;
+      return h;
+    },
+  },
+});
+OVL_ORDER.unshift('ribbon');
+
+
 /* ───────────── 看盤週期設定 ───────────── */
 // 分K：warm = 為了讓指標暖機多抓的交易日數；日週月：warm = 多抓的日曆天數
 const TF = {
@@ -2327,7 +2448,7 @@ const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce(
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
   wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'),
-  topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(),
+  topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
   all: () => { drawIndicators(); drawOverlays(); },
@@ -2344,6 +2465,7 @@ const RESETS = {
   topg:  ['topg'],
   bias:  ['bias'],
   bb3:   ['bb3'],
+  ribbon:['ribbon'],
 };
 
 function fillSettingsUI(){

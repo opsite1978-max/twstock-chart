@@ -21,9 +21,8 @@ jobs:
           (async () => {
             const b = await chromium.launch(); const log = [];
             for (const [url, vp, name, act] of [
-              ['https://opsite1978-max.github.io/twstock-chart/futstock.html?s=2330', {width:1280,height:900}, 'fs-2330', null],
-              ['https://opsite1978-max.github.io/twstock-chart/txo.html', {width:390,height:844}, 'txo-m', null],
-              ['https://opsite1978-max.github.io/twstock-chart/futstock.html?s=2330', {width:1280,height:900}, 'fz-2330', 'zoom'],
+              ['https://opsite1978-max.github.io/twstock-chart/index.html', {width:1280,height:900}, 'idx-2330', ['2330','D']],
+              ['https://opsite1978-max.github.io/twstock-chart/mobile.html', {width:390,height:844}, 'mob-2330', ['2330','D']],
             ]){
               const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage();
               pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + scrub(m.text())); });
@@ -34,7 +33,7 @@ jobs:
               await pg.goto(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now(), { waitUntil:'domcontentloaded' });
               if (act === 'zoom'){ await pg.waitForTimeout(14000); for (let i = 0; i < 3; i++) await pg.click('#fzIn'); await pg.locator('#svF').scrollIntoViewIfNeeded(); } else if (act){ await pg.waitForTimeout(2500); await pg.fill('#sym', act[0]); await pg.click(`#tfSeg button[data-tf="${act[1]}"]`); await pg.click('#loadBtn'); }
               await pg.waitForTimeout(15000);
-              log.push(name + ' STATUS: ' + scrub(await pg.textContent('#status').catch(() => '?')));
+              log.push(name + ' STATUS: ' + scrub(await pg.textContent('#status').catch(() => '?')) + ' | LEGEND: ' + scrub((await pg.textContent('#legend').catch(() => '')).slice(0, 600)));
               if (name.startsWith('jb')) log.push(name + ' STATS: ' + scrub((await pg.textContent('#stats').catch(() => '')) + ' | ' + (await pg.textContent('#nm').catch(() => '')) + ' | ' + (await pg.textContent('#note').catch(() => '')))); if (name.startsWith('fz')) log.push(name + ' Z: ' + scrub(await pg.textContent('#fzInfo').catch(() => '?'))); if (name.startsWith('fs')) log.push(name + ' FS: ' + scrub(((await pg.textContent('#sig').catch(() => ''))).slice(0, 5000))); if (name.startsWith('txo')) log.push(name + ' CARDS: ' + scrub((await pg.textContent('#cards').catch(() => '')).slice(0, 400)));
               await pg.screenshot({ path:'../out/' + name + '.png', fullPage: name.startsWith('fs') });
               await ctx.close();
