@@ -81,6 +81,13 @@
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   details summary{cursor:pointer;color:var(--muted);font-size:13px;margin:8px 0 6px}
   .pos{color:var(--call)} .neg{color:var(--put)}
+  .gf{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .gf .hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:6px}
+  .gf .big{font-size:20px;font-weight:800;padding:2px 14px;border-radius:999px;border:2px solid}
+  .gf .sub{font-size:13.5px;color:var(--muted)}
+  .gf ol{margin:8px 0 0 20px;padding:0;font-size:14.5px;line-height:1.85}
+  .gf ol b{color:var(--text)}
+  details.adv{margin-top:10px} details.adv>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 2px}
   .gs{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px}
   .gs .it{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.65}
   .gs .it:last-child{border-bottom:0}
@@ -178,7 +185,9 @@
     </section>
 
     <section id="gsSec">
-      <h2>Gamma 結構判讀<span class="muted">牆的撐壓、零 Gamma 附近的波動、牆距與波動、Gamma 堆積（磁吸）；附過去一年驗證</span></h2>
+      <h2>Gamma 翻轉點簡圖<span class="muted">一眼看出現在盤勢穩不穩、關鍵價在哪</span></h2>
+      <div class="gf" id="gfBox"><div id="gfHead"></div><svg id="svgGF" role="img" aria-label="現價在正 Gamma 區或負 Gamma 區"></svg><div id="gfTxt"></div></div>
+      <details class="adv" id="gsAdv"><summary>進階：歷史驗證、牆距、Gamma 堆積（看不懂可以略過）</summary>
       <div class="gs" id="gsSum"></div>
       <div class="panel"><div class="legend" id="lgPos"></div><svg id="svgPos" role="img" aria-label="現價和看漲牆、看跌牆、零 Gamma、堆積區的相對位置"></svg></div>
       <div class="g2">
@@ -188,6 +197,7 @@
       <h3 class="h3">Gamma 堆積區（磁吸點）<span class="muted">每一列是一個結算日，顏色越深 Gamma 越集中；藍＝買權為主、橘＝賣權為主</span></h3>
       <div class="panel"><div class="legend" id="lgHeat"></div><svg id="svgHeat" role="img" aria-label="各結算日、各履約價的 Gamma 集中程度"></svg><div class="tip" id="tipHeat"></div></div>
       <p class="note" id="gsNote"></p>
+      </details>
     </section>
 
     <section>
@@ -1141,8 +1151,49 @@ function gsHistStats(){
   return R;
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+function renderGF(){
+  if (!CTX || !DATA) return;
+  const { v, st } = CTX, Q = v.Q, QN = DATA.liveIdx ? '推算指數' : '現價', cw = st.callWall.K, pw = st.putWall.K, flip = st.flip;
+  const eE = v.single || DATA.exps[0], sd = Q * (eE.atmIv || 0.18) / Math.sqrt(252);
+  const NEG = css('--put'), POS = css('--call'), WARN = css('--em');
+  const HS = gsHistStats();
+  const zone = !flip ? (st.netAtP >= 0 ? 'pos' : 'neg') : Math.abs(Q - flip) <= sd * 0.3 ? 'edge' : Q >= flip ? 'pos' : 'neg';
+  const head = { pos:['正 Gamma 區', POS, '盤勢偏穩，容易來回整理'], neg:['負 Gamma 區', NEG, '波動偏大，漲跌容易一路延伸'], edge:['翻轉點附近', WARN, '多空交界，隨時可能變快'] }[zone];
+  $('#gfHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${head[1]};color:${head[1]}">${head[0]}</span><span class="sub">${head[2]}</span></div>`;
+  // 簡圖：一條價格尺，零 Gamma 左邊＝負 Gamma（橘）、右邊＝正 Gamma（藍）
+  const svg = $('#svgGF'), W = Math.max(300, svg.parentElement.clientWidth - 4), narrow = W < 520, H = narrow ? 150 : 140, m = { l:10, r:10 };
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
+  const pts = [cw, pw, Q, flip].filter(x => x != null); let a = Math.min(...pts), b = Math.max(...pts); const pad = Math.max((b - a) * 0.12, Q * 0.004); a -= pad; b += pad;
+  const x = p => m.l + (p - a) / (b - a) * (W - m.l - m.r), yb = 74, bh = 26, fx = flip ? Math.max(m.l, Math.min(W - m.r, x(flip))) : (st.netAtP >= 0 ? m.l : W - m.r);
+  el('rect', { x:m.l, y:yb, width:fx - m.l, height:bh, rx:6, fill:NEG, 'fill-opacity':.28 }, svg);
+  el('rect', { x:fx, y:yb, width:W - m.r - fx, height:bh, rx:6, fill:POS, 'fill-opacity':.28 }, svg);
+  if (fx - m.l > 90) el('text', { x:(m.l + fx) / 2, y:yb + 17, 'text-anchor':'middle', 'font-size':12.5, 'font-weight':700, fill:NEG }, svg, narrow ? '負 Gamma・波動大' : '負 Gamma 區・波動大');
+  if (W - m.r - fx > 90) el('text', { x:(fx + W - m.r) / 2, y:yb + 17, 'text-anchor':'middle', 'font-size':12.5, 'font-weight':700, fill:POS }, svg, narrow ? '正 Gamma・偏穩' : '正 Gamma 區・盤勢偏穩');
+  if (flip){ el('line', { x1:fx, x2:fx, y1:yb - 6, y2:yb + bh + 6, stroke:WARN, 'stroke-width':4 }, svg);
+    el('text', { x:Math.min(Math.max(fx, 60), W - 60), y:yb + bh + 24, 'text-anchor':'middle', 'font-size':13, 'font-weight':800, fill:WARN }, svg, '翻轉點 ' + fmtInt(flip)); }
+  // 牆：下方標籤
+  const wall = (p, t, col) => { const px = x(p); el('path', { d:`M${px - 6},${yb + bh + 9} L${px + 6},${yb + bh + 9} L${px},${yb + bh + 1} Z`, fill:col }, svg);
+    const tx = Math.min(Math.max(px, 44), W - 44), near = flip && Math.abs(px - fx) < 110;
+    el('text', { x:tx, y:yb + bh + (near ? 44 : 26), 'text-anchor':'middle', 'font-size':12, 'font-weight':600, fill:css('--text') }, svg, t + ' ' + fmtInt(p)); };
+  wall(pw, '支撐', NEG); wall(cw, '壓力', POS);
+  // 現價：上方大三角
+  const qx = x(Q); el('path', { d:`M${qx - 9},${yb - 20} L${qx + 9},${yb - 20} L${qx},${yb - 4} Z`, fill:css('--text') }, svg);
+  const ql = `${QN} ${fmtInt(Q)}`, qtx = Math.min(Math.max(qx, 60), W - 60);
+  el('text', { x:qtx, y:yb - 28, 'text-anchor':'middle', 'font-size':14, 'font-weight':800, fill:css('--text') }, svg, ql);
+  // 白話分析
+  const dF = flip ? Q - flip : null, L = [];
+  if (zone === 'pos') L.push(`<b>盤勢：</b>${QN}在翻轉點 ${fmtInt(flip)} 上方 ${fmtInt(dF)} 點，造市商會「漲了賣、跌了買」，價格容易被拉回，在 ${fmtInt(pw)}～${fmtInt(cw)} 之間來回。`);
+  else if (zone === 'neg') L.push(`<b>盤勢：</b>${QN}在翻轉點 ${flip ? fmtInt(flip) : ''} 下方${flip ? ' ' + fmtInt(-dF) + ' 點' : ''}，造市商會「跌了再賣、漲了再買」，漲跌容易一路延伸，振幅會變大。`);
+  else L.push(`<b>盤勢：</b>${QN}就在翻轉點 ${fmtInt(flip)} 附近（差 ${fmtInt(Math.abs(dF))} 點），是穩和不穩的交界，方向一出來常會走得快。`);
+  L.push(`<b>關鍵價：</b>` + (flip ? (Q >= flip ? `收盤跌破 <b>${fmtInt(flip)}</b> 就進入負 Gamma 區，波動會變大；` : `收盤站回 <b>${fmtInt(flip)}</b> 才會回到正 Gamma 區、盤勢變穩；`) : '') + `上方壓力 ${fmtInt(cw)}、下方支撐 ${fmtInt(pw)}（台指常會穿過去，以收盤為準）。`);
+  L.push(`<b>怎麼做：</b>` + (zone === 'pos' ? `區間思考，靠近支撐偏多、靠近壓力偏空，不追高殺低。` : zone === 'neg' ? `順勢操作，不要猜頭摸底；部位縮小、停損設好。` : `先觀望，等收盤站穩翻轉點的哪一邊再決定方向。`));
+  if (HS && HS.neg.length > 10) L.push(`<span class="muted">過去一年：在負 Gamma 區時隔天平均振幅 ${avg(HS.neg).toFixed(2)}%，正 Gamma 區 ${avg(HS.pos).toFixed(2)}%。</span>`);
+  $('#gfTxt').innerHTML = '<ol>' + L.map(t => `<li>${t}</li>`).join('') + '</ol>';
+}
 function renderGS(){
   if (!CTX || !DATA) return;
+  renderGF();
+  if (!$('#gsAdv').open) return;                                     // 進階內容收起來時不畫（寬度量不到）
   const { v, st } = CTX, Q = v.Q, QN = DATA.liveIdx ? '推算指數' : '現價';
   const eE = v.single || DATA.exps[0], iv = eE.atmIv || 0.18, sd = Q * iv / Math.sqrt(252);
   const cw = st.callWall.K, pw = st.putWall.K, flip = st.flip, HS = gsHistStats();
@@ -1785,6 +1836,7 @@ function setLive(on){
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
 document.querySelectorAll('#lvSeg button').forEach(b => b.onclick = () => { LV.tf = b.dataset.tf; store.set('txo.lvTf', LV.tf); drawLevels(); });
 ['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
+$('#gsAdv').addEventListener('toggle', () => { if ($('#gsAdv').open) renderGS(); });
 $('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4);
 $('#zReset').onclick = () => { ZOOM = null; if (DATA) render(); };
 $('#gwSel').value = GWM;
