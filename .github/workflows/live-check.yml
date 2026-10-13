@@ -22,7 +22,7 @@ jobs:
             const b = await chromium.launch(); const log = [];
             for (const [url, vp, name, act] of [
               ['https://opsite1978-max.github.io/twstock-chart/futstock.html?s=2330', {width:1280,height:900}, 'fs-2330', null],
-              ['https://opsite1978-max.github.io/twstock-chart/futstock.html?s=2317', {width:390,height:844}, 'fs-2317', null],
+              ['https://opsite1978-max.github.io/twstock-chart/txo.html', {width:390,height:844}, 'txo-m', null],
               ['https://opsite1978-max.github.io/twstock-chart/futstock.html?s=2330', {width:1280,height:900}, 'fz-2330', 'zoom'],
             ]){
               const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage();
