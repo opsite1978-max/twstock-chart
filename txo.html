@@ -1153,18 +1153,19 @@ function gsHistStats(){
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
 function renderGF(){
   if (!CTX || !DATA) return;
-  const { v, st } = CTX, Q = v.Q, QN = DATA.liveIdx ? '推算指數' : '現價', cw = st.callWall.K, pw = st.putWall.K, flip = st.flip;
+  // 一律用台指期價（含夜盤；即時模式為最新成交）
+  const { v, st } = CTX, Q = v.P, QN = '台指期', cw = st.callWall.K, pw = st.putWall.K, flip = st.flip;
   const eE = v.single || DATA.exps[0], sd = Q * (eE.atmIv || 0.18) / Math.sqrt(252);
   const NEG = css('--put'), POS = css('--call'), WARN = css('--em');
   const HS = gsHistStats();
-  const zone = !flip ? (st.netAtP >= 0 ? 'pos' : 'neg') : Math.abs(Q - flip) <= sd * 0.3 ? 'edge' : Q >= flip ? 'pos' : 'neg';
+  const gAtQ = totalGexAt(v.list, Q, v.F), zone = !flip ? (gAtQ >= 0 ? 'pos' : 'neg') : Math.abs(Q - flip) <= sd * 0.3 ? 'edge' : Q >= flip ? 'pos' : 'neg';
   const head = { pos:['正 Gamma 區', POS, '盤勢偏穩，容易來回整理'], neg:['負 Gamma 區', NEG, '波動偏大，漲跌容易一路延伸'], edge:['翻轉點附近', WARN, '多空交界，隨時可能變快'] }[zone];
   $('#gfHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${head[1]};color:${head[1]}">${head[0]}</span><span class="sub">${head[2]}</span></div>`;
   // 簡圖：一條價格尺，零 Gamma 左邊＝負 Gamma（橘）、右邊＝正 Gamma（藍）
   const svg = $('#svgGF'), W = Math.max(300, svg.parentElement.clientWidth - 4), narrow = W < 520, H = narrow ? 150 : 140, m = { l:10, r:10 };
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); svg.innerHTML = '';
   const pts = [cw, pw, Q, flip].filter(x => x != null); let a = Math.min(...pts), b = Math.max(...pts); const pad = Math.max((b - a) * 0.12, Q * 0.004); a -= pad; b += pad;
-  const x = p => m.l + (p - a) / (b - a) * (W - m.l - m.r), yb = 74, bh = 26, fx = flip ? Math.max(m.l, Math.min(W - m.r, x(flip))) : (st.netAtP >= 0 ? m.l : W - m.r);
+  const x = p => m.l + (p - a) / (b - a) * (W - m.l - m.r), yb = 74, bh = 26, fx = flip ? Math.max(m.l, Math.min(W - m.r, x(flip))) : (gAtQ >= 0 ? m.l : W - m.r);
   el('rect', { x:m.l, y:yb, width:fx - m.l, height:bh, rx:6, fill:NEG, 'fill-opacity':.28 }, svg);
   el('rect', { x:fx, y:yb, width:W - m.r - fx, height:bh, rx:6, fill:POS, 'fill-opacity':.28 }, svg);
   if (fx - m.l > 90) el('text', { x:(m.l + fx) / 2, y:yb + 17, 'text-anchor':'middle', 'font-size':12.5, 'font-weight':700, fill:NEG }, svg, narrow ? '負 Gamma・波動大' : '負 Gamma 區・波動大');
