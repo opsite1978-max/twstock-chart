@@ -55,6 +55,19 @@
     padding:6px 8px;font-size:12px;line-height:1.6;min-width:150px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
   .note{font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.7}
 </style>
+<script>
+/* 憑證失效偵測：FinMind 對失效的憑證回應時不帶跨網站標頭，瀏覽器只會看到「連不上」。
+   這時改用不帶憑證的方式試一次；如果通了，就明確告訴使用者是憑證失效，不是網路問題。 */
+(() => { const of = window.fetch.bind(window); let dead = null;
+  window.fetch = async (u, o) => { const s = String(u && u.url || u);
+    if (!/finmindtrade\.com/.test(s) || !/[?&]token=/.test(s)) return of(u, o);
+    try { return await of(u, o); }
+    catch(e){
+      if (dead === null){ try { const r = await of(s.replace(/([?&])token=[^&]*&?/, '$1').replace(/[?&]$/, ''), o); dead = r.ok; } catch(e2){ dead = false; } setTimeout(() => { dead = null; }, 60000); }
+      if (dead) return new Response(JSON.stringify({ status:401, msg:'憑證已失效（FinMind 拒絕這把憑證），請到看盤頁「⚙ 設定」貼上新的 FinMind 憑證' }), { status:401, headers:{ 'Content-Type':'application/json' } });
+      throw e;
+    } }; })();
+</script>
 </head>
 <body>
 <header>
