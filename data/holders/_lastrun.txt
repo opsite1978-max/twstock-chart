@@ -1,60 +1,18 @@
-10-14 01:11:03 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
-10-14 01:16:03 result shard 0 done requests 167 ok 167 none 0 files 175 in 301 s
-10-14 01:11:04 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-14 01:16:27   retry 4711 20251107 IncompleteRead IncompleteRead(73706 bytes read)
-10-14 01:16:41 progress 200 ok 0 none 338 s
-10-14 01:21:41 progress 400 ok 0 none 637 s
-10-14 01:24:24   retry 3447 20251031 IncompleteRead IncompleteRead(73706 bytes read)
-10-14 01:27:21 progress 600 ok 0 none 977 s
-10-14 01:32:21 progress 800 ok 0 none 1277 s
-10-14 01:37:18 progress 1000 ok 0 none 1574 s
-10-14 01:42:12 progress 1200 ok 0 none 1869 s
-10-14 01:46:46 result shard 1 done requests 1385 ok 1385 none 0 files 362 in 2142 s
-10-14 01:11:05 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-14 01:15:13   retry 1563 20251121 IncompleteRead IncompleteRead(73707 bytes read)
-10-14 01:16:26   retry 2007 20251121 IncompleteRead IncompleteRead(65536 bytes read)
-10-14 01:17:25 progress 200 ok 0 none 381 s
-10-14 01:22:15 progress 400 ok 0 none 671 s
-10-14 01:24:28   retry 1259 20251114 IncompleteRead IncompleteRead(65536 bytes read)
-10-14 01:27:52 progress 600 ok 0 none 1007 s
-10-14 01:32:43 progress 800 ok 0 none 1299 s
-10-14 01:37:39 progress 1000 ok 0 none 1595 s
-10-14 01:42:28 progress 1200 ok 0 none 1884 s
-10-14 01:47:23 progress 1400 ok 0 none 2178 s
-10-14 01:51:05 result shard 2 partial (time budget) requests 1549 ok 1549 none 0 files 358 in 2401 s
-10-14 01:11:06 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
-10-14 01:15:11   retry 6698 20251114 IncompleteRead IncompleteRead(73720 bytes read)
-10-14 01:16:26   retry 6996 20251114 IncompleteRead IncompleteRead(73706 bytes read)
-10-14 01:17:23 progress 200 ok 0 none 378 s
-10-14 01:22:16 progress 400 ok 0 none 671 s
-10-14 01:24:23   retry 6606 20251107 IncompleteRead IncompleteRead(65536 bytes read)
-10-14 01:27:52 progress 599 ok 1 none 1008 s
-10-14 01:32:49 progress 799 ok 1 none 1305 s
-10-14 01:37:44 progress 999 ok 1 none 1599 s
-10-14 01:42:38 progress 1199 ok 1 none 1893 s
-10-14 01:47:35 progress 1399 ok 1 none 2190 s
-10-14 01:50:22 result shard 3 done requests 1515 ok 1514 none 1 files 349 in 2357 s
-10-14 01:11:05 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
-10-14 01:16:02 progress 200 ok 0 none 298 s
-10-14 01:20:52 progress 400 ok 0 none 587 s
-10-14 01:25:52 progress 600 ok 0 none 888 s
-10-14 01:30:50   retry 3056 20251031 IncompleteRead IncompleteRead(73706 bytes read)
-10-14 01:31:24 progress 800 ok 0 none 1219 s
-10-14 01:36:16 progress 1000 ok 0 none 1512 s
-10-14 01:41:05 progress 1200 ok 0 none 1801 s
-10-14 01:45:55 progress 1400 ok 0 none 2090 s
-10-14 01:50:50 progress 1600 ok 0 none 2385 s
-10-14 01:51:04 result shard 4 partial (time budget) requests 1610 ok 1610 none 0 files 355 in 2400 s
-10-14 01:11:04 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
-10-14 01:15:13   retry 1441 20251121 IncompleteRead IncompleteRead(73706 bytes read)
-10-14 01:16:24   retry 1615 20251121 IncompleteRead IncompleteRead(57336 bytes read)
-10-14 01:18:26 progress 200 ok 0 none 443 s
-10-14 01:20:33   retry 3716 20251121 IncompleteRead IncompleteRead(65535 bytes read)
-10-14 01:24:30   retry 6690 20251121 IncompleteRead IncompleteRead(65536 bytes read)
-10-14 01:25:49 progress 400 ok 0 none 886 s
-10-14 01:31:42 progress 600 ok 0 none 1240 s
-10-14 01:37:37 progress 800 ok 0 none 1594 s
-10-14 01:39:48   retry 2719 20251107 HTTPError HTTP Error 504: Gateway Time-out
-10-14 01:43:57 progress 999 ok 1 none 1975 s
-10-14 01:49:53 progress 1199 ok 1 none 2330 s
-10-14 01:51:04 result shard 5 partial (time budget) requests 1239 ok 1238 none 1 files 354 in 2401 s
+10-14 05:59:16 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-14 06:04:20 progress 200 ok 0 none 305 s
+10-14 06:07:06   retry 1219 20251017 IncompleteRead IncompleteRead(65534 bytes read)
+10-14 06:10:21 progress 400 ok 0 none 666 s
+10-14 06:15:26 progress 600 ok 0 none 971 s
+10-14 06:15:50 result shard 2 done requests 616 ok 616 none 0 files 358 in 996 s
+10-14 05:59:16 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
+10-14 06:01:21 result shard 4 done requests 86 ok 86 none 0 files 87 in 127 s
+10-14 05:59:17 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
+10-14 06:04:18 progress 200 ok 0 none 303 s
+10-14 06:06:07   retry 1593 20251023 IncompleteRead IncompleteRead(65536 bytes read)
+10-14 06:07:04   retry 1727 20251023 IncompleteRead IncompleteRead(65533 bytes read)
+10-14 06:10:50 progress 400 ok 0 none 695 s
+10-14 06:15:45 progress 600 ok 0 none 990 s
+10-14 06:20:40 progress 800 ok 0 none 1285 s
+10-14 06:22:26   retry 6928 20251017 IncompleteRead IncompleteRead(65536 bytes read)
+10-14 06:23:34   retry 7821 20251017 IncompleteRead IncompleteRead(73706 bytes read)
+10-14 06:24:31 result shard 5 done requests 898 ok 898 none 0 files 354 in 1516 s
