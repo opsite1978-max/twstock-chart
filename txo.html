@@ -1186,6 +1186,24 @@ function lowScore(d, p, w){
 // 再換算成在近 120 天的百分位。10 以下＝低點區（負 Gamma 又跌深），90 以上＝高點區（正 Gamma 又漲多）。
 // 低點訊號：前 3 天內曾在低點區，今天開始往上翻；高點警示：前 3 天內曾在高點區，今天開始往下翻。
 const OSC_LO = 10, OSC_HI = 90;
+// QUAD-K ULTRA+ 的 K1 快線（週期 9、平滑 3，SuperSmoother 模式）：
+//   RSV = (收 − 9 根最低) ÷ (9 根最高 − 9 根最低) × 100（區間為 0 時取 50）
+//   預平滑 = 通達信 SMA(RSV, 平滑÷2 取整＝1, 1)＝RSV 本身；再用 Ehlers 雙極 SuperSmoother（週期＝平滑×2＝6），限制在 0～100
+function quadK1(H, len = 9, sm = 3){
+  const n = H.length, out = new Array(n).fill(null), p = Math.max(sm * 2, 1);
+  const a1 = Math.exp(-1.414 * Math.PI / p), b1 = 2 * a1 * Math.cos(1.414 * Math.PI / p), c2 = b1, c3 = -a1 * a1, c1 = 1 - c2 - c3;
+  let s1 = null, s2 = null;
+  for (let i = 0; i < n; i++){
+    let rsv = null;
+    if (i >= len - 1){ let hh = -Infinity, ll = Infinity; for (let j = i - len + 1; j <= i; j++){ hh = Math.max(hh, H[j].h); ll = Math.min(ll, H[j].l); }
+      rsv = hh - ll === 0 ? 50 : (H[i].c - ll) / (hh - ll) * 100; }
+    let sv = null;
+    if (rsv !== null) sv = s1 === null || s2 === null ? rsv : c1 * rsv + c2 * s1 + c3 * s2;
+    s2 = s1; s1 = sv;
+    out[i] = sv === null ? null : Math.min(100, Math.max(0, sv));
+  }
+  return out;
+}
 function oscComp(d, gexWin){
   const m = gexWin.reduce((t, x) => t + x, 0) / gexWin.length, sdv = Math.sqrt(gexWin.reduce((t, x) => t + (x - m) ** 2, 0) / gexWin.length) || 1;
   const sd1 = d.c * ((d.iv || 18) / 100) / Math.sqrt(252), fz = d.flip ? Math.max(-4, Math.min(4, (d.c - d.flip) / sd1)) : 0;
@@ -1253,7 +1271,7 @@ function renderLow(){
   const lvl = lo ? ['低點訊號', css('--up'), `從低點區往上翻，歷史上常是波段低點附近`] : o != null && o <= OSC_LO ? ['在低點區', css('--em'), '負 Gamma、跌深，等往上翻才算訊號'] :
     hiS ? ['高點警示', css('--down'), '從高點區往下翻，漲勢可能變慢'] : o != null && o >= OSC_HI ? ['在高點區', css('--em'), '正 Gamma、漲多，追高要小心'] : ['中間區', css('--line'), '沒有低點或高點跡象'];
   $('#lowHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${lvl[1]};color:${lvl[1] === css('--line') ? css('--muted') : lvl[1]}">${lvl[0]}</span>` +
-    `<span style="font-size:22px;font-weight:800">擺盪 ${o == null ? '–' : o.toFixed(0)}</span><span class="sub">${lvl[2]}（${live ? '盤中即時' : intra ? H[L].lab + ' 這根 K 棒' : mdw(H[L].d) + ' 收盤'}；10 以下＝低點區、90 以上＝高點區）</span></div>`;
+    `<span style="font-size:22px;font-weight:800">擺盪 ${o == null ? '–' : o.toFixed(0)}</span><span style="font-size:16px;font-weight:700;color:#00E5FF">K1 ${(() => { const k = quadK1(H)[L]; return k == null ? '–' : k.toFixed(0); })()}</span><span class="sub">${lvl[2]}（${live ? '盤中即時' : intra ? H[L].lab + ' 這根 K 棒' : mdw(H[L].d) + ' 收盤'}；10 以下＝低點區、90 以上＝高點區）</span></div>`;
   // 細項：今天的 6 項低點條件
   const sc = lowScore(H[L], H[L - 1], H.slice(Math.max(0, L - 119), L + 1));
   if (intra) $('#lowChk').innerHTML = `<div class="cap">分K版說明</div><div class="lchk" style="grid-template-columns:1fr"><span>選擇權未平倉一天只公布一次，所以每根 K 棒用的是當時已經公布的籌碼（翻轉點、總 Gamma 曝險）；指標在一天之內的變化，主要來自台指期離翻轉點的距離。</span></div><div class="lchk" style="grid-template-columns:1fr"><span>目前用的翻轉點 <b>${H[L].flip ? fmtInt(H[L].flip) : '–'}</b>、看跌牆 <b>${H[L].pw ? fmtInt(H[L].pw) : '–'}</b>；台指期 <b>${fmtInt(H[L].c)}</b>。</span></div>`;
@@ -1289,14 +1307,16 @@ function renderLow(){
   [[OSC_HI, '高點區 90', css('--down')], [50, '50', css('--muted')], [OSC_LO, '低點區 10', css('--up')]].forEach(([v, t, c]) => {
     el('line', { x1:m.l, x2:Wd - m.r, y1:y2(v), y2:y2(v), stroke:c, 'stroke-width':v === 50 ? 1 : 1.6, 'stroke-dasharray':v === 50 ? '2 3' : '6 3' }, svg);
     el('text', { x:m.l - 4, y:y2(v) + 4, 'text-anchor':'end', 'font-size':10.5, fill:c }, svg, v === 50 ? '50' : String(v)); });
+  const K1 = quadK1(H);
+  el('path', { d:idx.filter(i => K1[i] != null).map((i, k) => (k ? 'L' : 'M') + x(idx.indexOf(i)).toFixed(1) + ',' + y2(K1[i]).toFixed(1)).join(''), fill:'none', stroke:'#00E5FF', 'stroke-width':1.6, 'stroke-linejoin':'round', 'stroke-opacity':.95 }, svg);
   el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y2(O[i]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
   idx.forEach((i, k) => { if (sigLo(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:4, fill:css('--up') }, svg); if (sigHi(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:3.5, fill:css('--down') }, svg); });
   const kL = K - 1; if (LZ.end === 0) el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:css('--curve'), 'stroke-width':2.5 }, svg);
   [0, Math.floor(K / 2), K - 1].forEach((k, j) => el('text', { x:x(k), y:Ht - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, H[idx[k]].lab));
-  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', css('--curve'), 'ln'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
+  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', css('--curve'), 'ln'], ['QUAD-K 快線 K1（下圖）', '#00E5FF', 'ln'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
   const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Ht, fill:'transparent' }, svg);
   hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), k = Math.max(0, Math.min(K - 1, Math.floor(((ev.clientX - r.left) * Wd / r.width - m.l) / bw))), i = idx[k], d = H[i];
-    tip.innerHTML = `<b>${d.lab}</b>${d.live ? '（盤中）' : ''}　擺盪 <b>${O[i].toFixed(0)}</b><br>台指期 ${fmtInt(d.c)}${fwd(i, 5) != null ? `・之後 5 ${unit} ${pcS(fwd(i, 5))}` : ''}` + (sigLo(i) ? '<br><b style="color:var(--up)">低點訊號</b>' : sigHi(i) ? '<br><b style="color:var(--down)">高點警示</b>' : '');
+    tip.innerHTML = `<b>${d.lab}</b>${d.live ? '（盤中）' : ''}　擺盪 <b>${O[i].toFixed(0)}</b>${K1[i] != null ? `　K1 <b style="color:#00E5FF">${K1[i].toFixed(0)}</b>` : ''}<br>台指期 ${fmtInt(d.c)}${fwd(i, 5) != null ? `・之後 5 ${unit} ${pcS(fwd(i, 5))}` : ''}` + (sigLo(i) ? '<br><b style="color:var(--up)">低點訊號</b>' : sigHi(i) ? '<br><b style="color:var(--down)">高點警示</b>' : '');
     tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(k) * r.width / Wd + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
   hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
 }
