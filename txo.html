@@ -193,6 +193,12 @@
       </div>
     </section>
 
+    <section id="heatSec">
+      <h2>Gamma 熱度圖<span class="muted">每個價位、每個時間的 Gamma 曝險：紫＝正 Gamma（容易被壓住、盤勢穩），紅＝負 Gamma（波動放大區）</span></h2>
+      <div class="panel" style="padding:8px"><div class="legend" id="lgHeat2"></div><div style="position:relative"><canvas id="cvHeat" style="display:block;width:100%;touch-action:pan-y"></canvas><div class="tip" id="tipHeat2"></div></div></div>
+      <p class="note" id="heatNote"></p>
+    </section>
+
     <section id="gsSec">
       <h2>Gamma 翻轉點簡圖<span class="muted">一眼看出現在盤勢穩不穩、關鍵價在哪</span></h2>
       <div class="gf" id="gfBox"><div id="gfHead"></div><svg id="svgGF" role="img" aria-label="現價在正 Gamma 區或負 Gamma 區"></svg><div id="gfTxt"></div></div>
@@ -691,7 +697,7 @@ function render(){
   const rows = v.rows.filter(r => r.K >= lo && r.K <= hi);
   CTX = { v, st, rows, lo, hi, EM };
   if (EM) $('#verdict').textContent += `依選擇權價格推算，到 ${mdw(EM.exp)} 結算的預期高低區間約 ${fmtInt(EM.lo)}～${fmtInt(EM.hi)}（約 68% 機率）。`;
-  drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection(); renderGS();
+  drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection(); renderGS(); renderHeat().catch(e => { $('#heatNote').textContent = '熱度圖錯誤：' + e.message; });
 }
 let CTX = null, INST = null, ZOOM = null;
 // 縮放：三張履約價圖共用同一個橫軸範圍
@@ -1166,6 +1172,130 @@ function gsHistStats(){
   return R;
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+
+
+/* ───────── Gamma 熱度圖（仿 SpotGamma） ─────────
+   橫軸：選擇權籌碼公布後的下一段交易（當天夜盤 15:00～隔天 05:00，再接下一個交易日日盤 08:45～13:45），每 5 分鐘一格
+   縱軸：各履約價
+   顏色：假設台指期在那個時間是當時的價格，該履約價的淨 Gamma 曝險（買權未平倉－賣權未平倉）；
+         到期時間隨時間遞減（結算日 13:30 到期），所以越接近結算，價平附近顏色越深
+   還沒走到的時間用目前價格推估（右側半透明）。左邊長條＝目前價格下各履約價的淨 Gamma 曝險。 */
+const HEAT = { live:[], k:null };
+const utcSec = (d, h, m) => { const [y, mo, dd] = d.split('-').map(Number); return Date.UTC(y, mo - 1, dd, h, m) / 1000; };
+function heatTimeline(){
+  const d0 = DATA.date, nextTD = (CAL.find(d => d > d0)) || shiftDay(d0, 1), cols = [];
+  for (let t = utcSec(d0, 15, 0); t < utcSec(shiftDay(d0, 1), 5, 0); t += 300) cols.push(t);
+  const nightEnd = cols.length;
+  for (let t = utcSec(nextTD, 8, 45); t < utcSec(nextTD, 13, 45); t += 300) cols.push(t);
+  return { cols, nightEnd, nextTD };
+}
+async function heatPrices(){
+  const d0 = DATA.date, tl = heatTimeline(), list = [];
+  for (let d = d0; d <= tl.nextTD; d = shiftDay(d, 1)) list.push(d);
+  const key = list.join(',');
+  const fresh = HEAT.k && HEAT.k.key === key && Date.now() - HEAT.k.at < 120000;
+  if (!fresh){
+    const sym = { kind:'fut', id:'TX' };
+    const per = await Promise.all(list.map(d => (d >= shiftDay(twToday(), -1) ? (kMem.delete('F:TX:' + d), kbarDay(sym, d)) : kbarDay(sym, d)).catch(() => null)));
+    const bars = intradayBars(list, per, sym, 5, true, d0).filter(b => b.time >= tl.cols[0]);
+    HEAT.k = { key, at:Date.now(), bars };
+  }
+  return HEAT.k.bars;
+}
+async function renderHeat(){
+  if (!CTX || !DATA) return;
+  const cv = $('#cvHeat'); if (!cv) return;
+  const tl = heatTimeline();
+  let bars = []; try { bars = await heatPrices(); } catch(e){}
+  const fut = DATA.fut;
+  if (fut && fut.live && fut.price){ const now = new Date(Date.now() + 8 * 3600e3), t = Math.floor(now.getTime() / 1000 / 300) * 300;
+    if (!HEAT.live.length || HEAT.live[HEAT.live.length - 1].time !== t) HEAT.live.push({ time:t, close:fut.price }); else HEAT.live[HEAT.live.length - 1].close = fut.price; }
+  const pts = bars.map(b => ({ time:b.time, close:b.close })).concat(HEAT.live.filter(p => !bars.length || p.time > bars[bars.length - 1].time)).filter(p => p.time >= tl.cols[0]).sort((a, b) => a.time - b.time);
+  const { v } = CTX, P0 = v.P, lastP = pts.length ? pts[pts.length - 1].close : P0, lastT = pts.length ? pts[pts.length - 1].time : null;
+  // 每一格的價格
+  const C = tl.cols.length, Sx = new Array(C), known = new Array(C);
+  let j = 0, cur = null;
+  for (let c = 0; c < C; c++){ while (j < pts.length && pts[j].time <= tl.cols[c] + 299){ cur = pts[j].close; j++; } Sx[c] = cur ?? (lastT == null ? P0 : null); known[c] = lastT != null && tl.cols[c] <= lastT; if (Sx[c] == null) Sx[c] = lastP; if (lastT != null && tl.cols[c] > lastT) Sx[c] = lastP; }
+  // 履約價與部位
+  const Ks = [...new Set(DATA.exps.flatMap(e => e.S.map(s => s.K)))].filter(K => K >= CTX.lo && K <= CTX.hi).sort((a, b) => b - a);
+  if (!Ks.length) return;
+  const pv = Sx.filter(x => x != null), lo = Math.min(Ks[Ks.length - 1], ...pv), hi = Math.max(Ks[0], ...pv);
+  const legs = new Map(Ks.map(K => [K, []]));
+  for (const e of DATA.exps){ const ex = utcSec(e.exp, 13, 30); for (const s of e.S) if (legs.has(s.K)) legs.get(s.K).push({ F:e.F, ex, iv:s.iv, n:(s.c.oi || 0) - (s.p.oi || 0) }); }
+  const R = Ks.length; if (!R){ return; }
+  const val = new Float32Array(C * R);
+  for (let c = 0; c < C; c++){ const S = Sx[c], sh = S - P0;
+    for (let r = 0; r < R; r++){ let t = 0; for (const L of legs.get(Ks[r])){ const T = (L.ex - tl.cols[c]) / (365 * 86400); if (T <= 0 || !L.n) continue; t += gamma(L.F + sh, Ks[r], Math.max(T, 300 / (365 * 86400)), L.iv) * L.n * MULT * S * S * 0.01; } val[c * R + r] = t; } }
+  const abs = Array.from(val, Math.abs).sort((a, b) => a - b), mx = abs[Math.floor(abs.length * 0.98)] || 1;
+  // 版面
+  const W = Math.max(300, cv.parentElement.clientWidth), narrow = W < 560, H = narrow ? 400 : 480, dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const bw = narrow ? Math.round(W * 0.2) : Math.round(W * 0.18), yl = narrow ? 44 : 52, lgW = narrow ? 34 : 70, top = 8, bot = 24;
+  const hx0 = bw + yl, hx1 = W - lgW - 6, hy0 = top, hy1 = H - bot, hw = hx1 - hx0, hh = hy1 - hy0;
+  const yOf = K => hy0 + (hi - K) / (hi - lo) * hh, xOf = c => hx0 + (c + 0.5) / C * hw;
+  const light = document.documentElement.dataset.theme === 'light';
+  const POS = [124, 77, 255], NEG = [255, 45, 111], MID = light ? [255, 255, 255] : [27, 33, 48];
+  const colOf = x => { const k = Math.max(-1, Math.min(1, x / mx)), a = Math.pow(Math.abs(k), 0.75), T = k >= 0 ? POS : NEG; return [0, 1, 2].map(i => Math.round(MID[i] + (T[i] - MID[i]) * a)); };
+  // 熱度：先畫成每格一點的小圖，再平滑放大（看起來是連續漸層）
+  const off = document.createElement('canvas'); off.width = C; off.height = R; const og = off.getContext('2d'), img = og.createImageData(C, R);
+  for (let c = 0; c < C; c++) for (let r = 0; r < R; r++){ const [rr, gg, bb] = colOf(val[c * R + r]), q = (r * C + c) * 4; img.data[q] = rr; img.data[q + 1] = gg; img.data[q + 2] = bb; img.data[q + 3] = 255; }
+  og.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  const rowH = hh / (R - 1 || 1);
+  g.drawImage(off, 0, 0, C, R, hx0, hy0 - rowH / 2, hw, hh + rowH);
+  g.save(); g.globalCompositeOperation = 'destination-over'; g.restore();
+  // 邊框外裁切（drawImage 上下各多半格）
+  g.fillStyle = css('--panel'); g.fillRect(hx0, 0, hw, hy0); g.fillRect(hx0, hy1, hw, bot);
+  // 未來（推估）蓋一層半透明
+  const nowC = lastT == null ? -1 : tl.cols.findIndex(t => t > lastT);
+  if (nowC >= 0){ const xn = hx0 + nowC / C * hw; g.fillStyle = light ? 'rgba(255,255,255,.35)' : 'rgba(19,23,34,.38)'; g.fillRect(xn, hy0, hx1 - xn, hh);
+    g.strokeStyle = css('--muted'); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(xn, hy0); g.lineTo(xn, hy1); g.stroke(); g.setLineDash([]);
+    g.fillStyle = css('--muted'); g.font = '11px sans-serif'; g.textAlign = 'left'; g.fillText('之後用目前價格推估', Math.min(xn + 4, hx1 - 110), hy0 + 12); }
+  // 夜盤／日盤分隔
+  const xs = hx0 + tl.nightEnd / C * hw; g.strokeStyle = css('--line'); g.lineWidth = 2; g.beginPath(); g.moveTo(xs, hy0); g.lineTo(xs, hy1); g.stroke(); g.lineWidth = 1;
+  // 價格線
+  if (pts.length){ g.save(); g.beginPath(); let started = false;
+    for (let c = 0; c < C; c++){ if (!known[c]) continue; const x = xOf(c), y = yOf(Sx[c]); if (!started){ g.moveTo(x, y); started = true; } else g.lineTo(x, y); }
+    g.shadowColor = light ? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.7)'; g.shadowBlur = 6; g.strokeStyle = light ? '#111' : '#fff'; g.lineWidth = 2; g.stroke(); g.restore(); }
+  // 現價橫線
+  const yP = yOf(lastP); g.strokeStyle = light ? '#333' : '#ddd'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(hx0, yP); g.lineTo(hx1, yP); g.stroke(); g.setLineDash([]);
+  g.fillStyle = light ? '#111' : '#fff'; g.fillRect(bw + 2, yP - 9, yl - 4, 18); g.fillStyle = light ? '#fff' : '#111'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center'; g.fillText(fmtInt(lastP), bw + yl / 2, yP + 4);
+  // 縱軸價位
+  g.font = '11px sans-serif'; g.fillStyle = css('--muted'); g.textAlign = 'right';
+  for (const t of niceTicks(lo, hi, narrow ? 6 : 9)){ const y = yOf(t); if (y < hy0 + 4 || y > hy1 - 4 || Math.abs(y - yP) < 12) continue; g.fillText(fmtInt(t), hx0 - 4, y + 4); }
+  // 橫軸時間
+  g.textAlign = 'center';
+  const labs = narrow ? [[15, 0], [21, 0], [8, 45], [13, 45]] : [[15, 0], [18, 0], [21, 0], [0, 0], [3, 0], [8, 45], [10, 0], [11, 0], [12, 0], [13, 45]];
+  for (const [h, m] of labs){ const c = tl.cols.findIndex(t => { const d = new Date(t * 1000); return d.getUTCHours() === h && d.getUTCMinutes() === m; }); if (c < 0) continue;
+    g.fillText(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'), Math.min(Math.max(xOf(c), hx0 + 16), hx1 - 16), H - 8); }
+  g.textAlign = 'left'; g.fillText('夜盤 ' + md(DATA.date), hx0 + 4, hy1 - 6); g.textAlign = 'right'; g.fillText('日盤 ' + md(tl.nextTD), hx1 - 4, hy1 - 6);
+  // 左邊：目前價格下各履約價淨 Gamma 曝險
+  const cNow = nowC >= 0 ? Math.max(0, nowC - 1) : C - 1, nets = Ks.map((K, r) => val[cNow * R + r]), mb = Math.max(1, ...nets.map(Math.abs));
+  const zx = bw / 2; g.strokeStyle = css('--line'); g.beginPath(); g.moveTo(zx, hy0); g.lineTo(zx, hy1); g.stroke();
+  const barH = Math.max(1.5, Math.min(8, hh / R - 1));
+  Ks.forEach((K, r) => { const w = nets[r] / mb * (bw / 2 - 6); g.fillStyle = nets[r] >= 0 ? `rgb(${POS})` : `rgb(${NEG})`; g.fillRect(Math.min(zx, zx + w), yOf(K) - barH / 2, Math.abs(w), barH); });
+  g.fillStyle = css('--muted'); g.textAlign = 'center'; g.fillText('各履約價 Gamma', zx, H - 8);
+  // 色條
+  const lx = W - lgW + 4, lw2 = 10, lgr = g.createLinearGradient(0, hy0, 0, hy1);
+  for (let i = 0; i <= 10; i++){ const [r1, g1, b1] = colOf(mx * (1 - i / 5)); lgr.addColorStop(i / 10, `rgb(${r1},${g1},${b1})`); }
+  g.fillStyle = lgr; g.fillRect(lx, hy0, lw2, hh); g.strokeStyle = css('--line'); g.strokeRect(lx, hy0, lw2, hh);
+  if (!narrow){ g.fillStyle = css('--muted'); g.textAlign = 'left'; g.font = '10.5px sans-serif'; [[1, hy0 + 8], [0, hy0 + hh / 2 + 4], [-1, hy1]].forEach(([k, y]) => g.fillText(fmtMoney(k * mx, true), lx + lw2 + 3, y)); }
+  legend($('#lgHeat2'), [['正 Gamma（紫）', `rgb(${POS})`], ['負 Gamma（紅）', `rgb(${NEG})`], ['台指期 5 分鐘線', light ? '#111' : '#fff', 'ln'], ['目前價格', light ? '#333' : '#ddd', 'dash']]);
+  // 說明
+  const pc = nets.map((x, r) => [Ks[r], x]), posTop = pc.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1])[0], negTop = pc.filter(x => x[1] < 0).sort((a, b) => a[1] - b[1])[0];
+  $('#heatNote').innerHTML = `目前最深的紫色（正 Gamma）在 <b>${posTop ? fmtInt(posTop[0]) : '–'}</b>，最深的紅色（負 Gamma）在 <b>${negTop ? fmtInt(negTop[0]) : '–'}</b>。紫色區價格容易被壓住、來回整理；紅色區價格容易加速。顏色隨時間變深，是因為越接近結算 Gamma 越集中在價平附近。` +
+    `<br><span class="muted">未平倉一天只公布一次，所以這張圖的「部位」固定用 ${md(DATA.date)} 收盤的籌碼，變的是價格和到期時間。` + (pts.length ? '' : '這段交易還沒有分鐘資料（盤中分K要收盤後才有），開即時模式後會一路記下價格。') + `這是情境參考，不是一定撐得住或壓得住的價位。</span>`;
+  // 游標
+  const tip = $('#tipHeat2');
+  cv.onpointermove = ev => { const r0 = cv.getBoundingClientRect(), mx0 = ev.clientX - r0.left, my0 = ev.clientY - r0.top;
+    if (mx0 < hx0 || mx0 > hx1 || my0 < hy0 || my0 > hy1){ tip.style.display = 'none'; return; }
+    const c = Math.max(0, Math.min(C - 1, Math.floor((mx0 - hx0) / hw * C))), K = hi - (my0 - hy0) / hh * (hi - lo), r = Ks.reduce((a, k, i) => Math.abs(k - K) < Math.abs(Ks[a] - K) ? i : a, 0);
+    const d = new Date(tl.cols[c] * 1000), tt = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'), x = val[c * R + r];
+    tip.innerHTML = `<b>${md(d.toISOString().slice(0, 10))} ${tt}</b>${known[c] ? '' : '（推估）'}<br>履約價 ${fmtInt(Ks[r])}：<b style="color:rgb(${x >= 0 ? POS : NEG})">${fmtMoney(x, true)}</b><br>台指期 ${fmtInt(Sx[c])}`;
+    tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, mx0 + 14), r0.width - tip.offsetWidth - 4) + 'px'; tip.style.top = Math.max(4, my0 - 60) + 'px'; };
+  cv.onpointerleave = () => { tip.style.display = 'none'; };
+}
 
 /* ───────── GEX 低點偵測 ─────────
    6 項條件（每項 1 分）：
