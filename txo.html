@@ -1236,22 +1236,29 @@ async function renderHeat(){
     if (!HEAT.live.length || HEAT.live[HEAT.live.length - 1].time !== t) HEAT.live.push({ time:t, close:fut.price }); else HEAT.live[HEAT.live.length - 1].close = fut.price; }
   const pts = bars.map(b => ({ time:b.time, close:b.close })).concat(HEAT.live.filter(p => !bars.length || p.time > bars[bars.length - 1].time)).filter(p => p.time >= tl.cols[0] && p.time <= tl.cols[tl.cols.length - 1] + 299).sort((a, b) => a.time - b.time);
   const { v } = CTX, P0 = v.P, lastP = pts.length ? pts[pts.length - 1].close : (HEAT.now ? HEAT.now.price : P0), lastT = pts.length ? pts[pts.length - 1].time : null;
-  // 每一格的價格
+  // 每一格的價格（有實際成交的格子才畫走勢線；沒有的用最近價格估算顏色）
   const C = tl.cols.length, Sx = new Array(C), known = new Array(C);
   let j = 0, cur = null;
-  for (let c = 0; c < C; c++){ while (j < pts.length && pts[j].time <= tl.cols[c] + 299){ cur = pts[j].close; j++; } Sx[c] = cur ?? (lastT == null ? P0 : null); known[c] = lastT != null && tl.cols[c] <= lastT; if (Sx[c] == null) Sx[c] = lastP; if (lastT != null && tl.cols[c] > lastT) Sx[c] = lastP; }
-  // 履約價與部位
-  const Ks = [...new Set(DATA.exps.flatMap(e => e.S.map(s => s.K)))].filter(K => K >= CTX.lo && K <= CTX.hi).sort((a, b) => b - a);
-  if (!Ks.length) return;
+  for (let c = 0; c < C; c++){ while (j < pts.length && pts[j].time <= tl.cols[c] + 299){ cur = pts[j].close; j++; }
+    known[c] = cur != null && lastT != null && tl.cols[c] <= lastT; Sx[c] = known[c] ? cur : lastP; }
+  // 價格範圍：目前價格上下 4%，並包含走勢與指數
   const ipv = HEAT.idx && HEAT.idx.d === tl.nextTD ? HEAT.idx.pts.map(q => q.close) : [];
-  const pv = Sx.filter(x => x != null).concat(ipv), lo = Math.min(Ks[Ks.length - 1], ...pv), hi = Math.max(Ks[0], ...pv);
+  const pv = Sx.filter((x, c) => known[c]).concat(ipv, [lastP]);
+  const lo = Math.min(lastP * 0.96, ...pv) - 50, hi = Math.max(lastP * 1.04, ...pv) + 50, sig = Math.max(40, (hi - lo) / 90);
+  // 各履約價的淨 Gamma 曝險（每個時間點）
+  const Ks = [...new Set(DATA.exps.flatMap(e => e.S.map(s => s.K)))].filter(K => K >= lo - 3 * sig && K <= hi + 3 * sig).sort((a, b) => b - a);
+  if (!Ks.length) return;
   const legs = new Map(Ks.map(K => [K, []]));
   for (const e of DATA.exps){ const ex = utcSec(e.exp, 13, 30); for (const s of e.S) if (legs.has(s.K)) legs.get(s.K).push({ F:e.F, ex, iv:s.iv, n:(s.c.oi || 0) - (s.p.oi || 0) }); }
-  const R = Ks.length; if (!R){ return; }
-  const val = new Float32Array(C * R);
+  const RK = Ks.length, valK = new Float32Array(C * RK);
   for (let c = 0; c < C; c++){ const S = Sx[c], sh = S - P0;
-    for (let r = 0; r < R; r++){ let t = 0; for (const L of legs.get(Ks[r])){ const T = (L.ex - tl.cols[c]) / (365 * 86400); if (T <= 0 || !L.n) continue; t += gamma(L.F + sh, Ks[r], Math.max(T, 300 / (365 * 86400)), L.iv) * L.n * MULT * S * S * 0.01; } val[c * R + r] = t; } }
-  const abs = Array.from(val, Math.abs).sort((a, b) => a - b), mx = abs[Math.floor(abs.length * 0.98)] || 1;
+    for (let r = 0; r < RK; r++){ let t = 0; for (const L of legs.get(Ks[r])){ const T = (L.ex - tl.cols[c]) / (365 * 86400); if (T <= 0 || !L.n) continue; t += gamma(L.F + sh, Ks[r], Math.max(T, 300 / (365 * 86400)), L.iv) * L.n * MULT * S * S * 0.01; } valK[c * RK + r] = t; } }
+  // 平滑到等距的價格格子（高斯權重），畫起來是連續漸層
+  const R = 160, yv = Array.from({ length:R }, (_, r) => hi - (hi - lo) * r / (R - 1));
+  const Wt = yv.map(y => Ks.map(K => Math.exp(-((K - y) ** 2) / (2 * sig * sig))));
+  const val = new Float32Array(C * R);
+  for (let c = 0; c < C; c++) for (let r = 0; r < R; r++){ let t = 0; const w = Wt[r]; for (let q = 0; q < RK; q++) if (w[q] > 1e-3) t += valK[c * RK + q] * w[q]; val[c * R + r] = t; }
+  const abs = Array.from(val, Math.abs).sort((a, b) => a - b), mx = abs[Math.floor(abs.length * 0.985)] || 1;
   // 版面
   const W = Math.max(300, cv.parentElement.clientWidth), narrow = W < 560, H = narrow ? 400 : 480, dpr = window.devicePixelRatio || 1;
   cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + 'px';
@@ -1302,16 +1309,16 @@ async function renderHeat(){
     g.fillText(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'), Math.min(Math.max(xOf(c), hx0 + 16), hx1 - 16), H - 8); }
   g.textAlign = 'left'; g.fillText('夜盤 ' + md(DATA.date), hx0 + 4, hy1 - 6); g.textAlign = 'right'; g.fillText('日盤 ' + md(tl.nextTD), hx1 - 4, hy1 - 6);
   // 左邊：目前價格下各履約價淨 Gamma 曝險
-  const cNow = nowC >= 0 ? Math.max(0, nowC - 1) : C - 1, nets = Ks.map((K, r) => val[cNow * R + r]), mb = Math.max(1, ...nets.map(Math.abs));
+  const cNow = nowC >= 0 ? Math.max(0, nowC - 1) : C - 1, nets = Ks.map((K, r) => K >= lo && K <= hi ? valK[cNow * RK + r] : 0), mb = Math.max(1, ...nets.map(Math.abs));
   const zx = bw / 2; g.strokeStyle = css('--line'); g.beginPath(); g.moveTo(zx, hy0); g.lineTo(zx, hy1); g.stroke();
-  const barH = Math.max(1.5, Math.min(8, hh / R - 1));
-  Ks.forEach((K, r) => { const w = nets[r] / mb * (bw / 2 - 6); g.fillStyle = nets[r] >= 0 ? `rgb(${POS})` : `rgb(${NEG})`; g.fillRect(Math.min(zx, zx + w), yOf(K) - barH / 2, Math.abs(w), barH); });
+  const barH = Math.max(1.5, Math.min(8, hh / ((hi - lo) / 50) - 0.5));
+  Ks.forEach((K, r) => { if (K < lo || K > hi) return; const w = nets[r] / mb * (bw / 2 - 6); g.fillStyle = nets[r] >= 0 ? `rgb(${POS})` : `rgb(${NEG})`; g.fillRect(Math.min(zx, zx + w), yOf(K) - barH / 2, Math.abs(w), barH); });
   g.fillStyle = css('--muted'); g.textAlign = 'center'; g.fillText('各履約價 Gamma', zx, H - 8);
   // 色條
   const lx = W - lgW + 4, lw2 = 10, lgr = g.createLinearGradient(0, hy0, 0, hy1);
   for (let i = 0; i <= 10; i++){ const [r1, g1, b1] = colOf(mx * (1 - i / 5)); lgr.addColorStop(i / 10, `rgb(${r1},${g1},${b1})`); }
   g.fillStyle = lgr; g.fillRect(lx, hy0, lw2, hh); g.strokeStyle = css('--line'); g.strokeRect(lx, hy0, lw2, hh);
-  if (!narrow){ g.fillStyle = css('--muted'); g.textAlign = 'left'; g.font = '10.5px sans-serif'; [[1, hy0 + 8], [0, hy0 + hh / 2 + 4], [-1, hy1]].forEach(([k, y]) => g.fillText(fmtMoney(k * mx, true), lx + lw2 + 3, y)); }
+  if (!narrow){ g.fillStyle = css('--muted'); g.textAlign = 'left'; g.font = '10.5px sans-serif'; [['正 強', hy0 + 8], ['0', hy0 + hh / 2 + 4], ['負 強', hy1]].forEach(([t, y]) => g.fillText(t, lx + lw2 + 3, y)); }
   legend($('#lgHeat2'), [['正 Gamma（紫）', `rgb(${POS})`], ['負 Gamma（紅）', `rgb(${NEG})`], ['台指期 5 分鐘線', light ? '#111' : '#fff', 'ln'], ['加權指數（日盤）', '#ffca28', 'ln'], ['台指期目前價格', light ? '#333' : '#ddd', 'dash']]);
   // 說明
   const pc = nets.map((x, r) => [Ks[r], x]), posTop = pc.filter(x => x[1] > 0).sort((a, b) => b[1] - a[1])[0], negTop = pc.filter(x => x[1] < 0).sort((a, b) => a[1] - b[1])[0];
@@ -1321,9 +1328,9 @@ async function renderHeat(){
   const tip = $('#tipHeat2');
   cv.onpointermove = ev => { const r0 = cv.getBoundingClientRect(), mx0 = ev.clientX - r0.left, my0 = ev.clientY - r0.top;
     if (mx0 < hx0 || mx0 > hx1 || my0 < hy0 || my0 > hy1){ tip.style.display = 'none'; return; }
-    const c = Math.max(0, Math.min(C - 1, Math.floor((mx0 - hx0) / hw * C))), K = hi - (my0 - hy0) / hh * (hi - lo), r = Ks.reduce((a, k, i) => Math.abs(k - K) < Math.abs(Ks[a] - K) ? i : a, 0);
+    const c = Math.max(0, Math.min(C - 1, Math.floor((mx0 - hx0) / hw * C))), K = hi - (my0 - hy0) / hh * (hi - lo), r = Math.max(0, Math.min(R - 1, Math.round((hi - K) / (hi - lo) * (R - 1)))), kr = Ks.reduce((a, k, i) => Math.abs(k - K) < Math.abs(Ks[a] - K) ? i : a, 0);
     const d = new Date(tl.cols[c] * 1000), tt = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'), x = val[c * R + r];
-    tip.innerHTML = `<b>${md(d.toISOString().slice(0, 10))} ${tt}</b>${known[c] ? '' : '（推估）'}<br>履約價 ${fmtInt(Ks[r])}：<b style="color:rgb(${x >= 0 ? POS : NEG})">${fmtMoney(x, true)}</b><br>台指期 ${fmtInt(Sx[c])}`;
+    tip.innerHTML = `<b>${md(d.toISOString().slice(0, 10))} ${tt}</b>${known[c] ? '' : '（推估）'}<br>價位 ${fmtInt(K)} 附近：<b style="color:rgb(${x >= 0 ? POS : NEG})">${x >= 0 ? '正' : '負'} Gamma</b><br>最近的履約價 ${fmtInt(Ks[kr])}：${fmtMoney(valK[c * RK + kr], true)}<br>台指期 ${fmtInt(Sx[c])}`;
     tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, mx0 + 14), r0.width - tip.offsetWidth - 4) + 'px'; tip.style.top = Math.max(4, my0 - 60) + 'px'; };
   cv.onpointerleave = () => { tip.style.display = 'none'; };
 }
