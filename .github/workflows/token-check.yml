@@ -1,0 +1,37 @@
+name: FinMind 憑證檢查（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 查詢憑證狀態（只記錄狀態，不記錄憑證）
+        env:
+          T: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out
+          python3 - <<'PY' > out/log.txt 2>&1
+          import os, json, urllib.request, urllib.parse
+          t = os.environ.get('T', '')
+          def get(url):
+              try:
+                  with urllib.request.urlopen(url, timeout=30) as r: return r.status, r.read().decode()[:600]
+              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:600]
+              except Exception as e: return 0, str(e)[:300]
+          for name, url in [
+              ('user_info', 'https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': t})),
+              ('data', 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode({'dataset': 'TaiwanStockInfo', 'token': t})),
+              ('data_no_token', 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode({'dataset': 'TaiwanStockPrice', 'data_id': '2330', 'start_date': '2026-10-01'})),
+          ]:
+              st, body = get(url)
+              print(name, st, body.replace(t, '***')[:400] if t else body[:400])
+          PY
+          cat out/log.txt | sed 's/[A-Za-z0-9._-]\{40,\}/***/g'
+      - name: 保存結果
+        if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
