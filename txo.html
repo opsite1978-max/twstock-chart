@@ -87,6 +87,10 @@
   .gf .sub{font-size:13.5px;color:var(--muted)}
   .gf ol{margin:8px 0 0 20px;padding:0;font-size:14.5px;line-height:1.85}
   .gf ol b{color:var(--text)}
+  .lowg{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:14px;align-items:start;position:relative}
+  @media (max-width:760px){ .lowg{grid-template-columns:minmax(0,1fr)} }
+  .lchk{display:grid;grid-template-columns:22px 1fr;gap:0 6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.5}
+  .lchk:last-child{border-bottom:0} .lchk i{font-style:normal;font-weight:800;text-align:center} .lchk small{grid-column:2;color:var(--muted);font-size:12px}
   details.adv{margin-top:10px} details.adv>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 2px}
   .gs{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px}
   .gs .it{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.65}
@@ -198,6 +202,11 @@
       <div class="panel"><div class="legend" id="lgHeat"></div><svg id="svgHeat" role="img" aria-label="各結算日、各履約價的 Gamma 集中程度"></svg><div class="tip" id="tipHeat"></div></div>
       <p class="note" id="gsNote"></p>
       </details>
+    </section>
+
+    <section id="lowSec">
+      <h2>GEX 低點偵測<span class="muted">負 Gamma、看跌牆、翻轉點組合成 6 項條件；4 項以上＝低點訊號</span></h2>
+      <div class="gf"><div id="lowHead"></div><div class="lowg"><div id="lowChk"></div><div><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與低點訊號"></svg><div class="tip" id="tipLow"></div></div></div><p class="note" id="lowNote"></p></div>
     </section>
 
     <section>
@@ -1151,6 +1160,72 @@ function gsHistStats(){
   return R;
 }
 const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+
+/* ───────── GEX 低點偵測 ─────────
+   6 項條件（每項 1 分）：
+   1 負 Gamma 偏極端：總 Gamma 曝險在近 120 個交易日的最低 20%
+   2 收盤在零 Gamma（翻轉點）之下
+   3 盤中碰到前一天的看跌牆（低點 ≤ 看跌牆 × 1.003）
+   4 跌深：低於翻轉點超過一天的預期波動（台指期 × 隱含波動率 ÷ √252）
+   5 Gamma 回升：總 Gamma 曝險比前一天高（但仍為負）
+   6 收紅：收盤高於開盤
+   4 分以上＝低點訊號，3 分＝低點觀察。這是用台指過去一年資料自己組合、驗證的規則；SpotGamma 也提醒 GEX 本身不預測方向。 */
+function lowScore(d, p, w){
+  const sdv = d.c * ((d.iv || 18) / 100) / Math.sqrt(252), arr = w.map(x => x.gex), rank = arr.filter(x => x <= d.gex).length / arr.length * 100;
+  const C = [
+    ['負 Gamma 偏極端', rank <= 20, `總 Gamma 曝險在近 ${arr.length} 天的第 ${Math.max(1, Math.round(rank))} 百分位（20 以下才算極端）`],
+    ['在翻轉點之下', !!(d.flip && d.c < d.flip), d.flip ? `台指期 ${fmtInt(d.c)}，翻轉點 ${fmtInt(d.flip)}` : '沒有翻轉點'],
+    ['碰到看跌牆', !!(p && p.pw && d.l <= p.pw * 1.003), p && p.pw ? `最低 ${fmtInt(d.l)}，前一天看跌牆 ${fmtInt(p.pw)}` : '–'],
+    ['跌深', !!(d.flip && d.flip - d.c > sdv), d.flip ? (d.c < d.flip ? `低於翻轉點 ${fmtInt(d.flip - d.c)} 點` : `在翻轉點之上 ${fmtInt(d.c - d.flip)} 點`) + `（要低於一天波動約 ${fmtInt(sdv)} 點才算）` : '–'],
+    ['Gamma 回升', !!(p && d.gex > p.gex && d.gex < 0), p ? `總 Gamma 曝險 ${fmtMoney(d.gex, true)}，前一天 ${fmtMoney(p.gex, true)}` : '–'],
+    ['收紅 K', d.c > d.o, `開 ${fmtInt(d.o)}、收 ${fmtInt(d.c)}`],
+  ];
+  return { s:C.filter(x => x[1]).length, C };
+}
+function renderLow(){
+  if (!HIST || HIST.length < 40){ $('#lowHead').innerHTML = '<div class="msg">歷史資料讀取中…</div>'; return; }
+  const H = HIST, n = H.length;
+  const sc = H.map((d, i) => i < 20 ? null : Object.assign(lowScore(d, H[i - 1], H.slice(Math.max(0, i - 119), i + 1)), { i }));
+  // 今天：收盤後用歷史資料；盤中（即時模式或歷史還沒有今天）用目前的選擇權籌碼和台指期即時價
+  let today = sc[n - 1], live = false;
+  const fut = DATA && DATA.fut, lv = fut && fut.live;
+  if (DATA && lv && (twToday() > H[n - 1].d)){
+    const all = viewOf(DATA.exps), st0 = stats(all), P = fut.price;
+    const d = { d:twToday(), o:lv.o, h:lv.h, l:lv.l, c:P, gex:totalGexAt(DATA.exps, P, all.F), flip:st0.flip, pw:st0.putWall.K, iv:(DATA.exps[0].atmIv || 0.18) * 100 };
+    today = Object.assign(lowScore(d, H[n - 1], H.slice(-119).concat([d])), { i:n, d }); live = true;
+  }
+  const S0 = today.s, lvl = S0 >= 4 ? ['低點訊號', css('--up'), '多項條件同時出現，歷史上常在波段低點附近'] : S0 === 3 ? ['低點觀察', css('--em'), '有部分跡象，等更多條件出現'] : ['沒有低點跡象', css('--line'), '目前不像波段低點'];
+  $('#lowHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${lvl[1]};color:${lvl[1] === css('--line') ? css('--muted') : lvl[1]}">${lvl[0]}　${S0}／6</span><span class="sub">${lvl[2]}（${live ? '盤中即時' : mdw(H[n - 1].d) + ' 收盤'}）</span></div>`;
+  $('#lowChk').innerHTML = today.C.map(([t, ok, d]) => `<div class="lchk"><i style="color:${ok ? css('--up') : css('--muted')}">${ok ? '●' : '○'}</i><span><b>${t}</b>　<span style="color:${ok ? css('--up') : css('--muted')}">${ok ? '符合' : '不符合'}</span></span><small>${d}</small></div>`).join('');
+  // 回測：低點訊號（4 分以上）之後 5、10 天；是否在前後 3 天內出現 ±10 天最低點
+  const fwd = (i, k) => i + k < n ? (H[i + k].c / H[i].c - 1) * 100 : null;
+  const isLow = i => H[i].l === Math.min(...H.slice(Math.max(0, i - 10), i + 11).map(x => x.l));
+  const lows = H.map((_, i) => i).filter(isLow);
+  const sig = sc.filter(x => x && x.s >= 4), f5 = sig.map(x => fwd(x.i, 5)).filter(v => v != null), f10 = sig.map(x => fwd(x.i, 10)).filter(v => v != null);
+  const b5 = H.map((_, i) => fwd(i, 5)).filter(v => v != null), near = sig.filter(x => lows.some(j => Math.abs(j - x.i) <= 3)).length;
+  const A = a => a.reduce((t, v) => t + v, 0) / a.length, pcS = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%';
+  $('#lowNote').innerHTML = (sig.length ? `<b>過去一年驗證：</b>低點訊號出現 ${sig.length} 次，其中 ${near} 次在前後 3 天內就是波段低點；訊號後 5 天台指期平均 ${pcS(A(f5))}（上漲 ${f5.filter(v => v > 0).length}／${f5.length} 次）` + (f10.length ? `、10 天平均 ${pcS(A(f10))}` : '') + `；全部日子 5 天平均 ${pcS(A(b5))}。` : '過去一年沒有出現低點訊號。') +
+    `<br>樣本很少，而且這一年台股大多在上漲，結果可能偏樂觀，只能當參考，不是保證。SpotGamma 也提醒：Gamma 曝險本身不預測方向、看跌牆不是一定撐得住的地板；這 6 項條件是用台指資料組合出來的。`;
+  // 圖：近 120 天台指期收盤＋負 Gamma 底色＋訊號
+  const svg = $('#svgLow'), W = Math.max(280, svg.parentElement.clientWidth - 4), Hh = 220, m = { l:52, r:8, t:12, b:22 };
+  const D = sc.slice(-120).filter(Boolean), iw = W - m.l - m.r, ih = Hh - m.t - m.b;
+  svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.setAttribute('height', Hh); svg.innerHTML = '';
+  const vs = D.map(x => H[x.i].c).concat(D.map(x => H[x.i].l)), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.06;
+  const x = k => m.l + iw * (k + 0.5) / D.length, y = val => m.t + (hi + pad - val) / (hi - lo + 2 * pad) * ih, bw = iw / D.length;
+  D.forEach((z, k) => { const d = H[z.i]; if (d.flip && d.c < d.flip) el('rect', { x:x(k) - bw / 2, y:m.t, width:bw + 0.5, height:ih, fill:css('--put'), 'fill-opacity':.12 }, svg); });
+  for (const t of niceTicks(lo - pad, hi + pad, 4)){ el('line', { x1:m.l, x2:W - m.r, y1:y(t), y2:y(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtInt(t)); }
+  [0, Math.floor(D.length / 2), D.length - 1].forEach((k, j) => el('text', { x:x(k), y:Hh - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, mdw(H[D[k].i].d)));
+  el('path', { d:D.map((z, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y(H[z.i].c).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.8 }, svg);
+  D.forEach((z, k) => { if (z.s < 3) return; const yy = y(H[z.i].l) + 6, big = z.s >= 4, c = big ? css('--up') : css('--em'), r = big ? 7 : 5;
+    el('path', { d:`M${x(k)},${yy} L${x(k) - r},${yy + r * 1.6} L${x(k) + r},${yy + r * 1.6} Z`, fill:c }, svg); });
+  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['低點訊號（4 分以上）', css('--up')], ['低點觀察（3 分）', css('--em')], ['負 Gamma 的日子', css('--put') + '40']]);
+  const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Hh, fill:'transparent' }, svg);
+  hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), k = Math.max(0, Math.min(D.length - 1, Math.floor(((ev.clientX - r.left) * W / r.width - m.l) / bw))), z = D[k], d = H[z.i];
+    tip.innerHTML = `<b>${mdw(d.d)}</b>　低點分數 <b>${z.s}／6</b><br>收盤 ${fmtInt(d.c)}${fwd(z.i, 5) != null ? `・之後 5 天 ${pcS(fwd(z.i, 5))}` : ''}<br>` + z.C.filter(c => c[1]).map(c => '● ' + c[0]).join('<br>');
+    tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(k) * r.width / W + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
+  hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+}
+
 function renderGF(){
   if (!CTX || !DATA) return;
   // 一律用台指期價（含夜盤；即時模式為最新成交）
@@ -1193,7 +1268,7 @@ function renderGF(){
 }
 function renderGS(){
   if (!CTX || !DATA) return;
-  renderGF();
+  renderGF(); renderLow();
   if (!$('#gsAdv').open) return;                                     // 進階內容收起來時不畫（寬度量不到）
   const { v, st } = CTX, Q = v.Q, QN = DATA.liveIdx ? '推算指數' : '現價';
   const eE = v.single || DATA.exps[0], iv = eE.atmIv || 0.18, sd = Q * iv / Math.sqrt(252);
