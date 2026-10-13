@@ -87,7 +87,7 @@
   .gf .sub{font-size:13.5px;color:var(--muted)}
   .gf ol{margin:8px 0 0 20px;padding:0;font-size:14.5px;line-height:1.85}
   .gf ol b{color:var(--text)}
-  .lowg{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:14px;align-items:start;position:relative}
+  .lowg{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr);gap:14px;align-items:start;position:relative}
   @media (max-width:760px){ .lowg{grid-template-columns:minmax(0,1fr)} }
   .lchk{display:grid;grid-template-columns:22px 1fr;gap:0 6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.5}
   .lchk:last-child{border-bottom:0} .lchk i{font-style:normal;font-weight:800;text-align:center} .lchk small{grid-column:2;color:var(--muted);font-size:12px}
@@ -205,8 +205,8 @@
     </section>
 
     <section id="lowSec">
-      <h2>GEX 低點偵測<span class="muted">負 Gamma、看跌牆、翻轉點組合成 6 項條件；4 項以上＝低點訊號</span></h2>
-      <div class="gf"><div id="lowHead"></div><div class="lowg"><div id="lowChk"></div><div><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與低點訊號"></svg><div class="tip" id="tipLow"></div></div></div><p class="note" id="lowNote"></p></div>
+      <h2>GEX 低點偵測<span class="muted">GEX 擺盪指標 0～100：10 以下＝低點區、90 以上＝高點區</span></h2>
+      <div class="gf"><div id="lowHead"></div><div class="lowg"><div style="position:relative"><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與 GEX 擺盪指標"></svg><div class="tip" id="tipLow"></div></div><div id="lowChk"></div></div><p class="note" id="lowNote"></p></div>
     </section>
 
     <section>
@@ -1182,50 +1182,76 @@ function lowScore(d, p, w){
   ];
   return { s:C.filter(x => x[1]).length, C };
 }
+// GEX 擺盪指標（0～100）：綜合「總 Gamma 曝險相對近 120 天的高低」與「台指期離翻轉點幾個日波動」，
+// 再換算成在近 120 天的百分位。10 以下＝低點區（負 Gamma 又跌深），90 以上＝高點區（正 Gamma 又漲多）。
+// 低點訊號：前 3 天內曾在低點區，今天開始往上翻；高點警示：前 3 天內曾在高點區，今天開始往下翻。
+const OSC_LO = 10, OSC_HI = 90;
+function oscComp(d, gexWin){
+  const m = gexWin.reduce((t, x) => t + x, 0) / gexWin.length, sdv = Math.sqrt(gexWin.reduce((t, x) => t + (x - m) ** 2, 0) / gexWin.length) || 1;
+  const sd1 = d.c * ((d.iv || 18) / 100) / Math.sqrt(252), fz = d.flip ? Math.max(-4, Math.min(4, (d.c - d.flip) / sd1)) : 0;
+  return 0.5 * (d.gex - m) / sdv + 0.5 * fz;
+}
 function renderLow(){
-  if (!HIST || HIST.length < 40){ $('#lowHead').innerHTML = '<div class="msg">歷史資料讀取中…</div>'; return; }
-  const H = HIST, n = H.length;
-  const sc = H.map((d, i) => i < 20 ? null : Object.assign(lowScore(d, H[i - 1], H.slice(Math.max(0, i - 119), i + 1)), { i }));
-  // 今天：收盤後用歷史資料；盤中（即時模式或歷史還沒有今天）用目前的選擇權籌碼和台指期即時價
-  let today = sc[n - 1], live = false;
+  if (!HIST || HIST.length < 60){ $('#lowHead').innerHTML = '<div class="msg">歷史資料讀取中…</div>'; return; }
+  const H = HIST.slice(), W = 120;
+  // 盤中（即時模式、歷史還沒有今天）：用目前的選擇權籌碼和台指期即時價算今天
+  let live = false;
   const fut = DATA && DATA.fut, lv = fut && fut.live;
-  if (DATA && lv && (twToday() > H[n - 1].d)){
+  if (DATA && lv && twToday() > H[H.length - 1].d){
     const all = viewOf(DATA.exps), st0 = stats(all), P = fut.price;
-    const d = { d:twToday(), o:lv.o, h:lv.h, l:lv.l, c:P, gex:totalGexAt(DATA.exps, P, all.F), flip:st0.flip, pw:st0.putWall.K, iv:(DATA.exps[0].atmIv || 0.18) * 100 };
-    today = Object.assign(lowScore(d, H[n - 1], H.slice(-119).concat([d])), { i:n, d }); live = true;
+    H.push({ d:twToday(), o:lv.o, h:lv.h, l:lv.l, c:P, gex:totalGexAt(DATA.exps, P, all.F), flip:st0.flip, pw:st0.putWall.K, iv:(DATA.exps[0].atmIv || 0.18) * 100, live:true }); live = true;
   }
-  const S0 = today.s, lvl = S0 >= 4 ? ['低點訊號', css('--up'), '多項條件同時出現，歷史上常在波段低點附近'] : S0 === 3 ? ['低點觀察', css('--em'), '有部分跡象，等更多條件出現'] : ['沒有低點跡象', css('--line'), '目前不像波段低點'];
-  $('#lowHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${lvl[1]};color:${lvl[1] === css('--line') ? css('--muted') : lvl[1]}">${lvl[0]}　${S0}／6</span><span class="sub">${lvl[2]}（${live ? '盤中即時' : mdw(H[n - 1].d) + ' 收盤'}）</span></div>`;
-  $('#lowChk').innerHTML = today.C.map(([t, ok, d]) => `<div class="lchk"><i style="color:${ok ? css('--up') : css('--muted')}">${ok ? '●' : '○'}</i><span><b>${t}</b>　<span style="color:${ok ? css('--up') : css('--muted')}">${ok ? '符合' : '不符合'}</span></span><small>${d}</small></div>`).join('');
-  // 回測：低點訊號（4 分以上）之後 5、10 天；是否在前後 3 天內出現 ±10 天最低點
-  const fwd = (i, k) => i + k < n ? (H[i + k].c / H[i].c - 1) * 100 : null;
-  const isLow = i => H[i].l === Math.min(...H.slice(Math.max(0, i - 10), i + 11).map(x => x.l));
-  const lows = H.map((_, i) => i).filter(isLow);
-  const sig = sc.filter(x => x && x.s >= 4), f5 = sig.map(x => fwd(x.i, 5)).filter(v => v != null), f10 = sig.map(x => fwd(x.i, 10)).filter(v => v != null);
-  const b5 = H.map((_, i) => fwd(i, 5)).filter(v => v != null), near = sig.filter(x => lows.some(j => Math.abs(j - x.i) <= 3)).length;
-  const A = a => a.reduce((t, v) => t + v, 0) / a.length, pcS = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%';
-  $('#lowNote').innerHTML = (sig.length ? `<b>過去一年驗證：</b>低點訊號出現 ${sig.length} 次，其中 ${near} 次在前後 3 天內就是波段低點；訊號後 5 天台指期平均 ${pcS(A(f5))}（上漲 ${f5.filter(v => v > 0).length}／${f5.length} 次）` + (f10.length ? `、10 天平均 ${pcS(A(f10))}` : '') + `；全部日子 5 天平均 ${pcS(A(b5))}。` : '過去一年沒有出現低點訊號。') +
-    `<br>樣本很少，而且這一年台股大多在上漲，結果可能偏樂觀，只能當參考，不是保證。SpotGamma 也提醒：Gamma 曝險本身不預測方向、看跌牆不是一定撐得住的地板；這 6 項條件是用台指資料組合出來的。`;
-  // 圖：近 120 天台指期收盤＋負 Gamma 底色＋訊號
-  const svg = $('#svgLow'), W = Math.max(280, svg.parentElement.clientWidth - 4), Hh = 220, m = { l:52, r:8, t:12, b:22 };
-  const D = sc.slice(-120).filter(Boolean), iw = W - m.l - m.r, ih = Hh - m.t - m.b;
-  svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.setAttribute('height', Hh); svg.innerHTML = '';
-  const vs = D.map(x => H[x.i].c).concat(D.map(x => H[x.i].l)), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.06;
-  const x = k => m.l + iw * (k + 0.5) / D.length, y = val => m.t + (hi + pad - val) / (hi - lo + 2 * pad) * ih, bw = iw / D.length;
-  D.forEach((z, k) => { const d = H[z.i]; if (d.flip && d.c < d.flip) el('rect', { x:x(k) - bw / 2, y:m.t, width:bw + 0.5, height:ih, fill:css('--put'), 'fill-opacity':.12 }, svg); });
-  for (const t of niceTicks(lo - pad, hi + pad, 4)){ el('line', { x1:m.l, x2:W - m.r, y1:y(t), y2:y(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmtInt(t)); }
-  [0, Math.floor(D.length / 2), D.length - 1].forEach((k, j) => el('text', { x:x(k), y:Hh - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, mdw(H[D[k].i].d)));
-  el('path', { d:D.map((z, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y(H[z.i].c).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.8 }, svg);
-  D.forEach((z, k) => { if (z.s < 3) return; const yy = y(H[z.i].l) + 6, big = z.s >= 4, c = big ? css('--up') : css('--em'), r = big ? 7 : 5;
-    el('path', { d:`M${x(k)},${yy} L${x(k) - r},${yy + r * 1.6} L${x(k) + r},${yy + r * 1.6} Z`, fill:c }, svg); });
-  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['低點訊號（4 分以上）', css('--up')], ['低點觀察（3 分）', css('--em')], ['負 Gamma 的日子', css('--put') + '40']]);
-  const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Hh, fill:'transparent' }, svg);
-  hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), k = Math.max(0, Math.min(D.length - 1, Math.floor(((ev.clientX - r.left) * W / r.width - m.l) / bw))), z = D[k], d = H[z.i];
-    tip.innerHTML = `<b>${mdw(d.d)}</b>　低點分數 <b>${z.s}／6</b><br>收盤 ${fmtInt(d.c)}${fwd(z.i, 5) != null ? `・之後 5 天 ${pcS(fwd(z.i, 5))}` : ''}<br>` + z.C.filter(c => c[1]).map(c => '● ' + c[0]).join('<br>');
-    tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(k) * r.width / W + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
+  const n = H.length, comp = H.map((d, i) => i < 20 ? null : oscComp(d, H.slice(Math.max(0, i - W + 1), i + 1).map(x => x.gex)));
+  const O = comp.map((c, i) => { if (c === null || i < 40) return null; const w = comp.slice(Math.max(0, i - W + 1), i + 1).filter(x => x !== null); return w.filter(x => x <= c).length / w.length * 100; });
+  const sigLo = i => i >= 3 && O[i] != null && O[i - 1] != null && O[i - 2] != null && Math.min(...O.slice(i - 3, i).filter(x => x != null)) <= OSC_LO && O[i] > O[i - 1] && O[i - 1] <= O[i - 2];
+  const sigHi = i => i >= 3 && O[i] != null && O[i - 1] != null && O[i - 2] != null && Math.max(...O.slice(i - 3, i).filter(x => x != null)) >= OSC_HI && O[i] < O[i - 1] && O[i - 1] >= O[i - 2];
+  const L = n - 1, o = O[L], lo = sigLo(L), hiS = sigHi(L);
+  const zone = o == null ? '–' : o <= OSC_LO ? '低點區' : o >= OSC_HI ? '高點區' : '中間區';
+  const lvl = lo ? ['低點訊號', css('--up'), `從低點區往上翻，歷史上常是波段低點附近`] : o != null && o <= OSC_LO ? ['在低點區', css('--em'), '負 Gamma、跌深，等往上翻才算訊號'] :
+    hiS ? ['高點警示', css('--down'), '從高點區往下翻，漲勢可能變慢'] : o != null && o >= OSC_HI ? ['在高點區', css('--em'), '正 Gamma、漲多，追高要小心'] : ['中間區', css('--line'), '沒有低點或高點跡象'];
+  $('#lowHead').innerHTML = `<div class="hd"><span class="big" style="border-color:${lvl[1]};color:${lvl[1] === css('--line') ? css('--muted') : lvl[1]}">${lvl[0]}</span>` +
+    `<span style="font-size:22px;font-weight:800">擺盪 ${o == null ? '–' : o.toFixed(0)}</span><span class="sub">${lvl[2]}（${live ? '盤中即時' : mdw(H[L].d) + ' 收盤'}；10 以下＝低點區、90 以上＝高點區）</span></div>`;
+  // 細項：今天的 6 項低點條件
+  const sc = lowScore(H[L], H[L - 1], H.slice(Math.max(0, L - 119), L + 1));
+  $('#lowChk').innerHTML = `<div class="cap" style="margin:0 0 2px">細項：今天的低點條件 ${sc.s}／6</div>` + sc.C.map(([t, ok, d]) => `<div class="lchk"><i style="color:${ok ? css('--up') : css('--muted')}">${ok ? '●' : '○'}</i><span><b>${t}</b>　<span style="color:${ok ? css('--up') : css('--muted')}">${ok ? '符合' : '不符合'}</span></span><small>${d}</small></div>`).join('');
+  // 驗證（只用收盤後的歷史，不含今天盤中）
+  const N = HIST.length, fwd = (i, k) => i + k < N ? (H[i + k].c / H[i].c - 1) * 100 : null;
+  const lows = H.slice(0, N).map((_, i) => i).filter(i => H[i].l === Math.min(...H.slice(Math.max(0, i - 10), Math.min(N, i + 11)).map(x => x.l)));
+  const SL = [], SH = []; for (let i = 0; i < N; i++){ if (sigLo(i)) SL.push(i); if (sigHi(i)) SH.push(i); }
+  const A = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0, pcS = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%';
+  const f5 = SL.map(i => fwd(i, 5)).filter(v => v != null), f10 = SL.map(i => fwd(i, 10)).filter(v => v != null), h5 = SH.map(i => fwd(i, 5)).filter(v => v != null);
+  const b5 = H.slice(0, N).map((_, i) => fwd(i, 5)).filter(v => v != null), near = SL.filter(i => lows.some(j => Math.abs(j - i) <= 3)).length;
+  $('#lowNote').innerHTML = `<b>過去一年驗證：</b>低點訊號 ${SL.length} 次，其中 ${near} 次在前後 3 天內就是波段低點；之後 5 天台指期平均 ${pcS(A(f5))}（上漲 ${f5.filter(v => v > 0).length}／${f5.length} 次）` + (f10.length ? `、10 天平均 ${pcS(A(f10))}` : '') +
+    `；全部日子 5 天平均 ${pcS(A(b5))}。高點警示 ${SH.length} 次，之後 5 天平均 ${pcS(A(h5))}，和平常差不多，<b>只代表漲勢變慢，不代表會跌</b>。` +
+    `<br>擺盪指標＝一半看總 Gamma 曝險在近 120 天偏高或偏低，一半看台指期離翻轉點幾個日波動，最後換成近 120 天的百分位。樣本少、這一年大多上漲，結果可能偏樂觀，只能當參考。`;
+  // 圖：上面台指期收盤＋訊號，下面擺盪指標（0～100，上下界 90／10）
+  const svg = $('#svgLow'), Wd = Math.max(280, svg.parentElement.clientWidth - 4), m = { l:46, r:8 }, H1 = 150, H2 = 120, gap = 10, top = 8, Ht = top + H1 + gap + H2 + 22;
+  const idx = O.map((v, i) => v == null ? -1 : i).filter(i => i >= 0).slice(-120), K = idx.length, iw = Wd - m.l - m.r, bw = iw / K;
+  svg.setAttribute('viewBox', `0 0 ${Wd} ${Ht}`); svg.setAttribute('height', Ht); svg.innerHTML = '';
+  const x = k => m.l + iw * (k + 0.5) / K;
+  const pv = idx.flatMap(i => [H[i].c, H[i].l]), pl = Math.min(...pv), ph = Math.max(...pv), pp = (ph - pl) * 0.08;
+  const y1 = v => top + (ph + pp - v) / (ph - pl + 2 * pp) * H1, y0 = top + H1 + gap, y2 = v => y0 + (100 - v) / 100 * H2;
+  for (const t of niceTicks(pl - pp, ph + pp, 3)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y1(t), y2:y1(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 4, y:y1(t) + 4, 'text-anchor':'end', 'font-size':10.5, fill:css('--muted') }, svg, fmtInt(t)); }
+  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y1(H[i].c).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.8 }, svg);
+  idx.forEach((i, k) => { if (sigLo(i)){ const yy = y1(H[i].l) + 5; el('path', { d:`M${x(k)},${yy} L${x(k) - 7},${yy + 11} L${x(k) + 7},${yy + 11} Z`, fill:css('--up') }, svg); }
+                         if (sigHi(i)){ const yy = y1(H[i].h) - 5; el('path', { d:`M${x(k)},${yy} L${x(k) - 6},${yy - 10} L${x(k) + 6},${yy - 10} Z`, fill:css('--down'), 'fill-opacity':.8 }, svg); } });
+  // 擺盪區
+  el('rect', { x:m.l, y:y2(100), width:iw, height:y2(OSC_HI) - y2(100), fill:css('--down'), 'fill-opacity':.12 }, svg);
+  el('rect', { x:m.l, y:y2(OSC_LO), width:iw, height:y2(0) - y2(OSC_LO), fill:css('--up'), 'fill-opacity':.14 }, svg);
+  [[OSC_HI, '高點區 90', css('--down')], [50, '50', css('--muted')], [OSC_LO, '低點區 10', css('--up')]].forEach(([v, t, c]) => {
+    el('line', { x1:m.l, x2:Wd - m.r, y1:y2(v), y2:y2(v), stroke:c, 'stroke-width':v === 50 ? 1 : 1.6, 'stroke-dasharray':v === 50 ? '2 3' : '6 3' }, svg);
+    el('text', { x:m.l - 4, y:y2(v) + 4, 'text-anchor':'end', 'font-size':10.5, fill:c }, svg, v === 50 ? '50' : String(v)); });
+  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y2(O[i]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
+  idx.forEach((i, k) => { if (sigLo(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:4, fill:css('--up') }, svg); if (sigHi(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:3.5, fill:css('--down') }, svg); });
+  const kL = K - 1; el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:css('--curve'), 'stroke-width':2.5 }, svg);
+  [0, Math.floor(K / 2), K - 1].forEach((k, j) => el('text', { x:x(k), y:Ht - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, mdw(H[idx[k]].d)));
+  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', css('--curve'), 'ln'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
+  const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Ht, fill:'transparent' }, svg);
+  hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), k = Math.max(0, Math.min(K - 1, Math.floor(((ev.clientX - r.left) * Wd / r.width - m.l) / bw))), i = idx[k], d = H[i];
+    tip.innerHTML = `<b>${mdw(d.d)}</b>${d.live ? '（盤中）' : ''}　擺盪 <b>${O[i].toFixed(0)}</b><br>台指期 ${fmtInt(d.c)}${fwd(i, 5) != null ? `・之後 5 天 ${pcS(fwd(i, 5))}` : ''}` + (sigLo(i) ? '<br><b style="color:var(--up)">低點訊號</b>' : sigHi(i) ? '<br><b style="color:var(--down)">高點警示</b>' : '');
+    tip.style.display = 'block'; tip.style.left = Math.min(Math.max(4, x(k) * r.width / Wd + 12), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
   hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
 }
-
 function renderGF(){
   if (!CTX || !DATA) return;
   // 一律用台指期價（含夜盤；即時模式為最新成交）
