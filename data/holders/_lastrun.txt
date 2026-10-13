@@ -1,94 +1,68 @@
-10-13 10:15:51 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
-10-13 10:18:29   retry 4915 20251219 IncompleteRead IncompleteRead(65534 bytes read)
-10-13 10:20:27   retry 6546 20251219 IncompleteRead IncompleteRead(57336 bytes read)
-10-13 10:22:05 progress 200 ok 0 none 375 s
-10-13 10:25:20   retry 2536 20251212 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:26:44   retry 3049 20251212 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:28:24 progress 400 ok 0 none 753 s
-10-13 10:30:34   retry 6655 20251212 IncompleteRead IncompleteRead(65520 bytes read)
-10-13 10:31:23   retry 6753 20251212 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:35:02   retry 2247 20251205 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:35:20 progress 600 ok 0 none 1170 s
-10-13 10:35:53   retry 2349 20251205 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:39:03   retry 4413 20251205 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:41:40 progress 800 ok 0 none 1549 s
-10-13 10:46:43   retry 3234 20251128 IncompleteRead IncompleteRead(65535 bytes read)
-10-13 10:47:10 progress 1000 ok 0 none 1880 s
-10-13 10:52:03 progress 1200 ok 0 none 2173 s
-10-13 10:55:51 result shard 0 partial (time budget) requests 1353 ok 1353 none 0 files 343 in 2400 s
-10-13 10:15:53 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-13 10:18:26   retry 6811 20260109 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:20:36   retry 9941 20260109 IncompleteRead IncompleteRead(65518 bytes read)
-10-13 10:22:09 progress 200 ok 0 none 377 s
-10-13 10:27:02 progress 400 ok 0 none 670 s
-10-13 10:30:36   retry 2061 20251226 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:32:36 progress 600 ok 0 none 1004 s
-10-13 10:35:57   retry 6024 20251226 IncompleteRead IncompleteRead(73707 bytes read)
-10-13 10:38:13 progress 800 ok 0 none 1341 s
-10-13 10:41:48   retry 2945 20251219 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:43:45 progress 1000 ok 0 none 1673 s
-10-13 10:45:33   retry 5703 20251219 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:49:20 progress 1200 ok 0 none 2008 s
-10-13 10:54:12 progress 1400 ok 0 none 2300 s
-10-13 10:55:53 result shard 1 partial (time budget) requests 1469 ok 1469 none 0 files 362 in 2401 s
-10-13 10:15:53 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
-10-13 10:18:24   retry 6785 20260123 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:20:25   retry 9927 20260123 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:22:16 progress 200 ok 0 none 384 s
-10-13 10:25:56   retry 4968 20260116 IncompleteRead IncompleteRead(65533 bytes read)
-10-13 10:26:56   retry 5274 20260116 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:28:39 progress 400 ok 0 none 767 s
-10-13 10:33:39 progress 600 ok 0 none 1067 s
-10-13 10:38:36 progress 800 ok 0 none 1364 s
-10-13 10:41:48   retry 2611 20260102 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:44:20 progress 1000 ok 0 none 1708 s
-10-13 10:49:20 progress 1200 ok 0 none 2008 s
-10-13 10:54:23 progress 1400 ok 0 none 2311 s
-10-13 10:55:53 result shard 2 partial (time budget) requests 1457 ok 1457 none 0 files 358 in 2401 s
-10-13 10:15:50 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
-10-13 10:20:29   retry 3529 20260102 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:22:56 progress 200 ok 0 none 427 s
-10-13 10:29:24 progress 400 ok 0 none 815 s
-10-13 10:32:34   retry 4416 20251226 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:35:21   retry 6265 20251226 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:36:14   retry 6419 20251226 IncompleteRead IncompleteRead(73707 bytes read)
-10-13 10:37:55   retry 6870 20251226 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:38:32 progress 600 ok 0 none 1363 s
-10-13 10:42:17   retry 2408 20251219 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:45:40 progress 800 ok 0 none 1791 s
-10-13 10:50:32   retry 8088 20251219 HTTPError HTTP Error 504: Gateway Time-out
-10-13 10:52:34 progress 999 ok 1 none 2205 s
-10-13 10:55:51 result shard 3 partial (time budget) requests 1103 ok 1102 none 1 files 349 in 2402 s
-10-13 10:15:51 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
-10-13 10:18:27   retry 3276 20260109 IncompleteRead IncompleteRead(65520 bytes read)
-10-13 10:20:36   retry 4749 20260109 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:22:09   retry 5547 20260109 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:23:33 progress 200 ok 0 none 463 s
-10-13 10:24:34   retry 6654 20260109 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:25:27   retry 6739 20260109 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:30:06   retry 2485 20260102 IncompleteRead IncompleteRead(65534 bytes read)
-10-13 10:31:08 progress 400 ok 0 none 918 s
-10-13 10:32:43   retry 3617 20260102 IncompleteRead IncompleteRead(57336 bytes read)
-10-13 10:35:53   retry 6236 20260102 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:38:10 progress 600 ok 0 none 1340 s
-10-13 10:40:12   retry 1535 20251226 HTTPError HTTP Error 504: Gateway Time-out
-10-13 10:41:18   retry 1810 20251226 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:44:57 progress 800 ok 0 none 1747 s
-10-13 10:45:33   retry 4722 20251226 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:51:08 progress 999 ok 1 none 2118 s
-10-13 10:55:51 result shard 4 partial (time budget) requests 1166 ok 1165 none 1 files 355 in 2401 s
-10-13 10:15:50 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
-10-13 10:18:25   retry 6692 20260116 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:20:52   retry 8097 20260116 IncompleteRead IncompleteRead(73720 bytes read)
-10-13 10:23:22 progress 200 ok 0 none 453 s
-10-13 10:29:22 progress 400 ok 0 none 813 s
-10-13 10:30:13   retry 6742 20260109 HTTPError HTTP Error 504: Gateway Time-out
-10-13 10:35:45   retry 3010 20260102 IncompleteRead IncompleteRead(73705 bytes read)
-10-13 10:36:38 progress 600 ok 0 none 1250 s
-10-13 10:37:14   retry 3360 20260102 IncompleteRead IncompleteRead(65520 bytes read)
-10-13 10:38:00   retry 3376 20260102 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:42:08   retry 6279 20260102 IncompleteRead IncompleteRead(65536 bytes read)
-10-13 10:43:43   retry 6702 20260102 IncompleteRead IncompleteRead(73706 bytes read)
-10-13 10:45:29 progress 800 ok 0 none 1780 s
-10-13 10:51:27 progress 1000 ok 0 none 2138 s
-10-13 10:55:49 result shard 5 partial (time budget) requests 1147 ok 1147 none 0 files 354 in 2400 s
+10-13 17:45:56 shard 0 / 6 stocks 345 weeks 51 20251017 ~ 20261008
+10-13 17:50:38 progress 200 ok 0 none 283 s
+10-13 17:51:35   retry 2374 20251114 IncompleteRead IncompleteRead(49151 bytes read)
+10-13 17:56:03 progress 400 ok 0 none 608 s
+10-13 18:00:17   retry 2528 20251107 IncompleteRead IncompleteRead(73706 bytes read)
+10-13 18:01:25 progress 600 ok 0 none 930 s
+10-13 18:04:21   retry 6570 20251107 HTTPError HTTP Error 500: Internal Server Error
+10-13 18:06:33 progress 800 ok 0 none 1238 s
+10-13 18:11:15 progress 1000 ok 0 none 1520 s
+10-13 18:15:55 progress 1200 ok 0 none 1800 s
+10-13 18:20:41   retry 6931 20251023 IncompleteRead IncompleteRead(57336 bytes read)
+10-13 18:21:15 progress 1400 ok 0 none 2120 s
+10-13 18:25:55 result shard 0 partial (time budget) requests 1597 ok 1597 none 0 files 343 in 2400 s
+10-13 17:45:55 shard 1 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-13 17:51:24 progress 200 ok 0 none 330 s
+10-13 17:52:44   retry 5287 20251205 RuntimeError no table
+10-13 17:57:15 progress 400 ok 0 none 681 s
+10-13 18:02:56 progress 600 ok 0 none 1022 s
+10-13 18:03:37   retry 5529 20251128 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:09:13 progress 800 ok 0 none 1399 s
+10-13 18:14:44 progress 1000 ok 0 none 1730 s
+10-13 18:20:09 progress 1200 ok 0 none 2055 s
+10-13 18:23:15   retry 6115 20251114 IncompleteRead IncompleteRead(73706 bytes read)
+10-13 18:25:54 result shard 1 partial (time budget) requests 1384 ok 1384 none 0 files 362 in 2400 s
+10-13 17:45:55 shard 2 / 6 stocks 365 weeks 51 20251017 ~ 20261008
+10-13 17:52:02 progress 200 ok 0 none 368 s
+10-13 17:58:04 progress 400 ok 0 none 731 s
+10-13 18:03:19   retry 4562 20251212 IncompleteRead IncompleteRead(73720 bytes read)
+10-13 18:04:45 progress 600 ok 0 none 1131 s
+10-13 18:10:40 progress 800 ok 0 none 1486 s
+10-13 18:16:32 progress 1000 ok 0 none 1839 s
+10-13 18:22:30 progress 1200 ok 0 none 2196 s
+10-13 18:23:17   retry 3551 20251128 IncompleteRead IncompleteRead(73720 bytes read)
+10-13 18:25:53 result shard 2 partial (time budget) requests 1290 ok 1290 none 0 files 358 in 2400 s
+10-13 17:45:58 shard 3 / 6 stocks 351 weeks 51 20251017 ~ 20261008
+10-13 17:51:59 progress 199 ok 1 none 362 s
+10-13 17:57:54 progress 399 ok 1 none 718 s
+10-13 18:04:10 progress 598 ok 2 none 1093 s
+10-13 18:10:09 progress 798 ok 2 none 1452 s
+10-13 18:13:46   retry 2408 20251121 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:16:48 progress 998 ok 2 none 1851 s
+10-13 18:22:40   retry 1507 20251114 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:23:25 progress 1198 ok 2 none 2249 s
+10-13 18:25:57 result shard 3 partial (time budget) requests 1285 ok 1283 none 2 files 349 in 2401 s
+10-13 17:45:55 shard 4 / 6 stocks 358 weeks 51 20251017 ~ 20261008
+10-13 17:50:50 progress 199 ok 1 none 295 s
+10-13 17:52:08   retry 2618 20251212 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 17:56:31 progress 399 ok 1 none 636 s
+10-13 18:01:06   retry 2723 20251205 RuntimeError no table
+10-13 18:01:52 progress 598 ok 2 none 957 s
+10-13 18:03:39   retry 4155 20251205 IncompleteRead IncompleteRead(73705 bytes read)
+10-13 18:07:42 progress 798 ok 2 none 1307 s
+10-13 18:12:36 progress 998 ok 2 none 1601 s
+10-13 18:17:37 progress 1198 ok 2 none 1902 s
+10-13 18:22:36 progress 1398 ok 2 none 2201 s
+10-13 18:23:16   retry 6280 20251121 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:25:55 result shard 4 partial (time budget) requests 1508 ok 1506 none 2 files 355 in 2401 s
+10-13 17:45:55 shard 5 / 6 stocks 361 weeks 51 20251017 ~ 20261008
+10-13 17:51:57 progress 200 ok 0 none 364 s
+10-13 17:57:55 progress 400 ok 0 none 721 s
+10-13 18:00:19   retry 3176 20251212 IncompleteRead IncompleteRead(73705 bytes read)
+10-13 18:03:24   retry 5272 20251212 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:05:16 progress 600 ok 0 none 1162 s
+10-13 18:11:16 progress 800 ok 0 none 1523 s
+10-13 18:17:12 progress 1000 ok 0 none 1879 s
+10-13 18:23:17   retry 4178 20251128 IncompleteRead IncompleteRead(65536 bytes read)
+10-13 18:23:53 progress 1200 ok 0 none 2279 s
+10-13 18:25:54 result shard 5 partial (time budget) requests 1266 ok 1266 none 0 files 354 in 2400 s
