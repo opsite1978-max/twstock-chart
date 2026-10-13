@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>主力控盤觀察</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --call:#3987e5; --put:#d95926; --pain:#199e70; --curve:#9085e9; --gold:#ffca28; --cost:#ff9100; --flip:#a7afc0;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --curve:#6250d6; --gold:#b98900; --cost:#e65100; --flip:#52514e;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px;cursor:pointer;white-space:nowrap}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0;line-height:1.7}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  section{margin-top:18px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600} h2 .muted{font-weight:400;font-size:12px;margin-left:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;position:relative}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 6px}
+  .legend i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:3px}
+  .legend i.bar{width:10px;height:10px;vertical-align:-1px;border-radius:2px}
+  .legend i.dash{height:0;border-top:2px dashed currentColor;background:none!important}
+  svg{display:block;width:100%;touch-action:pan-y;overflow:visible}
+  svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+  .tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.6;min-width:160px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.7}
+  .sum{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .sum .hd{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:6px}
+  .big{font-size:19px;font-weight:800;padding:2px 14px;border-radius:999px;border:2px solid}
+  .it{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.7}
+  .it:last-child{border-bottom:0}
+  .bd{display:inline-block;min-width:84px;text-align:center;font-weight:700;font-size:12.5px;padding:1px 8px;border-radius:999px;border:2px solid var(--line);align-self:start;margin-top:3px}
+  .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  @media (max-width:760px){ .g2{grid-template-columns:minmax(0,1fr)} }
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500} td:first-child,th:first-child{text-align:left}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .up{color:var(--up)} .dn{color:var(--down)}
+</style>
+<script>
+/* 憑證失效偵測（同其他頁） */
+(() => { const of = window.fetch.bind(window); let dead = null;
+  window.fetch = async (u, o) => { const s = String(u && u.url || u);
+    if (!/finmindtrade\.com/.test(s) || !/[?&]token=/.test(s)) return of(u, o);
+    try { return await of(u, o); }
+    catch(e){
+      if (dead === null){ try { const r = await of(s.replace(/([?&])token=[^&]*&?/, '$1').replace(/[?&]$/, ''), o); dead = r.ok; } catch(e2){ dead = false; } setTimeout(() => { dead = null; }, 60000); }
+      if (dead) return new Response(JSON.stringify({ status:401, msg:'憑證已失效（FinMind 拒絕這把憑證），請到看盤頁「⚙ 設定」貼上新的 FinMind 憑證' }), { status:401, headers:{ 'Content-Type':'application/json' } });
+      throw e;
+    } }; })();
+</script>
+</head>
+<body>
+<header>
+  <h1>主力控盤觀察</h1>
+  <span class="muted small" id="upd"></span>
+  <span class="spacer"></span>
+  <button onclick="location.href='txo.html'">選擇權</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">讀取中…</div>
+  <div id="app" hidden>
+    <div class="sum" id="sum"></div>
+
+    <section>
+      <h2>台指期與主力控盤區<span class="muted">近 60 個交易日；彩色帶＝主力可能想守或想壓的價位</span></h2>
+      <div class="panel"><div class="legend" id="lgMain"></div><svg id="svMain"></svg><div class="tip" id="tipMain"></div></div>
+      <p class="note" id="noteMain"></p>
+    </section>
+
+    <div class="g2">
+      <section>
+        <h2>遠近月價差<span class="muted">次月 − 近月（日盤收盤）</span></h2>
+        <div class="panel"><div class="legend" id="lgSp"></div><svg id="svSp"></svg><div class="tip" id="tipSp"></div></div>
+        <p class="note" id="noteSp"></p>
+      </section>
+      <section>
+        <h2>前十大交易人：近月 vs 遠月淨部位<span class="muted">口；遠月＝全部月份 − 近月 − 週契約</span></h2>
+        <div class="panel"><div class="legend" id="lgLT"></div><svg id="svLT"></svg><div class="tip" id="tipLT"></div></div>
+        <p class="note" id="noteLT"></p>
+      </section>
+    </div>
+
+    <section>
+      <h2>權值股期貨：誰在推指數<span class="muted">加權指數前 10 大權值股；近 5 日對指數的點數貢獻與個股期貨未平倉變化</span></h2>
+      <div class="g2">
+        <div class="panel"><div class="legend" id="lgW"></div><svg id="svW"></svg></div>
+        <div class="tblx" id="tblW"></div>
+      </div>
+      <p class="note" id="noteW"></p>
+    </section>
+
+    <p class="note">說明：期交所沒有公布「主力」是誰，這一頁用公開資料推估。前十大交易人成本是用每天淨部位增減乘上當天均價估算；權值股貢獻＝權重 × 漲跌幅 × 指數。這些都是觀察工具，不是投資建議。</p>
+  </div>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,10);
+const shiftDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0,10);
+const md = d => +d.slice(5,7) + '/' + +d.slice(8,10);
+const fmt = (v, d) => v == null || isNaN(v) ? '–' : (+v).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 });
+const sgn = (v, d) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+const pc = (v, d = 2) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%';
+const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : 0;
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent, text){ const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+function ticks(lo, hi, n){ const span = hi - lo || 1, s0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(s0))); const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(s => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(6)); return out; }
+function legend(id, items){ $(id).innerHTML = items.map(([t, c, k]) => `<span><i class="${k || ''}" style="${k === 'dash' ? 'color:' + c : 'background:' + c}"></i>${esc(t)}</span>`).join(''); }
+function thirdWed(y, m){ const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(); return new Date(Date.UTC(y, m - 1, 1 + ((3 - first + 7) % 7) + 14)).toISOString().slice(0,10); }
+const expOf = code => /^\d{6}$/.test(code) ? thirdWed(+code.slice(0, 4), +code.slice(4, 6)) : null;
+function setStatus(t, err){ const s = $('#status'); s.hidden = !t; s.textContent = t || ''; s.className = 'msg' + (err ? ' err' : ''); }
+
+async function data(params){
+  const tok = (SET.token || '').trim(), qs = new URLSearchParams(params); if (tok) qs.set('token', tok);
+  let r; try { r = await fetch('https://api.finmindtrade.com/api/v4/data?' + qs); } catch(e){ throw new Error('連不上 FinMind，請確認網路'); }
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完');
+  if (!r.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || r.status));
+  return j.data || [];
+}
+// 一次最多 3 個查詢，避免太密集
+async function pool(tasks, n = 3){ const out = new Array(tasks.length); let i = 0;
+  await Promise.all(Array.from({ length:n }, async () => { while (i < tasks.length){ const k = i++; try { out[k] = await tasks[k](); } catch(e){ out[k] = null; } } })); return out; }
+
+let D = null;
+async function load(){
+  if (!(SET.token || '').trim()){ setStatus('請先到看盤頁的「⚙ 設定」填入 FinMind 憑證。', true); return; }
+  try {
+    const today = twToday(), start = shiftDay(today, -150);
+    setStatus('讀取台指期、前十大交易人、法人、權值股…');
+    const [tx, lt, inst, info] = await Promise.all([
+      data({ dataset:'TaiwanFuturesDaily', data_id:'TX', start_date:start }),
+      data({ dataset:'TaiwanFuturesOpenInterestLargeTraders', data_id:'TX', start_date:start }),
+      data({ dataset:'TaiwanFuturesInstitutionalInvestors', data_id:'TX', start_date:start }).catch(() => []),
+      data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => []),
+    ]);
+    let mvw = [];
+    for (let k = 0; k < 6 && !mvw.length; k++){ const d = shiftDay(today, -k); mvw = (await data({ dataset:'TaiwanStockMarketValueWeight', start_date:d, end_date:d }).catch(() => [])).filter(r => r.type === 'twse'); }
+    const hist = await fetch('data/txo/history.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
+    // ── 台指期：每天近月、次月（日盤）──
+    const byDay = new Map();
+    for (const r of tx){ if (r.trading_session !== 'position') continue; const c = String(r.contract_date || '').trim(); if (!/^\d{6}$/.test(c) || !(r.close > 0)) continue;
+      let e = byDay.get(r.date); if (!e){ e = []; byDay.set(r.date, e); } e.push(r); }
+    const days = [...byDay.keys()].sort(), rows = [];
+    for (const d of days){
+      const l = byDay.get(d).filter(r => expOf(String(r.contract_date).trim()) >= d).sort((a, b) => String(a.contract_date).localeCompare(String(b.contract_date)));
+      if (l.length < 2) continue;
+      const n = l[0], f = l[1], oiAll = byDay.get(d).reduce((t, r) => t + (+r.open_interest || 0), 0);
+      rows.push({ d, near:String(n.contract_date).trim(), far:String(f.contract_date).trim(), o:+n.open, h:+n.max, l:+n.min, c:+n.close, fc:+f.close, sp:+f.close - +n.close, oiN:+n.open_interest || 0, oiF:+f.open_interest || 0, oiAll, exp:expOf(String(n.contract_date).trim()) });
+    }
+    // ── 前十大交易人：全部、近月、週 ──
+    const ltm = new Map();
+    for (const r of lt){ let e = ltm.get(r.date); if (!e){ e = {}; ltm.set(r.date, e); }
+      e[r.contract_type === 'all' ? 'all' : r.contract_type === 'week' ? 'week' : 'm' + r.contract_type] = r; }
+    const net = (r, k) => r ? (r['buy_' + k + '_open_interest'] || 0) - (r['sell_' + k + '_open_interest'] || 0) : null;
+    for (const r of rows){ const e = ltm.get(r.d); if (!e) continue;
+      r.t10 = net(e.all, 'top10_trader'); r.t5 = net(e.all, 'top5_trader'); r.s10 = net(e.all, 'top10_specific');
+      const nm = e['m' + r.near]; r.t10n = nm ? net(nm, 'top10_trader') : null; r.t5n = nm ? net(nm, 'top5_trader') : null;
+      const wk = e.week ? net(e.week, 'top10_trader') : 0; r.t10f = r.t10 != null && r.t10n != null ? r.t10 - r.t10n - wk : null; }
+    // 外資台指期淨未平倉
+    const fi = new Map(); for (const r of inst) if (r.institutional_investors === '外資') fi.set(r.date, (r.long_open_interest_balance_volume || 0) - (r.short_open_interest_balance_volume || 0));
+    rows.forEach(r => r.fi = fi.has(r.d) ? fi.get(r.d) : null);
+    // ── 權值股（前 10 大）與個股期貨 ──
+    const futOf = new Map(); for (const r of info) if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) futOf.set(r.name.replace(/期貨$/, ''), r.code);
+    const top = mvw.sort((a, b) => b.weight_per - a.weight_per).slice(0, 10).map(r => ({ id:r.stock_id, name:r.stock_name, w:+r.weight_per, fut:futOf.get(r.stock_name) || null }));
+    setStatus('讀取權值股與個股期貨…');
+    const s40 = shiftDay(today, -45);
+    const res = await pool(top.flatMap(t => [() => data({ dataset:'TaiwanStockPrice', data_id:t.id, start_date:s40 }), () => t.fut ? data({ dataset:'TaiwanFuturesDaily', data_id:t.fut, start_date:s40 }) : Promise.resolve([])]), 3);
+    top.forEach((t, k) => {
+      const px = (res[2 * k] || []).filter(r => r.close > 0).sort((a, b) => a.date.localeCompare(b.date)), fu = res[2 * k + 1] || [];
+      t.px = px; const L = px[px.length - 1], P5 = px[Math.max(0, px.length - 6)];
+      t.c = L ? L.close : null; t.r5 = L && P5 ? (L.close / P5.close - 1) * 100 : null; t.r1 = px.length > 1 ? (L.close / px[px.length - 2].close - 1) * 100 : null;
+      const oi = new Map(), nearC = new Map();
+      for (const r of fu){ if (r.trading_session !== 'position') continue; const c = String(r.contract_date).trim(); if (!/^\d{6}$/.test(c)) continue;
+        oi.set(r.date, (oi.get(r.date) || 0) + (+r.open_interest || 0)); if (expOf(c) >= r.date && (!nearC.has(r.date) || c < nearC.get(r.date).c)) nearC.set(r.date, { c, close:+r.close }); }
+      const od = [...oi.keys()].sort(); t.oi = od.length ? oi.get(od[od.length - 1]) : null; t.doi = od.length > 5 ? oi.get(od[od.length - 1]) - oi.get(od[od.length - 6]) : null;
+      const nc = L ? nearC.get(L.date) : null; t.basis = nc && L ? (nc.close / L.close - 1) * 100 : null;
+    });
+    D = { rows, top, hist:hist ? hist.days : [], mvwDate:mvw.length ? mvw[0].date : null };
+    setStatus(''); $('#app').hidden = false; $('#upd').textContent = rows.length ? '資料至 ' + md(rows[rows.length - 1].d) : '';
+    render();
+  } catch(e){ setStatus(e.message || String(e), true); }
+}
+
+/* ───────── 計算：前十大成本、控盤區 ───────── */
+function costOf(rows, key){
+  // 依每天淨部位增減，用當天均價（高＋低＋收）÷3 估算目前淨部位的平均成本
+  let cost = null, prev = null;
+  for (const r of rows){ const n = r[key]; if (n == null) continue; const p = (r.h + r.l + r.c) / 3;
+    if (prev == null || cost == null || Math.sign(n) !== Math.sign(prev)) cost = p;
+    else if (Math.abs(n) > Math.abs(prev)) cost = (cost * Math.abs(prev) + p * (Math.abs(n) - Math.abs(prev))) / Math.abs(n);
+    prev = n; }
+  return { cost, net:prev };
+}
+function analyse(){
+  const R = D.rows, L = R[R.length - 1], H = D.hist, h = H.length ? H[H.length - 1] : null;
+  const c10 = costOf(R, 't10'), cF = costOf(R, 't10f'), cfi = costOf(R, 'fi');
+  const lv = [];
+  if (c10.cost) lv.push({ p:c10.cost, t:`前十大${c10.net >= 0 ? '多單' : '空單'}成本`, k:c10.net >= 0 ? 'sup' : 'res', col:css('--cost') });
+  if (cfi.cost) lv.push({ p:cfi.cost, t:`外資${cfi.net >= 0 ? '多單' : '空單'}成本`, k:cfi.net >= 0 ? 'sup' : 'res', col:css('--gold') });
+  if (h){ if (h.cw) lv.push({ p:h.cw, t:'選擇權看漲牆', k:'res', col:css('--call') }); if (h.pw) lv.push({ p:h.pw, t:'選擇權看跌牆', k:'sup', col:css('--put') });
+    if (h.pain) lv.push({ p:h.pain, t:'最大痛點（結算目標）', k:'tgt', col:css('--pain') }); if (h.flip) lv.push({ p:h.flip, t:'Gamma 翻轉點', k:'flip', col:css('--flip') }); }
+  // 控盤區：兩個以上價位相距 0.6% 以內就合成一區
+  const srt = [...lv].sort((a, b) => a.p - b.p), zones = [];
+  for (const x of srt){ const z = zones[zones.length - 1]; if (z && x.p - z.hi <= L.c * 0.006){ z.hi = x.p; z.items.push(x); } else zones.push({ lo:x.p, hi:x.p, items:[x] }); }
+  const cz = zones.filter(z => z.items.length >= 2).map(z => Object.assign(z, { mid:(z.lo + z.hi) / 2, side:z.mid > L.c ? 'up' : 'dn' }));
+  // 遠近月價差
+  const sp = R.map(r => r.sp), m20 = avg(sp.slice(-20)), sd20 = Math.sqrt(avg(sp.slice(-20).map(v => (v - m20) ** 2))) || 1, z = (L.sp - m20) / sd20;
+  // 權值股
+  const T = D.top.filter(t => t.r5 != null), idx = L.c, contrib = T.map(t => ({ t, pts:t.w / 100 * t.r5 / 100 * idx }));
+  const push = contrib.reduce((a, x) => a + x.pts, 0), idx5 = R.length > 5 ? L.c - R[R.length - 6].c : null;
+  const futAdd = T.filter(t => t.doi != null).reduce((a, t) => a + Math.sign(t.doi) * t.w, 0);
+  return { L, h, c10, cF, cfi, lv, cz, m20, sd20, z, contrib, push, idx5, futAdd };
+}
+
+/* ───────── 畫面 ───────── */
+function render(){
+  const A = D.A = analyse(), { L } = A;
+  // 摘要
+  const items = [];
+  const t10n = L.t10n, t10f = L.t10f;
+  let lock = '沒有明顯鎖價差';
+  if (t10n != null && t10f != null && Math.sign(t10n) !== Math.sign(t10f) && Math.min(Math.abs(t10n), Math.abs(t10f)) > 1500) lock = t10n < 0 ? '賣近月、買遠月（鎖價差）' : '買近月、賣遠月（鎖價差）';
+  items.push(['遠近月', css('--curve'), `前十大近月淨 ${sgn(t10n)} 口、遠月淨 ${sgn(t10f)} 口：<b>${lock}</b>。遠近月價差 ${sgn(L.sp)} 點，近 20 日平均 ${sgn(A.m20, 0)}（${A.z >= 1 ? '偏寬，遠月相對貴' : A.z <= -1 ? '偏窄，近月相對貴' : '正常'}）。` +
+    (lock.startsWith('賣近') ? '鎖住價差的人近月是空單，結算前偏向把近月壓低或不讓它漲太多。' : lock.startsWith('買近') ? '鎖住價差的人近月是多單，結算前偏向把近月撐住。' : '')]);
+  items.push(['前十大', A.c10.net >= 0 ? css('--up') : css('--down'), `前十大交易人全部月份淨 ${sgn(A.c10.net)} 口，估算平均成本 <b>${fmt(A.c10.cost)}</b>（台指期 ${fmt(L.c)}，${L.c >= A.c10.cost ? '高於' : '低於'}成本 ${fmt(Math.abs(L.c - A.c10.cost))} 點）。` +
+    (A.c10.net >= 0 ? (L.c >= A.c10.cost ? '多單有獲利，跌回成本附近通常會護盤。' : '多單被套，反彈到成本附近容易解套賣壓。') : (L.c <= A.c10.cost ? '空單有獲利，漲回成本附近通常會壓盤。' : '空單被套，跌回成本附近容易回補。'))]);
+  const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
+  items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）。主要推手：${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
+    `權值股期貨未平倉${A.futAdd > 5 ? '多數在增加，有人透過個股期貨布局權值股' : A.futAdd < -5 ? '多數在減少，權值股期貨部位在退場' : '增減互見'}。`]);
+  if (A.cz.length){ const up = A.cz.filter(z => z.side === 'up').sort((a, b) => a.mid - b.mid)[0], dn = A.cz.filter(z => z.side === 'dn').sort((a, b) => b.mid - a.mid)[0];
+    items.push(['控盤區', css('--gold'), (up ? `上方 <b>${fmt(up.lo)}～${fmt(up.hi)}</b>（${up.items.map(i => i.t).join('、')}）` : '') + (up && dn ? '；' : '') + (dn ? `下方 <b>${fmt(dn.lo)}～${fmt(dn.hi)}</b>（${dn.items.map(i => i.t).join('、')}）` : '') + '：多個主力相關價位重疊，最可能是想守或想壓的位置。']); }
+  if (A.h && A.h.pain) items.push(['結算目標', css('--pain'), `近月結算日 ${md(L.exp)}；選擇權最大痛點 ${fmt(A.h.pain)}（離台指期 ${sgn(A.h.pain - L.c, 0)} 點）。賣方主力最希望結算在這附近，但歷史上最大痛點的命中率不高，只當參考。`]);
+  const bull = (A.c10.net > 0 ? 1 : -1) + (A.push > 0 ? 1 : -1) + (lock.startsWith('買近') ? 1 : lock.startsWith('賣近') ? -1 : 0);
+  const tag = bull >= 2 ? ['主力偏多控盤', css('--up')] : bull <= -2 ? ['主力偏空控盤', css('--down')] : ['主力多空拉鋸', css('--gold')];
+  $('#sum').innerHTML = `<div class="hd"><span class="big" style="border-color:${tag[1]};color:${tag[1]}">${tag[0]}</span><span class="muted">${md(L.d)} 收盤・台指期近月 ${fmt(L.c)}</span></div>` +
+    items.map(([t, c, d]) => `<div class="it"><span class="bd" style="border-color:${c}">${t}</span><span>${d}</span></div>`).join('');
+  drawMain(); drawSpread(); drawLT(); drawW();
+}
+function frame(svg, H, m){ const W = Math.max(300, svg.parentElement.clientWidth - 16); svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); return { W, H, m, iw:W - m.l - m.r, ih:H - m.t - m.b, narrow:W < 520 }; }
+function drawMain(){
+  const A = D.A, R = D.rows.slice(-60), svg = $('#svMain'), f = frame(svg, 460, { l:56, r:10, t:10, b:24 });
+  const all = R.flatMap(r => [r.h, r.l]).concat(A.lv.map(x => x.p)), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.05;
+  const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih, bw = f.iw / R.length;
+  for (const t of ticks(lo - pad, hi + pad, 7)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
+  // 控盤區（金色帶）
+  for (const z of A.cz){ const y1 = y(z.hi + 40), y2 = y(z.lo - 40); el('rect', { x:f.m.l, y:y1, width:f.iw, height:Math.max(6, y2 - y1), fill:css('--gold'), 'fill-opacity':.16, stroke:css('--gold'), 'stroke-opacity':.6, 'stroke-dasharray':'4 3' }, svg);
+    el('text', { x:f.m.l + 6, y:y1 - 4, 'font-size':12, 'font-weight':700, fill:css('--gold') }, svg, `控盤區 ${fmt(z.lo)}～${fmt(z.hi)}`); }
+  // K 棒
+  R.forEach((r, i) => { const up = r.c >= r.o, c = up ? css('--up') : css('--down'), w = Math.max(1.5, bw * 0.62);
+    el('line', { x1:x(i), x2:x(i), y1:y(r.h), y2:y(r.l), stroke:c, 'stroke-width':1 }, svg);
+    el('rect', { x:x(i) - w / 2, y:y(Math.max(r.o, r.c)), width:w, height:Math.max(1, Math.abs(y(r.o) - y(r.c))), fill:c }, svg); });
+  // 各價位水平線＋右側標籤（避免重疊）
+  const labs = A.lv.map(l => ({ l, y:y(l.p) })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 16) labs[k].y = labs[k - 1].y + 16;
+  for (const { l, y:ly } of labs){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(l.p), y2:y(l.p), stroke:l.col, 'stroke-width':1.6, 'stroke-dasharray':l.k === 'tgt' ? '2 3' : l.k === 'flip' ? '6 3' : null, 'stroke-opacity':.9 }, svg);
+    const t = `${l.t} ${fmt(l.p)}`, w = t.length * 11 + 10; el('rect', { x:f.W - f.m.r - w, y:ly - 9, width:w, height:17, rx:3, fill:css('--panel'), stroke:l.col }, svg);
+    el('text', { x:f.W - f.m.r - w / 2, y:ly + 4, 'text-anchor':'middle', 'font-size':11.5, 'font-weight':600, fill:css('--text') }, svg, t); }
+  [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
+  legend('#lgMain', [['控盤區（多個價位重疊）', css('--gold') + '55', 'bar'], ['前十大成本', css('--cost')], ['外資成本', css('--gold')], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['最大痛點', css('--pain'), 'dash'], ['翻轉點', css('--flip'), 'dash']]);
+  hoverDays(svg, $('#tipMain'), f, R, x, r => `<b>${md(r.d)}</b>　台指期 ${fmt(r.c)}<br>前十大淨 ${sgn(r.t10)} 口（近月 ${sgn(r.t10n)}／遠月 ${sgn(r.t10f)}）<br>外資淨 ${sgn(r.fi)} 口・遠近月價差 ${sgn(r.sp)}`);
+  $('#noteMain').textContent = '金色帶＝前十大交易人成本、外資成本、選擇權看漲牆／看跌牆、最大痛點、Gamma 翻轉點之中，有兩個以上價位相距 0.6% 以內的地方；主力的部位成本和選擇權賣方的防守價位重疊，最可能是想守住或想壓住的位置。';
+}
+function hoverDays(svg, tip, f, R, x, html){
+  const cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), bw = f.iw / R.length;
+  const hit = el('rect', { x:f.m.l, y:0, width:f.iw, height:f.H, fill:'transparent' }, svg);
+  hit.addEventListener('pointermove', ev => { const b = svg.getBoundingClientRect(), i = Math.max(0, Math.min(R.length - 1, Math.floor(((ev.clientX - b.left) * f.W / b.width - f.m.l) / bw)));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible'); tip.innerHTML = html(R[i]); tip.style.display = 'block';
+    tip.style.left = Math.min(Math.max(4, x(i) * b.width / f.W + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
+}
+function drawSpread(){
+  const A = D.A, R = D.rows.slice(-60), svg = $('#svSp'), f = frame(svg, 220, { l:46, r:8, t:10, b:22 });
+  const sp = R.map(r => r.sp), mm = R.map((r, i) => { const w = D.rows.slice(Math.max(0, D.rows.indexOf(r) - 19), D.rows.indexOf(r) + 1).map(z => z.sp); const m = avg(w); return { m, s:Math.sqrt(avg(w.map(v => (v - m) ** 2))) }; });
+  const vs = sp.concat(mm.flatMap(z => [z.m + z.s, z.m - z.s]), [0]), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.08 || 10;
+  const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih;
+  for (const t of ticks(lo - pad, hi + pad, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 4, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, sgn(t)); }
+  el('path', { d:mm.map((z, i) => (i ? 'L' : 'M') + x(i) + ',' + y(z.m + z.s)).join('') + mm.slice().reverse().map((z, k) => 'L' + x(R.length - 1 - k) + ',' + y(z.m - z.s)).join('') + 'Z', fill:css('--curve'), 'fill-opacity':.15 }, svg);
+  el('path', { d:mm.map((z, i) => (i ? 'L' : 'M') + x(i) + ',' + y(z.m)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':1.2, 'stroke-dasharray':'4 3' }, svg);
+  el('path', { d:sp.map((v, i) => (i ? 'L' : 'M') + x(i) + ',' + y(v)).join(''), fill:'none', stroke:css('--gold'), 'stroke-width':2 }, svg);
+  R.forEach((r, i) => { if (i && R[i - 1].near !== r.near) el('line', { x1:x(i), x2:x(i), y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 3' }, svg); });
+  [0, R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j ? 'end' : 'start', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
+  legend('#lgSp', [['遠近月價差', css('--gold')], ['20 日平均 ±1 標準差', css('--curve') + '55', 'bar'], ['換月', css('--muted'), 'dash']]);
+  hoverDays(svg, $('#tipSp'), f, R, x, r => `<b>${md(r.d)}</b>　近月 ${r.near.slice(4)}月 ${fmt(r.c)}・次月 ${fmt(r.fc)}<br>價差 ${sgn(r.sp)} 點`);
+  $('#noteSp').textContent = `目前價差 ${sgn(A.L.sp)} 點，${A.z >= 1 ? '比平常寬：遠月相對貴，常見「賣遠買近」或近月被壓' : A.z <= -1 ? '比平常窄：近月相對貴，常見近月被拉抬' : '在正常範圍'}。主力用「賣一個月、買另一個月」鎖住價差時，價差會被控制在一個區間內；價差突然跳出區間，代表有人在調整部位。`;
+}
+function drawLT(){
+  const R = D.rows.slice(-60).filter(r => r.t10 != null), svg = $('#svLT'), f = frame(svg, 220, { l:52, r:8, t:10, b:22 });
+  if (!R.length){ svg.innerHTML = ''; return; }
+  const vs = R.flatMap(r => [r.t10n || 0, r.t10f || 0, r.t10]), m = Math.max(1, ...vs.map(Math.abs)) * 1.1;
+  const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (m - v) / (2 * m) * f.ih, bw = Math.max(1, f.iw / R.length * 0.38);
+  for (const t of ticks(-m, m, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 4, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, sgn(t)); }
+  R.forEach((r, i) => { if (r.t10n != null) el('rect', { x:x(i) - bw, y:Math.min(y(0), y(r.t10n)), width:bw, height:Math.max(1, Math.abs(y(r.t10n) - y(0))), fill:css('--call') }, svg);
+    if (r.t10f != null) el('rect', { x:x(i), y:Math.min(y(0), y(r.t10f)), width:bw, height:Math.max(1, Math.abs(y(r.t10f) - y(0))), fill:css('--put') }, svg); });
+  el('path', { d:R.map((r, i) => (i ? 'L' : 'M') + x(i) + ',' + y(r.t10)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.6 }, svg);
+  [0, R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j ? 'end' : 'start', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
+  legend('#lgLT', [['近月淨部位', css('--call'), 'bar'], ['遠月淨部位', css('--put'), 'bar'], ['全部月份淨部位', css('--text')]]);
+  hoverDays(svg, $('#tipLT'), f, R, x, r => `<b>${md(r.d)}</b><br>近月 ${sgn(r.t10n)}・遠月 ${sgn(r.t10f)}<br>全部 ${sgn(r.t10)} 口`);
+  const L = R[R.length - 1];
+  $('#noteLT').textContent = `藍、橘方向相反而且都很大，代表前十大在「一個月做多、另一個月做空」鎖價差；這種部位對漲跌不敏感，主力真正在意的是兩個月的價差和結算價。目前近月 ${sgn(L.t10n)}、遠月 ${sgn(L.t10f)} 口。`;
+}
+function drawW(){
+  const A = D.A, C = [...A.contrib].sort((a, b) => b.pts - a.pts), svg = $('#svW'), H = C.length * 26 + 16, W = Math.max(280, svg.parentElement.clientWidth - 16), lw = 70;
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  const mx = Math.max(1, ...C.map(c => Math.abs(c.pts))) * 1.15, x0 = lw + (W - lw - 10) / 2, sc = v => v / mx * (W - lw - 10) / 2;
+  el('line', { x1:x0, x2:x0, y1:4, y2:H - 4, stroke:css('--muted') }, svg);
+  C.forEach((c, k) => { const yy = 8 + k * 26, col = c.pts >= 0 ? css('--up') : css('--down');
+    el('text', { x:lw - 6, y:yy + 13, 'text-anchor':'end', 'font-size':12, fill:css('--text') }, svg, c.t.name);
+    el('rect', { x:Math.min(x0, x0 + sc(c.pts)), y:yy, width:Math.max(1, Math.abs(sc(c.pts))), height:18, rx:2, fill:col }, svg);
+    el('text', { x:x0 + sc(c.pts) + (c.pts >= 0 ? 4 : -4), y:yy + 13, 'text-anchor':c.pts >= 0 ? 'start' : 'end', 'font-size':11.5, fill:css('--text') }, svg, sgn(c.pts, 0) + ' 點'); });
+  legend('#lgW', [['推升指數', css('--up'), 'bar'], ['壓低指數', css('--down'), 'bar']]);
+  $('#tblW').innerHTML = '<table><thead><tr><th>權值股</th><th>權重</th><th>5 日</th><th>股期</th><th>未平倉 5 日</th><th>期現價差</th></tr></thead><tbody>' +
+    D.top.map(t => `<tr><td>${t.id} ${esc(t.name)}</td><td>${t.w.toFixed(2)}%</td><td class="${t.r5 >= 0 ? 'up' : 'dn'}">${pc(t.r5, 1)}</td><td>${t.fut || '–'}</td><td class="${t.doi > 0 ? 'up' : t.doi < 0 ? 'dn' : ''}">${t.doi == null ? '–' : sgn(t.doi) + ' 口'}</td><td>${pc(t.basis, 2)}</td></tr>`).join('') + '</tbody></table>';
+  $('#noteW').textContent = `前 10 大權值股合計占加權指數約 ${fmt(D.top.reduce((a, t) => a + t.w, 0), 1)}%（權重日期 ${D.mvwDate ? md(D.mvwDate) : '–'}）。近 5 日合計貢獻 ${sgn(A.push, 0)} 點。個股期貨未平倉增加、而且期貨比現股貴（正價差），常見有人用個股期貨布局權值股來帶動指數；未平倉減少代表這些部位在退場。`;
+}
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D && D.A) { drawMain(); drawSpread(); drawLT(); drawW(); } }, 200); });
+load();
+</script>
+</body>
+</html>
