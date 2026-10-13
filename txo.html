@@ -206,7 +206,7 @@
 
     <section id="lowSec">
       <h2>GEX 低點偵測 <span class="seg" id="lowSeg"><button data-tf="60">1小時</button><button data-tf="240">4小時</button><button data-tf="D">日</button></span><span class="muted">GEX 擺盪指標 0～100：10 以下＝低點區、90 以上＝高點區</span></h2>
-      <div class="gf"><div id="lowHead"></div><div class="lowg"><div style="position:relative"><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與 GEX 擺盪指標"></svg><div class="tip" id="tipLow"></div></div><div id="lowChk"></div></div><p class="note" id="lowNote"></p></div>
+      <div class="gf"><div id="lowHead"></div><div class="setrow" style="margin:0 0 6px"><span>縮放 <span class="seg"><button id="lzIn" title="放大">＋</button><button id="lzOut" title="縮小">－</button><button id="lzReset">重設</button></span></span><span class="small muted">手機雙指開合、左右拖曳看更早的資料；電腦按住 Ctrl 滾輪縮放、拖曳移動；點兩下重設</span></div><div class="lowg"><div style="position:relative"><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與 GEX 擺盪指標"></svg><div class="tip" id="tipLow"></div></div><div id="lowChk"></div></div><p class="note" id="lowNote"></p></div>
     </section>
 
     <section>
@@ -1192,6 +1192,27 @@ function oscComp(d, gexWin){
   return 0.5 * (d.gex - m) / sdv + 0.5 * fz;
 }
 let LOWTF = store.get('txo.lowTf') || 'D';
+const LZ = { n:120, end:0, max:0 };                                   // 低點偵測圖：顯示幾根、右邊藏幾根（往前看）
+let lzRaf = 0; const lzDraw = () => { cancelAnimationFrame(lzRaf); lzRaf = requestAnimationFrame(() => renderLow()); };
+function lzZoom(k){ LZ.n = Math.max(15, Math.min(LZ.max || 9999, Math.round(LZ.n * k))); lzDraw(); }
+function bindLowZoom(svg){
+  const pts = new Map(); let g0 = null;
+  svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x:e.clientX }); g0 = null; });
+  const end = e => { pts.delete(e.pointerId); g0 = null; };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end); svg.addEventListener('pointerleave', end);
+  svg.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId) || !svg._lz) return;
+    pts.set(e.pointerId, { x:e.clientX }); const a = [...pts.values()];
+    if (!g0) g0 = { n:LZ.n, end:LZ.end, a:a.map(p => p.x), cnt:a.length };
+    if (a.length >= 2 && g0.cnt >= 2){ const d0 = Math.abs(g0.a[0] - g0.a[1]) || 1, d1 = Math.abs(a[0].x - a[1].x) || 1; LZ.n = Math.max(15, Math.min(LZ.max || 9999, Math.round(g0.n * d0 / d1))); lzDraw(); }
+    else if ((a.length === 1 && e.pointerType !== 'mouse') || (e.buttons & 1)){
+      const dx = a[0].x - g0.a[0]; if (Math.abs(dx) < 6) return;
+      const r = svg.getBoundingClientRect(), perBar = r.width * (svg._lz.iw / svg._lz.Wd) / svg._lz.K;
+      LZ.end = Math.max(0, Math.round(g0.end + dx / perBar)); lzDraw(); }
+  });
+  svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); lzZoom(e.deltaY > 0 ? 1.15 : 1 / 1.15); }, { passive:false });
+  svg.addEventListener('dblclick', () => { LZ.n = 120; LZ.end = 0; lzDraw(); });
+}
 // 分K版本：每根 K 棒用「當時已經公布」的選擇權籌碼（日盤 K 用前一個交易日收盤後的籌碼，夜盤 K 用當天收盤後的籌碼）
 function lowBars(tf){
   const src = LV.bars[tf]; if (!src){ loadIntra(tf); return null; }
@@ -1250,7 +1271,10 @@ function renderLow(){
     `<br>擺盪指標＝一半看總 Gamma 曝險在近 120 天偏高或偏低，一半看台指期離翻轉點幾個日波動，最後換成近 120 天的百分位。樣本少、這一年大多上漲，結果可能偏樂觀，只能當參考。`;
   // 圖：上面台指期收盤＋訊號，下面擺盪指標（0～100，上下界 90／10）
   const svg = $('#svgLow'), Wd = Math.max(280, svg.parentElement.clientWidth - 4), m = { l:46, r:8 }, H1 = 150, H2 = 120, gap = 10, top = 8, Ht = top + H1 + gap + H2 + 22;
-  const idx = O.map((v, i) => v == null ? -1 : i).filter(i => i >= 0).slice(-120), K = idx.length, iw = Wd - m.l - m.r, bw = iw / K;
+  const allI = O.map((v, i) => v == null ? -1 : i).filter(i => i >= 0), nV = Math.max(15, Math.min(allI.length, LZ.n));
+  LZ.n = nV; LZ.end = Math.max(0, Math.min(allI.length - nV, LZ.end)); LZ.max = allI.length;
+  const idx = allI.slice(allI.length - LZ.end - nV, allI.length - LZ.end), K = idx.length, iw = Wd - m.l - m.r, bw = iw / K;
+  svg._lz = { K, iw, Wd };
   svg.setAttribute('viewBox', `0 0 ${Wd} ${Ht}`); svg.setAttribute('height', Ht); svg.innerHTML = '';
   const x = k => m.l + iw * (k + 0.5) / K;
   const pv = idx.flatMap(i => [H[i].c, H[i].l]), pl = Math.min(...pv), ph = Math.max(...pv), pp = (ph - pl) * 0.08;
@@ -1267,7 +1291,7 @@ function renderLow(){
     el('text', { x:m.l - 4, y:y2(v) + 4, 'text-anchor':'end', 'font-size':10.5, fill:c }, svg, v === 50 ? '50' : String(v)); });
   el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y2(O[i]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
   idx.forEach((i, k) => { if (sigLo(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:4, fill:css('--up') }, svg); if (sigHi(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:3.5, fill:css('--down') }, svg); });
-  const kL = K - 1; el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:css('--curve'), 'stroke-width':2.5 }, svg);
+  const kL = K - 1; if (LZ.end === 0) el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:css('--curve'), 'stroke-width':2.5 }, svg);
   [0, Math.floor(K / 2), K - 1].forEach((k, j) => el('text', { x:x(k), y:Ht - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, H[idx[k]].lab));
   legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', css('--curve'), 'ln'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
   const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Ht, fill:'transparent' }, svg);
@@ -1961,7 +1985,9 @@ function setLive(on){
 }
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
 document.querySelectorAll('#lvSeg button').forEach(b => b.onclick = () => { LV.tf = b.dataset.tf; store.set('txo.lvTf', LV.tf); drawLevels(); });
-document.querySelectorAll('#lowSeg button').forEach(b => b.onclick = () => { LOWTF = b.dataset.tf; store.set('txo.lowTf', LOWTF); renderLow(); });
+document.querySelectorAll('#lowSeg button').forEach(b => b.onclick = () => { LOWTF = b.dataset.tf; store.set('txo.lowTf', LOWTF); LZ.n = 120; LZ.end = 0; renderLow(); });
+bindLowZoom($('#svgLow'));
+$('#lzIn').onclick = () => lzZoom(1 / 1.4); $('#lzOut').onclick = () => lzZoom(1.4); $('#lzReset').onclick = () => { LZ.n = 120; LZ.end = 0; renderLow(); };
 ['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
 $('#gsAdv').addEventListener('toggle', () => { if ($('#gsAdv').open) renderGS(); });
 $('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4);
