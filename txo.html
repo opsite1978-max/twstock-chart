@@ -87,7 +87,12 @@
   .gf .sub{font-size:13.5px;color:var(--muted)}
   .gf ol{margin:8px 0 0 20px;padding:0;font-size:14.5px;line-height:1.85}
   .gf ol b{color:var(--text)}
-  .lowg{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr);gap:14px;align-items:start;position:relative}
+  .lowg{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start;position:relative}
+  #lowChk{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 16px}
+  #lowChk .cap{grid-column:1/-1}
+  .lsty{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12.5px;margin:0 0 6px;color:var(--muted)}
+  .lsty label{display:inline-flex;gap:4px;align-items:center} .lsty input[type=color]{width:28px;height:22px;padding:0;border:1px solid var(--line);border-radius:4px;background:none}
+  .lsty select{height:24px;padding:0 4px;font-size:12px} .lsty input[type=range]{width:80px}
   @media (max-width:760px){ .lowg{grid-template-columns:minmax(0,1fr)} }
   .lchk{display:grid;grid-template-columns:22px 1fr;gap:0 6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.5}
   .lchk:last-child{border-bottom:0} .lchk i{font-style:normal;font-weight:800;text-align:center} .lchk small{grid-column:2;color:var(--muted);font-size:12px}
@@ -206,7 +211,8 @@
 
     <section id="lowSec">
       <h2>GEX 低點偵測 <span class="seg" id="lowSeg"><button data-tf="60">1小時</button><button data-tf="240">4小時</button><button data-tf="D">日</button></span><span class="muted">GEX 擺盪指標 0～100：10 以下＝低點區、90 以上＝高點區</span></h2>
-      <div class="gf"><div id="lowHead"></div><div class="setrow" style="margin:0 0 6px"><span>縮放 <span class="seg"><button id="lzIn" title="放大">＋</button><button id="lzOut" title="縮小">－</button><button id="lzReset">重設</button></span></span><span class="small muted">手機雙指開合、左右拖曳看更早的資料；電腦按住 Ctrl 滾輪縮放、拖曳移動；點兩下重設</span></div><div class="lowg"><div style="position:relative"><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與 GEX 擺盪指標"></svg><div class="tip" id="tipLow"></div></div><div id="lowChk"></div></div><p class="note" id="lowNote"></p></div>
+      <div class="gf"><div id="lowHead"></div><div class="setrow" style="margin:0 0 6px"><span>縮放 <span class="seg"><button id="lzIn" title="放大">＋</button><button id="lzOut" title="縮小">－</button><button id="lzReset">重設</button></span></span><span class="small muted">手機雙指開合、左右拖曳看更早的資料；電腦按住 Ctrl 滾輪縮放、拖曳移動；點兩下重設</span></div>
+      <div class="lsty" id="lowSty"></div><div class="lowg"><div style="position:relative"><div class="legend" id="lgLow"></div><svg id="svgLow" role="img" aria-label="台指期收盤與 GEX 擺盪指標"></svg><div class="tip" id="tipLow"></div></div><div id="lowChk"></div></div><p class="note" id="lowNote"></p></div>
     </section>
 
     <section>
@@ -1210,7 +1216,24 @@ function oscComp(d, gexWin){
   return 0.5 * (d.gex - m) / sdv + 0.5 * fz;
 }
 let LOWTF = store.get('txo.lowTf') || 'D';
-const LZ = { n:120, end:0, max:0 };                                   // 低點偵測圖：顯示幾根、右邊藏幾根（往前看）
+// 線條樣式（可調顏色、粗細、光暈），存在瀏覽器
+const LS_DEF = { px:{ c:'', w:2 }, osc:{ c:'#b39dff', w:2.5 }, k1:{ c:'#00E5FF', w:2 }, glow:true, amt:3 };
+let LS = (() => { try { return Object.assign(JSON.parse(JSON.stringify(LS_DEF)), JSON.parse(store.get('txo.lowStyle') || '{}')); } catch(e){ return JSON.parse(JSON.stringify(LS_DEF)); } })();
+function buildLowSty(){
+  const box = $('#lowSty'); if (!box || box.dataset.ok) return; box.dataset.ok = 1;
+  const ws = v => [1, 1.5, 2, 2.5, 3, 4].map(w => `<option value="${w}"${+v === w ? ' selected' : ''}>${w}</option>`).join('');
+  const row = (k, t) => `<label>${t}<input type="color" data-k="${k}" value="${LS[k].c || (k === 'px' ? '#e8eaf0' : '#ffffff')}"><select data-w="${k}">${ws(LS[k].w)}</select></label>`;
+  box.innerHTML = '線條：' + row('px', '台指期') + row('osc', 'GEX 擺盪') + row('k1', 'K1 快線') +
+    `<label><input type="checkbox" id="lsGlow"${LS.glow ? ' checked' : ''}>光暈</label><label>強度<input type="range" id="lsAmt" min="1" max="8" step="0.5" value="${LS.amt}"></label><button id="lsReset" style="height:24px;padding:0 8px;font-size:12px">恢復預設</button>`;
+  const save = () => { store.set('txo.lowStyle', JSON.stringify(LS)); lzDraw(); };
+  box.querySelectorAll('[data-k]').forEach(e => e.oninput = () => { LS[e.dataset.k].c = e.value; save(); });
+  box.querySelectorAll('[data-w]').forEach(e => e.onchange = () => { LS[e.dataset.w].w = +e.value; save(); });
+  $('#lsGlow').onchange = e => { LS.glow = e.target.checked; save(); };
+  $('#lsAmt').oninput = e => { LS.amt = +e.target.value; save(); };
+  $('#lsReset').onclick = () => { LS = JSON.parse(JSON.stringify(LS_DEF)); store.set('txo.lowStyle', JSON.stringify(LS)); box.dataset.ok = ''; buildLowSty(); lzDraw(); };
+}
+const lzDef = () => (($('#svgLow') && $('#svgLow').parentElement.clientWidth) || 800) < 520 ? 60 : 120;
+const LZ = { n:0, end:0, max:0 };                                   // 低點偵測圖：顯示幾根、右邊藏幾根（往前看）
 let lzRaf = 0; const lzDraw = () => { cancelAnimationFrame(lzRaf); lzRaf = requestAnimationFrame(() => renderLow()); };
 function lzZoom(k){ LZ.n = Math.max(15, Math.min(LZ.max || 9999, Math.round(LZ.n * k))); lzDraw(); }
 function bindLowZoom(svg){
@@ -1229,7 +1252,7 @@ function bindLowZoom(svg){
       LZ.end = Math.max(0, Math.round(g0.end + dx / perBar)); lzDraw(); }
   });
   svg.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); lzZoom(e.deltaY > 0 ? 1.15 : 1 / 1.15); }, { passive:false });
-  svg.addEventListener('dblclick', () => { LZ.n = 120; LZ.end = 0; lzDraw(); });
+  svg.addEventListener('dblclick', () => { LZ.n = lzDef(); LZ.end = 0; lzDraw(); });
 }
 // 分K版本：每根 K 棒用「當時已經公布」的選擇權籌碼（日盤 K 用前一個交易日收盤後的籌碼，夜盤 K 用當天收盤後的籌碼）
 function lowBars(tf){
@@ -1244,6 +1267,7 @@ function lowBars(tf){
   return out;
 }
 function renderLow(){
+  buildLowSty();
   document.querySelectorAll('#lowSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === LOWTF));
   if (!HIST || HIST.length < 60){ $('#lowHead').innerHTML = '<div class="msg">歷史資料讀取中…</div>'; return; }
   const intra = LOWTF !== 'D', unit = intra ? (LOWTF === '240' ? '根 4 小時 K ' : '根 1 小時 K ') : '天';
@@ -1288,7 +1312,8 @@ function renderLow(){
     `；全部 K 棒之後 5 ${unit}平均 ${pcS(A(b5))}。高點警示 ${SH.length} 次` + (h5.length ? `，之後 5 ${unit}平均 ${pcS(A(h5))}` : '') + `。<b>高點警示只代表漲勢可能變慢，不代表會跌。</b>` + (intra ? `<br>分K的資料期間很短，次數很少，比日線更不穩定，只能當參考。` : '') +
     `<br>擺盪指標＝一半看總 Gamma 曝險在近 120 天偏高或偏低，一半看台指期離翻轉點幾個日波動，最後換成近 120 天的百分位。樣本少、這一年大多上漲，結果可能偏樂觀，只能當參考。`;
   // 圖：上面台指期收盤＋訊號，下面擺盪指標（0～100，上下界 90／10）
-  const svg = $('#svgLow'), Wd = Math.max(280, svg.parentElement.clientWidth - 4), m = { l:46, r:8 }, H1 = 150, H2 = 120, gap = 10, top = 8, Ht = top + H1 + gap + H2 + 22;
+  const svg = $('#svgLow'), Wd = Math.max(280, svg.parentElement.clientWidth - 4), m = { l:50, r:8 }, H1 = 300, H2 = 240, gap = 14, top = 8, Ht = top + H1 + gap + H2 + 22;
+  if (!LZ.n) LZ.n = lzDef();
   const allI = O.map((v, i) => v == null ? -1 : i).filter(i => i >= 0), nV = Math.max(15, Math.min(allI.length, LZ.n));
   LZ.n = nV; LZ.end = Math.max(0, Math.min(allI.length - nV, LZ.end)); LZ.max = allI.length;
   const idx = allI.slice(allI.length - LZ.end - nV, allI.length - LZ.end), K = idx.length, iw = Wd - m.l - m.r, bw = iw / K;
@@ -1297,8 +1322,11 @@ function renderLow(){
   const x = k => m.l + iw * (k + 0.5) / K;
   const pv = idx.flatMap(i => [H[i].c, H[i].l]), pl = Math.min(...pv), ph = Math.max(...pv), pp = (ph - pl) * 0.08;
   const y1 = v => top + (ph + pp - v) / (ph - pl + 2 * pp) * H1, y0 = top + H1 + gap, y2 = v => y0 + (100 - v) / 100 * H2;
-  for (const t of niceTicks(pl - pp, ph + pp, 3)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y1(t), y2:y1(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 4, y:y1(t) + 4, 'text-anchor':'end', 'font-size':10.5, fill:css('--muted') }, svg, fmtInt(t)); }
-  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y1(H[i].c).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.8 }, svg);
+  for (const t of niceTicks(pl - pp, ph + pp, 6)){ el('line', { x1:m.l, x2:Wd - m.r, y1:y1(t), y2:y1(t), stroke:css('--grid') }, svg); el('text', { x:m.l - 4, y:y1(t) + 4, 'text-anchor':'end', 'font-size':10.5, fill:css('--muted') }, svg, fmtInt(t)); }
+  { const defs = el('defs', {}, svg), f = el('filter', { id:'lowGlow', x:'-5%', y:'-20%', width:'110%', height:'140%' }, defs);
+    el('feGaussianBlur', { in:'SourceGraphic', stdDeviation:LS.amt, result:'b' }, f); const mg = el('feMerge', {}, f); el('feMergeNode', { in:'b' }, mg); el('feMergeNode', { in:'b' }, mg); el('feMergeNode', { in:'SourceGraphic' }, mg); }
+  const glow = LS.glow ? 'url(#lowGlow)' : null;
+  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y1(H[i].c).toFixed(1)).join(''), fill:'none', stroke:LS.px.c || css('--text'), 'stroke-width':LS.px.w, 'stroke-linejoin':'round', filter:glow }, svg);
   idx.forEach((i, k) => { if (sigLo(i)){ const yy = y1(H[i].l) + 5; el('path', { d:`M${x(k)},${yy} L${x(k) - 7},${yy + 11} L${x(k) + 7},${yy + 11} Z`, fill:css('--up') }, svg); }
                          if (sigHi(i)){ const yy = y1(H[i].h) - 5; el('path', { d:`M${x(k)},${yy} L${x(k) - 6},${yy - 10} L${x(k) + 6},${yy - 10} Z`, fill:css('--down'), 'fill-opacity':.8 }, svg); } });
   // 擺盪區
@@ -1307,13 +1335,16 @@ function renderLow(){
   [[OSC_HI, '高點區 90', css('--down')], [50, '50', css('--muted')], [OSC_LO, '低點區 10', css('--up')]].forEach(([v, t, c]) => {
     el('line', { x1:m.l, x2:Wd - m.r, y1:y2(v), y2:y2(v), stroke:c, 'stroke-width':v === 50 ? 1 : 1.6, 'stroke-dasharray':v === 50 ? '2 3' : '6 3' }, svg);
     el('text', { x:m.l - 4, y:y2(v) + 4, 'text-anchor':'end', 'font-size':10.5, fill:c }, svg, v === 50 ? '50' : String(v)); });
+  // K1 原版的超買 80／超賣 20（點狀線）
+  [[80, '#FF5252'], [20, '#18FFFF']].forEach(([v, c]) => { el('line', { x1:m.l, x2:Wd - m.r, y1:y2(v), y2:y2(v), stroke:c, 'stroke-width':1.4, 'stroke-dasharray':'1.5 4', 'stroke-linecap':'round', 'stroke-opacity':.85 }, svg);
+    el('text', { x:m.l - 4, y:y2(v) + 4, 'text-anchor':'end', 'font-size':10.5, fill:c }, svg, String(v)); });
   const K1 = quadK1(H);
-  el('path', { d:idx.filter(i => K1[i] != null).map((i, k) => (k ? 'L' : 'M') + x(idx.indexOf(i)).toFixed(1) + ',' + y2(K1[i]).toFixed(1)).join(''), fill:'none', stroke:'#00E5FF', 'stroke-width':1.6, 'stroke-linejoin':'round', 'stroke-opacity':.95 }, svg);
-  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y2(O[i]).toFixed(1)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':2, 'stroke-linejoin':'round' }, svg);
+  el('path', { d:idx.filter(i => K1[i] != null).map((i, k) => (k ? 'L' : 'M') + x(idx.indexOf(i)).toFixed(1) + ',' + y2(K1[i]).toFixed(1)).join(''), fill:'none', stroke:LS.k1.c, 'stroke-width':LS.k1.w, 'stroke-linejoin':'round', filter:glow }, svg);
+  el('path', { d:idx.map((i, k) => (k ? 'L' : 'M') + x(k).toFixed(1) + ',' + y2(O[i]).toFixed(1)).join(''), fill:'none', stroke:LS.osc.c, 'stroke-width':LS.osc.w, 'stroke-linejoin':'round', filter:glow }, svg);
   idx.forEach((i, k) => { if (sigLo(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:4, fill:css('--up') }, svg); if (sigHi(i)) el('circle', { cx:x(k), cy:y2(O[i]), r:3.5, fill:css('--down') }, svg); });
-  const kL = K - 1; if (LZ.end === 0) el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:css('--curve'), 'stroke-width':2.5 }, svg);
+  const kL = K - 1; if (LZ.end === 0) el('circle', { cx:x(kL), cy:y2(O[idx[kL]]), r:5, fill:css('--panel'), stroke:LS.osc.c, 'stroke-width':2.5 }, svg);
   [0, Math.floor(K / 2), K - 1].forEach((k, j) => el('text', { x:x(k), y:Ht - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, H[idx[k]].lab));
-  legend($('#lgLow'), [['台指期收盤', css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', css('--curve'), 'ln'], ['QUAD-K 快線 K1（下圖）', '#00E5FF', 'ln'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
+  legend($('#lgLow'), [['台指期收盤', LS.px.c || css('--text'), 'ln'], ['GEX 擺盪指標（下圖）', LS.osc.c, 'ln'], ['QUAD-K 快線 K1（下圖）', LS.k1.c, 'ln'], ['K1 超買 80／超賣 20', '#18FFFF', 'dot'], ['高點區 90 以上', css('--down') + '55'], ['低點區 10 以下', css('--up') + '55'], ['低點訊號（低點區往上翻）', css('--up')], ['高點警示（高點區往下翻）', css('--down')]]);
   const tip = $('#tipLow'), hit = el('rect', { x:m.l, y:0, width:iw, height:Ht, fill:'transparent' }, svg);
   hit.addEventListener('pointermove', ev => { const r = svg.getBoundingClientRect(), k = Math.max(0, Math.min(K - 1, Math.floor(((ev.clientX - r.left) * Wd / r.width - m.l) / bw))), i = idx[k], d = H[i];
     tip.innerHTML = `<b>${d.lab}</b>${d.live ? '（盤中）' : ''}　擺盪 <b>${O[i].toFixed(0)}</b>${K1[i] != null ? `　K1 <b style="color:#00E5FF">${K1[i].toFixed(0)}</b>` : ''}<br>台指期 ${fmtInt(d.c)}${fwd(i, 5) != null ? `・之後 5 ${unit} ${pcS(fwd(i, 5))}` : ''}` + (sigLo(i) ? '<br><b style="color:var(--up)">低點訊號</b>' : sigHi(i) ? '<br><b style="color:var(--down)">高點警示</b>' : '');
@@ -2005,9 +2036,9 @@ function setLive(on){
 }
 $('#liveBtn').onclick = () => setLive(!LIVE.on);
 document.querySelectorAll('#lvSeg button').forEach(b => b.onclick = () => { LV.tf = b.dataset.tf; store.set('txo.lvTf', LV.tf); drawLevels(); });
-document.querySelectorAll('#lowSeg button').forEach(b => b.onclick = () => { LOWTF = b.dataset.tf; store.set('txo.lowTf', LOWTF); LZ.n = 120; LZ.end = 0; renderLow(); });
+document.querySelectorAll('#lowSeg button').forEach(b => b.onclick = () => { LOWTF = b.dataset.tf; store.set('txo.lowTf', LOWTF); LZ.n = lzDef(); LZ.end = 0; renderLow(); });
 bindLowZoom($('#svgLow'));
-$('#lzIn').onclick = () => lzZoom(1 / 1.4); $('#lzOut').onclick = () => lzZoom(1.4); $('#lzReset').onclick = () => { LZ.n = 120; LZ.end = 0; renderLow(); };
+$('#lzIn').onclick = () => lzZoom(1 / 1.4); $('#lzOut').onclick = () => lzZoom(1.4); $('#lzReset').onclick = () => { LZ.n = lzDef(); LZ.end = 0; renderLow(); };
 ['#svgGex', '#svgCurve', '#svgDist'].forEach(id => bindZoom($(id)));
 $('#gsAdv').addEventListener('toggle', () => { if ($('#gsAdv').open) renderGS(); });
 $('#zIn').onclick = () => zoomBy(1 / 1.4); $('#zOut').onclick = () => zoomBy(1.4);
