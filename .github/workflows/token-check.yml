@@ -17,16 +17,24 @@ jobs:
           t = os.environ.get('T', '')
           def get(url):
               try:
-                  with urllib.request.urlopen(url, timeout=30) as r: return r.status, r.read().decode()[:600]
+                  with urllib.request.urlopen(url, timeout=30) as r: b = r.read().decode(); return r.status, (b[:250] + ' ... ' + b[-250:] + ' len=' + str(len(b)))
               except urllib.error.HTTPError as e: return e.code, e.read().decode()[:600]
               except Exception as e: return 0, str(e)[:300]
+          import datetime
+          td = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
+          D = 'https://api.finmindtrade.com/api/v4/data?'
           for name, url in [
               ('user_info', 'https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': t})),
-              ('data', 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode({'dataset': 'TaiwanStockInfo', 'token': t})),
-              ('data_no_token', 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode({'dataset': 'TaiwanStockPrice', 'data_id': '2330', 'start_date': '2026-10-01'})),
+              ('futK_today', D + urllib.parse.urlencode({'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': td, 'token': t})),
+              ('idx5s_today', D + urllib.parse.urlencode({'dataset': 'TaiwanVariousIndicators5Seconds', 'start_date': td, 'token': t})),
+              ('taiexK_today', D + urllib.parse.urlencode({'dataset': 'TaiwanStockKBar', 'data_id': 'TAIEX', 'start_date': td, 'token': t})),
+              ('fut_snap', 'https://api.finmindtrade.com/api/v4/taiwan_futures_snapshot?' + urllib.parse.urlencode({'data_id': 'TXF', 'token': t})),
           ]:
               st, body = get(url)
-              print(name, st, body.replace(t, '***')[:400] if t else body[:400])
+              try:
+                  j = json.loads(body if len(body) < 600 else '{}')
+              except Exception: j = {}
+              print(name, st, body.replace(t, '***')[:700] if t else body[:700])
           PY
           cat out/log.txt | sed 's/[A-Za-z0-9._-]\{40,\}/***/g'
       - name: 保存結果
