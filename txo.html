@@ -1200,13 +1200,13 @@ async function heatPrices(){
     const bars = intradayBars(list, per, sym, 5, true, d0).filter(b => b.time >= tl.cols[0]);
     HEAT.k = { key, at:Date.now(), bars };
   }
-  // 加權指數（5 秒資料彙整成 5 分鐘）：只有日盤有指數
+  // 加權指數（1 分 K 彙整成 5 分鐘）：只有日盤有指數
   if (HEAT.idxOK && tl.nextTD <= twToday() && (!HEAT.idx || HEAT.idx.d !== tl.nextTD || (tl.nextTD === twToday() && Date.now() - HEAT.idx.at > 120000))){
     try {
-      const prm = { dataset:'TaiwanVariousIndicators5Seconds', start_date:tl.nextTD }; qCache.delete(JSON.stringify(prm));
+      const prm = { dataset:'TaiwanStockKBar', data_id:'TAIEX', start_date:tl.nextTD, end_date:tl.nextTD }; qCache.delete(JSON.stringify(prm));
       const rows = await finmind(prm), m = new Map();
-      for (const r of rows){ const ts = String(r.date || ''); if (!ts.startsWith(tl.nextTD) || !(+r.TAIEX > 0)) continue;
-        const h = +ts.slice(11, 13), mi = +ts.slice(14, 16), t = utcSec(tl.nextTD, h, Math.floor(mi / 5) * 5); m.set(t, +r.TAIEX); }
+      for (const r of rows){ if (r.date !== tl.nextTD || !(+r.close > 0)) continue; const mm = String(r.minute || '');
+        const h = +mm.slice(0, 2), mi = +mm.slice(3, 5), t = utcSec(tl.nextTD, h, Math.floor(mi / 5) * 5); m.set(t, +r.close); }
       HEAT.idx = { d:tl.nextTD, at:Date.now(), pts:[...m].sort((a, b) => a[0] - b[0]).map(([time, close]) => ({ time, close })) };
     } catch(e){ HEAT.idxOK = !/level|sponsor|權限|會員/i.test(e.message); HEAT.idx = { d:tl.nextTD, at:Date.now(), pts:[] }; }
   }
