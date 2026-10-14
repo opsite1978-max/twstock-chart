@@ -112,7 +112,7 @@
       <p class="note" id="noteW"></p>
     </section>
 
-    <p class="note">說明：期交所沒有公布「主力」是誰，這一頁用公開資料推估。前十大交易人成本是用每天淨部位增減乘上當天均價估算；權值股貢獻＝權重 × 漲跌幅 × 指數。這些都是觀察工具，不是投資建議。</p>
+    <p class="note">說明：期交所沒有公布「主力」是誰，這一頁用公開資料推估。主力成本是用法人實際成交均價和每天部位增減推估，真正的成本只有主力自己知道；權值股貢獻＝權重 × 漲跌幅 × 指數。這些都是觀察工具，不是投資建議。</p>
   </div>
 </main>
 <script>
@@ -284,7 +284,7 @@ function render(){
     else if (dL < 0 && dS >= 0) say = `多方被套、空方獲利：反彈到 ${fmt(cL)} 附近多單容易解套賣出；再往下跌，多單停損容易加速下跌（多殺多）。`;
     else if (dL >= 0 && dS >= 0) say = `多空都有獲利，價格夾在兩邊成本 ${fmt(Math.min(cL, cS))}～${fmt(Math.max(cL, cS))} 之間，是雙方都能接受的區間；突破任何一邊才會有一方開始痛。`;
     else say = `多空都被套，價格在兩邊成本之間，往任何一邊突破都可能引發另一方停損。`;
-    if (cL && cS) items.push(['前十大', dL >= 0 ? css('--up') : css('--down'), `前十大交易人多單 ${fmt(L.tL)} 口、本月帳面成本約 <b>${fmt(cL)}</b>（${pl(dL)}）；空單 ${fmt(L.tS)} 口、成本約 <b>${fmt(cS)}</b>（${pl(dS)}）；淨部位 ${sgn(L.t10)} 口。${say}`]); }
+    if (cL && cS) items.push(['前十大', dL >= 0 ? css('--up') : css('--down'), `前十大交易人多單 ${fmt(L.tL)} 口、本月帳面成本約 <b>${fmt(cL)}</b>（${pl(dL)}）；空單 ${fmt(L.tS)} 口、成本約 <b>${fmt(cS)}</b>（${pl(dS)}）；淨部位 ${sgn(L.t10)} 口。${say}` + (Math.abs(L.t10) < 0.1 * Math.max(L.tL, L.tS) ? `不過多空口數幾乎一樣，很多是同一批人一邊做多、一邊做空（鎖價差），帳面盈虧大多互相抵銷，真正的方向要看淨部位。` : '')]); }
   if (A.cfi.cost) { const d = A.cfi.net >= 0 ? L.c - A.cfi.cost : A.cfi.cost - L.c;
     items.push(['外資', css('--gold'), `外資台指期淨${A.cfi.net >= 0 ? '多' : '空'} ${fmt(Math.abs(A.cfi.net))} 口，本月帳面成本約 <b>${fmt(A.cfi.cost)}</b>（${d >= 0 ? '獲利' : '被套'}約 ${fmt(Math.abs(d))} 點）。` + (A.cfi.net < 0 ? '外資的台指期空單很多是用來避險手上的現股，被套不一定會回補，參考性比前十大低。' : '')]); }
   const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
@@ -332,7 +332,7 @@ function drawMain(){
   [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
   legend('#lgMain', [['控盤區（多個價位重疊）', css('--gold') + '55', 'bar'], ['前十大多單成本', css('--cost')], ['前十大空單成本', css('--scost')], ['外資成本', css('--gold')], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['最大痛點', css('--pain'), 'dash'], ['翻轉點', css('--flip'), 'dash']]);
   hoverDays(svg, $('#tipMain'), f, R, x, r => `<b>${md(r.d)}</b>　台指期 ${fmt(r.c)}・成交均價 ${fmt(r.vw)}<br>前十大成本：多 ${fmt(r.cTL)}／空 ${fmt(r.cTS)}・外資成本 ${fmt(r.cFI)}<br>前十大淨 ${sgn(r.t10)} 口（近月 ${sgn(r.t10n)}／遠月 ${sgn(r.t10f)}）<br>外資淨 ${sgn(r.fi)} 口・遠近月價差 ${sgn(r.sp)}`);
-  $('#noteMain').textContent = '金色帶＝前十大交易人成本、外資成本、選擇權看漲牆／看跌牆、最大痛點、Gamma 翻轉點之中，有兩個以上價位相距 0.6% 以內的地方；主力的部位成本和選擇權賣方的防守價位重疊，最可能是想守住或想壓住的位置。';
+  $('#noteMain').textContent = '三條彩色曲線是每天的主力帳面成本：用期交所公布的三大法人每天實際成交金額 ÷ 口數（含夜盤）當作當天成交均價，部位增加的口數用這個價格加進去，部位減少不改變成本；每月結算日到期部位會轉到次月，成本改用次月價格重新起算。前十大多單、空單分開算，外資用淨部位算。金色帶＝這些成本和選擇權看漲牆／看跌牆、最大痛點、翻轉點之中，兩個以上價位相距 0.6% 以內的地方。回測 2025 年以來，價格碰到成本線後當天守住的比例約四成，和 20 日均線（約四成）差不多，請當參考區，不要當成一定會守的價位。';
 }
 function hoverDays(svg, tip, f, R, x, html){
   const cross = el('line', { y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 2', visibility:'hidden' }, svg), bw = f.iw / R.length;
