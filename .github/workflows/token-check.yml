@@ -7,7 +7,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: 成本估算比較
+        env:
+          T: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out
+          python3 scripts/costeval.py > out/cost.txt 2>&1 || true
+          sed -i "s/$T/***/g" out/cost.txt
       - name: 查詢憑證狀態（只記錄狀態，不記錄憑證）
+        if: false
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
