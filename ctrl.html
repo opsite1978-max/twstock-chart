@@ -12,12 +12,12 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
-    --up:#ef5350; --down:#26a69a; --call:#3987e5; --put:#d95926; --pain:#199e70; --curve:#9085e9; --gold:#ffca28; --cost:#ff9100; --flip:#a7afc0;
+    --up:#ef5350; --down:#26a69a; --call:#3987e5; --put:#d95926; --pain:#199e70; --curve:#9085e9; --gold:#ffca28; --cost:#ff9100; --scost:#f06292; --flip:#a7afc0;
     color-scheme:dark;
   }
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
-    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --curve:#6250d6; --gold:#b98900; --cost:#e65100; --flip:#52514e;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --call:#2a78d6; --put:#eb6834; --pain:#1baf7a; --curve:#6250d6; --gold:#b98900; --cost:#e65100; --scost:#c2185b; --flip:#52514e;
     color-scheme:light;
   }
   *{box-sizing:border-box}
@@ -156,11 +156,12 @@ async function load(){
   try {
     const today = twToday(), start = shiftDay(today, -150);
     setStatus('讀取台指期、前十大交易人、法人、權值股…');
-    const [tx, lt, inst, info] = await Promise.all([
+    const [tx, lt, inst, info, instAH] = await Promise.all([
       data({ dataset:'TaiwanFuturesDaily', data_id:'TX', start_date:start }),
       data({ dataset:'TaiwanFuturesOpenInterestLargeTraders', data_id:'TX', start_date:start }),
       data({ dataset:'TaiwanFuturesInstitutionalInvestors', data_id:'TX', start_date:start }).catch(() => []),
       data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => []),
+      data({ dataset:'TaiwanFuturesInstitutionalInvestorsAfterHours', data_id:'TX', start_date:start }).catch(() => []),
     ]);
     let mvw = [];
     // 上市權重每月底公布一次，而且全市場查詢一次只能查一天：從上個月底往回找
@@ -187,12 +188,20 @@ async function load(){
       e[r.contract_type === 'all' ? 'all' : r.contract_type === 'week' ? 'week' : 'm' + r.contract_type] = r; }
     const net = (r, k) => r ? (r['buy_' + k + '_open_interest'] || 0) - (r['sell_' + k + '_open_interest'] || 0) : null;
     for (const r of rows){ const e = ltm.get(r.d); if (!e) continue;
-      r.t10 = net(e.all, 'top10_trader'); r.t5 = net(e.all, 'top5_trader'); r.s10 = net(e.all, 'top10_specific');
+      r.t10 = net(e.all, 'top10_trader'); r.tL = e.all ? +e.all.buy_top10_trader_open_interest || 0 : null; r.tS = e.all ? +e.all.sell_top10_trader_open_interest || 0 : null; r.t5 = net(e.all, 'top5_trader'); r.s10 = net(e.all, 'top10_specific');
       const nm = e['m' + r.near]; r.t10n = nm ? net(nm, 'top10_trader') : null; r.t5n = nm ? net(nm, 'top5_trader') : null;
       const wk = e.week ? net(e.week, 'top10_trader') : 0; r.t10f = r.t10 != null && r.t10n != null ? r.t10 - r.t10n - wk : null; }
     // 外資台指期淨未平倉
     const fi = new Map(); for (const r of inst) if (r.institutional_investors === '外資') fi.set(r.date, (r.long_open_interest_balance_volume || 0) - (r.short_open_interest_balance_volume || 0));
     rows.forEach(r => r.fi = fi.has(r.d) ? fi.get(r.d) : null);
+    // 每天真正的成交均價：三大法人公布的成交金額 ÷ 口數（日盤＋夜盤；金額單位千元，台指期每點 200 元）
+    const dl = new Map();
+    for (const r of inst.concat(instAH || [])){ let e = dl.get(r.date); if (!e){ e = { va:0, vq:0, ba:0, bq:0, sa:0, sq:0 }; dl.set(r.date, e); }
+      e.va += (+r.long_deal_amount || 0) + (+r.short_deal_amount || 0); e.vq += (+r.long_deal_volume || 0) + (+r.short_deal_volume || 0);
+      if (r.institutional_investors === '外資'){ e.ba += +r.long_deal_amount || 0; e.bq += +r.long_deal_volume || 0; e.sa += +r.short_deal_amount || 0; e.sq += +r.short_deal_volume || 0; } }
+    rows.forEach(r => { const e = dl.get(r.d), typ = (r.h + r.l + r.c) / 3, ok = v => v > r.l * 0.97 && v < r.h * 1.03;
+      r.vw = e && e.vq && ok(e.va * 5 / e.vq) ? e.va * 5 / e.vq : typ; r.pb = e && e.bq && ok(e.ba * 5 / e.bq) ? e.ba * 5 / e.bq : r.vw; r.ps = e && e.sq && ok(e.sa * 5 / e.sq) ? e.sa * 5 / e.sq : r.vw; });
+    costSeries(rows, 'fi', 'pb', 'ps', 'cFI'); costSeries(rows, 'tL', 'vw', 'vw', 'cTL'); costSeries(rows, 'tS', 'vw', 'vw', 'cTS');
     // ── 權值股（前 10 大）與個股期貨 ──
     const futOf = new Map(); for (const r of info) if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) futOf.set(r.name.replace(/期貨$/, ''), r.code);
     const top = mvw.sort((a, b) => b.weight_per - a.weight_per).slice(0, 10).map(r => ({ id:r.stock_id, name:r.stock_name, w:+r.weight_per, fut:futOf.get(r.stock_name) || null }));
@@ -225,12 +234,25 @@ function costOf(rows, key){
     prev = n; }
   return { cost, net:prev };
 }
+function costSeries(R, key, kb, ks, out){
+  // 平均成本法：部位增加的口數用當天成交均價加進去，部位減少不改變成本；方向翻轉就重新起算。
+  // 每月結算日：到期的部位會轉到次月，帳面成本換成次月價格，所以結算日把成本重設成次月收盤價。
+  let prev = null, cost = null;
+  for (const r of R){ const q = r[key];
+    if (q != null){ const b = r[kb], s = r[ks];
+      if (prev == null || prev === 0 || cost == null || (q > 0) !== (prev > 0)) cost = q > 0 ? b : s;
+      else if (Math.abs(q) > Math.abs(prev)) cost = (Math.abs(prev) * cost + Math.abs(q - prev) * (q > prev ? b : s)) / Math.abs(q);
+      if (r.d === r.exp && r.fc > 0) cost = r.fc;
+      prev = q; }
+    r[out] = cost; }
+}
 function analyse(){
   const R = D.rows, L = R[R.length - 1], H = D.hist, h = H.length ? H[H.length - 1] : null;
-  const c10 = costOf(R, 't10'), cF = costOf(R, 't10f'), cfi = costOf(R, 'fi');
+  const c10 = { net:L.t10 }, cfi = { cost:L.cFI, net:L.fi };
   const lv = [];
-  if (c10.cost) lv.push({ p:c10.cost, t:`前十大${c10.net >= 0 ? '多單' : '空單'}成本`, k:c10.net >= 0 ? 'sup' : 'res', col:css('--cost') });
-  if (cfi.cost) lv.push({ p:cfi.cost, t:`外資${cfi.net >= 0 ? '多單' : '空單'}成本`, k:cfi.net >= 0 ? 'sup' : 'res', col:css('--gold') });
+  if (L.cTL) lv.push({ p:L.cTL, t:'前十大多單成本', k:'sup', col:css('--cost'), ser:'cTL' });
+  if (L.cTS) lv.push({ p:L.cTS, t:'前十大空單成本', k:'res', col:css('--scost'), ser:'cTS' });
+  if (cfi.cost) lv.push({ p:cfi.cost, t:`外資${cfi.net >= 0 ? '多單' : '空單'}成本`, k:cfi.net >= 0 ? 'sup' : 'res', col:css('--gold'), ser:'cFI' });
   if (h){ if (h.cw) lv.push({ p:h.cw, t:'選擇權看漲牆', k:'res', col:css('--call') }); if (h.pw) lv.push({ p:h.pw, t:'選擇權看跌牆', k:'sup', col:css('--put') });
     if (h.pain) lv.push({ p:h.pain, t:'最大痛點（結算目標）', k:'tgt', col:css('--pain') }); if (h.flip) lv.push({ p:h.flip, t:'Gamma 翻轉點', k:'flip', col:css('--flip') }); }
   // 控盤區：兩個以上價位相距 0.6% 以內就合成一區
@@ -243,7 +265,7 @@ function analyse(){
   const T = D.top.filter(t => t.r5 != null), idx = L.c, contrib = T.map(t => ({ t, pts:t.w / 100 * t.r5 / 100 * idx }));
   const push = contrib.reduce((a, x) => a + x.pts, 0), idx5 = R.length > 5 ? L.c - R[R.length - 6].c : null;
   const futAdd = T.filter(t => t.doi != null).reduce((a, t) => a + Math.sign(t.doi) * t.w, 0);
-  return { L, h, c10, cF, cfi, lv, cz, m20, sd20, z, contrib, push, idx5, futAdd };
+  return { L, h, c10, cfi, lv, cz, m20, sd20, z, contrib, push, idx5, futAdd };
 }
 
 /* ───────── 畫面 ───────── */
@@ -256,15 +278,22 @@ function render(){
   if (t10n != null && t10f != null && Math.sign(t10n) !== Math.sign(t10f) && Math.min(Math.abs(t10n), Math.abs(t10f)) > 1500) lock = t10n < 0 ? '賣近月、買遠月（鎖價差）' : '買近月、賣遠月（鎖價差）';
   items.push(['遠近月', css('--curve'), `前十大近月淨 ${sgn(t10n)} 口、遠月淨 ${sgn(t10f)} 口：<b>${lock}</b>。遠近月價差 ${sgn(L.sp)} 點，近 20 日平均 ${sgn(A.m20, 0)}（${A.z >= 1 ? '偏寬，遠月相對貴' : A.z <= -1 ? '偏窄，近月相對貴' : '正常'}）。` +
     (lock.startsWith('賣近') ? '鎖住價差的人近月是空單，結算前偏向把近月壓低或不讓它漲太多。' : lock.startsWith('買近') ? '鎖住價差的人近月是多單，結算前偏向把近月撐住。' : '')]);
-  items.push(['前十大', A.c10.net >= 0 ? css('--up') : css('--down'), `前十大交易人全部月份淨 ${sgn(A.c10.net)} 口，估算平均成本 <b>${fmt(A.c10.cost)}</b>（台指期 ${fmt(L.c)}，${L.c >= A.c10.cost ? '高於' : '低於'}成本 ${fmt(Math.abs(L.c - A.c10.cost))} 點）。` +
-    (A.c10.net >= 0 ? (L.c >= A.c10.cost ? '多單有獲利，跌回成本附近通常會護盤。' : '多單被套，反彈到成本附近容易解套賣壓。') : (L.c <= A.c10.cost ? '空單有獲利，漲回成本附近通常會壓盤。' : '空單被套，跌回成本附近容易回補。'))]);
+  { const cL = L.cTL, cS = L.cTS, dL = L.c - cL, dS = cS - L.c, pl = v => v >= 0 ? `獲利約 ${fmt(v)} 點` : `被套約 ${fmt(-v)} 點`;
+    let say = '';
+    if (dL >= 0 && dS < 0) say = `空方被套、多方獲利：再往上漲，空單停損回補容易推升行情（軋空）；跌回 ${fmt(cS)} 附近空方解套，可能出現賣壓。`;
+    else if (dL < 0 && dS >= 0) say = `多方被套、空方獲利：反彈到 ${fmt(cL)} 附近多單容易解套賣出；再往下跌，多單停損容易加速下跌（多殺多）。`;
+    else if (dL >= 0 && dS >= 0) say = `多空都有獲利，價格夾在兩邊成本 ${fmt(Math.min(cL, cS))}～${fmt(Math.max(cL, cS))} 之間，是雙方都能接受的區間；突破任何一邊才會有一方開始痛。`;
+    else say = `多空都被套，價格在兩邊成本之間，往任何一邊突破都可能引發另一方停損。`;
+    if (cL && cS) items.push(['前十大', dL >= 0 ? css('--up') : css('--down'), `前十大交易人多單 ${fmt(L.tL)} 口、本月帳面成本約 <b>${fmt(cL)}</b>（${pl(dL)}）；空單 ${fmt(L.tS)} 口、成本約 <b>${fmt(cS)}</b>（${pl(dS)}）；淨部位 ${sgn(L.t10)} 口。${say}`]); }
+  if (A.cfi.cost) { const d = A.cfi.net >= 0 ? L.c - A.cfi.cost : A.cfi.cost - L.c;
+    items.push(['外資', css('--gold'), `外資台指期淨${A.cfi.net >= 0 ? '多' : '空'} ${fmt(Math.abs(A.cfi.net))} 口，本月帳面成本約 <b>${fmt(A.cfi.cost)}</b>（${d >= 0 ? '獲利' : '被套'}約 ${fmt(Math.abs(d))} 點）。` + (A.cfi.net < 0 ? '外資的台指期空單很多是用來避險手上的現股，被套不一定會回補，參考性比前十大低。' : '')]); }
   const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
   items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）${lead.length ? '。主要推手：' : ''}${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
     `權值股期貨未平倉${A.futAdd > 5 ? '多數在增加，有人透過個股期貨布局權值股' : A.futAdd < -5 ? '多數在減少，權值股期貨部位在退場' : '增減互見'}。`]);
   if (A.cz.length){ const up = A.cz.filter(z => z.side === 'up').sort((a, b) => a.mid - b.mid)[0], dn = A.cz.filter(z => z.side === 'dn').sort((a, b) => b.mid - a.mid)[0];
     items.push(['控盤區', css('--gold'), (up ? `上方 <b>${fmt(up.lo)}～${fmt(up.hi)}</b>（${up.items.map(i => i.t).join('、')}）` : '') + (up && dn ? '；' : '') + (dn ? `下方 <b>${fmt(dn.lo)}～${fmt(dn.hi)}</b>（${dn.items.map(i => i.t).join('、')}）` : '') + '：多個主力相關價位重疊，最可能是想守或想壓的位置。']); }
   if (A.h && A.h.pain) items.push(['結算目標', css('--pain'), `近月結算日 ${md(L.exp)}；選擇權最大痛點 ${fmt(A.h.pain)}（離台指期 ${sgn(A.h.pain - L.c, 0)} 點）。賣方主力最希望結算在這附近，但歷史上最大痛點的命中率不高，只當參考。`]);
-  const bull = (A.c10.net > 0 ? 1 : -1) + (A.push > 0 ? 1 : -1) + (lock.startsWith('買近') ? 1 : lock.startsWith('賣近') ? -1 : 0);
+  const bull = (Math.abs(A.c10.net) > 3000 ? Math.sign(A.c10.net) : 0) + (A.push > 0 ? 1 : -1) + (lock.startsWith('買近') ? 1 : lock.startsWith('賣近') ? -1 : 0);
   const tag = bull >= 2 ? ['主力偏多控盤', css('--up')] : bull <= -2 ? ['主力偏空控盤', css('--down')] : ['主力多空拉鋸', css('--gold')];
   $('#sum').innerHTML = `<div class="hd"><span class="big" style="border-color:${tag[1]};color:${tag[1]}">${tag[0]}</span><span class="muted">${md(L.d)} 收盤・台指期近月 ${fmt(L.c)}</span></div>` +
     items.map(([t, c, d]) => `<div class="it"><span class="bd" style="border-color:${c}">${t}</span><span>${d}</span></div>`).join('');
@@ -276,7 +305,7 @@ function drawMain(){
   const short = t => nar ? t.replace('選擇權', '').replace('（結算目標）', '').replace('Gamma ', '').replace('前十大多單成本', '前十大成本').replace('前十大空單成本', '前十大成本').replace('外資多單成本', '外資成本').replace('外資空單成本', '外資成本') : t;
   const labT = l => `${short(l.t)} ${fmt(l.p)}`, gw = Math.min(nar ? 118 : 190, Math.max(...A.lv.map(l => [...labT(l)].reduce((a, ch) => a + (ch.charCodeAt(0) > 255 ? 11.5 : 6.6), 0))) + 14);
   const f = frame(svg, nar ? 380 : 460, { l:nar ? 44 : 56, r:gw + 10, t:10, b:24 });
-  const all = R.flatMap(r => [r.h, r.l]).concat(A.lv.map(x => x.p)), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.05;
+  const all = R.flatMap(r => [r.h, r.l, ...A.lv.filter(x => x.ser && r[x.ser]).map(x => r[x.ser])]).concat(A.lv.map(x => x.p)), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.05;
   const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih, bw = f.iw / R.length;
   for (const t of ticks(lo - pad, hi + pad, 7)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
   // 控盤區（金色帶）
@@ -294,13 +323,15 @@ function drawMain(){
   for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 17) labs[k].y = labs[k - 1].y + 17;
   const ov = labs.length ? labs[labs.length - 1].y - (f.H - 4) : 0; if (ov > 0) labs.forEach(o => o.y -= ov);
   for (const { l, y:ly } of labs){
-    if (!l.last) el('line', { x1:f.m.l, x2:lx, y1:y(l.p), y2:y(l.p), stroke:l.col, 'stroke-width':1.6, 'stroke-dasharray':l.k === 'tgt' ? '2 3' : l.k === 'flip' ? '6 3' : null, 'stroke-opacity':.9 }, svg);
+    if (l.ser){ const pts = R.map((r, i) => r[l.ser] ? [x(i), y(r[l.ser])] : null).filter(Boolean);
+      el('path', { d:pts.map((q, k) => (k ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join('') + `L${lx},${y(l.p)}`, fill:'none', stroke:l.col, 'stroke-width':2, 'stroke-linejoin':'round' }, svg); }
+    else if (!l.last) el('line', { x1:f.m.l, x2:lx, y1:y(l.p), y2:y(l.p), stroke:l.col, 'stroke-width':1.6, 'stroke-dasharray':l.k === 'tgt' ? '2 3' : l.k === 'flip' ? '6 3' : null, 'stroke-opacity':.9 }, svg);
     el('path', { d:`M${lx},${y(l.p)} L${lx + 6},${ly}`, stroke:l.col, fill:'none', 'stroke-width':1.2 }, svg);
     el('rect', { x:lx + 6, y:ly - 9, width:gw, height:17, rx:3, fill:l.last ? l.col : css('--panel'), stroke:l.col }, svg);
     el('text', { x:lx + 6 + gw / 2, y:ly + 4, 'text-anchor':'middle', 'font-size':nar ? 10.5 : 11.5, 'font-weight':l.last ? 800 : 600, fill:l.last ? '#fff' : css('--text') }, svg, labT(l)); }
   [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
-  legend('#lgMain', [['控盤區（多個價位重疊）', css('--gold') + '55', 'bar'], ['前十大成本', css('--cost')], ['外資成本', css('--gold')], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['最大痛點', css('--pain'), 'dash'], ['翻轉點', css('--flip'), 'dash']]);
-  hoverDays(svg, $('#tipMain'), f, R, x, r => `<b>${md(r.d)}</b>　台指期 ${fmt(r.c)}<br>前十大淨 ${sgn(r.t10)} 口（近月 ${sgn(r.t10n)}／遠月 ${sgn(r.t10f)}）<br>外資淨 ${sgn(r.fi)} 口・遠近月價差 ${sgn(r.sp)}`);
+  legend('#lgMain', [['控盤區（多個價位重疊）', css('--gold') + '55', 'bar'], ['前十大多單成本', css('--cost')], ['前十大空單成本', css('--scost')], ['外資成本', css('--gold')], ['看漲牆', css('--call')], ['看跌牆', css('--put')], ['最大痛點', css('--pain'), 'dash'], ['翻轉點', css('--flip'), 'dash']]);
+  hoverDays(svg, $('#tipMain'), f, R, x, r => `<b>${md(r.d)}</b>　台指期 ${fmt(r.c)}・成交均價 ${fmt(r.vw)}<br>前十大成本：多 ${fmt(r.cTL)}／空 ${fmt(r.cTS)}・外資成本 ${fmt(r.cFI)}<br>前十大淨 ${sgn(r.t10)} 口（近月 ${sgn(r.t10n)}／遠月 ${sgn(r.t10f)}）<br>外資淨 ${sgn(r.fi)} 口・遠近月價差 ${sgn(r.sp)}`);
   $('#noteMain').textContent = '金色帶＝前十大交易人成本、外資成本、選擇權看漲牆／看跌牆、最大痛點、Gamma 翻轉點之中，有兩個以上價位相距 0.6% 以內的地方；主力的部位成本和選擇權賣方的防守價位重疊，最可能是想守住或想壓住的位置。';
 }
 function hoverDays(svg, tip, f, R, x, html){
