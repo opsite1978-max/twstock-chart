@@ -162,7 +162,8 @@ async function load(){
       data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => []),
     ]);
     let mvw = [];
-    for (let k = 0; k < 6 && !mvw.length; k++){ const d = shiftDay(today, -k); mvw = (await data({ dataset:'TaiwanStockMarketValueWeight', start_date:d, end_date:d }).catch(() => [])).filter(r => r.type === 'twse'); }
+    { const all = (await data({ dataset:'TaiwanStockMarketValueWeight', start_date:shiftDay(today, -70) }).catch(() => [])).filter(r => r.type === 'twse');   // 上市權重每月底公布一次
+      const last = all.reduce((m, r) => r.date > m ? r.date : m, ''); mvw = all.filter(r => r.date === last); }
     const hist = await fetch('data/txo/history.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
     // ── 台指期：每天近月、次月（日盤）──
     const byDay = new Map();
@@ -253,7 +254,7 @@ function render(){
   items.push(['前十大', A.c10.net >= 0 ? css('--up') : css('--down'), `前十大交易人全部月份淨 ${sgn(A.c10.net)} 口，估算平均成本 <b>${fmt(A.c10.cost)}</b>（台指期 ${fmt(L.c)}，${L.c >= A.c10.cost ? '高於' : '低於'}成本 ${fmt(Math.abs(L.c - A.c10.cost))} 點）。` +
     (A.c10.net >= 0 ? (L.c >= A.c10.cost ? '多單有獲利，跌回成本附近通常會護盤。' : '多單被套，反彈到成本附近容易解套賣壓。') : (L.c <= A.c10.cost ? '空單有獲利，漲回成本附近通常會壓盤。' : '空單被套，跌回成本附近容易回補。'))]);
   const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
-  items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）。主要推手：${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
+  items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）${lead.length ? '。主要推手：' : ''}${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
     `權值股期貨未平倉${A.futAdd > 5 ? '多數在增加，有人透過個股期貨布局權值股' : A.futAdd < -5 ? '多數在減少，權值股期貨部位在退場' : '增減互見'}。`]);
   if (A.cz.length){ const up = A.cz.filter(z => z.side === 'up').sort((a, b) => a.mid - b.mid)[0], dn = A.cz.filter(z => z.side === 'dn').sort((a, b) => b.mid - a.mid)[0];
     items.push(['控盤區', css('--gold'), (up ? `上方 <b>${fmt(up.lo)}～${fmt(up.hi)}</b>（${up.items.map(i => i.t).join('、')}）` : '') + (up && dn ? '；' : '') + (dn ? `下方 <b>${fmt(dn.lo)}～${fmt(dn.hi)}</b>（${dn.items.map(i => i.t).join('、')}）` : '') + '：多個主力相關價位重疊，最可能是想守或想壓的位置。']); }
@@ -338,7 +339,7 @@ function drawW(){
   legend('#lgW', [['推升指數', css('--up'), 'bar'], ['壓低指數', css('--down'), 'bar']]);
   $('#tblW').innerHTML = '<table><thead><tr><th>權值股</th><th>權重</th><th>5 日</th><th>股期</th><th>未平倉 5 日</th><th>期現價差</th></tr></thead><tbody>' +
     D.top.map(t => `<tr><td>${t.id} ${esc(t.name)}</td><td>${t.w.toFixed(2)}%</td><td class="${t.r5 >= 0 ? 'up' : 'dn'}">${pc(t.r5, 1)}</td><td>${t.fut || '–'}</td><td class="${t.doi > 0 ? 'up' : t.doi < 0 ? 'dn' : ''}">${t.doi == null ? '–' : sgn(t.doi) + ' 口'}</td><td>${pc(t.basis, 2)}</td></tr>`).join('') + '</tbody></table>';
-  $('#noteW').textContent = `前 10 大權值股合計占加權指數約 ${fmt(D.top.reduce((a, t) => a + t.w, 0), 1)}%（權重日期 ${D.mvwDate ? md(D.mvwDate) : '–'}）。近 5 日合計貢獻 ${sgn(A.push, 0)} 點。個股期貨未平倉增加、而且期貨比現股貴（正價差），常見有人用個股期貨布局權值股來帶動指數；未平倉減少代表這些部位在退場。`;
+  $('#noteW').textContent = `前 10 大權值股合計占加權指數約 ${fmt(D.top.reduce((a, t) => a + t.w, 0), 1)}%（權重為 ${D.mvwDate ? md(D.mvwDate) : '–'} 月底公布值）。近 5 日合計貢獻 ${sgn(A.push, 0)} 點。個股期貨未平倉增加、而且期貨比現股貴（正價差），常見有人用個股期貨布局權值股來帶動指數；未平倉減少代表這些部位在退場。`;
 }
 let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D && D.A) { drawMain(); drawSpread(); drawLT(); drawW(); } }, 200); });
 load();
