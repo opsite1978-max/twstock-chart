@@ -24,7 +24,8 @@ P = []
 for d in days:
     l = sorted([r for r in by[d] if exp_of(r['c']) >= d], key=lambda r: r['c'])
     if not l: continue
-    n = l[0]; P.append(dict(d=d, o=n['open'], h=n['max'], l=n['min'], c=n['close'], exp=exp_of(n['c']), stl=n.get('settlement_price') or n['close']))
+    if len(l) < 2: continue
+    n = l[0]; P.append(dict(d=d, o=n['open'], h=n['max'], l=n['min'], c=n['close'], exp=exp_of(n['c']), stl=l[1]['close']))
 idx = {p['d']: i for i, p in enumerate(P)}
 
 # 法人成交（日盤＋夜盤，夜盤日期＝下一個交易日）
@@ -104,22 +105,12 @@ def evaluate(lv, start=60):
 C = P[-1]['c']
 cl = [p['c'] for p in P]
 series = {
-  '外資 舊法(高低收均價,平均成本)': cost_series('fi', 'typ', 'typ'),
-  '外資 實際成交價,平均成本': cost_series('fi', 'pb', 'ps'),
-  '外資 實際成交價,先進先出': cost_series('fi', 'pb', 'ps', 'fifo'),
-  '外資 實際成交價,平均成本,結算重設': cost_series('fi', 'pb', 'ps', 'avg', True),
-  '外資 實際成交價,先進先出,結算重設': cost_series('fi', 'pb', 'ps', 'fifo', True),
+  '外資 網頁新法': cost_series('fi', 'pb', 'ps', 'avg', True),
+  '前十大多單 網頁新法': cost_series('tL', 'vw', 'vw', 'avg', True),
+  '前十大空單 網頁新法': cost_series('tS', 'vw', 'vw', 'avg', True),
+  '外資 舊法(高低收均價,不重設)': cost_series('fi', 'typ', 'typ'),
   '前十大淨 舊法': cost_series('t10', 'typ', 'typ'),
-  '前十大淨 成交均價,平均成本': cost_series('t10', 'vw', 'vw'),
-  '前十大淨 成交均價,先進先出': cost_series('t10', 'vw', 'vw', 'fifo'),
-  '前十大淨 成交均價,結算重設': cost_series('t10', 'vw', 'vw', 'avg', True),
-  '前十大多單 成交均價,平均成本': cost_series('tL', 'vw', 'vw'),
-  '前十大多單 先進先出': cost_series('tL', 'vw', 'vw', 'fifo'),
-  '前十大多單 結算重設': cost_series('tL', 'vw', 'vw', 'avg', True),
-  '前十大空單 成交均價,平均成本': cost_series('tS', 'vw', 'vw'),
-  '前十大空單 先進先出': cost_series('tS', 'vw', 'vw', 'fifo'),
-  '前十大空單 結算重設': cost_series('tS', 'vw', 'vw', 'avg', True),
-  '對照 20日均線': sma(cl, 20), '對照 60日均線': sma(cl, 60), '對照 10日均線': sma(cl, 10),
+  '對照 20日均線': sma(cl, 20), '對照 10日均線': sma(cl, 10),
 }
 print('\nlast day', P[-1]['d'], 'close', C, 'foreign net', P[-1]['fi'], 'top10 net', P[-1]['t10'], 'L', P[-1]['tL'], 'S', P[-1]['tS'])
 for k, v in series.items():
@@ -128,7 +119,7 @@ for k, v in series.items():
     print('   level    ', evaluate(v)); print('   +1.5%    ', evaluate(s1)); print('   -1.5%    ', evaluate(s2))
 # 最近 30 天的每日數值
 print('\nrecent daily')
-keys = ['外資 實際成交價,平均成本', '外資 實際成交價,先進先出,結算重設', '前十大多單 先進先出', '前十大空單 先進先出', '前十大淨 成交均價,先進先出']
-for i in range(len(P) - 25, len(P)):
+keys = ['外資 網頁新法', '前十大多單 網頁新法', '前十大空單 網頁新法']
+for i in range(len(P) - 12, len(P)):
     p = P[i]
     print(p['d'], f"c={p['c']:.0f} vw={p['vw']:.0f} pb={p['pb']:.0f} ps={p['ps']:.0f} fi={p['fi']} L={p['tL']} S={p['tS']}", ' '.join(f"{series[k][i]:.0f}" if series[k][i] else '-' for k in keys))
