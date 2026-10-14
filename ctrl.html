@@ -290,8 +290,8 @@ function render(){
   const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
   items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）${lead.length ? '。主要推手：' : ''}${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
     `權值股期貨未平倉${A.futAdd > 5 ? '多數在增加，有人透過個股期貨布局權值股' : A.futAdd < -5 ? '多數在減少，權值股期貨部位在退場' : '增減互見'}。`]);
-  if (A.cz.length){ const up = A.cz.filter(z => z.side === 'up').sort((a, b) => a.mid - b.mid)[0], dn = A.cz.filter(z => z.side === 'dn').sort((a, b) => b.mid - a.mid)[0];
-    items.push(['控盤區', css('--gold'), (up ? `上方 <b>${fmt(up.lo)}～${fmt(up.hi)}</b>（${up.items.map(i => i.t).join('、')}）` : '') + (up && dn ? '；' : '') + (dn ? `下方 <b>${fmt(dn.lo)}～${fmt(dn.hi)}</b>（${dn.items.map(i => i.t).join('、')}）` : '') + '：多個主力相關價位重疊，最可能是想守或想壓的位置。']); }
+  if (A.cz.length){ const zs = [...A.cz].sort((a, b) => Math.abs(a.mid - L.c) - Math.abs(b.mid - L.c));
+    items.push(['控盤區', css('--gold'), zs.map(z => `${z.side === 'up' ? '上方' : '下方'} <b>${fmt(z.lo)}～${fmt(z.hi)}</b>（${z.items.map(i => i.t).join('、')}）`).join('；') + '：多個主力相關價位重疊，最可能是想守或想壓的位置，離現價越近越重要。']); }
   if (A.h && A.h.pain) items.push(['結算目標', css('--pain'), `近月結算日 ${md(L.exp)}；選擇權最大痛點 ${fmt(A.h.pain)}（離台指期 ${sgn(A.h.pain - L.c, 0)} 點）。賣方主力最希望結算在這附近，但歷史上最大痛點的命中率不高，只當參考。`]);
   const bull = (Math.abs(A.c10.net) > 3000 ? Math.sign(A.c10.net) : 0) + (A.push > 0 ? 1 : -1) + (lock.startsWith('買近') ? 1 : lock.startsWith('賣近') ? -1 : 0);
   const tag = bull >= 2 ? ['主力偏多控盤', css('--up')] : bull <= -2 ? ['主力偏空控盤', css('--down')] : ['主力多空拉鋸', css('--gold')];
