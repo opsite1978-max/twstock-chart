@@ -37,18 +37,22 @@ jobs:
               except urllib.error.HTTPError as e: return {'status': e.code, 'msg': e.read().decode()[:200]}
               except Exception as e: return {'status': 0, 'msg': str(e)[:200]}
           from collections import Counter
-          j = js({'dataset': 'TaiwanStockMarketValueWeight', 'start_date': '2026-10-13'})
+          j = js({'dataset': 'TaiwanFuturesInstitutionalInvestors', 'data_id': 'TX', 'start_date': '2026-10-07'})
           d = j.get('data') or []
-          print('MVW 1013', len(d), Counter(x.get('type') for x in d))
-          j = js({'dataset': 'TaiwanStockMarketValueWeight', 'start_date': '2026-08-01', 'data_id': '2330'})
+          print('INST', j.get('status'), len(d))
+          for x in d[-6:]: print('INST row', json.dumps(x, ensure_ascii=False)[:600])
+          j = js({'dataset': 'TaiwanFuturesInstitutionalInvestorsAfterHours', 'data_id': 'TX', 'start_date': '2026-10-07'})
           d = j.get('data') or []
-          print('MVW 2330 since 8/1', len(d), json.dumps(d[-2:], ensure_ascii=False)[:300])
-          j = js({'dataset': 'TaiwanStockMarketValue', 'start_date': '2026-10-13'})
+          print('INSTAH', j.get('status'), j.get('msg'), len(d))
+          for x in d[-3:]: print('INSTAH row', json.dumps(x, ensure_ascii=False)[:600])
+          j = js({'dataset': 'TaiwanFuturesDaily', 'data_id': 'TX', 'start_date': '2026-10-12'})
           d = j.get('data') or []
-          print('MV all 1013', j.get('status'), len(d), json.dumps(sorted(d, key=lambda x: -float(x.get('market_value') or 0))[:3], ensure_ascii=False)[:300])
-          j = js({'dataset': 'TaiwanStockInfo'})
-          d = j.get('data') or []
-          print('INFO', len(d), Counter(x.get('type') for x in d))
+          for x in d: 
+              if str(x.get('contract_date')).strip() in ('202610',): print('TX', json.dumps(x, ensure_ascii=False)[:400])
+          for ds in ['TaiwanFuturesOpenInterestLargeTraders', 'TaiwanFuturesInstitutionalInvestors']:
+              j = js({'dataset': ds, 'data_id': 'TX', 'start_date': '2025-01-01'})
+              d = j.get('data') or []
+              print('DEPTH', ds, len(d), d[0].get('date') if d else None)
           PY
           cat out/log.txt | sed 's/[A-Za-z0-9._-]\{40,\}/***/g'
       - name: 保存結果
