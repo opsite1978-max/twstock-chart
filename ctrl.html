@@ -162,8 +162,12 @@ async function load(){
       data({ dataset:'TaiwanFutOptDailyInfo' }).catch(() => []),
     ]);
     let mvw = [];
-    { const all = (await data({ dataset:'TaiwanStockMarketValueWeight', start_date:shiftDay(today, -70) }).catch(() => [])).filter(r => r.type === 'twse');   // 上市權重每月底公布一次
-      const last = all.reduce((m, r) => r.date > m ? r.date : m, ''); mvw = all.filter(r => r.date === last); }
+    // 上市權重每月底公布一次，而且全市場查詢一次只能查一天：從上個月底往回找
+    for (let m = 0; m < 2 && !mvw.length; m++){
+      const t = new Date(today + 'T00:00:00Z'); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() - m); t.setUTCDate(0);   // 第 m+1 個月前的月底
+      for (let k = 0; k < 6 && !mvw.length; k++){ const d = shiftDay(t.toISOString().slice(0,10), -k);
+        mvw = (await data({ dataset:'TaiwanStockMarketValueWeight', start_date:d }).catch(() => [])).filter(r => r.type === 'twse' && r.date === d); }
+    }
     const hist = await fetch('data/txo/history.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
     // ── 台指期：每天近月、次月（日盤）──
     const byDay = new Map();
