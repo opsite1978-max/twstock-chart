@@ -1,0 +1,2 @@
+10-16 06:41:44 shard 4 / 6 stocks 359 weeks 51 20251017 ~ 20261008
+10-16 06:43:03 result shard 4 done requests 50 ok 50 none 0 files 1 in 80 s
