@@ -1,3 +1,3 @@
-10-15 21:42:34 2026-10-15 stocks 1950
-10-15 21:42:34 fetched days 1
-10-15 21:42:42 build 1917 stocks 322 days backtest {'quietMa20': 655, 'bullNew': 2444, 'break60': 5961, 'bottom': 211, 'pullback': 14232, 'firstVol': 222}
+10-16 21:32:33 2026-10-16 stocks 1942
+10-16 21:32:33 fetched days 1
+10-16 21:32:39 build 1908 stocks 323 days backtest {'quietMa20': 655, 'bullNew': 2454, 'break60': 5985, 'bottom': 212, 'pullback': 14279, 'firstVol': 222}
