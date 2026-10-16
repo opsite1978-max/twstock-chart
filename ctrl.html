@@ -56,6 +56,9 @@
   th{color:var(--muted);font-weight:500} td:first-child,th:first-child{text-align:left}
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   .up{color:var(--up)} .dn{color:var(--down)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 8px}
+  .seg button{border:0;border-radius:0;background:var(--panel);height:32px;padding:0 14px}
+  .seg button.on{background:var(--accent);color:#fff}
   @media (max-width:520px){ table{font-size:11.5px} th,td{padding:5px 4px} }
 </style>
 <script>
@@ -90,18 +93,24 @@
       <p class="note" id="noteMain"></p>
     </section>
 
-    <div class="g2">
-      <section>
-        <h2>遠近月價差<span class="muted">次月 − 近月（日盤收盤）</span></h2>
-        <div class="panel"><div class="legend" id="lgSp"></div><svg id="svSp"></svg><div class="tip" id="tipSp"></div></div>
-        <p class="note" id="noteSp"></p>
-      </section>
-      <section>
-        <h2>前十大交易人：近月 vs 遠月淨部位<span class="muted">口；遠月＝全部月份 − 近月 − 週契約</span></h2>
-        <div class="panel"><div class="legend" id="lgLT"></div><svg id="svLT"></svg><div class="tip" id="tipLT"></div></div>
-        <p class="note" id="noteLT"></p>
-      </section>
-    </div>
+    <section>
+      <h2>遠近月價差<span class="muted">次月 − 近月（日盤收盤；結算日當天直接用下兩個月份，避開到期合約的價格扭曲）</span></h2>
+      <div class="panel"><div class="legend" id="lgSp"></div><svg id="svSp"></svg><div class="tip" id="tipSp"></div></div>
+      <p class="note" id="noteSp"></p>
+    </section>
+
+    <section id="oscSec">
+      <h2>價差震盪：偏離與反轉<span class="muted">價差偏離平常幾個標準差；超過 ±2 是極端，從極端回頭時標出反轉</span></h2>
+      <div class="seg" id="oscSeg"><button data-tf="D">日</button><button data-tf="240">4 小時</button><button data-tf="60">1 小時</button></div>
+      <div class="panel"><div class="legend" id="lgOsc"></div><svg id="svOsc"></svg><div class="tip" id="tipOsc"></div></div>
+      <p class="note" id="noteOsc"></p>
+    </section>
+
+    <section>
+      <h2>前十大交易人：近月 vs 遠月淨部位<span class="muted">口；遠月＝全部月份 − 近月 − 週契約</span></h2>
+      <div class="panel"><div class="legend" id="lgLT"></div><svg id="svLT"></svg><div class="tip" id="tipLT"></div></div>
+      <p class="note" id="noteLT"></p>
+    </section>
 
     <section>
       <h2>權值股期貨：誰在推指數<span class="muted">加權指數前 10 大權值股；近 5 日對指數的點數貢獻與個股期貨未平倉變化</span></h2>
@@ -180,7 +189,9 @@ async function load(){
       const l = byDay.get(d).filter(r => expOf(String(r.contract_date).trim()) >= d).sort((a, b) => String(a.contract_date).localeCompare(String(b.contract_date)));
       if (l.length < 2) continue;
       const n = l[0], f = l[1], oiAll = byDay.get(d).reduce((t, r) => t + (+r.open_interest || 0), 0);
-      rows.push({ d, near:String(n.contract_date).trim(), far:String(f.contract_date).trim(), o:+n.open, h:+n.max, l:+n.min, c:+n.close, fc:+f.close, sp:+f.close - +n.close, oiN:+n.open_interest || 0, oiF:+f.open_interest || 0, oiAll, exp:expOf(String(n.contract_date).trim()) });
+      const l2 = byDay.get(d).filter(r => expOf(String(r.contract_date).trim()) > d).sort((a, b) => String(a.contract_date).localeCompare(String(b.contract_date)));
+      const spv = l2.length >= 2 ? +l2[1].close - +l2[0].close : +f.close - +n.close, spc = l2.length ? String(l2[0].contract_date).trim() : String(n.contract_date).trim();
+      rows.push({ d, spc, near:String(n.contract_date).trim(), far:String(f.contract_date).trim(), o:+n.open, h:+n.max, l:+n.min, c:+n.close, fc:+f.close, sp:spv, oiN:+n.open_interest || 0, oiF:+f.open_interest || 0, oiAll, exp:expOf(String(n.contract_date).trim()) });
     }
     // ── 前十大交易人：全部、近月、週 ──
     const ltm = new Map();
@@ -297,7 +308,7 @@ function render(){
   const tag = bull >= 2 ? ['主力偏多控盤', css('--up')] : bull <= -2 ? ['主力偏空控盤', css('--down')] : ['主力多空拉鋸', css('--gold')];
   $('#sum').innerHTML = `<div class="hd"><span class="big" style="border-color:${tag[1]};color:${tag[1]}">${tag[0]}</span><span class="muted">${md(L.d)} 收盤・台指期近月 ${fmt(L.c)}</span></div>` +
     items.map(([t, c, d]) => `<div class="it"><span class="bd" style="border-color:${c}">${t}</span><span>${d}</span></div>`).join('');
-  drawMain(); drawSpread(); drawLT(); drawW();
+  drawMain(); drawSpread(); drawOsc(); drawLT(); drawW();
 }
 function frame(svg, H, m){ const W = Math.max(300, svg.parentElement.clientWidth - 16); svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); return { W, H, m, iw:W - m.l - m.r, ih:H - m.t - m.b, narrow:W < 520 }; }
 function drawMain(){
@@ -343,22 +354,22 @@ function hoverDays(svg, tip, f, R, x, html){
   hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
 }
 function drawSpread(){
-  const A = D.A, R = D.rows.slice(-60), svg = $('#svSp'), f = frame(svg, 220, { l:46, r:8, t:10, b:22 });
+  const A = D.A, R = D.rows.slice(-60), svg = $('#svSp'), W0 = Math.max(300, svg.parentElement.clientWidth - 16), f = frame(svg, W0 < 600 ? 280 : 360, { l:46, r:8, t:10, b:22 });
   const sp = R.map(r => r.sp), mm = R.map((r, i) => { const w = D.rows.slice(Math.max(0, D.rows.indexOf(r) - 19), D.rows.indexOf(r) + 1).map(z => z.sp); const m = avg(w); return { m, s:Math.sqrt(avg(w.map(v => (v - m) ** 2))) }; });
   const vs = sp.concat(mm.flatMap(z => [z.m + z.s, z.m - z.s]), [0]), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.08 || 10;
   const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * f.ih;
-  for (const t of ticks(lo - pad, hi + pad, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 4, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, sgn(t)); }
+  for (const t of ticks(lo - pad, hi + pad, 6)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y(t), y2:y(t), stroke:t === 0 ? css('--muted') : css('--grid') }, svg); el('text', { x:f.m.l - 4, y:y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, sgn(t)); }
   el('path', { d:mm.map((z, i) => (i ? 'L' : 'M') + x(i) + ',' + y(z.m + z.s)).join('') + mm.slice().reverse().map((z, k) => 'L' + x(R.length - 1 - k) + ',' + y(z.m - z.s)).join('') + 'Z', fill:css('--curve'), 'fill-opacity':.15 }, svg);
   el('path', { d:mm.map((z, i) => (i ? 'L' : 'M') + x(i) + ',' + y(z.m)).join(''), fill:'none', stroke:css('--curve'), 'stroke-width':1.2, 'stroke-dasharray':'4 3' }, svg);
   el('path', { d:sp.map((v, i) => (i ? 'L' : 'M') + x(i) + ',' + y(v)).join(''), fill:'none', stroke:css('--gold'), 'stroke-width':2 }, svg);
-  R.forEach((r, i) => { if (i && R[i - 1].near !== r.near) el('line', { x1:x(i), x2:x(i), y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 3' }, svg); });
+  R.forEach((r, i) => { if (i && R[i - 1].spc !== r.spc) el('line', { x1:x(i), x2:x(i), y1:f.m.t, y2:f.H - f.m.b, stroke:css('--muted'), 'stroke-dasharray':'2 3' }, svg); });
   [0, R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j ? 'end' : 'start', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
   legend('#lgSp', [['遠近月價差', css('--gold')], ['20 日平均 ±1 標準差', css('--curve') + '55', 'bar'], ['換月', css('--muted'), 'dash']]);
   hoverDays(svg, $('#tipSp'), f, R, x, r => `<b>${md(r.d)}</b>　近月 ${r.near.slice(4)}月 ${fmt(r.c)}・次月 ${fmt(r.fc)}<br>價差 ${sgn(r.sp)} 點`);
   $('#noteSp').textContent = `目前價差 ${sgn(A.L.sp)} 點，${A.z >= 1 ? '比平常寬：遠月相對貴，常見「賣遠買近」或近月被壓' : A.z <= -1 ? '比平常窄：近月相對貴，常見近月被拉抬' : '在正常範圍'}。主力用「賣一個月、買另一個月」鎖住價差時，價差會被控制在一個區間內；價差突然跳出區間，代表有人在調整部位。`;
 }
 function drawLT(){
-  const R = D.rows.slice(-60).filter(r => r.t10 != null), svg = $('#svLT'), f = frame(svg, 220, { l:52, r:8, t:10, b:22 });
+  const R = D.rows.slice(-60).filter(r => r.t10 != null), svg = $('#svLT'), f = frame(svg, svg.parentElement.clientWidth < 600 ? 240 : 300, { l:52, r:8, t:10, b:22 });
   if (!R.length){ svg.innerHTML = ''; return; }
   const vs = R.flatMap(r => [r.t10n || 0, r.t10f || 0, r.t10]), m = Math.max(1, ...vs.map(Math.abs)) * 1.1;
   const x = i => f.m.l + f.iw * (i + 0.5) / R.length, y = v => f.m.t + (m - v) / (2 * m) * f.ih, bw = Math.max(1, f.iw / R.length * 0.38);
@@ -386,7 +397,140 @@ function drawW(){
     D.top.map(t => `<tr><td>${t.id} ${esc(t.name)}</td><td>${t.w.toFixed(2)}%</td><td class="${t.r5 >= 0 ? 'up' : 'dn'}">${pc(t.r5, 1)}</td><td>${t.fut || '–'}</td><td class="${t.doi > 0 ? 'up' : t.doi < 0 ? 'dn' : ''}">${t.doi == null ? '–' : sgn(t.doi) + ' 口'}</td><td>${pc(t.basis, 2)}</td></tr>`).join('') + '</tbody></table>';
   $('#noteW').textContent = `前 10 大權值股合計占加權指數約 ${fmt(D.top.reduce((a, t) => a + t.w, 0), 1)}%（權重為 ${D.mvwDate ? md(D.mvwDate) : '–'} 月底公布值）。近 5 日合計貢獻 ${sgn(A.push, 0)} 點。個股期貨未平倉增加、而且期貨比現股貴（正價差），常見有人用個股期貨布局權值股來帶動指數；未平倉減少代表這些部位在退場。`;
 }
-let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D && D.A) { drawMain(); drawSpread(); drawLT(); drawW(); } }, 200); });
+/* ───────── 價差震盪（日、4 小時、1 小時） ───────── */
+const OSC = { tf:(() => { try { return localStorage.getItem('ctrl.oscTf') || 'D'; } catch(e){ return 'D'; } })(), bars:{}, loading:{}, mem:new Map(), err:'' };
+const kdb = (() => { let p = null; return () => p || (p = new Promise(res => { try { const r = indexedDB.open('ctrl-kbar', 1); r.onupgradeneeded = () => r.result.createObjectStore('d'); r.onsuccess = () => res(r.result); r.onerror = r.onblocked = () => res(null); } catch(e){ res(null); } })); })();
+async function kGet(k){ const db = await kdb(); if (!db) return null; return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } }); }
+async function kPut(k, v){ const db = await kdb(); if (!db) return; try { db.transaction('d', 'readwrite').objectStore('d').put(v, k); } catch(e){} }
+// 一天的台指期一分K：只留月合約（不含週契約），每個合約存 [分鐘, 高, 低, 收]
+function kDay(date){
+  if (OSC.mem.has(date)) return OSC.mem.get(date);
+  const stable = date <= shiftDay(twToday(), -2);
+  const p = (async () => {
+    if (stable){ const v = await kGet('TX:' + date); if (v) return v; }
+    const rows = await data({ dataset:'TaiwanFuturesKBar', data_id:'TX', start_date:date });
+    const v = {};
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); if (!/^\d{6}$/.test(c) || !(r.close > 0)) continue;
+      const hm = String(r.minute || '').trim().split(' ').pop().split(':'); (v[c] || (v[c] = [])).push([+hm[0] * 60 + (+hm[1] || 0), +r.high, +r.low, +r.close]); }
+    for (const c in v) v[c].sort((a, b) => a[0] - b[0]);
+    if (stable && Object.keys(v).length) kPut('TX:' + date, v);
+    return v;
+  })();
+  OSC.mem.set(date, p); p.catch(() => OSC.mem.delete(date));
+  return p;
+}
+async function loadOsc(tf){
+  if (OSC.bars[tf] || OSC.loading[tf]) return;
+  OSC.loading[tf] = true;
+  try {
+    const today = twToday(), n = tf === '240' ? 40 : 12, dow = new Date(today + 'T00:00:00Z').getUTCDay();
+    let td = D.rows.map(r => r.d); if (td[td.length - 1] < today && dow >= 1 && dow <= 5) td.push(today);
+    td = td.slice(-n);
+    const set = new Set(td); for (const d of td){ const nd = shiftDay(d, 1); if (nd <= today) set.add(nd); }   // 夜盤過午夜的部分記在隔天
+    const list = [...set].sort(), per = [];
+    for (let i = 0; i < list.length; i += 3){                                   // 一次 3 天，慢慢查
+      per.push(...await Promise.all(list.slice(i, i + 3).map(d => kDay(d).catch(() => null))));
+      if (OSC.tf === tf) $('#noteOsc').textContent = `讀取台指期分K ${Math.min(list.length, i + 3)}／${list.length} 天…（第一次比較久，之後會存在瀏覽器）`;
+    }
+    OSC.bars[tf] = buildBars(list, per, +tf, td[0]); OSC.err = '';
+  } catch(e){ OSC.bars[tf] = []; OSC.err = e.message || String(e); }
+  finally { OSC.loading[tf] = false; if (OSC.tf === tf) drawOsc(); }
+}
+// 一分K → 小時／4 小時 K（日盤從 08:45、夜盤從 15:00 起算）；價差＝同一分鐘「次月 − 近月」，用這根K棒裡最後一個兩邊都有成交的分鐘
+function buildBars(list, per, P, first){
+  const B = new Map(), uni = new Set();
+  list.forEach((date, i) => { const day = per[i]; if (!day) return;
+    for (const c in day){ uni.add(c);
+      for (const [m, h, l, cl] of day[c]){
+        let sd = date, a, mm;
+        if (m >= 525 && m <= 825){ a = 525; mm = Math.min(m, 824); }
+        else if (m >= 900){ a = 900; mm = m; }
+        else if (m < 300){ sd = shiftDay(date, -1); a = 900; mm = m + 1440; }
+        else continue;
+        if (sd < first) continue;
+        const sb = Date.parse(sd + 'T00:00:00Z') / 60000, key = sb + a + Math.floor((mm - a) / P) * P, t = sb + mm;
+        let b = B.get(key); if (!b){ b = { key, sd, cs:{} }; B.set(key, b); }
+        let q = b.cs[c]; if (!q){ q = { o:cl, h, l, c:cl, t:new Map(), f:t, z:t }; b.cs[c] = q; }
+        if (t < q.f){ q.f = t; q.o = cl; } if (t >= q.z){ q.z = t; q.c = cl; }
+        q.h = Math.max(q.h, h); q.l = Math.min(q.l, l); q.t.set(t, cl);
+      } } });
+  const U = [...uni].sort(), out = []; let prev = null;
+  for (const b of [...B.values()].sort((x, y) => x.key - y.key)){
+    const cand = U.filter(c => expOf(c) > b.sd), nc = cand[0], fc = cand[1], n = b.cs[nc];
+    if (!n) continue;
+    let sp = null; const f = fc && b.cs[fc];
+    if (f){ let tm = -1; for (const t of f.t.keys()) if (n.t.has(t) && t > tm) tm = t; if (tm >= 0) sp = f.t.get(tm) - n.t.get(tm); }
+    const pair = nc + fc; if (sp == null && prev && prev.pair === pair) sp = prev.sp;
+    if (sp == null) continue;
+    const iso = new Date(b.key * 60000).toISOString();
+    const row = { d:iso.slice(0, 10), lab:md(iso.slice(0, 10)) + ' ' + iso.slice(11, 16), o:n.o, h:n.h, l:n.l, c:n.c, sp, pair };
+    out.push(row); prev = row;
+  }
+  return out;
+}
+function oscCalc(B, N, floor){
+  const z = B.map((b, i) => { const w = B.slice(Math.max(0, i - N + 1), i + 1).map(x => x.sp); if (w.length < Math.max(5, N / 2)) return null;
+    const m = avg(w), sd = Math.max(Math.sqrt(avg(w.map(v => (v - m) ** 2))), floor); return Math.max(-4, Math.min(4, (b.sp - m) / sd)); });
+  const sig = [];
+  for (let i = 3; i < B.length; i++){ const o = z[i], p = z[i - 1]; if (o == null || p == null) continue;
+    const was = k => [1, 2, 3].some(j => z[i - j] != null && (k < 0 ? z[i - j] <= -2 : z[i - j] >= 2));
+    const lastL = sig.filter(s => s.k < 0).pop(), lastH = sig.filter(s => s.k > 0).pop();
+    if (was(-1) && o > p && (!lastL || i - lastL.i > 5)) sig.push({ i, k:-1 });
+    if (was(1) && o < p && (!lastH || i - lastH.i > 5)) sig.push({ i, k:1 }); }
+  return { z, sig };
+}
+function drawOsc(){
+  const svg = $('#svOsc'); if (!svg || !D) return;
+  document.querySelectorAll('#oscSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === OSC.tf));
+  const tf = OSC.tf; let all;
+  if (tf === 'D') all = D.rows.map(r => ({ d:r.d, lab:md(r.d), o:r.o, h:r.h, l:r.l, c:r.c, sp:r.sp, pair:r.spc }));
+  else { all = OSC.bars[tf]; if (!all){ svg.innerHTML = ''; $('#noteOsc').textContent = '讀取台指期分K…'; loadOsc(tf); return; } }
+  const N = tf === 'D' ? 20 : tf === '240' ? 30 : 60;
+  if (all.length < N){ svg.innerHTML = ''; $('#noteOsc').textContent = OSC.err ? '分K讀取失敗：' + OSC.err : '資料不足，稍後再試。'; return; }
+  const { z, sig } = oscCalc(all, N, tf === 'D' ? 6 : 3);
+  const W0 = Math.max(300, svg.parentElement.clientWidth - 16), nar = W0 < 600;
+  const show = Math.min(all.length - Math.floor(N / 2), tf === 'D' ? (nar ? 60 : 100) : (nar ? 70 : 120)), s0 = all.length - show;
+  const R = all.slice(s0), Z = z.slice(s0), S = sig.filter(q => q.i >= s0).map(q => ({ k:q.k, i:q.i - s0 }));
+  const H1 = nar ? 230 : 300, H2 = nar ? 190 : 240, gap = 30, f = frame(svg, H1 + gap + H2, { l:nar ? 46 : 56, r:10, t:10, b:24 });
+  const x = i => f.m.l + f.iw * (i + 0.5) / R.length, bw = f.iw / R.length, top2 = H1 + gap, bot = f.H - f.m.b;
+  const lo = Math.min(...R.map(r => r.l)), hi = Math.max(...R.map(r => r.h)), pad = (hi - lo) * 0.08 || 10;
+  const y1 = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * (H1 - f.m.t), y2 = v => top2 + (4 - v) / 8 * (bot - top2);
+  const cL = css('--curve'), cH = css('--cost'), cZ = css('--accent');
+  for (const t of ticks(lo - pad, hi + pad, nar ? 4 : 6)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y1(t), y2:y1(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y1(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
+  R.forEach((r, i) => { if (i && R[i - 1].pair !== r.pair) el('line', { x1:x(i) - bw / 2, x2:x(i) - bw / 2, y1:f.m.t, y2:bot, stroke:css('--muted'), 'stroke-dasharray':'2 3' }, svg); });
+  R.forEach((r, i) => { const c = r.c >= r.o ? css('--up') : css('--down'), w = Math.max(1.5, bw * 0.62);
+    el('line', { x1:x(i), x2:x(i), y1:y1(r.h), y2:y1(r.l), stroke:c }, svg);
+    el('rect', { x:x(i) - w / 2, y:y1(Math.max(r.o, r.c)), width:w, height:Math.max(1, Math.abs(y1(r.o) - y1(r.c))), fill:c }, svg); });
+  el('text', { x:f.m.l + 4, y:f.m.t + 12, 'font-size':12, fill:css('--muted') }, svg, '台指期近月' + (tf === 'D' ? '日K' : tf === '240' ? ' 4 小時K' : ' 1 小時K'));
+  // 震盪區
+  el('rect', { x:f.m.l, y:y2(4), width:f.iw, height:y2(2) - y2(4), fill:cH, 'fill-opacity':.10 }, svg);
+  el('rect', { x:f.m.l, y:y2(-2), width:f.iw, height:y2(-4) - y2(-2), fill:cL, 'fill-opacity':.10 }, svg);
+  for (const [v, t, c, dsh] of [[2, '上界 +2', cH, '5 4'], [0, '0', css('--muted'), null], [-2, '下界 −2', cL, '5 4']]){
+    el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y2(v), y2:y2(v), stroke:c, 'stroke-dasharray':dsh, 'stroke-width':v ? 1.4 : 1 }, svg);
+    el('text', { x:f.m.l - 5, y:y2(v) + 4, 'text-anchor':'end', 'font-size':11, fill:c }, svg, t); }
+  el('text', { x:f.m.l + 4, y:top2 + 12, 'font-size':12, fill:css('--muted') }, svg, `價差偏離（標準差，近 ${N} 根）`);
+  const pts = Z.map((v, i) => v == null ? null : [x(i), y2(v)]), d = pts.reduce((a, q, i) => q ? a + (a && pts[i - 1] ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1) : a, '');
+  el('path', { d, fill:'none', stroke:cZ, 'stroke-width':7, 'stroke-opacity':.18, 'stroke-linejoin':'round' }, svg);
+  el('path', { d, fill:'none', stroke:cZ, 'stroke-width':2.2, 'stroke-linejoin':'round' }, svg);
+  Z.forEach((v, i) => { if (v != null && Math.abs(v) >= 2) el('circle', { cx:x(i), cy:y2(v), r:2.6, fill:v > 0 ? cH : cL }, svg); });
+  // 反轉標記
+  for (const q of S){ const r = R[q.i], c = q.k < 0 ? cL : cH, up = q.k < 0;
+    const yp = up ? y1(r.l) + 14 : y1(r.h) - 14, yo = y2(Z[q.i]) + (up ? 14 : -14), tri = (cx, cy) => up ? `M${cx},${cy - 7}L${cx - 6},${cy + 5}L${cx + 6},${cy + 5}Z` : `M${cx},${cy + 7}L${cx - 6},${cy - 5}L${cx + 6},${cy - 5}Z`;
+    el('path', { d:tri(x(q.i), yp), fill:c }, svg); el('path', { d:tri(x(q.i), yo), fill:c }, svg); }
+  [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 6, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, R[i].lab));
+  legend('#lgOsc', [['價差偏離', cZ], ['▲ 偏窄反轉（從下界回頭）', cL, 'bar'], ['▼ 偏寬反轉（從上界回頭）', cH, 'bar'], ['換月', css('--muted'), 'dash']]);
+  hoverDays(svg, $('#tipOsc'), f, R, x, r => { const i = R.indexOf(r), q = S.find(s => s.i === i); return `<b>${r.lab}</b>　台指期 ${fmt(r.c)}<br>價差 ${sgn(r.sp)} 點・偏離 ${Z[i] == null ? '–' : (Z[i] > 0 ? '+' : '') + Z[i].toFixed(2)}` + (q ? `<br><b style="color:${q.k < 0 ? cL : cH}">${q.k < 0 ? '偏窄反轉' : '偏寬反轉'}</b>` : ''); });
+  const zL = Z[Z.length - 1], last = R[R.length - 1], ls = S[S.length - 1];
+  const st = zL >= 2 ? '極端偏寬' : zL <= -2 ? '極端偏窄' : zL >= 1 ? '偏寬' : zL <= -1 ? '偏窄' : '正常';
+  const bt = tf === 'D' ? '回測 2019～2026 年日線：偏窄反轉之後 5 天，加權指數平均 +0.60%（51 次，上漲 67%）；偏寬反轉之後 +0.48%（62 次，上漲 60%）；任意 5 天平均 +0.47%。'
+    : tf === '60' ? '回測 2026 年 5～10 月小時線：偏窄反轉之後 10 小時平均 +0.11%（30 次，上漲 67%）；偏寬反轉之後 +0.05%（35 次，上漲 54%）；任意 10 小時平均 +0.07%。'
+    : '4 小時沒有單獨回測，計算方式和 1 小時相同（1 小時、日線的回測都沒有明顯預測力）。';
+  $('#noteOsc').innerHTML = `目前價差 ${sgn(last.sp)} 點，偏離 ${zL == null ? '–' : (zL > 0 ? '+' : '') + zL.toFixed(1)} 個標準差（<b>${st}</b>）。` + (ls ? `最近一次反轉：${R[ls.i].lab} ${ls.k < 0 ? '偏窄反轉' : '偏寬反轉'}。` : '這段期間沒有反轉訊號。') +
+    `<br>怎麼看：偏寬＝遠月相對貴、近月被壓；偏窄＝近月相對貴、近月被拉。價差衝出上下界，代表有人大量調整近遠月部位（轉倉、鎖價差、平倉）；從極端回頭，代表這波調整告一段落。` +
+    `<br><b>重要：</b>${bt}兩種反轉之後指數都偏漲、和平常差不多，價差高低和之後漲跌的相關係數接近 0。所以這張圖適合看「主力什麼時候在調整部位」，不能單獨拿來判斷多空或抓高低點；要抓低點，選擇權頁的「GEX 低點偵測」回測比較有效。`;
+}
+document.querySelectorAll('#oscSeg button').forEach(b => b.onclick = () => { OSC.tf = b.dataset.tf; try { localStorage.setItem('ctrl.oscTf', OSC.tf); } catch(e){} drawOsc(); });
+let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D && D.A) { drawMain(); drawSpread(); drawOsc(); drawLT(); drawW(); } }, 200); });
 load();
 </script>
 </body>
