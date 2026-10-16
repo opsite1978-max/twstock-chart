@@ -13,8 +13,8 @@ jobs:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
-          python3 scripts/costeval.py > out/cost.txt 2>&1 || true
-          sed -i "s/$T/***/g" out/cost.txt
+          python3 scripts/spreadosc.py > out/osc.txt 2>&1 || true
+          sed -i "s/$T/***/g" out/osc.txt
       - name: 查詢憑證狀態（只記錄狀態，不記錄憑證）
         if: false
         env:
