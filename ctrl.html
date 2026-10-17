@@ -59,6 +59,7 @@
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 8px}
   .seg button{border:0;border-radius:0;background:var(--panel);height:32px;padding:0 14px}
   .seg button.on{background:var(--accent);color:#fff}
+  .bar2{display:flex;flex-wrap:wrap;gap:6px 10px}
   @media (max-width:520px){ table{font-size:11.5px} th,td{padding:5px 4px} }
 </style>
 <script>
@@ -94,8 +95,10 @@
     </section>
 
     <section id="ofSec" hidden>
-      <h2>選擇權多空力道<span class="muted">+100 最偏多、−100 最偏空，0 軸以下是空方；主力與散戶分開看</span></h2>
-      <div class="seg" id="ofSeg"><button data-k="F">主力＝外資</button><button data-k="T">主力＝前十大交易人</button></div>
+      <h2>主力選擇權多空力道<span class="muted">+100 最偏多、−100 最偏空，0 軸以下是空方；金色＝趨勢線</span></h2>
+      <div class="bar2"><div class="seg" id="ofSeg"><button data-k="T">前十大交易人</button><button data-k="F">外資</button></div>
+        <div class="seg" id="ofTf"><button data-tf="D">日</button><button data-tf="W">週</button><button data-tf="M">月</button></div>
+        <div class="seg"><button id="ofIn">＋放大</button><button id="ofOut">－縮小</button><button id="ofReset">重設</button></div></div>
       <div class="panel"><div class="legend" id="lgOF"></div><svg id="svOF"></svg><div class="tip" id="tipOF"></div></div>
       <p class="note" id="noteOF"></p>
     </section>
@@ -378,48 +381,84 @@ function hoverDays(svg, tip, f, R, x, html){
     tip.style.left = Math.min(Math.max(4, x(i) * b.width / f.W + 14), svg.parentElement.clientWidth - tip.offsetWidth - 4) + 'px'; tip.style.top = '30px'; });
   hit.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
 }
-const OFK = { k:(() => { try { return localStorage.getItem('ctrl.ofK') || 'F'; } catch(e){ return 'F'; } })() };
+const OFK = { k:(() => { try { return localStorage.getItem('ctrl.ofK') || 'T'; } catch(e){ return 'T'; } })(), tf:(() => { try { return localStorage.getItem('ctrl.ofTf') || 'D'; } catch(e){ return 'D'; } })(), n:null, end:null };
+function ofSeries(){
+  const of = D.of, K = OFK.k, src = of.days.filter(r => r.ix && r[K] != null).map(r => ({ d:r.d, c:r.ix, v:r[K], fnC:r.fnC, fnP:r.fnP }));
+  if (OFK.tf === 'D') return src;
+  const key = r => { if (OFK.tf === 'M') return r.d.slice(0, 7); const t = new Date(r.d + 'T00:00:00Z'), w = (t.getUTCDay() + 6) % 7; return new Date(t - w * 864e5).toISOString().slice(0, 10); };
+  const out = []; for (const r of src){ const k = key(r), L = out[out.length - 1]; if (L && L.k === k) Object.assign(L, r, { k }); else out.push({ ...r, k }); }   // 每週／每月最後一天的值
+  return out;
+}
 function drawOF(){
   const sec = $('#ofSec'), of = D.of; if (!of || !of.days || !of.days.length){ sec.hidden = true; return; } sec.hidden = false;
   const hasT = of.days.some(r => r.T != null); if (!hasT) OFK.k = 'F';
   document.querySelectorAll('#ofSeg button').forEach(b => { b.classList.toggle('on', b.dataset.k === OFK.k); b.hidden = b.dataset.k === 'T' && !hasT; });
-  const svg = $('#svOF'), W0 = Math.max(300, svg.parentElement.clientWidth - 16), nar = W0 < 600, K = OFK.k;
-  const R = of.days.filter(r => r.ix && r[K] != null).slice(nar ? -70 : -140); if (R.length < 5){ sec.hidden = true; return; }
-  const H0 = nar ? 150 : 190, H1 = nar ? 170 : 210, gap = 34, f = frame(svg, H0 + gap + H1 + gap + H1, { l:nar ? 46 : 56, r:10, t:10, b:22 });
+  document.querySelectorAll('#ofTf button').forEach(b => b.classList.toggle('on', b.dataset.tf === OFK.tf));
+  const svg = $('#svOF'), W0 = Math.max(300, svg.parentElement.clientWidth - 16), nar = W0 < 600;
+  const all = ofSeries(); if (all.length < 5){ sec.hidden = true; return; }
+  // 趨勢線：力道的指數平均（日 10、週 5、月 3 根）
+  const TN = OFK.tf === 'D' ? 10 : OFK.tf === 'W' ? 5 : 3; let e = null; all.forEach(r => { e = e == null ? r.v : e + (r.v - e) * 2 / (TN + 1); r.tr = e; });
+  // 縮放：顯示幾根、最後一根在哪
+  const defN = Math.min(all.length, OFK.tf === 'D' ? (nar ? 70 : 140) : OFK.tf === 'W' ? (nar ? 60 : 110) : all.length);
+  if (OFK.n == null) OFK.n = defN; OFK.n = Math.max(Math.min(12, all.length), Math.min(all.length, Math.round(OFK.n)));
+  if (OFK.end == null) OFK.end = all.length - 1; OFK.end = Math.max(OFK.n - 1, Math.min(all.length - 1, Math.round(OFK.end)));
+  const s0 = OFK.end - OFK.n + 1, R = all.slice(s0, OFK.end + 1);
+  const H0 = nar ? 200 : 250, H1 = nar ? 240 : 320, gap = 36, f = frame(svg, H0 + gap + H1, { l:nar ? 46 : 56, r:10, t:10, b:22 });
   const x = i => f.m.l + f.iw * (i + 0.5) / R.length;
-  const lo = Math.min(...R.map(r => r.ix)), hi = Math.max(...R.map(r => r.ix)), pad = (hi - lo) * 0.08 || 10, y0 = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * (H0 - f.m.t);
-  for (const t of ticks(lo - pad, hi + pad, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y0(t), y2:y0(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y0(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
-  el('path', { d:R.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y0(r.ix).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.6 }, svg);
-  el('text', { x:f.m.l + 4, y:f.m.t + 12, 'font-size':12, fill:css('--muted') }, svg, '加權指數');
-  const panel = (top, key, title) => {
-    const yy = v => top + (100 - v) / 200 * H1;
-    el('rect', { x:f.m.l, y:top, width:f.iw, height:H1, fill:css('--panel2'), 'fill-opacity':.35 }, svg);
-    for (const [v, c, d] of [[100, css('--grid')], [50, css('--up'), '4 4'], [0, css('--muted')], [-50, css('--down'), '4 4'], [-100, css('--grid')]]){
-      el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:yy(v), y2:yy(v), stroke:c, 'stroke-dasharray':d || null, 'stroke-opacity':v ? .8 : 1 }, svg);
-      el('text', { x:f.m.l - 5, y:yy(v) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, v > 0 ? '+' + v : v < 0 ? '−' + (-v) : '0'); }
-    // 0 軸上紅（多）、下綠（空）
-    const id = 'ofc' + key + top; const defs = el('defs', {}, svg), cp1 = el('clipPath', { id:id + 'u' }, defs), cp2 = el('clipPath', { id:id + 'd' }, defs);
-    el('rect', { x:f.m.l, y:top, width:f.iw, height:H1 / 2 }, cp1); el('rect', { x:f.m.l, y:top + H1 / 2, width:f.iw, height:H1 / 2 }, cp2);
-    const pts = R.map((r, i) => r[key] == null ? null : [x(i), yy(r[key])]).filter(Boolean); if (!pts.length) return; const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(''), area = line + `L${pts[pts.length - 1][0]},${yy(0)}L${pts[0][0]},${yy(0)}Z`;
-    el('path', { d:area, fill:css('--up'), 'fill-opacity':.28, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:area, fill:css('--down'), 'fill-opacity':.28, 'clip-path':`url(#${id}d)` }, svg);
-    el('path', { d:line, fill:'none', stroke:css('--up'), 'stroke-width':2, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:line, fill:'none', stroke:css('--down'), 'stroke-width':2, 'clip-path':`url(#${id}d)` }, svg);
-    const v = R[R.length - 1][key]; if (v == null) return;
-    el('text', { x:f.m.l, y:top - 8, 'font-size':12.5, 'font-weight':700, fill:css('--text') }, svg, title);
-    el('text', { x:f.W - f.m.r, y:top - 8, 'text-anchor':'end', 'font-size':12.5, 'font-weight':800, fill:v >= 0 ? css('--up') : css('--down') }, svg, `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)} ${v >= 50 ? '強多' : v > 10 ? '偏多' : v <= -50 ? '強空' : v < -10 ? '偏空' : '中性'}`);
-  };
-  const t1 = H0 + gap, t2 = t1 + H1 + gap;
-  panel(t1, K, K === 'T' ? '主力（前十大交易人）' : '主力（外資）');
-  if (R.some(r => r.R != null)) panel(t2, 'R', '散戶（非法人）');
-  [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 5, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, md(R[i].d)));
-  legend('#lgOF', [['偏多（0 軸以上）', css('--up'), 'bar'], ['偏空（0 軸以下）', css('--down'), 'bar'], ['±50＝強', css('--muted'), 'dash']]);
-  hoverDays(svg, $('#tipOF'), f, R, x, r => `<b>${md(r.d)}</b>　加權指數 ${fmt(r.ix)}<br>主力 ${r[K] == null ? '–' : (r[K] > 0 ? '+' : '') + r[K].toFixed(0)}・散戶 ${r.R == null ? '–' : (r.R > 0 ? '+' : '') + r.R.toFixed(0)}` + (K === 'F' && r.fnC != null ? `<br>外資買權淨 ${sgn(r.fnC)} 口・賣權淨 ${sgn(r.fnP)} 口` : ''));
-  const L = R[R.length - 1], S = of.stats || {}, bs = k => { const b = S[k] && S[k]['5']; if (!b) return ''; const B = b.buckets;
-    return `相關係數 ${b.cor}；力道 ≥50 之後 5 天平均 ${B['≥50'].avg == null ? '–' : (B['≥50'].avg > 0 ? '+' : '') + B['≥50'].avg + '%'}（${B['≥50'].n} 次）、≤−50 之後 ${B['≤−50'].avg == null ? '–' : (B['≤−50'].avg > 0 ? '+' : '') + B['≤−50'].avg + '%'}（${B['≤−50'].n} 次），任意 5 天平均 ${b.base > 0 ? '+' : ''}${b.base}%`; };
-  $('#noteOF').innerHTML = `${md(L.d)}：主力 ${(L[K] > 0 ? '+' : '') + L[K].toFixed(0)}、散戶 ${L.R == null ? '–' : (L.R > 0 ? '+' : '') + L.R.toFixed(0)}。` +
-    `<br>怎麼算：做多力道＝買進買權＋賣出賣權，做空力道＝買進賣權＋賣出買權，用未平倉的契約金額加權（越貴、越接近價平的部位影響越大）。原始力道＝（多方金額 − 空方金額）÷ 四種部位金額合計，再依歷史分布放大：±80 大約是歷史上最極端的 5%，超過 ±100 就顯示 ±100。散戶＝全市場減掉三大法人（所有非法人，也包含大戶）；前十大交易人只有口數，用口數算。` +
-    `<br>回測（${of.days[0].d.slice(0, 7)} 以來，加權指數）：主力（外資）${bs('F')}。散戶 ${bs('R')}。` + (hasT ? `前十大 ${bs('T')}。` : '') + '選擇權部位也包含避險和價差單，力道只是方向的傾向，不是買賣訊號。';
+  const lo = Math.min(...R.map(r => r.c)), hi = Math.max(...R.map(r => r.c)), pad = (hi - lo) * 0.1 || 10, y0 = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * (H0 - f.m.t);
+  for (const t of ticks(lo - pad, hi + pad, 5)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y0(t), y2:y0(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y0(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
+  el('path', { d:R.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y0(r.c).toFixed(1)).join(''), fill:'none', stroke:css('--text'), 'stroke-width':1.8, 'stroke-linejoin':'round' }, svg);
+  el('text', { x:f.m.l + 4, y:f.m.t + 12, 'font-size':12, fill:css('--muted') }, svg, '加權指數' + (OFK.tf === 'W' ? '（週）' : OFK.tf === 'M' ? '（月）' : ''));
+  const top = H0 + gap, yy = v => top + (100 - v) / 200 * H1;
+  el('rect', { x:f.m.l, y:top, width:f.iw, height:H1, fill:css('--panel2'), 'fill-opacity':.35 }, svg);
+  el('rect', { x:f.m.l, y:yy(100), width:f.iw, height:yy(50) - yy(100), fill:css('--up'), 'fill-opacity':.06 }, svg);
+  el('rect', { x:f.m.l, y:yy(-50), width:f.iw, height:yy(-100) - yy(-50), fill:css('--down'), 'fill-opacity':.06 }, svg);
+  for (const [v, c, dsh] of [[100, css('--grid')], [50, css('--up'), '5 4'], [0, css('--muted')], [-50, css('--down'), '5 4'], [-100, css('--grid')]]){
+    el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:yy(v), y2:yy(v), stroke:c, 'stroke-dasharray':dsh || null, 'stroke-width':Math.abs(v) === 50 ? 1.4 : 1 }, svg);
+    el('text', { x:f.m.l - 5, y:yy(v) + 4, 'text-anchor':'end', 'font-size':11, fill:Math.abs(v) === 50 ? c : css('--muted') }, svg, v > 0 ? '+' + v : v < 0 ? '−' + (-v) : '0'); }
+  const id = 'ofc' + Date.now(), defs = el('defs', {}, svg), cpU = el('clipPath', { id:id + 'u' }, defs), cpD = el('clipPath', { id:id + 'd' }, defs);
+  el('rect', { x:f.m.l, y:top, width:f.iw, height:H1 / 2 }, cpU); el('rect', { x:f.m.l, y:top + H1 / 2, width:f.iw, height:H1 / 2 }, cpD);
+  const pts = R.map((r, i) => [x(i), yy(r.v)]), line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(''), area = line + `L${pts[pts.length - 1][0]},${yy(0)}L${pts[0][0]},${yy(0)}Z`;
+  el('path', { d:area, fill:css('--up'), 'fill-opacity':.25, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:area, fill:css('--down'), 'fill-opacity':.25, 'clip-path':`url(#${id}d)` }, svg);
+  el('path', { d:line, fill:'none', stroke:css('--up'), 'stroke-width':2, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:line, fill:'none', stroke:css('--down'), 'stroke-width':2, 'clip-path':`url(#${id}d)` }, svg);
+  const trd = R.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + yy(r.tr).toFixed(1)).join('');
+  el('path', { d:trd, fill:'none', stroke:css('--gold'), 'stroke-width':6, 'stroke-opacity':.18 }, svg);
+  el('path', { d:trd, fill:'none', stroke:css('--gold'), 'stroke-width':2.2, 'stroke-linejoin':'round' }, svg);
+  // ±50 事件：跌破 −50 在指數上標 ▲（歷史上常是相對低點），站上 +50 標 ●
+  const ev = []; for (let i = 1; i < all.length; i++){ const a = all[i].v, b = all[i - 1].v; if (a <= -50 && b > -50) ev.push({ i, k:-1 }); else if (a >= 50 && b < 50) ev.push({ i, k:1 }); }
+  for (const q of ev){ if (q.i < s0 || q.i > OFK.end) continue; const i = q.i - s0, cx = x(i), r = R[i];
+    if (q.k < 0){ const cy = y0(r.c) + 14; el('path', { d:`M${cx},${cy - 7}L${cx - 6},${cy + 5}L${cx + 6},${cy + 5}Z`, fill:css('--down') }, svg); el('circle', { cx, cy:yy(r.v), r:4, fill:css('--down') }, svg); }
+    else { el('circle', { cx, cy:y0(r.c) - 10, r:4, fill:css('--up') }, svg); el('circle', { cx, cy:yy(r.v), r:4, fill:css('--up') }, svg); } }
+  const L = R[R.length - 1], v = L.v, title = OFK.k === 'T' ? '主力（前十大交易人）' : '主力（外資）';
+  el('text', { x:f.m.l, y:top - 9, 'font-size':13, 'font-weight':700, fill:css('--text') }, svg, title + '多空力道');
+  el('text', { x:f.W - f.m.r, y:top - 9, 'text-anchor':'end', 'font-size':13, 'font-weight':800, fill:v >= 0 ? css('--up') : css('--down') }, svg, `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)} ${v >= 50 ? '強多' : v > 10 ? '偏多' : v <= -50 ? '強空' : v < -10 ? '偏空' : '中性'}・趨勢 ${L.tr >= 0 ? '+' : '−'}${Math.abs(L.tr).toFixed(0)}`);
+  const lab = r => OFK.tf === 'M' ? r.d.slice(0, 7).replace('-', '/') : md(r.d);
+  [0, Math.floor(R.length / 2), R.length - 1].forEach((i, j) => el('text', { x:x(i), y:f.H - 5, 'text-anchor':j === 0 ? 'start' : j === 2 ? 'end' : 'middle', 'font-size':11, fill:css('--muted') }, svg, lab(R[i])));
+  legend('#lgOF', [['偏多（0 軸以上）', css('--up'), 'bar'], ['偏空（0 軸以下）', css('--down'), 'bar'], [`趨勢線（${TN} 根平均）`, css('--gold')], ['▲ 跌破 −50', css('--down'), 'bar'], ['● 站上 +50', css('--up'), 'bar']]);
+  hoverDays(svg, $('#tipOF'), f, R, x, r => `<b>${OFK.tf === 'D' ? md(r.d) : OFK.tf === 'W' ? md(r.d) + ' 當週' : lab(r)}</b>　加權指數 ${fmt(r.c)}<br>力道 ${(r.v > 0 ? '+' : '') + r.v.toFixed(0)}・趨勢 ${(r.tr > 0 ? '+' : '') + r.tr.toFixed(0)}` + (OFK.k === 'F' && r.fnC != null ? `<br>外資買權淨 ${sgn(r.fnC)} 口・賣權淨 ${sgn(r.fnP)} 口` : ''));
+  // 這張圖、這個週期的事件統計（全部資料）
+  const FW = OFK.tf === 'D' ? 10 : OFK.tf === 'W' ? 4 : 2, unit = OFK.tf === 'D' ? '天' : OFK.tf === 'W' ? '週' : '個月';
+  const fr = i => i + FW < all.length ? (all[i + FW].c / all[i].c - 1) * 100 : null, st = k => { const a = ev.filter(q => q.k === k).map(q => fr(q.i)).filter(z => z != null);
+    return a.length ? `${a.length} 次，之後 ${FW} ${unit}平均 ${(avg(a) > 0 ? '+' : '') + avg(a).toFixed(2)}%、上漲 ${Math.round(a.filter(z => z > 0).length / a.length * 100)}%` : '沒有'; };
+  const base = all.map((r, i) => fr(i)).filter(z => z != null);
+  $('#noteOF').innerHTML = `${OFK.tf === 'D' ? md(L.d) : lab(L)}：力道 ${(v > 0 ? '+' : '') + v.toFixed(0)}，趨勢線 ${(L.tr > 0 ? '+' : '') + L.tr.toFixed(0)}（${L.tr > all[Math.max(0, all.length - 2)].tr ? '往上' : '往下'}）。` +
+    `<br><b>±50 事件（${of.days[0].d.slice(0, 7)} 以來，${OFK.tf === 'D' ? '日' : OFK.tf === 'W' ? '週' : '月'}線）：</b>跌破 −50 ${st(-1)}；站上 +50 ${st(1)}；任意時間 ${FW} ${unit}平均 ${(avg(base) > 0 ? '+' : '') + avg(base).toFixed(2)}%。` +
+    `<br>日線回測重點：前十大跌破 −50 常出現在相對低點（11 次，之後 20 天 90% 上漲）；站上 +50 之後多半繼續漲，不是高點訊號。這段期間是多頭，樣本也少，請當參考。` +
+    `<br>怎麼算：做多＝買進買權＋賣出賣權，做空＝買進賣權＋賣出買權。外資用未平倉契約金額加權；前十大交易人只有口數，用口數算。原始力道＝（多方 − 空方）÷ 四種部位合計，再依歷史分布放大：±80 大約是最極端的 5%。週線、月線取每週、每月最後一個交易日。` +
+    `<br>沒有小時級別：期交所的法人與前十大交易人選擇權部位，每天收盤後只公布一次。`;
 }
+(() => {   // 縮放：滾輪、按鈕、拖曳平移
+  const svg = $('#svOF'), redraw = () => { if (D && D.of) drawOF(); };
+  const zoom = k => { const c = OFK.end - OFK.n / 2; OFK.n = OFK.n * k; OFK.end = c + OFK.n / 2; redraw(); };
+  svg.addEventListener('wheel', ev => { ev.preventDefault(); zoom(ev.deltaY > 0 ? 1.18 : 0.85); }, { passive:false });
+  let drag = null;
+  svg.addEventListener('pointerdown', ev => { drag = { x:ev.clientX, end:OFK.end }; });
+  addEventListener('pointermove', ev => { if (!drag) return; const w = svg.getBoundingClientRect().width || 1, dx = ev.clientX - drag.x; if (Math.abs(dx) < 4) return; OFK.end = drag.end - dx / w * OFK.n; redraw(); });
+  addEventListener('pointerup', () => { drag = null; }); addEventListener('pointercancel', () => { drag = null; });
+  $('#ofIn').onclick = () => zoom(0.7); $('#ofOut').onclick = () => zoom(1.4); $('#ofReset').onclick = () => { OFK.n = null; OFK.end = null; redraw(); };
+})();
 document.querySelectorAll('#ofSeg button').forEach(b => b.onclick = () => { OFK.k = b.dataset.k; try { localStorage.setItem('ctrl.ofK', OFK.k); } catch(e){} drawOF(); });
+document.querySelectorAll('#ofTf button').forEach(b => b.onclick = () => { OFK.tf = b.dataset.tf; OFK.n = null; OFK.end = null; try { localStorage.setItem('ctrl.ofTf', OFK.tf); } catch(e){} drawOF(); });
 function drawDist(){
   const sec = $('#distSec'), cj = D.cj, dist = cj && cj.dist;
   if (!dist || !dist.L || !dist.L.length){ sec.hidden = true; return; } sec.hidden = false;
