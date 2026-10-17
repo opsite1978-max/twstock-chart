@@ -1,0 +1,26 @@
+name: FinMind 用量查詢（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  q:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          T: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out
+          python3 - <<'PY' > out/quota.txt 2>&1 || true
+          import os, json, urllib.request
+          T = os.environ['T']
+          req = urllib.request.Request('https://api.web.finmindtrade.com/v2/user_info', headers={'Authorization': 'Bearer ' + T})
+          j = json.load(urllib.request.urlopen(req, timeout=60))
+          print({k: j.get(k) for k in ('user_count', 'api_request_limit', 'level', 'level_title', 'vip_level', 'expire_date', 'end_date')})
+          print(sorted(j.keys()))
+          PY
+          sed -i "s/$T/***/g" out/quota.txt
+      - run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
