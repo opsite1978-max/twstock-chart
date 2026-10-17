@@ -16,7 +16,7 @@ jobs:
           T = os.environ['T']
           req = urllib.request.Request('https://api.web.finmindtrade.com/v2/user_info', headers={'Authorization': 'Bearer ' + T})
           j = json.load(urllib.request.urlopen(req, timeout=60))
-          print({k: j.get(k) for k in ('user_count', 'api_request_limit', 'level', 'level_title', 'vip_level', 'expire_date', 'end_date')})
+          print({k: j.get(k) for k in ('user_count', 'api_request_limit', 'api_request_limit_day', 'api_request_limit_hour', 'first_request_time', 'next_available_time', 'level_title', 'SponsorInfo')})
           print(sorted(j.keys()))
           PY
           sed -i "s/$T/***/g" out/quota.txt
