@@ -307,9 +307,9 @@ function render(){
     else if (dL < 0 && dS >= 0) say = `多方被套、空方獲利：反彈到 ${fmt(cL)} 附近多單容易解套賣出；再往下跌，多單停損容易加速下跌（多殺多）。`;
     else if (dL >= 0 && dS >= 0) say = `多空都有獲利，價格夾在兩邊成本 ${fmt(Math.min(cL, cS))}～${fmt(Math.max(cL, cS))} 之間，是雙方都能接受的區間；突破任何一邊才會有一方開始痛。`;
     else say = `多空都被套，價格在兩邊成本之間，往任何一邊突破都可能引發另一方停損。`;
-    if (cL && cS) items.push(['前十大', dL >= 0 ? css('--up') : css('--down'), `前十大交易人多單 ${fmt(L.tL)} 口、本月帳面成本約 <b>${fmt(cL)}</b>（${pl(dL)}）；空單 ${fmt(L.tS)} 口、成本約 <b>${fmt(cS)}</b>（${pl(dS)}）；淨部位 ${sgn(L.t10)} 口。${say}` + (L.cLN && L.cSN ? `近月（${L.near.slice(4)} 月，${md(L.exp)} 結算）：多單 ${fmt(L.qLN)} 口、成本 <b>${fmt(L.cLN)}</b>；空單 ${fmt(L.qSN)} 口、成本 <b>${fmt(L.cSN)}</b>。` : '') + (Math.abs(L.t10) < 0.1 * Math.max(L.tL, L.tS) ? `不過多空口數幾乎一樣，很多是同一批人一邊做多、一邊做空（鎖價差），帳面盈虧大多互相抵銷，真正的方向要看淨部位。` : '')]); }
+    if (cL && cS) items.push(['前十大', dL >= 0 ? css('--up') : css('--down'), `前十大交易人多單 ${fmt(L.tL)} 口、帳面成本約 <b>${fmt(cL)}</b>（${pl(dL)}）；空單 ${fmt(L.tS)} 口、成本約 <b>${fmt(cS)}</b>（${pl(dS)}）；淨部位 ${sgn(L.t10)} 口。${say}` + (L.cLN && L.cSN ? `近月（${L.near.slice(4)} 月，${md(L.exp)} 結算）：多單 ${fmt(L.qLN)} 口、成本 <b>${fmt(L.cLN)}</b>；空單 ${fmt(L.qSN)} 口、成本 <b>${fmt(L.cSN)}</b>。` : '') + (Math.abs(L.t10) < 0.1 * Math.max(L.tL, L.tS) ? `不過多空口數幾乎一樣，很多是同一批人一邊做多、一邊做空（鎖價差），帳面盈虧大多互相抵銷，真正的方向要看淨部位。` : '')]); }
   if (A.cfi.cost) { const d = A.cfi.net >= 0 ? L.c - A.cfi.cost : A.cfi.cost - L.c;
-    items.push(['外資', css('--gold'), `外資台指期淨${A.cfi.net >= 0 ? '多' : '空'} ${fmt(Math.abs(A.cfi.net))} 口，本月帳面成本約 <b>${fmt(A.cfi.cost)}</b>（${d >= 0 ? '獲利' : '被套'}約 ${fmt(Math.abs(d))} 點）。` + (A.cfi.net < 0 ? '外資的台指期空單很多是用來避險手上的現股，被套不一定會回補，參考性比前十大低。' : '')]); }
+    items.push(['外資', css('--gold'), `外資台指期淨${A.cfi.net >= 0 ? '多' : '空'} ${fmt(Math.abs(A.cfi.net))} 口，帳面成本約 <b>${fmt(A.cfi.cost)}</b>（${d >= 0 ? '獲利' : '被套'}約 ${fmt(Math.abs(d))} 點）。` + (A.cfi.net < 0 ? '外資的台指期空單很多是用來避險手上的現股，被套不一定會回補，參考性比前十大低。' : '')]); }
   const lead = [...A.contrib].sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts)).slice(0, 3);
   items.push(['權值股', A.push >= 0 ? css('--up') : css('--down'), `前 10 大權值股近 5 日合計貢獻指數 <b>${sgn(A.push, 0)} 點</b>（台指期同期 ${sgn(A.idx5, 0)} 點）${lead.length ? '。主要推手：' : ''}${lead.map(x => `${x.t.name} ${sgn(x.pts, 0)}`).join('、')}。` +
     `權值股期貨未平倉${A.futAdd > 5 ? '多數在增加，有人透過個股期貨布局權值股' : A.futAdd < -5 ? '多數在減少，權值股期貨部位在退場' : '增減互見'}。`]);
@@ -376,7 +376,7 @@ function drawDist(){
   const svg = $('#svDist'), L = D.rows[D.rows.length - 1], P = L.c, W0 = Math.max(300, svg.parentElement.clientWidth - 16), nar = W0 < 600;
   const all = dist.L.concat(dist.S), mq = Math.max(...all.map(x => x[1])), sig = all.filter(x => x[1] >= mq * 0.03).map(x => x[0]);
   let lo = Math.max(Math.min(...sig, P), P * 0.88), hi = Math.min(Math.max(...sig, P), P * 1.12);
-  const rowsN = nar ? 34 : 48, step = Math.max(cj.bin, Math.ceil((hi - lo) / rowsN / cj.bin) * cj.bin); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step + step;
+  const rowsN = nar ? 34 : 48, step = [20, 50, 100, 200, 250, 500, 1000].find(v => v >= Math.max(cj.bin, (hi - lo) / rowsN)) || 1000; lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step + step;
   const agg = arr => { const m = new Map(); for (const [p, q] of arr){ const k = Math.floor(p / step) * step; m.set(k, (m.get(k) || 0) + q); } return m; };
   const AL = agg(dist.L), AS = agg(dist.S), n = Math.round((hi - lo) / step), mx = Math.max(1, ...AL.values(), ...AS.values());
   const H = n * (nar ? 11 : 12) + 40, f = frame(svg, H, { l:nar ? 46 : 56, r:nar ? 8 : 12, t:22, b:18 }), cx = f.m.l + f.iw / 2, half = f.iw / 2 - (nar ? 44 : 70);
