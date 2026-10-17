@@ -48,7 +48,7 @@ print('inst days', len(days), days[0], days[-1])
 # 全市場未平倉口數與金額（每天一次，存快取）
 done = 0
 try:
-    for d in days:
+    for d in sorted(days, reverse=True):                                    # 先算最近的
         if d in cache and d < (datetime.date.fromisoformat(TODAY) - datetime.timedelta(days=3)).isoformat(): continue
         rows = api({'dataset': 'TaiwanOptionDaily', 'data_id': 'TXO', 'start_date': d, 'end_date': d})
         a = {'oC': 0, 'oP': 0, 'aC': 0.0, 'aP': 0.0}
