@@ -1,0 +1,42 @@
+name: 台指選擇權多空力道（逐筆 Delta 資金流）
+on:
+  schedule:
+    - cron: '25 23 * * 0-5'   # 台灣時間 週一～週六 07:25（夜盤收完）
+    - cron: '35 9 * * 1-5'    # 台灣時間 週一～週五 17:35（日盤收完）
+  workflow_dispatch:
+    inputs:
+      max_files:
+        description: '這次最多處理幾個日曆日'
+        default: '60'
+permissions:
+  contents: write
+concurrency:
+  group: force-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: 逐筆成交 → 每分鐘 Delta 力道、結構、法人（FinMind）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          MAX_FILES: ${{ github.event.inputs.max_files || '60' }}
+          MAX_MINUTES: '100'
+          REQ_BUDGET: '1200'
+        run: python3 scripts/force_data.py
+      - name: 存回專案
+        run: |
+          git add data/force
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="force-bot" -c user.email="force-bot@users.noreply.github.com" commit -qm "多空力道資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ]
