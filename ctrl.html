@@ -385,7 +385,7 @@ function drawOF(){
   document.querySelectorAll('#ofSeg button').forEach(b => { b.classList.toggle('on', b.dataset.k === OFK.k); b.hidden = b.dataset.k === 'T' && !hasT; });
   const svg = $('#svOF'), W0 = Math.max(300, svg.parentElement.clientWidth - 16), nar = W0 < 600, K = OFK.k;
   const R = of.days.filter(r => r.ix && r[K] != null).slice(nar ? -70 : -140); if (R.length < 5){ sec.hidden = true; return; }
-  const H0 = nar ? 150 : 190, H1 = nar ? 170 : 210, gap = 28, f = frame(svg, H0 + gap + H1 + gap + H1, { l:nar ? 46 : 56, r:10, t:10, b:22 });
+  const H0 = nar ? 150 : 190, H1 = nar ? 170 : 210, gap = 34, f = frame(svg, H0 + gap + H1 + gap + H1, { l:nar ? 46 : 56, r:10, t:10, b:22 });
   const x = i => f.m.l + f.iw * (i + 0.5) / R.length;
   const lo = Math.min(...R.map(r => r.ix)), hi = Math.max(...R.map(r => r.ix)), pad = (hi - lo) * 0.08 || 10, y0 = v => f.m.t + (hi + pad - v) / (hi - lo + 2 * pad) * (H0 - f.m.t);
   for (const t of ticks(lo - pad, hi + pad, 4)){ el('line', { x1:f.m.l, x2:f.W - f.m.r, y1:y0(t), y2:y0(t), stroke:css('--grid') }, svg); el('text', { x:f.m.l - 5, y:y0(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, svg, fmt(t)); }
@@ -400,12 +400,12 @@ function drawOF(){
     // 0 軸上紅（多）、下綠（空）
     const id = 'ofc' + key + top; const defs = el('defs', {}, svg), cp1 = el('clipPath', { id:id + 'u' }, defs), cp2 = el('clipPath', { id:id + 'd' }, defs);
     el('rect', { x:f.m.l, y:top, width:f.iw, height:H1 / 2 }, cp1); el('rect', { x:f.m.l, y:top + H1 / 2, width:f.iw, height:H1 / 2 }, cp2);
-    const pts = R.map((r, i) => [x(i), yy(r[key])]), line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(''), area = line + `L${pts[pts.length - 1][0]},${yy(0)}L${pts[0][0]},${yy(0)}Z`;
+    const pts = R.map((r, i) => r[key] == null ? null : [x(i), yy(r[key])]).filter(Boolean); if (!pts.length) return; const line = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(''), area = line + `L${pts[pts.length - 1][0]},${yy(0)}L${pts[0][0]},${yy(0)}Z`;
     el('path', { d:area, fill:css('--up'), 'fill-opacity':.28, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:area, fill:css('--down'), 'fill-opacity':.28, 'clip-path':`url(#${id}d)` }, svg);
     el('path', { d:line, fill:'none', stroke:css('--up'), 'stroke-width':2, 'clip-path':`url(#${id}u)` }, svg); el('path', { d:line, fill:'none', stroke:css('--down'), 'stroke-width':2, 'clip-path':`url(#${id}d)` }, svg);
-    const v = R[R.length - 1][key];
-    el('text', { x:f.m.l + 4, y:top + 13, 'font-size':12.5, 'font-weight':700, fill:css('--text') }, svg, title);
-    el('text', { x:f.W - f.m.r - 4, y:top + 13, 'text-anchor':'end', 'font-size':12.5, 'font-weight':800, fill:v >= 0 ? css('--up') : css('--down') }, svg, `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)} ${v >= 50 ? '強多' : v > 10 ? '偏多' : v <= -50 ? '強空' : v < -10 ? '偏空' : '中性'}`);
+    const v = R[R.length - 1][key]; if (v == null) return;
+    el('text', { x:f.m.l, y:top - 8, 'font-size':12.5, 'font-weight':700, fill:css('--text') }, svg, title);
+    el('text', { x:f.W - f.m.r, y:top - 8, 'text-anchor':'end', 'font-size':12.5, 'font-weight':800, fill:v >= 0 ? css('--up') : css('--down') }, svg, `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)} ${v >= 50 ? '強多' : v > 10 ? '偏多' : v <= -50 ? '強空' : v < -10 ? '偏空' : '中性'}`);
   };
   const t1 = H0 + gap, t2 = t1 + H1 + gap;
   panel(t1, K, K === 'T' ? '主力（前十大交易人）' : '主力（外資）');
