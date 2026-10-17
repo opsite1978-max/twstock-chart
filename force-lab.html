@@ -50,6 +50,7 @@
   th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
   th{color:var(--muted);font-weight:500} td:first-child,th:first-child{text-align:left}
   tr.click{cursor:pointer} tr.click:hover td{background:var(--panel2)} tr.sel td{background:var(--panel2)}
+  .tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.6;min-width:170px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   .up{color:var(--up)} .dn{color:var(--down)} .warn{color:var(--warn)}
   .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:0 7px;border-radius:999px;border:1.5px solid currentColor;margin-left:4px}
@@ -87,9 +88,10 @@
     <section class="sum"><h2>結論<span class="muted">依目前選的時間框架與持有時間自動產生</span></h2><div class="panel" id="sum"></div></section>
 
     <section>
-      <h2>近期走勢：價格、力道、殘差、衰竭、市場狀態<span class="muted">最近 300 根</span></h2>
-      <div class="panel"><div class="legend" id="lgS"></div><svg id="svS"></svg></div>
-      <p class="note">底下色帶＝市場狀態：紅＝多頭趨勢、綠＝空頭趨勢、灰＝區間震盪、黃＝恐慌擴張、空白＝趨勢轉換。衰竭分數只在最近 12 根曾有 |力道| ≥ 60 時才計算。</p>
+      <h2>近期走勢：價格、力道、殘差、衰竭、市場狀態<span class="muted">可縮放、拖曳；最多往回約 2,000 根</span></h2>
+      <div class="bar2" style="margin-top:0"><div class="seg"><button id="lzIn">＋ 放大</button><button id="lzOut">－ 縮小</button><button id="lzReset">最新</button></div></div>
+      <div class="panel"><div class="legend" id="lgS"></div><svg id="svS" style="touch-action:pan-y"></svg><div class="tip" id="tipS"></div></div>
+      <p class="note">紅色底＝超買區（力道 ≥ +60）、綠色底＝超賣區（力道 ≤ −60），綠色虛線＝悲觀線 −70；進入超買、超賣的點用實心圓點標出。滑鼠滾輪或兩指縮放，拖曳或單指左右滑動平移。底下色帶＝市場狀態：紅＝多頭趨勢、綠＝空頭趨勢、灰＝區間震盪、黃＝恐慌擴張、空白＝趨勢轉換。衰竭分數只在最近 12 根曾有 |力道| ≥ 60 時才計算。</p>
     </section>
 
     <section>
@@ -245,28 +247,82 @@ function renderRg(T){
   for (const [k, v] of Object.entries(T.regimes)) h += `<tr><td style="${RG[k][1] ? 'color:' + css(RG[k][1]) : ''}">${RG[k][0]}</td><td>${v.pct}%</td><td class="${cls(v.day)}">${sgn(v.day, 1)}</td><td class="${cls(v.night)}">${sgn(v.night, 1)}</td></tr>`;
   $('#tblRg').innerHTML = h + '</table>';
 }
+const LV = { n:null, end:null };
+function lvRange(n){ const W = $('#svS').clientWidth || 600; let cnt = LV.n || Math.min(n, Math.round(W < 600 ? 180 : 300)); cnt = Math.max(30, Math.min(n, cnt)); const end = LV.end == null ? n - 1 : Math.max(cnt - 1, Math.min(n - 1, LV.end)); return [end - cnt + 1, end]; }
 function renderSeries(T){
-  const s = T.series, svg = $('#svS'); svg.innerHTML = '';
-  const W = svg.clientWidth || 600, Hh = W < 600 ? 360 : 400, pl = 4, pr = 46, pt = 6, gap = 14, band = 8;
+  const S = T.series, svg = $('#svS'); svg.innerHTML = '';
+  const N = S.t.length; if (!N) return;
+  const [a0, a1] = lvRange(N), n = a1 - a0 + 1;
+  const s = {}; for (const k of Object.keys(S)) s[k] = S[k].slice(a0, a1 + 1);
+  const W = svg.clientWidth || 600, Hh = W < 600 ? 400 : 440, pl = 4, pr = 52, pt = 6, gap = 14, band = 8;
   svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.style.height = Hh + 'px';
-  const n = s.t.length; if (!n) return;
-  const pH = (Hh - pt - gap * 2 - band - 18) * 0.38, fTop = pt + pH + gap, fH = (Hh - pt - gap * 2 - band - 18) * 0.40, eTop = fTop + fH + gap, eH = Hh - eTop - band - 22;
-  const X = i => pl + (i + 0.5) / n * (W - pl - pr);
+  const pH = (Hh - pt - gap * 2 - band - 18) * 0.34, fTop = pt + pH + gap, fH = (Hh - pt - gap * 2 - band - 18) * 0.46, eTop = fTop + fH + gap, eH = Hh - eTop - band - 22;
+  const bw = (W - pl - pr) / n, X = i => pl + (i + 0.5) * bw;
   const lo = Math.min(...s.c), hi = Math.max(...s.c), P = v => pt + (hi - v) / (hi - lo || 1) * pH;
-  const YF = v => fTop + (100 - v) / 200 * fH, YE = v => eTop + (100 - v) / 100 * eH;
-  for (const v of ticks(lo, hi, 3)) el('text', { x:W - pr + 4, y:P(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, fmt(v));
-  for (const v of [60, 0, -60]){ el('line', { x1:pl, x2:W - pr, y1:YF(v), y2:YF(v), stroke:v === 0 ? css('--muted') : css('--grid'), 'stroke-dasharray':v ? '3 3' : null }, svg); el('text', { x:W - pr + 4, y:YF(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, (v > 0 ? '+' : '') + v); }
-  for (const v of [70, 0]){ el('line', { x1:pl, x2:W - pr, y1:YE(v), y2:YE(v), stroke:css('--grid'), 'stroke-dasharray':v ? '3 3' : null }, svg); el('text', { x:W - pr + 4, y:YE(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, String(v)); }
-  const path = (vals, Y, color, w) => { let d = ''; vals.forEach((v, i) => { if (v == null) return; d += (d && vals[i - 1] != null ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }); el('path', { d, fill:'none', stroke:color, 'stroke-width':w || 1.6 }, svg); };
-  path(s.c, P, css('--text'), 1.5); path(s.F, YF, css('--force'), 1.6); path(s.FR, YF, css('--resid'), 1.3);
-  s.exh.forEach((v, i) => { if (v == null) return; const c = s.exd[i] > 0 ? '--down' : '--up'; el('rect', { x:X(i) - (W - pl - pr) / n / 2, y:YE(v), width:Math.max(1, (W - pl - pr) / n - 0.5), height:Math.max(0.5, YE(0) - YE(v)), fill:css(c), opacity:v >= 70 ? 0.95 : 0.45 }, svg); });
-  const bY = Hh - band - 18; s.rg.forEach((r, i) => { const c = RG[r] && RG[r][1]; if (!c) return; el('rect', { x:X(i) - (W - pl - pr) / n / 2, y:bY, width:(W - pl - pr) / n + 0.3, height:band, fill:css(c), opacity:0.8 }, svg); });
-  const step = Math.max(1, Math.floor(n / 6)); for (let i = 0; i < n; i += step){ const t = new Date(s.t[i] * 1000).toISOString(); el('text', { x:X(i), y:Hh - 4, 'font-size':10.5, fill:css('--muted'), 'text-anchor':'middle' }, svg, +t.slice(5, 7) + '/' + +t.slice(8, 10)); }
-  el('text', { x:pl + 2, y:pt + 10, 'font-size':11, fill:css('--muted') }, svg, '台指期'); el('text', { x:pl + 2, y:fTop + 10, 'font-size':11, fill:css('--muted') }, svg, '力道與殘差'); el('text', { x:pl + 2, y:eTop + 10, 'font-size':11, fill:css('--muted') }, svg, '衰竭分數');
+  const cl = v => Math.max(-100, Math.min(100, v)), YF = v => fTop + (100 - cl(v)) / 200 * fH, YE = v => eTop + (100 - v) / 100 * eH;
+  const mut = css('--muted');
+  for (const v of ticks(lo, hi, 3)) el('text', { x:W - pr + 4, y:P(v) + 4, 'font-size':10.5, fill:mut }, svg, fmt(v));
+  // 超買區、超賣區（上下界）
+  el('rect', { x:pl, y:YF(100), width:W - pl - pr, height:YF(60) - YF(100), fill:css('--up'), opacity:0.12 }, svg);
+  el('rect', { x:pl, y:YF(-60), width:W - pl - pr, height:YF(-100) - YF(-60), fill:css('--down'), opacity:0.14 }, svg);
+  el('line', { x1:pl, x2:W - pr, y1:YF(60), y2:YF(60), stroke:css('--up'), 'stroke-width':1.5 }, svg);
+  el('line', { x1:pl, x2:W - pr, y1:YF(-60), y2:YF(-60), stroke:css('--down'), 'stroke-width':1.5 }, svg);
+  el('line', { x1:pl, x2:W - pr, y1:YF(-70), y2:YF(-70), stroke:css('--down'), 'stroke-width':1.2, 'stroke-dasharray':'6 3' }, svg);
+  el('line', { x1:pl, x2:W - pr, y1:YF(0), y2:YF(0), stroke:mut }, svg);
+  for (const v of [20, -20]) el('line', { x1:pl, x2:W - pr, y1:YF(v), y2:YF(v), stroke:css('--grid'), 'stroke-dasharray':'3 3' }, svg);
+  el('text', { x:pl + 6, y:YF(100) + 13, 'font-size':11.5, 'font-weight':700, fill:css('--up') }, svg, '超買區（≥ +60，多方過熱）');
+  el('text', { x:pl + 6, y:YF(-100) - 5, 'font-size':11.5, 'font-weight':700, fill:css('--down') }, svg, '超賣區（≤ −60，空方過熱）');
+  [[60, '+60', '--up'], [20, '+20', '--muted'], [0, '0', '--muted'], [-20, '−20', '--muted'], [-60, '−60', '--down'], [-70, '−70', '--down']].forEach(([v, t, c]) =>
+    el('text', { x:W - pr + 4, y:YF(v) + (v === -60 ? 0 : v === -70 ? 9 : 4), 'font-size':10.5, fill:css(c), 'font-weight':Math.abs(v) >= 60 ? 700 : 400 }, svg, t));
+  for (const v of [70, 0]){ el('line', { x1:pl, x2:W - pr, y1:YE(v), y2:YE(v), stroke:css('--grid'), 'stroke-dasharray':v ? '3 3' : null }, svg); el('text', { x:W - pr + 4, y:YE(v) + 4, 'font-size':10.5, fill:mut }, svg, String(v)); }
+  const path = (vals, Y, color, w) => { let d = ''; vals.forEach((v, i) => { if (v == null) return; d += (d && vals[i - 1] != null ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }); el('path', { d, fill:'none', stroke:color, 'stroke-width':w || 1.6, 'stroke-linejoin':'round' }, svg); };
+  path(s.c, P, css('--text'), 1.5); path(s.FR, YF, css('--resid'), 1.2); path(s.F, YF, css('--force'), 1.8);
+  // 進入超買、超賣的點加粗標出
+  s.F.forEach((v, i) => { if (v == null || Math.abs(v) < 60) return; el('circle', { cx:X(i), cy:YF(v), r:Math.min(3, Math.max(1.6, bw * 0.4)), fill:css(v > 0 ? '--up' : '--down') }, svg); });
+  s.exh.forEach((v, i) => { if (v == null) return; el('rect', { x:X(i) - bw / 2, y:YE(v), width:Math.max(1, bw - 0.5), height:Math.max(0.5, YE(0) - YE(v)), fill:css(s.exd[i] > 0 ? '--down' : '--up'), opacity:v >= 70 ? 0.95 : 0.45 }, svg); });
+  const bY = Hh - band - 18; s.rg.forEach((r, i) => { const c = RG[r] && RG[r][1]; if (!c) return; el('rect', { x:X(i) - bw / 2, y:bY, width:bw + 0.3, height:band, fill:css(c), opacity:0.8 }, svg); });
+  let lastX = -1e9; for (let i = 0; i < n; i++){ const t = new Date(s.t[i] * 1000).toISOString(), d = t.slice(0, 10); if (i && d === new Date(s.t[i - 1] * 1000).toISOString().slice(0, 10)) continue; const x = X(i); if (x - lastX < 54) continue; lastX = x;
+    el('line', { x1:x, x2:x, y1:pt, y2:bY, stroke:css('--grid') }, svg); el('text', { x, y:Hh - 4, 'font-size':10.5, fill:mut, 'text-anchor':'middle' }, svg, +t.slice(5, 7) + '/' + +t.slice(8, 10)); }
+  el('text', { x:pl + 2, y:pt + 10, 'font-size':11, fill:mut }, svg, '台指期'); el('text', { x:W - pr - 4, y:fTop + 10, 'font-size':11, fill:mut, 'text-anchor':'end' }, svg, '力道與殘差'); el('text', { x:pl + 2, y:eTop + 10, 'font-size':11, fill:mut }, svg, '衰竭分數');
   $('#lgS').innerHTML = [['台指期', css('--text')], ['淨流量力道', css('--force')], ['資金流殘差', css('--resid')]].map(([t, c]) => `<span><i style="background:${c}"></i>${t}</span>`).join('')
-    + `<span><i class="bar" style="background:${css('--down')}"></i>多方衰竭</span><span><i class="bar" style="background:${css('--up')}"></i>空方衰竭</span>`;
+    + `<span><i class="bar" style="background:${css('--up')};opacity:.5"></i>超買區</span><span><i class="bar" style="background:${css('--down')};opacity:.5"></i>超賣區</span><span><i class="bar" style="background:${css('--down')}"></i>多方衰竭</span><span><i class="bar" style="background:${css('--up')}"></i>空方衰竭</span>`;
+  // 十字線＋提示
+  const cross = el('line', { y1:pt, y2:bY, stroke:mut, 'stroke-dasharray':'2 3', visibility:'hidden' }, svg);
+  const dot = el('circle', { r:4, fill:css('--force'), visibility:'hidden' }, svg);
+  svg._geo = { a0, n, bw, pl, X, YF, s, cross, dot };
 }
-
+function seriesTip(ev){
+  const g = $('#svS')._geo, tp = $('#tipS'); if (!g) return;
+  const rc = $('#svS').getBoundingClientRect(), x = ev.clientX - rc.left, i = Math.max(0, Math.min(g.n - 1, Math.floor((x - g.pl) / g.bw)));
+  const s = g.s, t = new Date(s.t[i] * 1000).toISOString(), F = s.F[i];
+  g.cross.setAttribute('x1', g.X(i)); g.cross.setAttribute('x2', g.X(i)); g.cross.setAttribute('visibility', 'visible');
+  if (F != null){ g.dot.setAttribute('cx', g.X(i)); g.dot.setAttribute('cy', g.YF(F)); g.dot.setAttribute('visibility', 'visible'); } else g.dot.setAttribute('visibility', 'hidden');
+  const zone = F == null ? '' : F >= 60 ? '<span class="up">超買區</span>' : F <= -70 ? '<span class="dn">超賣區（低於悲觀線 −70）</span>' : F <= -60 ? '<span class="dn">超賣區</span>' : '一般區間';
+  const rg = RG[s.rg[i]] || ['–', ''];
+  tp.innerHTML = `<b>${+t.slice(5, 7)}/${+t.slice(8, 10)} ${t.slice(11, 16)}</b><br>台指期 ${fmt(s.c[i])}<br>淨流量力道 <b class="${cls(F)}">${sgn(F, 1)}</b>　${zone}<br>資金流殘差 ${sgn(s.FR[i], 1)}<br>衰竭分數 ${s.exh[i] == null ? '–' : fmt(s.exh[i]) + (s.exd[i] > 0 ? '（多方極端後）' : '（空方極端後）')}<br>市場狀態 ${rg[0]}`;
+  tp.style.display = 'block'; const pw = $('#svS').parentNode.clientWidth, tw = tp.offsetWidth;
+  tp.style.left = Math.max(4, Math.min(pw - tw - 4, x + 14 > pw - tw ? x - tw - 14 : x + 14)) + 'px'; tp.style.top = Math.max(4, ev.clientY - rc.top - 30) + 'px';
+}
+function lvZoom(f){ if (!R) return; const N = R.tf[ST.tf].series.t.length, [a, b] = lvRange(N); LV.n = Math.round((b - a + 1) * f); LV.end = b; renderSeries(R.tf[ST.tf]); }
+(function bindSeries(){
+  const svg = $('#svS'); let drag = null, pinch = null;
+  svg.addEventListener('pointermove', ev => { if (!R) return; if (drag && ev.pointerType === 'mouse' && ev.buttons){ const g = svg._geo, N = R.tf[ST.tf].series.t.length; LV.end = Math.max(0, Math.min(N - 1, drag.end + Math.round((drag.x - ev.clientX) / g.bw))); if (LV.end >= N - 1) LV.end = null; renderSeries(R.tf[ST.tf]); return; } seriesTip(ev); });
+  svg.addEventListener('pointerdown', ev => { if (!R) return; if (ev.pointerType === 'mouse') drag = { x:ev.clientX, end:lvRange(R.tf[ST.tf].series.t.length)[1] }; });
+  window.addEventListener('pointerup', () => { drag = null; });
+  svg.addEventListener('pointerleave', () => { $('#tipS').style.display = 'none'; const g = svg._geo; if (g){ g.cross.setAttribute('visibility', 'hidden'); g.dot.setAttribute('visibility', 'hidden'); } });
+  svg.addEventListener('wheel', ev => { if (!R) return; ev.preventDefault(); lvZoom(ev.deltaY > 0 ? 1.2 : 1 / 1.2); }, { passive:false });
+  svg.addEventListener('touchstart', ev => { if (!R) return; const N = R.tf[ST.tf].series.t.length, [a, b] = lvRange(N);
+    if (ev.touches.length === 2) pinch = { d:Math.abs(ev.touches[0].clientX - ev.touches[1].clientX) || 1, n:b - a + 1, end:b };
+    else if (ev.touches.length === 1) drag = { x:ev.touches[0].clientX, y:ev.touches[0].clientY, end:b, moved:false }; }, { passive:true });
+  svg.addEventListener('touchmove', ev => {
+    if (pinch && ev.touches.length === 2){ ev.preventDefault(); const d = Math.abs(ev.touches[0].clientX - ev.touches[1].clientX) || 1; LV.n = Math.round(pinch.n * pinch.d / d); LV.end = pinch.end; renderSeries(R.tf[ST.tf]); return; }
+    if (drag && ev.touches.length === 1){ const dx = ev.touches[0].clientX - drag.x, dy = Math.abs(ev.touches[0].clientY - drag.y);
+      if (!drag.moved && Math.abs(dx) < 8){ seriesTip(ev.touches[0]); return; } if (dy > Math.abs(dx)) return;
+      ev.preventDefault(); drag.moved = true; $('#tipS').style.display = 'none'; const g = svg._geo, N = R.tf[ST.tf].series.t.length;
+      LV.end = Math.max(0, Math.min(N - 1, drag.end + Math.round(-dx / g.bw))); if (LV.end >= N - 1) LV.end = null; renderSeries(R.tf[ST.tf]); } }, { passive:false });
+  svg.addEventListener('touchend', () => { pinch = null; drag = null; });
+  $('#lzIn').onclick = () => lvZoom(1 / 1.4); $('#lzOut').onclick = () => lvZoom(1.4); $('#lzReset').onclick = () => { LV.n = null; LV.end = null; renderSeries(R.tf[ST.tf]); };
+})();
 function method(){
   $('#method').innerHTML = `
     <b>資料</b>：${esc(R.range[0])} ～ ${esc(R.range[1])}，5 分 K 共 ${fmt(R.bars5)} 根（逐筆選擇權推估的主動成交 Delta 淨流量＋台指期近月價格）。這一頁每晚自動重算，完全不連 FinMind，不佔查詢次數。<br>
@@ -277,7 +333,7 @@ function method(){
     <b>限制</b>：主動買賣方向是用價格跳動推估；歷史只有約 9.5 個月，而且同一批資料被用來想出假說，又同時比較了 8 種策略 × 3 個時間框架 × 2 種持有時間，偶然出現一兩個看起來顯著的結果是正常的。正式結論要看 ${esc(R.freeze)} 之後的「新資料驗證」。這是研究工具，不是投資建議。`;
 }
 
-document.querySelectorAll('#tfSeg button').forEach(b => b.onclick = () => { ST.tf = b.dataset.tf; store.set('lab.tf', ST.tf); if (ST.sel === 'H' && ST.tf !== '15') ST.sel = null; render(); });
+document.querySelectorAll('#tfSeg button').forEach(b => b.onclick = () => { LV.n = null; LV.end = null; ST.tf = b.dataset.tf; store.set('lab.tf', ST.tf); if (ST.sel === 'H' && ST.tf !== '15') ST.sel = null; render(); });
 document.querySelectorAll('#hSeg button').forEach(b => b.onclick = () => { ST.h = b.dataset.h; store.set('lab.h', ST.h); render(); });
 let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(() => R && render(), 150); });
 (async () => {

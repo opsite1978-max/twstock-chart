@@ -634,7 +634,7 @@ def run():
                     'regime': X['regime'][last], 'exh': X['exh'][last] and round(X['exh'][last], 1), 'exd': X['exd'][last],
                     'exparts': {k: round(v, 1) for k, v in X['exparts'][last].items()}}
         # 給頁面畫圖：最近 300 根的殘差、衰竭、狀態
-        k0 = max(0, len(bars) - 300)
+        k0 = max(0, len(bars) - 2000)
         R['series'] = {'t': [b['t'] for b in bars[k0:]], 'c': [b['c'] for b in bars[k0:]],
                        'F': [None if v is None else round(v, 1) for v in X['F'][k0:]], 'FR': [None if v is None else round(v, 1) for v in X['FR'][k0:]],
                        'exh': [None if v is None else round(v) for v in X['exh'][k0:]], 'exd': X['exd'][k0:], 'rg': X['regime'][k0:]}
