@@ -76,6 +76,11 @@
   .chips button{height:30px;padding:0 10px;font-size:12.5px}
   .chips button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   .warn{color:#e0a800}
+  @media (max-width:520px){
+    header{gap:6px;padding:6px 10px} header h1{font-size:14px} header button{height:30px;padding:0 8px;font-size:13px} #upd{display:none}
+    .top{grid-template-columns:1fr 1fr;gap:6px} .kpi{padding:6px 9px} .kpi .v{font-size:18px} .kpi .s{font-size:11px} .kpi.mhide{display:none}
+    .zseg{display:none!important}
+  }
 </style>
 <script>
 /* 憑證失效偵測（同其他頁） */
@@ -111,7 +116,7 @@
         <button id="blendBtn" title="主線另外混入 25% 的外資部位偏向（盤後資料，只用到前一天公布的）">加入法人背景</button>
         <button id="liveBtn" title="盤中用 FinMind 即時報價每分鐘推估（需要 FinMind 贊助會員憑證）">開啟即時</button>
         <span class="spacer"></span>
-        <div class="seg"><button id="zIn">＋</button><button id="zOut">－</button><button id="zEnd">最新</button></div>
+        <div class="seg zseg"><button id="zIn">＋</button><button id="zOut">－</button></div><button id="zEnd">最新</button>
       </div>
       <div class="panel" id="mainPanel">
         <div class="legend" id="lgMain"></div>
@@ -503,7 +508,7 @@ function drawMain(){
     if (!nb) continue;
     const x = Math.round(X(i) - bw / 2) + 0.5;
     g.strokeStyle = cLine; g.beginPath(); g.moveTo(x, top); g.lineTo(x, Hh - axisH); g.stroke();
-    if (x - lastLab > 56){ const lab = VIEW.tf === 'D' ? bars[i].td.slice(0, 7).replace('-', '/') : md(bars[i].td) + (bars[i].s === 'N' ? ' 夜' : ' 日'); g.fillText(lab, Math.min(W - padR - 20, x + 22), Hh - axisH / 2); lastLab = x; }
+    if (x - lastLab > 56){ const lab = VIEW.tf === 'D' ? bars[i].td.slice(0, 7).replace('-', '/') : md(iso(bars[i].t).slice(0, 10)) + (bars[i].s === 'N' ? ' 夜' : ' 日'); g.fillText(lab, Math.min(W - padR - 20, x + 22), Hh - axisH / 2); lastLab = x; }
   }
   // 價格線
   g.strokeStyle = cText; g.lineWidth = 1.5; g.beginPath();
@@ -597,7 +602,7 @@ function renderTop(){
     <div class="kpi"><div class="lb">多空力道（${MODES[ST.mode].name}・${tfName()}）</div><div class="v ${r.F >= 20 ? 'up' : r.F <= -20 ? 'dn' : ''}">${r.F == null ? '–' : sgn(r.F, 0)}</div><div class="s">訊號線 ${r.sig == null ? '–' : sgn(r.sig, 0)}・恐慌 ${r.panic == null ? '–' : fmt(r.panic)}</div></div>
     <div class="kpi"><div class="lb">市場狀態</div><div class="v" style="font-size:18px"><span class="pill ${st[1]}" style="border-color:currentColor">${st[0]}</span></div><div class="s">${esc(t)}</div></div>
     <div class="kpi"><div class="lb">最新 GO 訊號</div><div class="v" style="font-size:18px">${last ? `<span class="${last.dir > 0 ? 'up' : 'dn'}">${last.dir > 0 ? '▲ 多方 GO' : '▼ 空方 GO'}</span>` : '–'}</div><div class="s">${last ? esc((VIEW.tf === 'D' ? bars[last.i].td : mdhm(bars[last.i].t)) + '・失效價 ' + fmt(last.stop)) : '這個時間框架還沒有'}</div></div>
-    <div class="kpi"><div class="lb">外資部位偏向（盤後）</div><div class="v ${ib && ib.bias >= 20 ? 'up' : ib && ib.bias <= -20 ? 'dn' : ''}">${ib && ib.bias != null ? sgn(ib.bias, 0) : '–'}</div><div class="s">${ib ? esc(INST.length ? INST[INST.length - 1].d : '') + ' 公布' : ''}・資料 ${esc(lvl)}</div></div>`;
+    <div class="kpi mhide"><div class="lb">外資部位偏向（盤後）</div><div class="v ${ib && ib.bias >= 20 ? 'up' : ib && ib.bias <= -20 ? 'dn' : ''}">${ib && ib.bias != null ? sgn(ib.bias, 0) : '–'}</div><div class="s">${ib ? esc(INST.length ? INST[INST.length - 1].d : '') + ' 公布' : ''}・資料 ${esc(lvl)}</div></div>`;
 }
 const tfName = () => ({ '1':'1分', '5':'5分', '15':'15分', '60':'60分', '240':'4時', 'D':'日' })[ST.tf];
 
@@ -631,7 +636,7 @@ function renderGo(){
   const vixs = done.map(x => x.vix).filter(v => v != null), vm = med(vixs);
   $('#tblSplit').innerHTML = `<table><tr><th>60 分鐘報酬分組</th><th colspan="3" style="text-align:center" class="up">多方 GO</th><th colspan="3" style="text-align:center" class="dn">空方 GO</th></tr>
     <tr><th></th><th>次數</th><th>平均</th><th>勝率</th><th>次數</th><th>平均</th><th>勝率</th></tr>
-    ${splitRow('前半段期間', x => x.t < half)}${splitRow('後半段期間（樣本外）', x => x.t >= half)}
+    ${splitRow('前半段期間', x => x.t < half)}${splitRow('後半段期間（看結果穩不穩）', x => x.t >= half)}
     ${vm != null ? splitRow('波動率指數高於中位數', x => x.vix != null && x.vix >= vm) + splitRow('波動率指數低於中位數', x => x.vix != null && x.vix < vm) : ''}
     ${splitRow('週三、週五結算日', x => x.settle)}${splitRow('非結算日', x => !x.settle)}
     <tr><td>60 分內最大有利／不利（點）</td><td colspan="3">${e1 ? fmt(e1.mfe, 0) + '／' + fmt(e1.mae, 0) : '–'}</td><td colspan="3">${e2 ? fmt(e2.mfe, 0) + '／' + fmt(e2.mae, 0) : '–'}</td></tr>
@@ -653,7 +658,7 @@ function renderGo(){
   $('#tblBucket').innerHTML = `<table><tr><th>主線數值區間</th><th>次數</th><th>之後${VIEW.tf === 'D' ? '隔天' : ' 60 分'}平均（點）</th><th>上漲比例</th></tr>` +
     B.map(q => `<tr><td>${q.name}</td><td>${q.r.length}</td><td class="${clsUp(avg(q.r))}">${q.r.length ? sgn(avg(q.r), 1) : '–'}</td><td>${q.r.length ? pct(q.r.filter(x => x > 0).length / q.r.length * 100) : '–'}</td></tr>`).join('') + '</table>';
   const first = VIEW.bars.find((b, i) => VIEW.res[i].F != null);
-  $('#btScope').textContent = first ? `回測期間：${first.td} ～ ${VIEW.bars[VIEW.bars.length - 1].td}（${tfName()}，${MODES[ST.mode].name}）` : '';
+  $('#btScope').textContent = first ? `回測期間：${iso(first.t).slice(0, 10)} ～ ${iso(VIEW.bars[VIEW.bars.length - 1].t).slice(0, 10)}（${tfName()}，${MODES[ST.mode].name}）` : '';
   $('#noteBt').innerHTML = `進場用訊號下一根 K 棒開盤價，報酬已扣來回成本 ${cost} 點；「隔日」＝持有到下一個日盤收盤。基準列＝任何時候進場的平均，用來看訊號有沒有比隨便進場好。`
     + `觸及失效價＝60 分鐘內碰到訊號前的最低點（多方）或最高點（空方）。前半／後半段用來看結果穩不穩定；次數少於 30 次時，平均值很容易受一兩筆影響，請保守看待。`
     + `右表檢驗主線本身：如果數值越高、之後越容易上漲，代表主線有預測力；如果各區間差不多，代表它主要反映「當下」的買賣力道，而不是預測未來。`;
