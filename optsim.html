@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>買方推演</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --up:#ef5350; --down:#26a69a;
+    --opt:#f0883e; --fut:#4c8dff; --left:#b98cff; --zone:rgba(138,147,166,.16);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
+    --opt:#e8711f; --fut:#2f6fe0; --left:#8a5cf0; --zone:rgba(102,112,133,.14); color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  button{cursor:pointer;white-space:nowrap}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+  .box h2{font-size:15px;margin:0 0 4px}
+  .desc{font-size:13px;color:var(--muted);margin:0 0 8px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .seg button{border:0;border-radius:0;height:32px}
+  .seg button.on{background:var(--accent);color:#fff}
+  .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin-top:8px}
+  @media(min-width:760px){.form{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+  .form input,.form select{width:100%;height:32px;padding:3px 7px;font-variant-numeric:tabular-nums}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chips button{height:28px;padding:2px 9px;font-size:12px}
+  .chips button.on{border-color:var(--accent);color:var(--accent)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+  .chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted)}
+  .chk input{height:auto;width:auto}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .cards > div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 9px;min-width:0}
+  .cards .k{font-size:12px;color:var(--muted)}
+  .cards .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .cards .s{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .checks{display:grid;gap:6px}
+  .ck{display:flex;gap:9px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+  .dot{flex:none;width:11px;height:11px;border-radius:50%;margin-top:5px}
+  .g{background:#26a69a} .y{background:#f2b33d} .r{background:#ef5350}
+  .ck b{display:block;font-size:14px}
+  .ck span{font-size:13px;color:var(--muted)}
+  .verdict{margin-top:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);font-size:14px}
+  .chartwrap{position:relative;width:100%}
+  canvas{display:block;width:100%}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin:2px 0 4px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .stat{font-size:13px;color:var(--muted);margin:6px 0 0}
+  .stat b{color:var(--text);font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .dn{color:var(--down)} .muted{color:var(--muted)} .small{font-size:12px}
+  .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  @media(max-width:760px){.g2{grid-template-columns:minmax(0,1fr)}}
+  .g2 .box{margin-bottom:0}
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
+  table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{padding:5px 7px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+  th{background:var(--panel);color:var(--muted);font-weight:500}
+  td.l,th.l{text-align:left;position:sticky;left:0;background:var(--panel)}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:8px 0;font-size:13px}
+  footer{margin-top:18px;font-size:12px;color:var(--muted)}
+  footer p{margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>買方推演</h1>
+  <span class="spacer"></span>
+  <button onclick="location.href='txo.html'">選擇權</button>
+  <button onclick="location.href='force.html'">多空力道</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div class="box">
+    <h2>條件設定</h2>
+    <p class="desc" id="src">讀取最新台指期資料中…</p>
+    <div class="row">
+      <div class="seg" id="sideSeg"><button data-v="C">買進買權（看漲）</button><button data-v="P">買進賣權（看跌）</button></div>
+      <button id="refill" title="重新帶入最新的台指期收盤價、隱含波動率與實際波動率">帶入最新台指</button>
+    </div>
+    <div class="form">
+      <label>台指期現價（點）<input type="number" id="S0" step="1" inputmode="decimal"></label>
+      <label>履約價（點）<input type="number" id="K" step="50" inputmode="decimal"></label>
+      <label>距離結算（天）<input type="number" id="days" min="1" max="120" step="1" inputmode="numeric"></label>
+      <label>預計第幾天平倉<input type="number" id="exitDay" min="1" step="1" inputmode="numeric"></label>
+      <label>進場隱含波動率（%）<input type="number" id="iv0" step="0.1" inputmode="decimal"></label>
+      <label>平倉時隱含波動率（%）<input type="number" id="iv1" step="0.1" inputmode="decimal"></label>
+      <label>實際波動率（%）<input type="number" id="rv" step="0.1" inputmode="decimal" title="預估未來指數真正的波動程度，預設是近 20 個交易日的實際波動"></label>
+      <label>預期年化漲幅（%）<input type="number" id="mu" step="1" inputmode="decimal" title="你對方向的看法；0 代表不預設方向"></label>
+      <label>實際權利金（點，選填）<input type="number" id="prem" step="0.1" inputmode="decimal" placeholder="不填用理論價"></label>
+      <label>手續費（元／口，單邊）<input type="number" id="fee" step="1" inputmode="numeric"></label>
+      <label>推演次數<select id="N"><option value="20000">2 萬次</option><option value="50000">5 萬次</option><option value="100000">10 萬次</option><option value="200000">20 萬次</option></select></label>
+      <label>指數漲跌分布<select id="tail"><option value="n">常態（教科書）</option><option value="t">肥尾（較常大跳空）</option></select></label>
+    </div>
+    <div class="chips" id="kChips"></div>
+    <div class="chips" id="dChips"></div>
+    <div class="row"><button class="primary" id="run">開始推演</button><span class="muted small" id="runInfo"></span></div>
+  </div>
+
+  <div id="out"><div class="msg">設定好條件後按「開始推演」。</div></div>
+
+  <footer>
+    <p>推演方式：用電腦隨機產生大量的未來指數走勢（蒙地卡羅模擬），每條走勢都分別計算「直接做台指期」和「買選擇權」的損益，再統計各種結局出現的比例。選擇權價格用布萊克選擇權定價公式（Black 76）計算，利率設為 0。</p>
+    <p>損益拆解的順序是先算方向、再算時間、最後算波動率，換個順序三格數字會略有不同，看大方向即可。期交稅以權利金千分之一估算，到期結算只計手續費，實際以券商為準。</p>
+    <p>現價、隱含波動率、實際波動率取自本站每天收盤後算好的台指選擇權歷史資料（不會用到 FinMind 額度），想用夜盤價請直接改「台指期現價」。這是機率推演，不是預測。</p>
+  </footer>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+const fmtInt = n => n == null || isNaN(n) ? '–' : Math.round(n).toLocaleString('en-US');
+const f1 = n => n == null || isNaN(n) ? '–' : (Math.round(n * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const sg1 = n => n == null || isNaN(n) ? '–' : (n > 0 ? '+' : n < 0 ? '−' : '') + f1(Math.abs(n));
+const sgInt = n => n == null || isNaN(n) ? '–' : (n > 0 ? '+' : n < 0 ? '−' : '') + fmtInt(Math.abs(n));
+const pc = (n, d = 1) => n == null || isNaN(n) ? '–' : (n * 100).toFixed(d) + '%';
+const cls = n => n > 0 ? 'up' : n < 0 ? 'dn' : '';
+const WD = '日一二三四五六';
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
+const POINT = 50;          // 台指選擇權每點 50 元
+const TAX = 0.001;         // 期交稅：權利金千分之一
+
+/* ───────── 定價工具 ───────── */
+function erf(x){
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+const ncdf = x => 0.5 * (1 + erf(x / Math.SQRT2));
+// Black 76（期貨選擇權），利率 0
+function price(side, F, K, T, vol){
+  if (T <= 1e-9 || vol <= 0) return side === 'C' ? Math.max(F - K, 0) : Math.max(K - F, 0);
+  const sv = vol * Math.sqrt(T);
+  const d1 = (Math.log(F / K) + 0.5 * sv * sv) / sv, d2 = d1 - sv;
+  return side === 'C' ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1);
+}
+function impliedVol(side, F, K, T, p){
+  const intr = side === 'C' ? Math.max(F - K, 0) : Math.max(K - F, 0);
+  if (!(p > intr) || T <= 0) return null;
+  let lo = 0.005, hi = 5;
+  if (price(side, F, K, T, hi) < p) return null;
+  for (let i = 0; i < 80; i++){ const m = (lo + hi) / 2; if (price(side, F, K, T, m) > p) hi = m; else lo = m; }
+  return (lo + hi) / 2;
+}
+
+/* ───────── 亂數（固定種子，同樣條件每次結果一樣） ───────── */
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeNormal(rnd){
+  let spare = null;
+  return () => {
+    if (spare != null){ const s = spare; spare = null; return s; }
+    let u = 0; while (u < 1e-12) u = rnd();
+    const v = rnd(), r = Math.sqrt(-2 * Math.log(u));
+    spare = r * Math.sin(2 * Math.PI * v); return r * Math.cos(2 * Math.PI * v);
+  };
+}
+// 自由度 4 的 t 分布，縮放成變異數 1（尾巴比常態厚很多）
+function makeFat(nrm){
+  const df = 4, scale = Math.sqrt((df - 2) / df);
+  return () => { let c = 0; for (let i = 0; i < df; i++){ const z = nrm(); c += z * z; } return nrm() / Math.sqrt(c / df) * scale; };
+}
+
+/* ───────── 狀態與輸入 ───────── */
+const SAVE_KEY = 'twchart.optsim';
+let saved = {}; try { saved = JSON.parse(store.get(SAVE_KEY) || '{}') || {}; } catch(e){}
+let side = saved.side === 'P' ? 'P' : 'C';
+let MKT = null;   // 最新台指資料
+const ids = ['S0', 'K', 'days', 'exitDay', 'iv0', 'iv1', 'rv', 'mu', 'prem', 'fee', 'N', 'tail'];
+const num = id => { const v = parseFloat($('#' + id).value); return isNaN(v) ? null : v; };
+function setVal(id, v){ $('#' + id).value = v == null ? '' : v; }
+function saveInputs(){
+  const o = { side, kOff: (num('K') ?? 0) - roundStrike(num('S0') ?? 0), mu: num('mu'), fee: num('fee'), N: $('#N').value, tail: $('#tail').value, exitFrac: (num('exitDay') || 1) / (num('days') || 1) };
+  store.set(SAVE_KEY, JSON.stringify(o));
+}
+const roundStrike = s => Math.round(s / 100) * 100;
+
+function paintSide(){
+  document.querySelectorAll('#sideSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === side));
+  buildKChips();
+}
+function buildKChips(){
+  const S0 = num('S0'); if (!S0) { $('#kChips').innerHTML = ''; return; }
+  const atm = roundStrike(S0), sgn = side === 'C' ? 1 : -1, K = num('K');
+  const offs = [0, 100, 200, 300, 500, 800, 1000, 1500];
+  $('#kChips').innerHTML = '<span class="muted small" style="align-self:center">履約價：</span>' + offs.map(o => {
+    const k = atm + sgn * o;
+    return `<button data-k="${k}" class="${k === K ? 'on' : ''}">${o === 0 ? '價平' : '價外 ' + o} ${fmtInt(k)}</button>`;
+  }).join('');
+}
+// 結算日：近月（資料裡的）＋未來 5 週的週三、週五（假日可能順延，標「約」）
+function buildDChips(){
+  const today = twToday(), out = [];
+  if (MKT && MKT.nearExp && MKT.nearExp >= today) out.push({ d: MKT.nearExp, tag: '最近結算' });
+  for (let i = 1; i <= 35 && out.length < 9; i++){
+    const d = new Date(Date.parse(today) + i * 864e5).toISOString().slice(0, 10);
+    const w = new Date(d + 'T00:00:00Z').getUTCDay();
+    if ((w === 3 || w === 5) && !out.some(x => x.d === d)) out.push({ d, tag: '' });
+  }
+  out.sort((a, b) => a.d < b.d ? -1 : 1);
+  const days = num('days');
+  $('#dChips').innerHTML = '<span class="muted small" style="align-self:center">結算日：</span>' + out.map(x => {
+    const n = Math.max(1, dayDiff(today, x.d));
+    return `<button data-days="${n}" class="${n === days ? 'on' : ''}">${x.tag ? x.tag + ' ' : '約 '}${md(x.d)}（${WD[new Date(x.d + 'T00:00:00Z').getUTCDay()]}）${n} 天</button>`;
+  }).join('') + `<button data-days="30" class="${days === 30 ? 'on' : ''}">30 天</button>`;
+}
+
+async function loadMarket(){
+  try {
+    const r = await fetch('data/txo/history.json?t=' + Date.now());
+    const j = await r.json();
+    const ds = (j.days || []).filter(x => x.c > 0);
+    const last = ds[ds.length - 1];
+    let rv = null;
+    if (ds.length > 21){
+      const rs = []; for (let i = ds.length - 20; i < ds.length; i++) rs.push(Math.log(ds[i].c / ds[i - 1].c));
+      const m = rs.reduce((a, b) => a + b, 0) / rs.length;
+      rv = Math.sqrt(rs.reduce((a, b) => a + (b - m) ** 2, 0) / rs.length * 252);
+    }
+    MKT = { d: last.d, c: last.c, iv: last.iv, nearExp: last.nearExp, rv };
+  } catch(e){ MKT = null; }
+}
+function fillMarket(){
+  const today = twToday();
+  if (MKT){
+    setVal('S0', MKT.c);
+    setVal('iv0', MKT.iv != null ? MKT.iv : 18);
+    setVal('iv1', MKT.iv != null ? MKT.iv : 18);
+    setVal('rv', MKT.rv != null ? (MKT.rv * 100).toFixed(1) : 18);
+    let days = MKT.nearExp ? dayDiff(today, MKT.nearExp) : 0;
+    if (!(days >= 1)) days = 7;
+    setVal('days', days);
+    $('#src').innerHTML = `已帶入 ${md(MKT.d)} 台指期日盤收盤 <b>${fmtInt(MKT.c)}</b> 點、近月價平隱含波動率 <b>${MKT.iv != null ? MKT.iv + '%' : '–'}</b>、近 20 日實際波動率 <b>${MKT.rv != null ? (MKT.rv * 100).toFixed(1) + '%' : '–'}</b>。數字都可以自己改。`;
+  } else {
+    if (!num('S0')) setVal('S0', 47000);
+    if (!num('iv0')) { setVal('iv0', 18); setVal('iv1', 18); setVal('rv', 18); }
+    if (!num('days')) setVal('days', 7);
+    $('#src').textContent = '讀不到本站的台指資料，請自行輸入現價與波動率。';
+  }
+  const S0 = num('S0'), sgn = side === 'C' ? 1 : -1;
+  const kOff = typeof saved.kOff === 'number' ? Math.abs(saved.kOff) : 0;
+  setVal('K', roundStrike(S0) + sgn * kOff);
+  const days = num('days');
+  setVal('exitDay', Math.max(1, Math.min(days, Math.round(days * (saved.exitFrac || 0.5)))));
+  setVal('prem', '');
+  buildKChips(); buildDChips();
+}
+
+/* ───────── 推演 ───────── */
+function simulate(p){
+  const { S0, K, days, exitDay, iv0, iv1, rv, mu, N, fat, premIn, fee } = p;
+  const T0 = days / 365, t1 = exitDay / 365, Trem = (days - exitDay) / 365, t2 = Trem;
+  const sgn = side === 'C' ? 1 : -1;
+  const p0 = premIn != null ? premIn : price(side, S0, K, T0, iv0);
+  const feePt = fee / POINT;
+  const costIn = feePt + TAX * p0;
+  const BE = K + sgn * (p0 + costIn + feePt);      // 抱到結算（價內才付結算手續費）
+  const rnd = mulberry32(42), nrm = makeNormal(rnd), draw = fat ? makeFat(nrm) : nrm;
+  const drift1 = (mu - 0.5 * rv * rv) * t1, sd1 = rv * Math.sqrt(t1);
+  const drift2 = (mu - 0.5 * rv * rv) * t2, sd2 = rv * Math.sqrt(t2);
+  // 期貨損益：看漲＝做多、看跌＝做空，單位都用「點」
+  const fMid = new Float64Array(N), oMid = new Float64Array(N), fEnd = new Float64Array(N), oEnd = new Float64Array(N), sEnd = new Float64Array(N);
+  const right1 = new Uint8Array(N), right2 = new Uint8Array(N);
+  let cDir = 0, cTime = 0, cVol = 0, cCost = 0, nR1 = 0;
+  const atExpiry = exitDay >= days;
+  for (let i = 0; i < N; i++){
+    const S1 = S0 * Math.exp(drift1 + sd1 * draw());
+    const S2 = atExpiry ? S1 : S1 * Math.exp(drift2 + sd2 * draw());
+    // 中途平倉
+    const pNow = price(side, S1, K, Trem, iv1);
+    const exitCost = atExpiry ? ((sgn * (S1 - K) > 0) ? feePt : 0) : feePt + TAX * pNow;
+    fMid[i] = sgn * (S1 - S0);
+    oMid[i] = pNow - p0 - costIn - exitCost;
+    right1[i] = fMid[i] > 0 ? 1 : 0;
+    if (right1[i]){
+      const pNoTime = price(side, S1, K, T0, iv0);
+      const pNoDrop = price(side, S1, K, Trem, iv0);
+      // 方向：用進場時的權利金當基準（實際權利金若和理論不同，差額算進方向這格）
+      cDir += pNoTime - p0; cTime += pNoDrop - pNoTime; cVol += pNow - pNoDrop; cCost += -(costIn + exitCost); nR1++;
+    }
+    // 抱到結算
+    const intr = Math.max(sgn * (S2 - K), 0);
+    sEnd[i] = S2;
+    fEnd[i] = sgn * (S2 - S0);
+    oEnd[i] = intr - p0 - costIn - (intr > 0 ? feePt : 0);
+    right2[i] = fEnd[i] > 0 ? 1 : 0;
+  }
+  return { p0, BE, costIn, feePt, fMid, oMid, fEnd, oEnd, sEnd, right1, right2, nR1,
+    parts: nR1 ? { dir: cDir / nR1, time: cTime / nR1, vol: cVol / nR1, cost: cCost / nR1 } : null, atExpiry };
+}
+
+function quantile(arr, q){ const a = Float64Array.from(arr).sort(); return a[Math.min(a.length - 1, Math.max(0, Math.floor(q * (a.length - 1))))]; }
+function stats(vals, mask){
+  let n = 0, w = 0, s = 0;
+  for (let i = 0; i < vals.length; i++){ if (mask && !mask[i]) continue; n++; s += vals[i]; if (vals[i] > 0) w++; }
+  return { n, win: n ? w / n : 0, mean: n ? s / n : 0 };
+}
+
+/* ───────── 作圖 ───────── */
+function setupCanvas(cv, h){
+  const dpr = window.devicePixelRatio || 1, w = cv.parentElement.clientWidth;
+  cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = '11px -apple-system,"Noto Sans TC","PingFang TC",sans-serif';
+  return { ctx, w, h };
+}
+function niceStep(range, target){
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+function axes(ctx, w, h, pad, x0, x1, y0, y1, xfmt, yfmt){
+  const X = v => pad.l + (v - x0) / (x1 - x0) * (w - pad.l - pad.r);
+  const Y = v => h - pad.b - (v - y0) / (y1 - y0) * (h - pad.t - pad.b);
+  ctx.strokeStyle = css('--line'); ctx.fillStyle = css('--muted'); ctx.lineWidth = 1;
+  const xs = niceStep(x1 - x0, Math.max(3, Math.floor(w / 80)));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let v = Math.ceil(x0 / xs) * xs; v <= x1; v += xs){ const x = X(v); ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke(); ctx.fillText(xfmt(v), x, h - pad.b + 4); }
+  const ys = niceStep(y1 - y0, 4);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let v = Math.ceil(y0 / ys) * ys; v <= y1; v += ys){ const y = Y(v); ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.fillText(yfmt(v), pad.l - 4, y); }
+  return { X, Y };
+}
+function drawHist(cv, A, B, maskA, opts = {}){
+  const { ctx, w, h } = setupCanvas(cv, opts.h || 220);
+  const pick = (arr) => { const o = []; for (let i = 0; i < arr.length; i++) if (!maskA || maskA[i]) o.push(arr[i]); return o; };
+  const a = pick(A), b = pick(B);
+  if (!a.length) return;
+  let lo = Math.min(quantile(a, 0.005), quantile(b, 0.005)), hi = Math.max(quantile(a, 0.995), quantile(b, 0.995));
+  if (hi - lo < 1){ lo -= 1; hi += 1; }
+  const nb = Math.max(30, Math.min(80, Math.floor(w / 6))), bw = (hi - lo) / nb;
+  const cnt = arr => { const c = new Array(nb).fill(0); for (const v of arr){ let k = Math.floor((v - lo) / bw); if (k < 0) k = 0; if (k >= nb) k = nb - 1; c[k]++; } return c; };
+  const ca = cnt(a), cb = cnt(b);
+  // 選擇權的虧損常被釘在同一格，最高那格可能很高，用開根號縮放讓其他形狀看得到
+  const sq = opts.sqrt;
+  const tf = v => sq ? Math.sqrt(v) : v;
+  const ymax = Math.max(...ca.map(tf), ...cb.map(tf)) * 1.08;
+  const pad = { l: 40, r: 10, t: 8, b: 22 };
+  const { X, Y } = axes(ctx, w, h, pad, lo, hi, 0, ymax, v => sgInt(v), v => sq ? fmtInt(v * v) : fmtInt(v));
+  const bar = (c, col) => { ctx.fillStyle = col; ctx.globalAlpha = 0.6; c.forEach((n, k) => { if (!n) return; const x = X(lo + k * bw), x2 = X(lo + (k + 1) * bw); ctx.fillRect(x, Y(tf(n)), Math.max(1, x2 - x - 0.5), Y(0) - Y(tf(n))); }); ctx.globalAlpha = 1; };
+  bar(ca, css('--fut')); bar(cb, css('--opt'));
+  ctx.strokeStyle = css('--text'); ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(X(0), pad.t); ctx.lineTo(X(0), h - pad.b); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawWaterfall(cv, parts){
+  const { ctx, w, h } = setupCanvas(cv, 220);
+  const items = [['方向賺到', parts.dir], ['時間流失', parts.time], ['波動率變化', parts.vol], ['手續費與稅', parts.cost]];
+  let run = 0; const bars = items.map(([k, v]) => { const b = { k, v, from: run, to: run + v }; run += v; return b; });
+  bars.push({ k: '最後剩下', v: run, from: 0, to: run, total: true });
+  const all = bars.flatMap(b => [b.from, b.to]).concat([0]);
+  let y0 = Math.min(...all), y1 = Math.max(...all); const sp = (y1 - y0) || 1; y0 -= sp * 0.08; y1 += sp * 0.12;
+  const pad = { l: 40, r: 10, t: 8, b: 22 };
+  const Y = v => h - pad.b - (v - y0) / (y1 - y0) * (h - pad.t - pad.b);
+  ctx.strokeStyle = css('--line'); ctx.fillStyle = css('--muted');
+  const ys = niceStep(y1 - y0, 4); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let v = Math.ceil(y0 / ys) * ys; v <= y1; v += ys){ ctx.beginPath(); ctx.moveTo(pad.l, Y(v)); ctx.lineTo(w - pad.r, Y(v)); ctx.stroke(); ctx.fillText(fmtInt(v) === '0' ? '0' : sg1(v), pad.l - 4, Y(v)); }
+  const slot = (w - pad.l - pad.r) / bars.length, bw = slot * 0.58;
+  bars.forEach((b, i) => {
+    const x = pad.l + slot * i + (slot - bw) / 2;
+    ctx.fillStyle = b.total ? css('--left') : b.v >= 0 ? css('--up') : css('--down');
+    const top = Y(Math.max(b.from, b.to)), bot = Y(Math.min(b.from, b.to));
+    ctx.fillRect(x, top, bw, Math.max(1.5, bot - top));
+    ctx.fillStyle = css('--text'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = 'bold 12px -apple-system,"Noto Sans TC",sans-serif'; ctx.fillText(sg1(b.v), x + bw / 2, top - 2);
+    ctx.font = '11px -apple-system,"Noto Sans TC",sans-serif'; ctx.fillStyle = css('--muted'); ctx.textBaseline = 'top'; ctx.fillText(b.k, x + bw / 2, h - pad.b + 4);
+    if (i < bars.length - 1 && !b.total){ ctx.strokeStyle = css('--muted'); ctx.setLineDash([2, 2]); ctx.beginPath(); ctx.moveTo(x + bw, Y(b.to)); ctx.lineTo(x + slot, Y(b.to)); ctx.stroke(); ctx.setLineDash([]); }
+  });
+  ctx.strokeStyle = css('--text'); ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+}
+function drawScatter(cv, R, p){
+  const { ctx, w, h } = setupCanvas(cv, 260);
+  const n = R.sEnd.length, M = Math.min(3000, n), step = n / M, idx = [];
+  for (let i = 0; i < M; i++) idx.push(Math.floor(i * step));
+  const xs = idx.map(i => R.sEnd[i]);
+  const x0 = quantile(xs, 0.005), x1 = quantile(xs, 0.995);
+  const ysAll = idx.flatMap(i => [R.fEnd[i], R.oEnd[i]]).filter((_, k) => { const s = xs[k >> 1]; return s >= x0 && s <= x1; });
+  let y0 = Math.min(...ysAll), y1 = Math.max(...ysAll); const sp = y1 - y0 || 1; y0 -= sp * 0.05; y1 += sp * 0.05;
+  const pad = { l: 44, r: 10, t: 8, b: 22 };
+  const { X, Y } = axes(ctx, w, h, pad, x0, x1, y0, y1, v => fmtInt(v), v => sgInt(v));
+  // 墳場區：方向對了，但還沒越過損益兩平
+  const zA = side === 'C' ? p.S0 : R.BE, zB = side === 'C' ? R.BE : p.S0;
+  if (zB > zA){ ctx.fillStyle = css('--zone'); ctx.fillRect(X(Math.max(zA, x0)), pad.t, X(Math.min(zB, x1)) - X(Math.max(zA, x0)), h - pad.t - pad.b); }
+  ctx.strokeStyle = css('--muted'); ctx.setLineDash([2, 3]);
+  ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X(p.S0), pad.t); ctx.lineTo(X(p.S0), h - pad.b); ctx.stroke(); ctx.setLineDash([]);
+  const dots = (arr, col) => { ctx.fillStyle = col; ctx.globalAlpha = 0.45; idx.forEach((i, k) => { const s = xs[k]; if (s < x0 || s > x1) return; ctx.fillRect(X(s) - 1, Y(arr[i]) - 1, 2.2, 2.2); }); ctx.globalAlpha = 1; };
+  dots(R.fEnd, css('--fut')); dots(R.oEnd, css('--opt'));
+  ctx.fillStyle = css('--text'); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if (zB > zA && X(zB) - X(zA) > 24) ctx.fillText('墳場區', (X(Math.max(zA, x0)) + X(Math.min(zB, x1))) / 2, pad.t + 2);
+}
+
+/* ───────── 劇本表：漲跌幾點 × 抱幾天 ───────── */
+function scenarioTable(p, R){
+  const { S0, K, days, iv1, rv } = p, sgn = side === 'C' ? 1 : -1;
+  const sig = S0 * rv * Math.sqrt(days / 365);
+  const stepPts = Math.max(50, Math.round(sig * 0.5 / 50) * 50);
+  const rows = []; for (let m = -3; m <= 6; m++) rows.push(sgn * m * stepPts);
+  let cols = []; if (days <= 8){ for (let d = 1; d <= days; d++) cols.push(d); }
+  else { const set = new Set([1, 2, 3, 5]); for (let k = 1; k <= 4; k++) set.add(Math.round(days * k / 4)); cols = [...set].filter(d => d <= days).sort((a, b) => a - b); }
+  const cellBg = v => { const a = Math.min(0.55, Math.abs(v) / Math.max(1, R.p0) * 0.35); return v >= 0 ? `rgba(239,83,80,${a})` : `rgba(38,166,154,${a})`; };
+  let html = '<table><thead><tr><th class="l">指數變化</th><th>台指期</th>' + cols.map(d => `<th>第 ${d} 天${d === days ? '（結算）' : ''}</th>`).join('') + '</tr></thead><tbody>';
+  for (const mv of rows){
+    const S = S0 + mv;
+    html += `<tr><td class="l">${sgInt(mv)} 點<span class="muted">（${fmtInt(S)}）</span></td><td class="${cls(sgn * mv)}">${sgInt(sgn * mv)}</td>`;
+    for (const d of cols){
+      const T = (days - d) / 365, v = price(side, S, K, T, iv1);
+      const exitCost = d >= days ? (v > 0 ? R.feePt : 0) : R.feePt + TAX * v;
+      const pnl = v - R.p0 - R.costIn - exitCost;
+      html += `<td style="background:${cellBg(pnl)}">${sg1(pnl)}</td>`;
+    }
+    html += '</tr>';
+  }
+  return html + '</tbody></table>';
+}
+
+/* ───────── 主流程 ───────── */
+function run(){
+  const p = {
+    S0: num('S0'), K: num('K'), days: Math.round(num('days') || 0), exitDay: Math.round(num('exitDay') || 0),
+    iv0: (num('iv0') || 0) / 100, iv1: (num('iv1') || 0) / 100, rv: (num('rv') || 0) / 100, mu: (num('mu') || 0) / 100,
+    N: +$('#N').value, fat: $('#tail').value === 't', premIn: num('prem'), fee: num('fee') ?? 0
+  };
+  const bad = !(p.S0 > 0) ? '台指期現價' : !(p.K > 0) ? '履約價' : !(p.days >= 1) ? '距離結算天數' : !(p.iv0 > 0) ? '進場隱含波動率' : !(p.iv1 > 0) ? '平倉時隱含波動率' : !(p.rv > 0) ? '實際波動率' : null;
+  if (bad){ $('#out').innerHTML = `<div class="msg">請填寫「${bad}」。</div>`; return; }
+  p.exitDay = Math.max(1, Math.min(p.days, p.exitDay || Math.ceil(p.days / 2))); setVal('exitDay', p.exitDay);
+  let ivNote = '';
+  if (p.premIn != null){
+    const iv = impliedVol(side, p.S0, p.K, p.days / 365, p.premIn);
+    if (iv) ivNote = `實際權利金 ${f1(p.premIn)} 點反推的隱含波動率約 ${(iv * 100).toFixed(1)}%（你填的進場隱含波動率只用來拆解損益）。`;
+    else { ivNote = '實際權利金低於內含價值或無法反推，改用理論價。'; p.premIn = null; }
+  }
+  saveInputs();
+  const t0 = performance.now();
+  const R = simulate(p);
+  const ms = Math.round(performance.now() - t0);
+  $('#runInfo').textContent = `推演 ${fmtInt(p.N)} 次，${ms} 毫秒`;
+  render(p, R, ivNote);
+}
+
+function render(p, R, ivNote){
+  const sgn = side === 'C' ? 1 : -1, name = side === 'C' ? '買權' : '賣權', futName = side === 'C' ? '做多台指期' : '做空台指期', dirWord = side === 'C' ? '漲' : '跌';
+  const T0 = p.days / 365;
+  const sig = p.S0 * p.rv * Math.sqrt(T0);
+  const need = Math.abs(R.BE - p.S0), needSig = need / sig;
+  const mid1 = stats(R.oMid, R.right1), fut1 = stats(R.fMid, R.right1);
+  const rightShare1 = R.nR1 / p.N;
+  let nR2 = 0, grave = 0, pinned = 0, beHit = 0;
+  for (let i = 0; i < p.N; i++){
+    if (R.right2[i]){ nR2++; if (R.oEnd[i] <= 0) grave++; }
+    if (sgn * (R.sEnd[i] - p.K) <= 0) pinned++;
+    if (R.oEnd[i] > 0) beHit++;
+  }
+  const end2 = stats(R.oEnd, R.right2), all2 = stats(R.oEnd), futAll = stats(R.fEnd);
+  const futWorst5 = quantile(R.fEnd, 0.05), optWorst = -(R.p0 + R.costIn);
+  // 每天時間價值流失（指數不動、波動率不變）
+  const decay1 = R.p0 - price(side, p.S0, p.K, Math.max(0, (p.days - 1) / 365), p.iv0);
+  const decayPct = R.p0 > 0 ? decay1 / R.p0 : 0;
+  const ivr = p.iv0 / p.rv;
+
+  // 三個自問
+  const c1 = needSig < 0.5 ? 'g' : needSig < 1 ? 'y' : 'r';
+  const c2 = decayPct < 0.04 ? 'g' : decayPct < 0.1 ? 'y' : 'r';
+  const c3 = ivr <= 1.05 && p.iv1 >= p.iv0 * 0.95 ? 'g' : ivr <= 1.25 ? 'y' : 'r';
+  const score = [c1, c2, c3].filter(c => c === 'g').length, reds = [c1, c2, c3].filter(c => c === 'r').length;
+  const verdict = score === 3 ? `三項都順，這筆${name}的條件比直接${futName}划算的機會較高。`
+    : reds >= 2 ? `兩項以上亮紅燈，除非你預期的是又快又大的行情，否則直接${futName}或不做比較實際。`
+    : `只有部分條件順，${name}要靠「${dirWord}得夠多、夠快」才會贏過${futName}。`;
+
+  const parts = R.parts;
+  const exitLbl = R.atExpiry ? '結算' : `第 ${p.exitDay} 天平倉`;
+
+  $('#out').innerHTML = `
+  <div class="box">
+    <h2>這筆${name}的門票</h2>
+    <div class="cards">
+      <div><div class="k">${p.premIn != null ? '實際' : '理論'}權利金</div><div class="v">${f1(R.p0)} 點</div><div class="s">${fmtInt(R.p0 * POINT)} 元／口</div></div>
+      <div><div class="k">結算損益兩平</div><div class="v">${fmtInt(R.BE)}</div><div class="s">要${dirWord} ${fmtInt(need)} 點（${(need / p.S0 * 100).toFixed(2)}%）</div></div>
+      <div><div class="k">結算時站上兩平的機率</div><div class="v">${pc(beHit / p.N)}</div><div class="s">指數 1 個標準差 ≈ ${fmtInt(sig)} 點</div></div>
+      <div><div class="k">每天時間流失</div><div class="v">${f1(decay1)} 點</div><div class="s">權利金的 ${pc(decayPct)}／天（指數不動時）</div></div>
+    </div>
+    ${ivNote ? `<p class="stat">${ivNote}</p>` : ''}
+  </div>
+
+  <div class="box">
+    <h2>進場前三個自問</h2>
+    <div class="checks">
+      <div class="ck"><i class="dot ${c1}"></i><div><b>空間夠不夠大</b><span>要${dirWord}過 ${fmtInt(need)} 點才開始賺，約 ${needSig.toFixed(2)} 個標準差的行情（0.5 以下算容易、超過 1 算難）。</span></div></div>
+      <div class="ck"><i class="dot ${c2}"></i><div><b>行情來得快不快</b><span>指數不動，每天約燒掉 ${f1(decay1)} 點（權利金的 ${pc(decayPct)}）。距離結算越近燒得越快，慢慢爬的行情不利買方。</span></div></div>
+      <div class="ck"><i class="dot ${c3}"></i><div><b>門票貴不貴</b><span>進場隱含波動率 ${(p.iv0 * 100).toFixed(1)}%，是實際波動率 ${(p.rv * 100).toFixed(1)}% 的 ${ivr.toFixed(2)} 倍${p.iv1 < p.iv0 ? `；你預估平倉時會降到 ${(p.iv1 * 100).toFixed(1)}%，會再被抽一次水` : ''}。倍數越高，買方先天越吃虧。</span></div></div>
+    </div>
+    <div class="verdict">${verdict}</div>
+  </div>
+
+  <div class="g2">
+    <div class="box">
+      <h2>${exitLbl}：方向看對時的損益</h2>
+      <p class="desc">只看指數真的往你看的方向走的那 ${pc(rightShare1)} 走勢，單位：點。</p>
+      <div class="legend"><span><i style="background:var(--fut)"></i>${futName}</span><span><i style="background:var(--opt)"></i>買${name}</span><span>虛線＝損益零</span></div>
+      <div class="chartwrap"><canvas id="cvMid"></canvas></div>
+      <p class="stat">${futName}：賺錢 <b>${pc(fut1.win)}</b>，平均 <b class="${cls(fut1.mean)}">${sg1(fut1.mean)}</b> 點<br>買${name}：賺錢只有 <b>${pc(mid1.win)}</b>，平均 <b class="${cls(mid1.mean)}">${sg1(mid1.mean)}</b> 點（${sgInt(mid1.mean * POINT)} 元／口）</p>
+    </div>
+    <div class="box">
+      <h2>方向看對，錢去哪了</h2>
+      <p class="desc">${exitLbl}、方向看對的走勢平均拆帳，單位：點。</p>
+      ${parts ? '<div class="chartwrap"><canvas id="cvWf"></canvas></div>' : '<div class="msg">沒有方向看對的走勢。</div>'}
+      ${parts ? `<p class="stat">方向幫你賺 <b class="up">${sg1(parts.dir)}</b>，時間吃掉 <b class="dn">${sg1(parts.time)}</b>，波動率變化 <b class="${cls(parts.vol)}">${sg1(parts.vol)}</b>，稅費 <b class="dn">${sg1(parts.cost)}</b>，最後剩 <b>${sg1(parts.dir + parts.time + parts.vol + parts.cost)}</b> 點。</p>` : ''}
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:10px">
+    <div class="box">
+      <h2>抱到結算：最後指數 vs 損益</h2>
+      <p class="desc">每個點是一種未來（抽 3,000 條），灰色是墳場區：方向對了，但還沒越過損益兩平。</p>
+      <div class="legend"><span><i style="background:var(--fut)"></i>${futName}</span><span><i style="background:var(--opt)"></i>買${name}</span><span><i style="background:var(--zone);border:1px solid var(--line)"></i>墳場區 ${fmtInt(Math.min(p.S0, R.BE))}～${fmtInt(Math.max(p.S0, R.BE))}</span></div>
+      <div class="chartwrap"><canvas id="cvSc"></canvas></div>
+      <p class="stat">結算時方向對的有 <b>${pc(nR2 / p.N)}</b>，其中 <b>${pc(nR2 ? grave / nR2 : 0)}</b> 掉在墳場區照樣虧；方向對時買${name}的勝率 <b>${pc(end2.win)}</b>。</p>
+    </div>
+    <div class="box">
+      <h2>抱到結算：全部走勢的損益分布</h2>
+      <p class="desc">高度用開根號壓縮，讓少見的大賺大賠也看得到。單位：點。</p>
+      <div class="legend"><span><i style="background:var(--fut)"></i>${futName}</span><span><i style="background:var(--opt)"></i>買${name}</span></div>
+      <div class="chartwrap"><canvas id="cvEnd"></canvas></div>
+      <p class="stat">買${name}：<b>${pc(pinned / p.N)}</b> 的走勢結算歸零、最多就虧 <b class="dn">${sg1(optWorst)}</b> 點（${sgInt(optWorst * POINT)} 元）；整體勝率 <b>${pc(all2.win)}</b>，平均 <b class="${cls(all2.mean)}">${sg1(all2.mean)}</b> 點。<br>${futName}：最差的 5% 虧 <b class="dn">${sgInt(futWorst5)}</b> 點以上，虧損沒有底；平均 <b class="${cls(futAll.mean)}">${sg1(futAll.mean)}</b> 點。</p>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:10px">
+    <h2>劇本表：指數走多少 × 抱幾天</h2>
+    <p class="desc">每格是買${name}的損益（點，已扣稅費），波動率用「平倉時隱含波動率」${(p.iv1 * 100).toFixed(1)}%。紅色賺、綠色賠；第二欄是${futName}同樣行情的損益。</p>
+    <div class="tblwrap">${scenarioTable(p, R)}</div>
+  </div>`;
+
+  drawHist($('#cvMid'), R.fMid, R.oMid, R.right1, { h: 220 });
+  if (parts) drawWaterfall($('#cvWf'), parts);
+  drawScatter($('#cvSc'), R, p);
+  drawHist($('#cvEnd'), R.fEnd, R.oEnd, null, { h: 220, sqrt: true });
+  LAST = { p, R, ivNote };
+}
+let LAST = null;
+let rsT = null;
+window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (LAST) render(LAST.p, LAST.R, LAST.ivNote); }, 200); });
+
+/* ───────── 事件 ───────── */
+$('#sideSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === side) return;
+  // 換方向時，履約價也翻到另一邊、保持一樣的價外距離
+  const S0 = num('S0'), K = num('K');
+  side = b.dataset.v;
+  if (S0 && K) setVal('K', roundStrike(S0) + (roundStrike(S0) - K));
+  setVal('prem', '');
+  paintSide(); run();
+});
+$('#kChips').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; setVal('K', b.dataset.k); setVal('prem', ''); buildKChips(); run(); });
+$('#dChips').addEventListener('click', e => {
+  const b = e.target.closest('button[data-days]'); if (!b) return;
+  const old = num('days') || 1, frac = (num('exitDay') || 1) / old, d = +b.dataset.days;
+  setVal('days', d); setVal('exitDay', Math.max(1, Math.min(d, Math.round(d * frac)))); setVal('prem', '');
+  buildDChips(); run();
+});
+$('#refill').addEventListener('click', () => { fillMarket(); run(); });
+$('#run').addEventListener('click', run);
+['S0', 'K', 'days'].forEach(id => $('#' + id).addEventListener('change', () => { buildKChips(); buildDChips(); }));
+ids.forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') run(); }));
+
+(async function init(){
+  setVal('mu', saved.mu ?? 0);
+  setVal('fee', saved.fee ?? 20);
+  if (saved.N) $('#N').value = saved.N; else $('#N').value = '100000';
+  if (saved.tail) $('#tail').value = saved.tail;
+  paintSide();
+  await loadMarket();
+  fillMarket();
+  paintSide();
+  run();
+})();
+</script>
+</body>
+</html>
