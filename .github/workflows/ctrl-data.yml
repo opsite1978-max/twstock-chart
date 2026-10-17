@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['scripts/ctrl_data.py', '.github/workflows/ctrl-data.yml']
+    paths: ['scripts/ctrl_data.py', 'scripts/optflow_data.py', '.github/workflows/ctrl-data.yml']
 permissions:
   contents: write
 concurrency:
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +24,11 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           REQ_BUDGET: '700'
         run: python3 scripts/ctrl_data.py
+      - name: 選擇權多空力道（主力、散戶）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          REQ_BUDGET: '420'
+        run: python3 scripts/optflow_data.py
       - name: 存回專案
         run: |
           git add data/ctrl
