@@ -1,0 +1,59 @@
+name: 多空力道網頁實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: 用真的瀏覽器打開網頁
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const tok = process.env.FINMIND_TOKEN;
+          const scrub = s => String(s).split(tok).join('***');
+          (async () => {
+            const b = await chromium.launch(); const log = [];
+            for (const [vp, name] of [[{width:1280,height:900}, 'd'], [{width:390,height:844}, 'm']]){
+              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block', deviceScaleFactor: name === 'm' ? 2 : 1 }); const pg = await ctx.newPage();
+              pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + scrub(m.text())); });
+              pg.on('pageerror', e => log.push(name + ' pageerror: ' + scrub(e.message)));
+              await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
+              await pg.goto('https://opsite1978-max.github.io/twstock-chart/force.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.waitForTimeout(12000);
+              log.push(name + ' STATUS: ' + scrub(await pg.textContent('#status').catch(() => '?')) + ' | TOP: ' + scrub((await pg.textContent('#top').catch(() => '')).replace(/\s+/g, ' ')));
+              await pg.screenshot({ path:'../out/' + name + '-top.png' });
+              for (const tf of ['1', '15', '60', '240', 'D', '5']){
+                await pg.click(`#tfSeg button[data-tf="${tf}"]`); await pg.waitForTimeout(tf === '1' ? 9000 : 2500);
+                log.push(name + ' TF ' + tf + ': ' + scrub((await pg.textContent('#top').catch(() => '')).replace(/\s+/g, ' ')).slice(0, 400));
+                log.push(name + ' BT ' + tf + ': ' + scrub((await pg.textContent('#tblBt').catch(() => '')).replace(/\s+/g, ' ')).slice(0, 900));
+                if (name === 'd') await (await pg.$('#mainPanel')).screenshot({ path:'../out/' + name + '-main-' + tf + '.png' });
+              }
+              for (const id of ['#dGo', '#dPanic', '#dMap', '#dPcr', '#dInst', '#dQ']) await pg.evaluate(s => { const d = document.querySelector(s); if (d && !d.open){ d.open = true; d.dispatchEvent(new Event('toggle')); } }, id);
+              await pg.waitForTimeout(2500);
+              for (const id of ['#dGo', '#dMap', '#dPcr', '#dInst']){ const e = await pg.$(id); if (e) await e.screenshot({ path:'../out/' + name + '-' + id.slice(1) + '.png' }); }
+              log.push(name + ' SPLIT: ' + scrub((await pg.textContent('#tblSplit').catch(() => '')).replace(/\s+/g, ' ')));
+              log.push(name + ' BUCKET: ' + scrub((await pg.textContent('#tblBucket').catch(() => '')).replace(/\s+/g, ' ')));
+              log.push(name + ' Q: ' + scrub((await pg.textContent('#qBox').catch(() => '')).replace(/\s+/g, ' ')).slice(0, 600));
+              await pg.click('#liveBtn'); await pg.waitForTimeout(6000);
+              log.push(name + ' LIVE: ' + scrub(await pg.textContent('#noteMain').catch(() => '?')));
+              await pg.screenshot({ path:'../out/' + name + '-full.png', fullPage:true });
+              await ctx.close();
+            }
+            require('fs').writeFileSync('../out/log.txt', log.join('\n'));
+            await b.close();
+          })();
+          JS
+          node c.js
+      - name: 存結果
+        if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
