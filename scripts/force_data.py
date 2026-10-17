@@ -40,10 +40,38 @@ TXEQ = 50 / 200          # 一口台指選擇權（每點 50 元）換成大台�
 NREQ = [0]
 LOG = []
 COLS = ['t', 'o', 'h', 'l', 'c', 'net', 'gross', 'cb', 'cs', 'pb', 'ps', 'unk', 'vix', 'v']
+VER = 2                  # 2：台指期用「當下的近月」、晚上夜盤 18:00 前不用當天結算價
+OPT_AVAIL = 18 * 60      # 選擇權日成交（結算價）保守視為台灣時間 18:00 才取得
+QUOTA_MAX = int(os.environ.get('QUOTA_MAX', '3000'))   # 本小時 FinMind 已用超過這個數字就不跑，留給其他功能
+MODE = (sys.argv[1] if len(sys.argv) > 1 else 'update')
 
 
 class RateLimited(Exception):
     pass
+
+
+def quota_used():
+    """查本小時已用的 FinMind 次數（查詢本身不算次數）；查不到回傳 None"""
+    try:
+        req = urllib.request.Request('https://api.web.finmindtrade.com/v2/user_info', headers={'Authorization': 'Bearer ' + TOKEN})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            j = json.loads(r.read())
+        return int(j.get('user_count') or 0), int(j.get('api_request_limit_hour') or j.get('api_request_limit') or 0)
+    except Exception:
+        return None
+
+
+def quota_ok():
+    q = quota_used()
+    if q is None:
+        log('查不到本小時用量，保守起見只用很少的次數')
+        return min(REQ_BUDGET, 40)
+    used, lim = q
+    log('本小時 FinMind 已用', used, '／上限', lim)
+    if used >= QUOTA_MAX:
+        log('超過保護線', QUOTA_MAX, '，這次不跑，留給其他功能')
+        return 0
+    return min(REQ_BUDGET, max(0, QUOTA_MAX - used))
 
 
 def clean(t):
@@ -297,15 +325,18 @@ def iv_at(sm, K):
 
 
 def fut_daily_all(start, end):
-    """台指期每天日盤成交量最大單一月份的收盤（算遠期價縮放用）"""
+    """台指期每天日盤收盤後的近月收盤（結算日當天用下一個月份），和結算價同時取得，算遠期價縮放用"""
     rows = api({'dataset': 'TaiwanFuturesDaily', 'data_id': 'TX', 'start_date': start, 'end_date': end})
     best = {}
     for r in rows:
         c = str(r.get('contract_date') or '').strip()
         if r.get('trading_session') != 'position' or not re.fullmatch(r'\d{6}', c) or not (r.get('close') or 0) > 0:
             continue
+        e = contract_exp(c)
+        if not e or e <= r['date']:
+            continue
         cur = best.get(r['date'])
-        if not cur or (r.get('volume') or 0) > (cur.get('volume') or 0):
+        if not cur or c < str(cur.get('contract_date')).strip():
             best[r['date']] = r
     return {d: float(r['close']) for d, r in best.items()}
 
@@ -323,8 +354,19 @@ def session_windows(x):
     return w
 
 
+def near_month(codes, x, m):
+    """日曆日 x、第 m 分鐘當下的近月：還沒結算的最小月份（只用當下就知道的結算日，不看整段成交量）"""
+    t = ts(x, m)
+    best = None
+    for c in codes:
+        e = contract_exp(c)
+        if e and exp_ts(e) > t and (best is None or c < best):
+            best = c
+    return best
+
+
 def tx_minutes(x):
-    """台指期 1 分 K：每個時段挑成交量最大的單一月份（和看盤軟體一樣，不扣價差）"""
+    """台指期 1 分 K：每一分鐘取當下的近月（和看盤軟體一樣，不扣價差）"""
     rows = api({'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': x, 'end_date': x})
     by = {}
     for r in rows:
@@ -335,16 +377,12 @@ def tx_minutes(x):
         m = int(hh) * 60 + int(mm)
         by.setdefault(c, {})[m] = (float(r['open']), float(r['high']), float(r['low']), float(r['close']), float(r.get('volume') or 0))
     out = {}
+    codes = list(by)
     for lo, hi in session_windows(x):
-        best, bv = None, -1
-        for c, mm in by.items():
-            v = sum(b[4] for m, b in mm.items() if lo <= m <= hi)
-            if v > bv:
-                best, bv = c, v
-        if best and bv > 0:
-            for m, b in by[best].items():
-                if lo <= m <= hi:
-                    out[m] = b
+        for m in range(lo, hi + 1):
+            c = near_month(codes, x, m)
+            if c and m in by[c]:
+                out[m] = by[c][m]
     return out
 
 
@@ -460,7 +498,7 @@ def process_file(x, fut_ref, dup_hist):
         dk = (code, K, call, m)
         dl = dcache.get(dk)
         if dl is None:
-            night_b = m >= 900
+            night_b = m >= OPT_AVAIL
             sm, ref = (sm_b, ref_b) if night_b else (sm_a, ref_a)
             c = sm.get(code)
             fb = False
@@ -528,7 +566,8 @@ def process_file(x, fut_ref, dup_hist):
     complete = now >= done_after and (x not in CALSET or last_tick >= '23:00')
     return {'d': x, 'complete': complete, 'dup': round(dup, 3) if dup else None, 'dupUsed': round(used, 3),
             'cls': round(n_cls / n_all, 3) if n_all else None, 'fb': round(n_fb / n_cls, 3) if n_cls else None,
-            'lastTick': last_tick, 'settleA': pa, 'settleB': x if x in CALSET else pa,
+            'lastTick': last_tick, 'settleA': pa, 'settleB': x if x in CALSET else pa, 'ver': VER, 'priceVer': VER,
+            'note': '晚上夜盤 18:00 前沿用前一交易日結算價；台指期每分鐘取當下近月',
             'cols': ['m'] + COLS[1:], 'bars': bars}
 
 
@@ -727,10 +766,142 @@ def load_json(p, default):
         return default
 
 
+def setup_calendar():
+    today = datetime.datetime.now(TW).date().isoformat()
+    s0 = (datetime.date.fromisoformat(START) - datetime.timedelta(days=40)).isoformat()
+    cal_rows = api({'dataset': 'TaiwanStockTradingDate', 'start_date': s0})
+    CAL.extend(sorted({r['date'] for r in cal_rows if r['date'] <= today}))
+    CALSET.update(CAL)
+    return today, s0
+
+
+def save_log():
+    open(os.path.join(OUT, '_lastrun.txt'), 'w', encoding='utf-8').write('\n'.join(LOG[-300:]) + '\n')
+
+
+def update_meta(**kw):
+    p = os.path.join(OUT, 'index.json')
+    meta = load_json(p, {})
+    meta.update(kw)
+    meta['updated'] = datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M')
+    json.dump(meta, open(p, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+
+
+def old_price_files():
+    out = []
+    for f in sorted(os.listdir(M1)):
+        if not f.endswith('.json'):
+            continue
+        j = load_json(os.path.join(M1, f), {})
+        if j.get('bars') and (j.get('priceVer') or 1) < VER:
+            out.append(f[:-5])
+    return out
+
+
+def cmd_fixprice():
+    """舊檔只重抓台指期 1 分 K，把價格換成「當下近月」；選擇權力道欄位不動（影響極小，見 _compare.json）"""
+    global REQ_BUDGET
+    todo = old_price_files()
+    if not todo:
+        log('價格都已是新版，不用查詢'); save_log(); return
+    REQ_BUDGET = min(quota_ok(), int(os.environ.get('FIX_N', '30')) + 2)
+    if REQ_BUDGET <= 2:
+        save_log(); return
+    setup_calendar()
+    done = 0
+    try:
+        for x in sorted(todo, reverse=True):
+            p = os.path.join(M1, x + '.json')
+            j = load_json(p, {})
+            tx = tx_minutes(x)
+            if not tx:
+                log('no kbar', x); continue
+            last = None
+            changed = 0
+            for b in j['bars']:
+                nb = tx.get(b[0])
+                if nb:
+                    if (b[1], b[2], b[3], b[4]) != nb[:4]:
+                        changed += 1
+                    b[1], b[2], b[3], b[4] = nb[0], nb[1], nb[2], nb[3]
+                    if len(b) > 13:
+                        b[13] = int(nb[4])
+                    last = nb[3]
+                elif last is not None:
+                    b[1] = b[2] = b[3] = b[4] = last
+                    if len(b) > 13:
+                        b[13] = 0
+            j['priceVer'] = VER
+            json.dump(j, open(p, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+            done += 1
+            log('price fixed', x, 'changed minutes', changed, 'req', NREQ[0])
+    except RateLimited as e:
+        log('STOP', e)
+    build_m5()
+    update_meta(priceFixPending=len(old_price_files()))
+    log('fixprice done', done, 'requests', NREQ[0]); save_log()
+
+
+def cmd_compare():
+    """用新規則重算最近幾天，和舊結果比較差多少，結果存 _compare.json（新結果也直接存回）"""
+    global REQ_BUDGET
+    REQ_BUDGET = min(quota_ok(), 40)
+    if REQ_BUDGET <= 0:
+        save_log(); return
+    today, s0 = setup_calendar()
+    fut_ref = fut_daily_all(s0, today)
+    days = [d for d in CAL if d < today][-int(os.environ.get('CMP_N', '5')):]
+    meta = load_json(os.path.join(OUT, 'index.json'), {})
+    dup_hist = meta.get('dupHist', [])
+    res_all = []
+    try:
+        for x in days:
+            old = load_json(os.path.join(M1, x + '.json'), {})
+            new = process_file(x, fut_ref, dup_hist)
+            if not old.get('bars') or not new:
+                continue
+            o = {b[0]: b for b in old['bars']}
+            pairs = [(o[b[0]], b) for b in new['bars'] if b[0] in o]
+            def corr(a, b):
+                if len(a) < 10:
+                    return None
+                ma, mb = statistics.mean(a), statistics.mean(b)
+                va = sum((x - ma) ** 2 for x in a) ** .5; vb = sum((y - mb) ** 2 for y in b) ** .5
+                return round(sum((x - ma) * (y - mb) for x, y in zip(a, b)) / (va * vb), 4) if va and vb else None
+            seg = {'全部': lambda m: True, '晚上 15:00–18:00': lambda m: 900 <= m < OPT_AVAIL, '其他時間': lambda m: not (900 <= m < OPT_AVAIL)}
+            r = {'d': x}
+            for name, f in seg.items():
+                pp = [(a, b) for a, b in pairs if f(a[0])]
+                if not pp:
+                    continue
+                an, bn = [a[5] for a, b in pp], [b[5] for a, b in pp]
+                mabs = statistics.mean(abs(v) for v in an) or 1e-9
+                r[name] = {'n': len(pp), 'corr': corr(an, bn), 'diff%': round(statistics.mean(abs(a - b) for a, b in zip(an, bn)) / mabs * 100, 2),
+                           'priceChanged': sum(1 for a, b in pp if a[4] != b[4])}
+            res_all.append(r)
+            log('compare', json.dumps(r, ensure_ascii=False))
+            json.dump(new, open(os.path.join(M1, x + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    except RateLimited as e:
+        log('STOP', e)
+    json.dump({'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'days': res_all}, open(os.path.join(OUT, '_compare.json'), 'w', encoding='utf-8'),
+              ensure_ascii=False, separators=(',', ':'))
+    build_m5()
+    update_meta(priceFixPending=len(old_price_files()))
+    log('compare done requests', NREQ[0]); save_log()
+
+
 def main():
+    global REQ_BUDGET
     if not TOKEN:
         log('沒有 FINMIND_TOKEN'); return
     os.makedirs(M1, exist_ok=True)
+    if MODE == 'fixprice':
+        return cmd_fixprice()
+    if MODE == 'compare':
+        return cmd_compare()
+    REQ_BUDGET = quota_ok()
+    if REQ_BUDGET <= 0:
+        save_log(); return
     today = datetime.datetime.now(TW).date().isoformat()
     s0 = (datetime.date.fromisoformat(START) - datetime.timedelta(days=40)).isoformat()
     cal_rows = api({'dataset': 'TaiwanStockTradingDate', 'start_date': s0})
@@ -832,7 +1003,7 @@ def main():
     meta = {'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'start': START, 'files': files, 'months': months,
             'cal': [d for d in CAL if d >= (datetime.date.fromisoformat(START) - datetime.timedelta(days=10)).isoformat()],
             'dupHist': dup_hist[-60:], 'quality': q, 'pending': len([x for x in order]) - done,
-            'level': 'B-', 'cols': COLS}
+            'level': 'B-', 'cols': COLS, 'priceFixPending': len(old_price_files()), 'ver': VER}
     json.dump(meta, open(os.path.join(OUT, 'index.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     open(os.path.join(OUT, '_lastrun.txt'), 'w', encoding='utf-8').write('\n'.join(LOG[-300:]) + '\n')
     log('done files', done, 'requests', NREQ[0], 'minutes %.1f' % ((time.time() - T_START) / 60))

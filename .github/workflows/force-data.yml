@@ -2,11 +2,15 @@ name: 台指選擇權多空力道（逐筆 Delta 資金流）
 on:
   schedule:
     - cron: '25 23 * * 0-5'   # 台灣時間 週一～週六 07:25（夜盤收完）
-    - cron: '35 9 * * 1-5'    # 台灣時間 週一～週五 17:35（日盤收完）
+    - cron: '5 12 * * 1-5'    # 台灣時間 週一～週五 20:05（避開 16:00–19:30 其他功能最忙的時段）
+    - cron: '5 19 * * *'      # 台灣時間 每天 03:05：舊資料價格修正，每次最多 30 次查詢，修完就不再查
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'update＝一般更新、fixprice＝舊資料價格修正、compare＝新舊算法比較'
+        default: 'update'
       max_files:
-        description: '這次最多處理幾個日曆日'
+        description: '一般更新這次最多處理幾個日曆日'
         default: '60'
 permissions:
   contents: write
@@ -21,13 +25,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: 逐筆成交 → 每分鐘 Delta 力道、結構、法人（FinMind）
+      - name: 計算（FinMind；本小時用量超過 3,000 次就自動跳過）
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           MAX_FILES: ${{ github.event.inputs.max_files || '60' }}
           MAX_MINUTES: '100'
-          REQ_BUDGET: '1200'
-        run: python3 scripts/force_data.py
+          REQ_BUDGET: '150'
+          QUOTA_MAX: '3000'
+          FIX_N: '30'
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "5 19 * * *" ]; then MODE=fixprice; else MODE=update; fi
+          fi
+          echo "mode=$MODE"
+          python3 scripts/force_data.py "$MODE"
       - name: 存回專案
         run: |
           git add data/force
