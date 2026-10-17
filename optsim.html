@@ -119,7 +119,7 @@
   <footer>
     <p>推演方式：用電腦隨機產生大量的未來指數走勢（蒙地卡羅模擬），每條走勢都分別計算「直接做台指期」和「買選擇權」的損益，再統計各種結局出現的比例。選擇權價格用布萊克選擇權定價公式（Black 76）計算，利率設為 0。</p>
     <p>損益拆解的順序是先算方向、再算時間、最後算波動率，換個順序三格數字會略有不同，看大方向即可。期交稅以權利金千分之一估算，到期結算只計手續費，實際以券商為準。</p>
-    <p>現價、隱含波動率、實際波動率取自本站每天收盤後算好的台指選擇權歷史資料（不會用到 FinMind 額度），想用夜盤價請直接改「台指期現價」。這是機率推演，不是預測。</p>
+    <p>現價用台指期近月最新成交價（收盤後有夜盤就用夜盤價），每次打開或按「帶入最新台指」只查一次 FinMind；隱含波動率、實際波動率取自本站每天收盤後算好的台指選擇權歷史資料。這是機率推演，不是預測。</p>
   </footer>
 </main>
 <script>
@@ -240,20 +240,53 @@ async function loadMarket(){
       const m = rs.reduce((a, b) => a + b, 0) / rs.length;
       rv = Math.sqrt(rs.reduce((a, b) => a + (b - m) ** 2, 0) / rs.length * 252);
     }
-    MKT = { d: last.d, c: last.c, iv: last.iv, nearExp: last.nearExp, rv };
-  } catch(e){ MKT = null; }
+    MKT = { d: last.d, c: last.c, iv: last.iv, nearExp: last.nearExp, rv, night: null };
+  } catch(e){ MKT = null; return; }
+  // 現價改用台指期近月最新價（含夜盤），和看盤軟體一致；只查一次 FinMind
+  try { const f = await futLatest(MKT.d); if (f) MKT.fut = f; } catch(e){ MKT.futErr = /fetch|network/i.test(e.message || '') ? '連不上 FinMind' : (e.message || String(e)); }
+}
+async function finmindOnce(params){
+  const FM = 'https://api.finmindtrade.com/api/v4/data', tok = (SET.token || '').trim();
+  const qs = new URLSearchParams(params);
+  let res;
+  try { res = await fetch(FM + '?' + (tok ? qs + '&token=' + encodeURIComponent(tok) : qs), { cache: 'no-store' }); }
+  catch(e){ res = await fetch(FM + '?' + qs, { cache: 'no-store' }); }   // 憑證失效時改用不帶憑證再試一次
+  const j = await res.json().catch(() => null);
+  if (res.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完');
+  if (!res.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || res.status));
+  return j.data || [];
+}
+// 台指期近月：資料日的日盤收盤，加上之後夜盤的最新價（FinMind 把夜盤記在下一個交易日）
+async function futLatest(date){
+  const rows = await finmindOnce({ dataset: 'TaiwanFuturesDaily', data_id: 'TX', start_date: date });
+  const mono = r => /^\d{6}$/.test(String(r.contract_date || '').trim()) && +r.close > 0;
+  const sess = rows.filter(r => mono(r));
+  const days = [...new Set(sess.map(r => r.date))].sort();
+  const lastDay = days.filter(d => sess.some(r => r.date === d && r.trading_session === 'position')).pop();
+  if (!lastDay) return null;
+  const day = sess.filter(r => r.date === lastDay && r.trading_session === 'position').sort((a, b) => b.volume - a.volume)[0];
+  const next = days.find(d => d > lastDay);
+  const nr = sess.filter(r => r.date === next && r.trading_session === 'after_market');
+  const night = nr.find(r => String(r.contract_date).trim() === String(day.contract_date).trim() && +r.volume > 0) || nr.sort((a, b) => b.volume - a.volume)[0] || null;
+  return { date: lastDay, contract: String(day.contract_date).trim(), dayClose: +day.close,
+           night: night ? +night.close : null, nightContract: night ? String(night.contract_date).trim() : null,
+           price: night ? +night.close : +day.close };
 }
 function fillMarket(){
   const today = twToday();
   if (MKT){
-    setVal('S0', MKT.c);
+    const F = MKT.fut;
+    setVal('S0', F ? F.price : MKT.c);
     setVal('iv0', MKT.iv != null ? MKT.iv : 18);
     setVal('iv1', MKT.iv != null ? MKT.iv : 18);
     setVal('rv', MKT.rv != null ? (MKT.rv * 100).toFixed(1) : 18);
     let days = MKT.nearExp ? dayDiff(today, MKT.nearExp) : 0;
     if (!(days >= 1)) days = 7;
     setVal('days', days);
-    $('#src').innerHTML = `已帶入 ${md(MKT.d)} 台指期日盤收盤 <b>${fmtInt(MKT.c)}</b> 點、近月價平隱含波動率 <b>${MKT.iv != null ? MKT.iv + '%' : '–'}</b>、近 20 日實際波動率 <b>${MKT.rv != null ? (MKT.rv * 100).toFixed(1) + '%' : '–'}</b>。數字都可以自己改。`;
+    const pxTxt = F ? (F.night != null ? `台指期 <b>${fmtInt(F.night)}</b> 點（${md(F.date)} 日盤收 ${fmtInt(F.dayClose)}，之後夜盤 ${sgInt(F.night - F.dayClose)} 點，${F.nightContract.slice(4)}月）`
+                          : `台指期 <b>${fmtInt(F.dayClose)}</b> 點（${md(F.date)} 日盤收盤，夜盤還沒有資料）`)
+                    : `${md(MKT.d)} 台指期日盤收盤 <b>${fmtInt(MKT.c)}</b> 點${MKT.futErr ? `（抓不到夜盤：${MKT.futErr}）` : ''}`;
+    $('#src').innerHTML = `已帶入${pxTxt}、近月價平隱含波動率 <b>${MKT.iv != null ? MKT.iv + '%' : '–'}</b>、近 20 日實際波動率 <b>${MKT.rv != null ? (MKT.rv * 100).toFixed(1) + '%' : '–'}</b>。數字都可以自己改。`;
   } else {
     if (!num('S0')) setVal('S0', 47000);
     if (!num('iv0')) { setVal('iv0', 18); setVal('iv1', 18); setVal('rv', 18); }
@@ -579,7 +612,7 @@ $('#dChips').addEventListener('click', e => {
   setVal('days', d); setVal('exitDay', Math.max(1, Math.min(d, Math.round(d * frac)))); setVal('prem', '');
   buildDChips(); run();
 });
-$('#refill').addEventListener('click', () => { fillMarket(); run(); });
+$('#refill').addEventListener('click', async () => { $('#src').textContent = '讀取最新台指期資料中…'; await loadMarket(); fillMarket(); paintSide(); run(); });
 $('#run').addEventListener('click', run);
 ['S0', 'K', 'days'].forEach(id => $('#' + id).addEventListener('change', () => { buildKChips(); buildDChips(); }));
 ids.forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') run(); }));
