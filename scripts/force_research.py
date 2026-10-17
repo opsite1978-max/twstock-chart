@@ -22,7 +22,8 @@ from collections import deque, defaultdict
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, 'data', 'force')
 OUT = os.path.join(DATA, 'research.json')
-FREEZE = '2026-10-19'          # 規則凍結日：這天之後的資料才算「真正沒看過的新資料」
+FREEZE = '2026-10-18'          # 規則凍結日（台灣時間 10/18 00:00 之後進場的交易才算「真正沒看過的新資料」）
+FREEZE_T = int(datetime.datetime(2026, 10, 18, tzinfo=datetime.timezone.utc).timestamp())
 COSTS = [2, 4, 6, 10]
 ATANH6 = math.atanh(0.6)
 TW = datetime.timezone(datetime.timedelta(hours=8))
@@ -612,11 +613,11 @@ def run():
                 trn = simulate(base, base_t, bars, sg, H, stop=False)
                 for t in trn:
                     t['rg'] = bars[t['i']]['rg']
-                past = [t for t in tr if t['td'] < FREEZE]; fwd = [t for t in tr if t['td'] >= FREEZE]
-                S[str(H)] = {'stop': summarize(past, 2), 'nostop': summarize([t for t in trn if t['td'] < FREEZE], 2, bm[H]),
+                past = [t for t in tr if t['t'] < FREEZE_T]; fwd = [t for t in tr if t['t'] >= FREEZE_T]
+                S[str(H)] = {'stop': summarize(past, 2), 'nostop': summarize([t for t in trn if t['t'] < FREEZE_T], 2, bm[H]),
                              'costs': {str(c): summarize(past, c) for c in COSTS},
-                             'session': summarize([t for t in simulate(base, base_t, bars, sg, H, 'session') if t['td'] < FREEZE], 2),
-                             'elapsed': summarize([t for t in simulate(base, base_t, bars, sg, H, 'elapsed') if t['td'] < FREEZE], 2),
+                             'session': summarize([t for t in simulate(base, base_t, bars, sg, H, 'session') if t['t'] < FREEZE_T], 2),
+                             'elapsed': summarize([t for t in simulate(base, base_t, bars, sg, H, 'elapsed') if t['t'] < FREEZE_T], 2),
                              'byRegime': {rg: summarize([t for t in past if t['rg'] == rg], 2) for rg in ('TREND_UP', 'TREND_DOWN', 'RANGE', 'PANIC', 'TRANSITION')},
                              'byDir': {'long': summarize([t for t in past if t['d'] > 0], 2), 'short': summarize([t for t in past if t['d'] < 0], 2)},
                              'forward': summarize(fwd, 2)}
