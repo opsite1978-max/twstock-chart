@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       - name: 逐筆成交 → 每分鐘 Delta 力道、結構、法人（FinMind）
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
