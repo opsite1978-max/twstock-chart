@@ -1,7 +1,34 @@
-10-17 23:23:10 本小時 FinMind 已用 0 ／上限 6000
-10-17 23:23:31 compare {"d": "2026-10-12", "全部": {"n": 841, "corr": 1.0, "diff%": 0.51, "priceChanged": 0}, "晚上 15:00–18:00": {"n": 180, "corr": 0.9992, "diff%": 6.3, "priceChanged": 0}, "其他時間": {"n": 661, "corr": 1.0, "diff%": 0.0, "priceChanged": 0}}
-10-17 23:23:48 compare {"d": "2026-10-13", "全部": {"n": 1142, "corr": 0.9998, "diff%": 1.02, "priceChanged": 0}, "晚上 15:00–18:00": {"n": 180, "corr": 0.9968, "diff%": 8.74, "priceChanged": 0}, "其他時間": {"n": 962, "corr": 1.0, "diff%": 0.0, "priceChanged": 0}}
-10-17 23:24:08 compare {"d": "2026-10-14", "全部": {"n": 1142, "corr": 1.0, "diff%": 0.3, "priceChanged": 0}, "晚上 15:00–18:00": {"n": 180, "corr": 0.9989, "diff%": 4.89, "priceChanged": 0}, "其他時間": {"n": 962, "corr": 1.0, "diff%": 0.0, "priceChanged": 0}}
-10-17 23:24:26 compare {"d": "2026-10-15", "全部": {"n": 1142, "corr": 0.9987, "diff%": 2.25, "priceChanged": 0}, "晚上 15:00–18:00": {"n": 180, "corr": 0.9944, "diff%": 12.39, "priceChanged": 0}, "其他時間": {"n": 962, "corr": 1.0, "diff%": 0.0, "priceChanged": 0}}
-10-17 23:24:45 compare {"d": "2026-10-16", "全部": {"n": 1142, "corr": 0.9997, "diff%": 1.53, "priceChanged": 0}, "晚上 15:00–18:00": {"n": 180, "corr": 0.9924, "diff%": 28.13, "priceChanged": 0}, "其他時間": {"n": 962, "corr": 1.0, "diff%": 0.0, "priceChanged": 0}}
-10-17 23:24:46 compare done requests 23
+10-18 05:20:27 本小時 FinMind 已用 4 ／上限 6000
+10-18 05:20:28 price fixed 2026-10-17 changed minutes 0 req 2
+10-18 05:20:29 price fixed 2026-10-08 changed minutes 0 req 3
+10-18 05:20:30 price fixed 2026-10-07 changed minutes 0 req 4
+10-18 05:20:32 price fixed 2026-10-06 changed minutes 0 req 5
+10-18 05:20:32 price fixed 2026-10-05 changed minutes 0 req 6
+10-18 05:20:33 price fixed 2026-10-03 changed minutes 0 req 7
+10-18 05:20:34 price fixed 2026-10-02 changed minutes 0 req 8
+10-18 05:20:35 price fixed 2026-10-01 changed minutes 0 req 9
+10-18 05:20:36 price fixed 2026-09-30 changed minutes 0 req 10
+10-18 05:20:37 price fixed 2026-09-29 changed minutes 0 req 11
+10-18 05:20:38 price fixed 2026-09-24 changed minutes 0 req 12
+10-18 05:20:39 price fixed 2026-09-23 changed minutes 0 req 13
+10-18 05:20:41 price fixed 2026-09-22 changed minutes 0 req 14
+10-18 05:20:41 price fixed 2026-09-21 changed minutes 0 req 15
+10-18 05:20:42 price fixed 2026-09-19 changed minutes 0 req 16
+10-18 05:20:43 price fixed 2026-09-18 changed minutes 0 req 17
+10-18 05:20:44 price fixed 2026-09-17 changed minutes 0 req 18
+10-18 05:20:45 price fixed 2026-09-16 changed minutes 285 req 19
+10-18 05:20:47 price fixed 2026-09-15 changed minutes 0 req 20
+10-18 05:20:48 price fixed 2026-09-14 changed minutes 0 req 21
+10-18 05:20:49 price fixed 2026-09-12 changed minutes 0 req 22
+10-18 05:20:50 price fixed 2026-09-11 changed minutes 0 req 23
+10-18 05:20:51 price fixed 2026-09-10 changed minutes 0 req 24
+10-18 05:20:52 price fixed 2026-09-09 changed minutes 0 req 25
+10-18 05:20:53 price fixed 2026-09-08 changed minutes 0 req 26
+10-18 05:20:54 price fixed 2026-09-07 changed minutes 0 req 27
+10-18 05:20:55 price fixed 2026-09-05 changed minutes 0 req 28
+10-18 05:20:56 price fixed 2026-09-04 changed minutes 0 req 29
+10-18 05:20:57 price fixed 2026-09-03 changed minutes 0 req 30
+10-18 05:20:58 price fixed 2026-09-02 changed minutes 0 req 31
+10-18 05:20:59 price fixed 2026-09-01 changed minutes 0 req 32
+10-18 05:20:59 STOP 本次查詢次數用完
+10-18 05:21:00 fixprice done 31 requests 32
