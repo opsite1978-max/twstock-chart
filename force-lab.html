@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>多空力道研究版</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --gold:#ffca28; --force:#26c6da; --resid:#9085e9; --warn:#e0a800;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --gold:#b98900; --force:#00838f; --resid:#6250d6; --warn:#a07400;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.55}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px;cursor:pointer;white-space:nowrap}
+  .spacer{flex:1}
+  main{max-width:1180px;margin:0 auto;padding:10px 12px 40px}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0;line-height:1.7}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .banner{background:var(--panel);border:1px solid var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7}
+  .banner b{color:var(--warn)}
+  section{margin-top:16px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600} h2 .muted{font-weight:400;font-size:12px;margin-left:6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;position:relative}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 6px}
+  .legend i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:3px}
+  .legend i.bar{width:10px;height:10px;vertical-align:-1px;border-radius:2px}
+  svg{display:block;width:100%;overflow:visible} svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.7}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:var(--panel);height:32px;padding:0 12px}
+  .seg button.on{background:var(--accent);color:#fff}
+  .bar2{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin:10px 0 4px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500} td:first-child,th:first-child{text-align:left}
+  tr.click{cursor:pointer} tr.click:hover td{background:var(--panel2)} tr.sel td{background:var(--panel2)}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .up{color:var(--up)} .dn{color:var(--down)} .warn{color:var(--warn)}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:0 7px;border-radius:999px;border:1.5px solid currentColor;margin-left:4px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+  .card .lb{font-size:12px;color:var(--muted)} .card .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.35}
+  .card .s{font-size:12px;color:var(--muted)}
+  .sum p{margin:6px 0;line-height:1.75}
+  .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  @media (max-width:760px){ .g2{grid-template-columns:minmax(0,1fr)} }
+  @media (max-width:520px){ table{font-size:11.5px} th,td{padding:5px 4px} header button{height:30px;padding:0 8px;font-size:13px} .seg button{padding:0 9px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>多空力道研究版</h1>
+  <span class="muted small" id="upd"></span>
+  <span class="spacer"></span>
+  <button onclick="location.href='force.html'">多空力道</button>
+  <button onclick="location.href='txo.html'">選擇權</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">讀取中…</div>
+  <div id="app" hidden>
+    <div class="banner" id="banner"></div>
+
+    <div class="bar2">
+      <div class="seg" id="tfSeg"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="60">60 分</button></div>
+      <div class="seg" id="hSeg"><button data-h="60">持有 60 分</button><button data-h="240">持有 4 小時</button></div>
+    </div>
+
+    <section><div class="cards" id="now"></div></section>
+
+    <section class="sum"><h2>結論<span class="muted">依目前選的時間框架與持有時間自動產生</span></h2><div class="panel" id="sum"></div></section>
+
+    <section>
+      <h2>近期走勢：價格、力道、殘差、衰竭、市場狀態<span class="muted">最近 300 根</span></h2>
+      <div class="panel"><div class="legend" id="lgS"></div><svg id="svS"></svg></div>
+      <p class="note">底下色帶＝市場狀態：紅＝多頭趨勢、綠＝空頭趨勢、灰＝區間震盪、黃＝恐慌擴張、空白＝趨勢轉換。衰竭分數只在最近 12 根曾有 |力道| ≥ 60 時才計算。</p>
+    </section>
+
+    <section>
+      <h2>策略比較<span class="muted">點一列看細節；已扣來回 2 點成本；用失效價停損</span></h2>
+      <div class="tblx" id="tblS"></div>
+      <p class="note" id="noteS"></p>
+    </section>
+
+    <section id="detSec"><h2 id="detTitle"></h2><div class="g2"><div class="tblx" id="det1"></div><div class="tblx" id="det2"></div></div><div class="panel" style="margin-top:10px"><div class="legend">每月平均淨報酬（點）</div><svg id="svM"></svg></div><p class="note" id="noteDet"></p></section>
+
+    <section>
+      <h2>資金流引擎：三種寫法的預測力<span class="muted">每月等級相關係數（和之後報酬）</span></h2>
+      <div class="tblx" id="tblIC"></div>
+      <p class="note">等級相關係數 &gt; 0＝數值越高、之後越容易漲；&lt; 0＝之後反而容易跌（反轉）。t 值絕對值超過 2 才算比較可信；「正的月份」看每個月是否一致。</p>
+    </section>
+
+    <section>
+      <h2>衰竭引擎：七個分項各自檢驗<span class="muted">只看最近曾有極端力道的 K 棒；數值越高代表越該反轉</span></h2>
+      <div class="g2"><div class="tblx" id="tblEx"></div><div class="tblx" id="tblExB"></div></div>
+      <p class="note">左表：分項和「反轉方向報酬」的每月等級相關，&gt; 0 才代表這個分項有幫助。右表：衰竭分數分區後，之後 60 分鐘往反轉方向的平均點數（未扣成本）。</p>
+    </section>
+
+    <section>
+      <h2>市場狀態引擎<span class="muted">只用當下已知資訊判斷</span></h2>
+      <div class="tblx" id="tblRg"></div>
+      <p class="note">效率比＝20 根內淨漲跌 ÷ 每根漲跌絕對值加總（越接近 1 越像單邊趨勢），和過去比的百分位 ≥ 60 且 50 根均線同向＝趨勢；≤ 40＝區間震盪；恐慌指數 ≥ 80＝恐慌擴張（優先）；其餘＝趨勢轉換。</p>
+    </section>
+
+    <section>
+      <h2>研究方法與限制</h2>
+      <div class="panel note" id="method" style="margin:0"></div>
+    </section>
+  </div>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (v, d) => v == null || isNaN(v) ? '–' : (+v).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 });
+const sgn = (v, d) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+const cls = v => v > 0 ? 'up' : v < 0 ? 'dn' : '';
+const store = { get:(k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }, set:(k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent, text){ const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+function ticks(lo, hi, n){ const span = hi - lo || 1, s0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(s0))); const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(s => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(+v.toFixed(6)); return out; }
+const RG = { TREND_UP:['多頭趨勢', '--up'], TREND_DOWN:['空頭趨勢', '--down'], RANGE:['區間震盪', '--muted'], PANIC:['恐慌擴張', '--warn'], TRANSITION:['趨勢轉換', ''] };
+const ST = { tf:store.get('lab.tf', '15'), h:store.get('lab.h', '60'), sel:null };
+let R = null;
+
+function ciTxt(ci){ return ci ? `${sgn(ci[0], 1)} ～ ${sgn(ci[1], 1)}` : '–'; }
+function verdict(s, c10){
+  if (!s || !s.n) return ['沒有交易', 'muted'];
+  if (s.n < 30) return ['樣本太少', 'muted'];
+  if (s.ci && s.ci[0] > 0 && c10 && c10.mean > 0) return ['候選（待新資料驗證）', 'up'];
+  if (s.ci && s.ci[1] < 0) return ['顯著虧損', 'dn'];
+  return ['沒有統計優勢', 'muted'];
+}
+
+function render(){
+  document.querySelectorAll('#tfSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === ST.tf));
+  document.querySelectorAll('#hSeg button').forEach(b => b.classList.toggle('on', b.dataset.h === ST.h));
+  const T = R.tf[ST.tf];
+  // 目前狀態
+  const n = T.now, rg = RG[n.regime] || ['–', ''];
+  const exdTxt = n.exd > 0 ? '多方極端後' : n.exd < 0 ? '空方極端後' : '近期沒有極端';
+  const tt = new Date(n.t * 1000).toISOString();
+  $('#now').innerHTML = `
+    <div class="card"><div class="lb">最新一根（${ST.tf} 分）</div><div class="v" style="font-size:16px">${+tt.slice(5, 7)}/${+tt.slice(8, 10)} ${tt.slice(11, 16)}</div><div class="s">${n.s === 'N' ? '夜盤' : '日盤'}・交易日 ${esc(n.td)}</div></div>
+    <div class="card"><div class="lb">市場狀態</div><div class="v" style="font-size:18px;${rg[1] ? 'color:' + css(rg[1]) : ''}">${rg[0]}</div><div class="s">只用當下已知資訊</div></div>
+    <div class="card"><div class="lb">淨流量力道／資金流殘差</div><div class="v"><span class="${cls(n.F)}">${sgn(n.F, 0)}</span> <span class="muted" style="font-size:14px">／</span> <span class="${cls(n.FR)}">${sgn(n.FR, 0)}</span></div><div class="s">多空失衡 ${sgn(n.FI, 0)}</div></div>
+    <div class="card"><div class="lb">衰竭分數</div><div class="v ${n.exh >= 70 ? 'warn' : ''}">${n.exh == null ? '–' : fmt(n.exh)}</div><div class="s">${exdTxt}${n.exh >= 85 ? '・極端衰竭' : n.exh >= 70 ? '・高度警戒' : n.exh >= 40 ? '・開始觀察' : ''}</div></div>`;
+  renderSeries(T); renderTable(T); renderIC(T); renderEx(T); renderRg(T); renderSum(T);
+  if (ST.sel && T.strat[ST.sel]) renderDet(T, ST.sel); else $('#detSec').hidden = true;
+}
+
+function renderSum(T){
+  const H = ST.h, rows = [];
+  for (const [c, S] of Object.entries(T.strat)){ const s = S[H].stop, v = verdict(s, S[H].costs['10']); rows.push([c, s, v, S]); }
+  const good = rows.filter(r => r[2][0].startsWith('候選')), bad = rows.filter(r => r[2][1] === 'dn');
+  const ic = T.ic[H];
+  const icTxt = Object.entries(ic).map(([k, v]) => `${k} ${sgn(v.mean, 3)}（t ${sgn(v.t, 1)}，${v.pos}/${v.months} 個月為正）`).join('、');
+  $('#sum').innerHTML = `<p><b>${good.length ? good.map(r => `${r[0]}「${esc(R.strategies[r[0]])}」`).join('、') + ' 在這段歷史裡信賴區間全在 0 以上、扣 10 點成本仍為正，列為候選。' : '目前沒有任何策略在這段歷史裡通過「信賴區間全在 0 以上、扣 10 點成本仍為正」的標準。'}</b>`
+    + `${bad.length ? `${bad.map(r => r[0]).join('、')} 信賴區間全在 0 以下，代表照做會穩定虧損。` : ''}其餘策略的信賴區間跨過 0，和隨便進場分不出差別。</p>`
+    + `<p>資金流本身：${icTxt}。負值代表力道越強、之後越容易往反方向走，是偏「反轉」的訊息，但幅度很小。</p>`
+    + `<p class="muted">注意：2026 年 1 到 10 月的資料已經被拿來想出這些假說，同時比較了很多種策略與時間框架，偶爾有一兩個看起來很好是正常的機率現象。規則已在 ${esc(R.freeze)} 凍結，之後每天的新資料會自動累積在「新資料驗證」欄，那一欄才是真正的考試。</p>`;
+}
+
+function renderTable(T){
+  const H = ST.h;
+  let h = `<table><tr><th>策略</th><th>次數</th><th>平均</th><th>中位數</th><th>勝率</th><th>盈虧比</th><th>95% 信賴區間</th><th>賺錢月份</th><th>比配對基準多</th><th>扣 10 點</th><th>滾動驗證</th><th>新資料驗證</th><th>判斷</th></tr>`;
+  for (const [c, S] of Object.entries(T.strat)){
+    const s = S[H].stop, ns = S[H].nostop, c10 = S[H].costs['10'], f = S[H].forward, wf = S.wf && H === '60' ? S.wf.stats : null;
+    const v = verdict(s, c10);
+    h += `<tr class="click${ST.sel === c ? ' sel' : ''}" data-c="${c}"><td><b>${c}</b> ${esc(R.strategies[c])}</td><td>${s.n || 0}</td><td class="${cls(s.mean)}">${sgn(s.mean, 1)}</td><td>${sgn(s.med, 1)}</td><td>${s.win == null ? '–' : s.win + '%'}</td><td>${s.pf == null ? '–' : s.pf.toFixed(2)}</td>`
+      + `<td class="${s.ci && s.ci[0] > 0 ? 'up' : s.ci && s.ci[1] < 0 ? 'dn' : ''}">${ciTxt(s.ci)}</td><td>${s.n ? s.monthsPos + '/' + s.months : '–'}</td><td class="${cls(ns.excess)}">${sgn(ns.excess, 1)}</td><td class="${cls(c10.mean)}">${sgn(c10.mean, 1)}</td>`
+      + `<td class="${wf ? cls(wf.mean) : ''}">${wf && wf.n ? sgn(wf.mean, 1) + `（${wf.n}）` : H === '60' ? '–' : '只算 60 分'}</td><td>${f && f.n ? `<span class="${cls(f.mean)}">${sgn(f.mean, 1)}</span>（${f.n}）` : '<span class="muted">累積中</span>'}</td>`
+      + `<td><span class="tag ${v[1]}">${v[0]}</span></td></tr>`;
+  }
+  $('#tblS').innerHTML = h + '</table>';
+  $('#tblS').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { ST.sel = ST.sel === tr.dataset.c ? null : tr.dataset.c; render(); if (ST.sel) $('#detSec').scrollIntoView({ behavior:'smooth', block:'start' }); });
+  $('#noteS').innerHTML = `下一根 K 棒開盤進場、持有 ${H === '60' ? '60 分鐘' : '4 小時'}（交易時間，跨日盤夜盤照算），碰到失效價就停損（跳空時用開盤價成交）；同方向還在持倉時的新訊號不重複進場，避免同一段行情被算很多次。`
+    + `95% 信賴區間是把「交易日」整天整天重抽 2,000 次算出來的；全部在 0 以上才算有優勢。比配對基準多＝和「同時段、同市場狀態下隨便進場」比，多賺幾點（不停損版本）。滾動驗證＝每個月只用前 3 個月選參數，套到下一個月，只統計下一個月的結果。`;
+}
+
+function renderDet(T, c){
+  const S = T.strat[c], H = ST.h, x = S[H];
+  $('#detSec').hidden = false;
+  $('#detTitle').innerHTML = `${c} ${esc(R.strategies[c])}<span class="muted">${ST.tf} 分・持有 ${H === '60' ? '60 分' : '4 小時'}・參數 ${esc(JSON.stringify(S.params))}</span>`;
+  const row = (name, s) => `<tr><td>${name}</td><td>${s.n || 0}</td><td class="${cls(s.mean)}">${sgn(s.mean, 1)}</td><td>${s.win == null ? '–' : s.win + '%'}</td><td>${ciTxt(s.ci)}</td></tr>`;
+  let h = `<table><tr><th>計算方式</th><th>次數</th><th>平均</th><th>勝率</th><th>信賴區間</th></tr>`
+    + row('交易時間持有＋停損（主要）', x.stop) + row('不停損', x.nostop) + row('同時段內出場', x.session) + row('實際經過時間', x.elapsed)
+    + Object.entries(x.costs).map(([k, s]) => row(`扣 ${k} 點成本`, s)).join('')
+    + row('只做多', x.byDir.long) + row('只做空', x.byDir.short) + '</table>';
+  $('#det1').innerHTML = h;
+  let h2 = `<table><tr><th>分組</th><th>次數</th><th>平均</th><th>勝率</th><th>信賴區間</th></tr>`;
+  for (const [k, s] of Object.entries(x.byRegime)) h2 += row(RG[k][0], s);
+  h2 += `<tr><td>日盤</td><td>${x.stop.nDay || 0}</td><td class="${cls(x.stop.day)}">${sgn(x.stop.day, 1)}</td><td></td><td></td></tr><tr><td>夜盤</td><td>${x.stop.nNight || 0}</td><td class="${cls(x.stop.night)}">${sgn(x.stop.night, 1)}</td><td></td><td></td></tr>`;
+  h2 += `<tr><td>60 分內最大有利／不利</td><td colspan="4">${fmt(x.stop.mfe)}／${fmt(x.stop.mae)} 點</td></tr><tr><td>碰到失效價</td><td colspan="4">${x.stop.stopPct == null ? '–' : x.stop.stopPct + '%'}</td></tr><tr><td>連續操作最大回撤</td><td colspan="4">${sgn(x.stop.mdd)} 點</td></tr>`;
+  if (S.wf) h2 += `<tr><td>滾動驗證每月選到的參數</td><td colspan="4" style="white-space:normal;text-align:left">${Object.entries(S.wf.picks).map(([m, p]) => m.slice(5) + '月 ' + Object.values(p)[0]).join('、')}</td></tr>`;
+  $('#det2').innerHTML = h2 + '</table>';
+  // 每月長條
+  const mo = Object.entries(x.stop.monthly || {}); const svg = $('#svM'); svg.innerHTML = '';
+  const W = svg.clientWidth || 600, Hh = 150, pl = 6, pr = 44, pt = 8, pb = 20; svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.style.height = Hh + 'px';
+  if (mo.length){ const mx = Math.max(1, ...mo.map(m => Math.abs(m[1]))); const Y = v => pt + (mx - v) / (2 * mx) * (Hh - pt - pb); const bw = (W - pl - pr) / mo.length;
+    el('line', { x1:pl, x2:W - pr, y1:Y(0), y2:Y(0), stroke:css('--muted') }, svg);
+    mo.forEach(([m, v], i) => { const x0 = pl + i * bw + 2, y0 = Math.min(Y(0), Y(v)); el('rect', { x:x0, y:y0, width:Math.max(1, bw - 4), height:Math.max(1, Math.abs(Y(v) - Y(0))), rx:3, fill:css(v >= 0 ? '--up' : '--down') }, svg);
+      el('text', { x:x0 + bw / 2 - 2, y:Hh - 5, 'font-size':10.5, fill:css('--muted'), 'text-anchor':'middle' }, svg, +m.slice(5) + '月');
+      if (bw > 30) el('text', { x:x0 + bw / 2 - 2, y:v >= 0 ? y0 - 3 : Y(v) + 11, 'font-size':10, fill:css('--muted'), 'text-anchor':'middle' }, svg, sgn(v, 0)); });
+    el('text', { x:W - pr + 4, y:Y(mx) + 4, 'font-size':10.5, fill:css('--muted') }, svg, sgn(mx, 0)); el('text', { x:W - pr + 4, y:Y(-mx) + 4, 'font-size':10.5, fill:css('--muted') }, svg, sgn(-mx, 0)); }
+  $('#noteDet').textContent = '平均值常被少數幾筆大賺拉高；中位數、賺錢月份、信賴區間比平均值更能看出穩不穩定。';
+}
+
+function renderIC(T){
+  let h = `<table><tr><th>寫法</th>${['60', '240'].map(H => `<th colspan="3" style="text-align:center">之後 ${H === '60' ? '60 分' : '4 小時'}</th>`).join('')}</tr><tr><th></th>${['60', '240'].map(() => '<th>平均</th><th>t 值</th><th>正的月份</th>').join('')}</tr>`;
+  for (const k of Object.keys(T.ic['60'])){ h += `<tr><td>${k}</td>` + ['60', '240'].map(H => { const v = T.ic[H][k]; return `<td class="${cls(v.mean)}">${sgn(v.mean, 3)}</td><td class="${v.t != null && Math.abs(v.t) >= 2 ? 'warn' : ''}">${sgn(v.t, 2)}</td><td>${v.pos}/${v.months}</td>`; }).join('') + '</tr>'; }
+  $('#tblIC').innerHTML = h + '</table>';
+}
+function renderEx(T){
+  let h = `<table><tr><th>分項</th><th>平均相關</th><th>t 值</th><th>正的月份</th></tr>`;
+  for (const [k, v] of Object.entries(T.exhParts)) h += `<tr><td>${k === '衰竭分數（合計）' ? '<b>' + k + '</b>' : k}</td><td class="${cls(v.mean)}">${sgn(v.mean, 3)}</td><td class="${v.t != null && Math.abs(v.t) >= 2 ? 'warn' : ''}">${sgn(v.t, 2)}</td><td>${v.pos}/${v.months}</td></tr>`;
+  $('#tblEx').innerHTML = h + '</table>';
+  const nm = { '0–39':'未見明顯衰竭', '40–69':'開始觀察', '70–84':'高度警戒', '85–100':'極端衰竭' };
+  let h2 = `<table><tr><th>衰竭分數</th><th>次數</th><th>反轉方向平均</th><th>勝率</th></tr>`;
+  for (const [k, v] of Object.entries(T.exhBuckets)) h2 += `<tr><td>${k} ${nm[k]}</td><td>${v.n}</td><td class="${cls(v.mean)}">${sgn(v.mean, 1)}</td><td>${v.win == null ? '–' : v.win + '%'}</td></tr>`;
+  $('#tblExB').innerHTML = h2 + '</table>';
+}
+function renderRg(T){
+  let h = `<table><tr><th>市場狀態</th><th>占全部 K 棒</th><th>之後 60 分平均漲跌（日盤）</th><th>（夜盤）</th></tr>`;
+  for (const [k, v] of Object.entries(T.regimes)) h += `<tr><td style="${RG[k][1] ? 'color:' + css(RG[k][1]) : ''}">${RG[k][0]}</td><td>${v.pct}%</td><td class="${cls(v.day)}">${sgn(v.day, 1)}</td><td class="${cls(v.night)}">${sgn(v.night, 1)}</td></tr>`;
+  $('#tblRg').innerHTML = h + '</table>';
+}
+function renderSeries(T){
+  const s = T.series, svg = $('#svS'); svg.innerHTML = '';
+  const W = svg.clientWidth || 600, Hh = W < 600 ? 360 : 400, pl = 4, pr = 46, pt = 6, gap = 14, band = 8;
+  svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`); svg.style.height = Hh + 'px';
+  const n = s.t.length; if (!n) return;
+  const pH = (Hh - pt - gap * 2 - band - 18) * 0.38, fTop = pt + pH + gap, fH = (Hh - pt - gap * 2 - band - 18) * 0.40, eTop = fTop + fH + gap, eH = Hh - eTop - band - 22;
+  const X = i => pl + (i + 0.5) / n * (W - pl - pr);
+  const lo = Math.min(...s.c), hi = Math.max(...s.c), P = v => pt + (hi - v) / (hi - lo || 1) * pH;
+  const YF = v => fTop + (100 - v) / 200 * fH, YE = v => eTop + (100 - v) / 100 * eH;
+  for (const v of ticks(lo, hi, 3)) el('text', { x:W - pr + 4, y:P(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, fmt(v));
+  for (const v of [60, 0, -60]){ el('line', { x1:pl, x2:W - pr, y1:YF(v), y2:YF(v), stroke:v === 0 ? css('--muted') : css('--grid'), 'stroke-dasharray':v ? '3 3' : null }, svg); el('text', { x:W - pr + 4, y:YF(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, (v > 0 ? '+' : '') + v); }
+  for (const v of [70, 0]){ el('line', { x1:pl, x2:W - pr, y1:YE(v), y2:YE(v), stroke:css('--grid'), 'stroke-dasharray':v ? '3 3' : null }, svg); el('text', { x:W - pr + 4, y:YE(v) + 4, 'font-size':10.5, fill:css('--muted') }, svg, String(v)); }
+  const path = (vals, Y, color, w) => { let d = ''; vals.forEach((v, i) => { if (v == null) return; d += (d && vals[i - 1] != null ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }); el('path', { d, fill:'none', stroke:color, 'stroke-width':w || 1.6 }, svg); };
+  path(s.c, P, css('--text'), 1.5); path(s.F, YF, css('--force'), 1.6); path(s.FR, YF, css('--resid'), 1.3);
+  s.exh.forEach((v, i) => { if (v == null) return; const c = s.exd[i] > 0 ? '--down' : '--up'; el('rect', { x:X(i) - (W - pl - pr) / n / 2, y:YE(v), width:Math.max(1, (W - pl - pr) / n - 0.5), height:Math.max(0.5, YE(0) - YE(v)), fill:css(c), opacity:v >= 70 ? 0.95 : 0.45 }, svg); });
+  const bY = Hh - band - 18; s.rg.forEach((r, i) => { const c = RG[r] && RG[r][1]; if (!c) return; el('rect', { x:X(i) - (W - pl - pr) / n / 2, y:bY, width:(W - pl - pr) / n + 0.3, height:band, fill:css(c), opacity:0.8 }, svg); });
+  const step = Math.max(1, Math.floor(n / 6)); for (let i = 0; i < n; i += step){ const t = new Date(s.t[i] * 1000).toISOString(); el('text', { x:X(i), y:Hh - 4, 'font-size':10.5, fill:css('--muted'), 'text-anchor':'middle' }, svg, +t.slice(5, 7) + '/' + +t.slice(8, 10)); }
+  el('text', { x:pl + 2, y:pt + 10, 'font-size':11, fill:css('--muted') }, svg, '台指期'); el('text', { x:pl + 2, y:fTop + 10, 'font-size':11, fill:css('--muted') }, svg, '力道與殘差'); el('text', { x:pl + 2, y:eTop + 10, 'font-size':11, fill:css('--muted') }, svg, '衰竭分數');
+  $('#lgS').innerHTML = [['台指期', css('--text')], ['淨流量力道', css('--force')], ['資金流殘差', css('--resid')]].map(([t, c]) => `<span><i style="background:${c}"></i>${t}</span>`).join('')
+    + `<span><i class="bar" style="background:${css('--down')}"></i>多方衰竭</span><span><i class="bar" style="background:${css('--up')}"></i>空方衰竭</span>`;
+}
+
+function method(){
+  $('#method').innerHTML = `
+    <b>資料</b>：${esc(R.range[0])} ～ ${esc(R.range[1])}，5 分 K 共 ${fmt(R.bars5)} 根（逐筆選擇權推估的主動成交 Delta 淨流量＋台指期近月價格）。這一頁每晚自動重算，完全不連 FinMind，不佔查詢次數。<br>
+    <b>三種資金流寫法</b>：淨流量力道＝主頁那條線；多空失衡＝淨流量 ÷ 總流量；資金流殘差＝淨流量標準分數 − β × 價格報酬標準分數（β 只用過去 500 根估計），用來看「價格動了，但資金流有沒有跟上」。<br>
+    <b>衰竭分數</b>：最近 12 根曾有 |力道| ≥ 60 時，七個分項（極端程度與持續、力道減弱、減弱加速、價格與資金流背離、偏離日內均價、價格延伸幅度、選擇權避險結構）各自轉成 0～100 後平均，至少要有 4 項才計算。<br>
+    <b>策略</b>：A 主頁的原始 GO；B 力道剛衝過 ±60 就反向；C 衝過 ±60 後退回 ±40 才反向；D 衰竭分數 ≥ 70、力道轉弱、價格跌破前一根低點（反向對稱）才進場；E 同 D 但不在順向趨勢與恐慌時做；F 趨勢行情中力道回檔後重新站上 ±20、價格突破；G 恐慌後力道連兩根回升、沒有再破低、價格突破前一根高點才做多；H 已收盤的 60 分力道近 4 根曾 ≥ ±60，再由 15 分力道轉弱與價格確認。<br>
+    <b>防止偷看未來</b>：所有數值都只用當下以前的資料；有自動測試：用前 70% 資料算出的每個數值，必須和用全部資料算出的完全相同（每晚都會跑）。60 分 K 只用已經收盤的那一根。<br>
+    <b>限制</b>：主動買賣方向是用價格跳動推估；歷史只有約 9.5 個月，而且同一批資料被用來想出假說，又同時比較了 8 種策略 × 3 個時間框架 × 2 種持有時間，偶然出現一兩個看起來顯著的結果是正常的。正式結論要看 ${esc(R.freeze)} 之後的「新資料驗證」。這是研究工具，不是投資建議。`;
+}
+
+document.querySelectorAll('#tfSeg button').forEach(b => b.onclick = () => { ST.tf = b.dataset.tf; store.set('lab.tf', ST.tf); if (ST.sel === 'H' && ST.tf !== '15') ST.sel = null; render(); });
+document.querySelectorAll('#hSeg button').forEach(b => b.onclick = () => { ST.h = b.dataset.h; store.set('lab.h', ST.h); render(); });
+let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(() => R && render(), 150); });
+(async () => {
+  try {
+    const r = await fetch('data/force/research.json?v=' + Math.floor(Date.now() / 60000)); if (!r.ok) throw new Error('研究結果還沒產生');
+    R = await r.json();
+    $('#upd').textContent = '研究更新 ' + R.updated;
+    $('#banner').innerHTML = `<b>研究版</b>：這頁所有訊號都是「研究訊號」，還沒有通過真正的新資料驗證，不代表已證實的勝率。規則在 ${esc(R.freeze)} 凍結，之後每天的新資料會自動累積成「新資料驗證」。`;
+    method(); $('#app').hidden = false; $('#status').hidden = true; render();
+  } catch(e){ $('#status').textContent = '讀取失敗：' + e.message; $('#status').className = 'msg err'; }
+})();
+</script>
+</body>
+</html>

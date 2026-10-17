@@ -1,0 +1,35 @@
+name: 多空力道研究與驗證（不連 FinMind）
+on:
+  workflow_run:
+    workflows: ['台指選擇權多空力道（逐筆 Delta 資金流）']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: force-research
+  cancel-in-progress: false
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 因果性測試（不能偷看未來）
+        run: python3 scripts/force_research.py test
+      - name: 研究與驗證（只讀已存資料，沒有 FinMind 憑證）
+        run: python3 scripts/force_research.py
+      - name: 存回專案
+        run: |
+          git add data/force/research.json
+          if git diff --cached --quiet; then echo "沒有變化"; exit 0; fi
+          git -c user.name="force-bot" -c user.email="force-bot@users.noreply.github.com" commit -qm "多空力道研究結果更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ]

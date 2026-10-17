@@ -1,0 +1,44 @@
+name: 研究版網頁實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: |
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const b = await chromium.launch(); const log = [];
+            for (const [vp, name] of [[{width:1280,height:900}, 'd'], [{width:390,height:844}, 'm']]){
+              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block', deviceScaleFactor:1 }); const pg = await ctx.newPage();
+              pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + m.text()); });
+              pg.on('pageerror', e => log.push(name + ' pageerror: ' + e.message));
+              await pg.goto('https://opsite1978-max.github.io/twstock-chart/force-lab.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.waitForTimeout(5000);
+              log.push(name + ' STATUS ' + await pg.textContent('#status').catch(() => '?'));
+              await pg.screenshot({ path:'../out/' + name + '-lab.png', fullPage:true });
+              await pg.click('#tblS tr.click[data-c="G"]'); await pg.waitForTimeout(800);
+              const d = await pg.$('#detSec'); if (d) await d.screenshot({ path:'../out/' + name + '-det.png' });
+              await pg.click('#tfSeg button[data-tf="60"]'); await pg.waitForTimeout(800);
+              log.push(name + ' SUM60 ' + (await pg.textContent('#sum')).slice(0, 400));
+              await pg.goto('https://opsite1978-max.github.io/twstock-chart/force.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.waitForTimeout(9000);
+              const mp = await pg.$('#mainPanel'); if (mp) await mp.screenshot({ path:'../out/' + name + '-force.png' });
+              await ctx.close();
+            }
+            require('fs').writeFileSync('../out/log.txt', log.join('\n'));
+            await b.close();
+          })();
+          JS
+          node c.js
+      - if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
