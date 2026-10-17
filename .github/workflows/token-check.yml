@@ -8,13 +8,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 成本估算比較
+      - name: 選擇權籌碼資料探查
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
-          python3 scripts/spreadosc.py > out/osc.txt 2>&1 || true
-          sed -i "s/$T/***/g" out/osc.txt
+          python3 - <<'PY' > out/opt.txt 2>&1 || true
+          import os, json, urllib.request, urllib.parse, collections
+          T = os.environ['T']
+          def js(p):
+              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T))
+              try:
+                  with urllib.request.urlopen(u, timeout=120) as r: j = json.loads(r.read().decode())
+                  return j.get('status'), j.get('msg'), j.get('data') or []
+              except Exception as e: return 0, str(e)[:200], []
+          for ds in ['TaiwanOptionInstitutionalInvestors', 'TaiwanOptionOpenInterestLargeTraders', 'TaiwanOptionInstitutionalInvestorsAfterHours']:
+              st, msg, d = js({'dataset': ds, 'data_id': 'TXO', 'start_date': '2026-10-15'})
+              print(ds, st, msg, len(d))
+              for x in d[:12]: print('  ', json.dumps(x, ensure_ascii=False)[:700])
+              st, msg, d = js({'dataset': ds, 'data_id': 'TXO', 'start_date': '2019-01-01', 'end_date': '2019-01-10'})
+              print('  depth 2019:', st, len(d))
+          st, msg, d = js({'dataset': 'TaiwanOptionDaily', 'data_id': 'TXO', 'start_date': '2026-10-16', 'end_date': '2026-10-16'})
+          print('OPTDAILY', st, len(d), json.dumps(d[:2], ensure_ascii=False)[:600])
+          pos = [x for x in d if x.get('trading_session') == 'position']
+          agg = collections.defaultdict(lambda: [0, 0.0])
+          for x in pos:
+              k = x.get('call_put'); agg[k][0] += x.get('open_interest') or 0; agg[k][1] += (x.get('open_interest') or 0) * (x.get('settlement_price') or 0) * 50 / 1000
+          print('market OI and amount(thousand)', dict(agg), 'contracts', sorted(set(str(x.get('contract_date')).strip() for x in pos))[:12])
+          PY
+          sed -i "s/$T/***/g" out/opt.txt
       - name: 查詢憑證狀態（只記錄狀態，不記錄憑證）
         if: false
         env:
