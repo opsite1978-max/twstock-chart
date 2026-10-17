@@ -39,7 +39,7 @@ T_START = time.time()
 TXEQ = 50 / 200          # 一口台指選擇權（每點 50 元）換成大台（每點 200 元）
 NREQ = [0]
 LOG = []
-COLS = ['t', 'o', 'h', 'l', 'c', 'net', 'gross', 'cb', 'cs', 'pb', 'ps', 'unk', 'vix']
+COLS = ['t', 'o', 'h', 'l', 'c', 'net', 'gross', 'cb', 'cs', 'pb', 'ps', 'unk', 'vix', 'v']
 
 
 class RateLimited(Exception):
@@ -509,8 +509,9 @@ def process_file(x, fut_ref, dup_hist):
             if last_c is None:
                 continue
             o = h = l = c = last_c
+            tv = 0
         else:
-            o, h, l, c = b[0], b[1], b[2], b[3]
+            o, h, l, c, tv = b[0], b[1], b[2], b[3], int(b[4])
         last_c = c
         a = a or [0.0, 0.0, 0, 0, 0, 0, 0]
         vx = None
@@ -519,7 +520,7 @@ def process_file(x, fut_ref, dup_hist):
                 if k in vix:
                     vx = vix[k]; break
         bars.append([m, o, h, l, c, round(a[0] / used, 2), round(a[1] / used, 2),
-                     round(a[2] / used, 1), round(a[3] / used, 1), round(a[4] / used, 1), round(a[5] / used, 1), round(a[6] / used, 1), vx])
+                     round(a[2] / used, 1), round(a[3] / used, 1), round(a[4] / used, 1), round(a[5] / used, 1), round(a[6] / used, 1), vx, tv])
     last_tick = rows[-1]['date'][11:19] if rows else ''
     now = datetime.datetime.now(TW)
     xdate = datetime.date.fromisoformat(x)
@@ -697,13 +698,14 @@ def build_m5():
         for b in bars:
             k = b[0] // 300 * 300
             if cur is None or cur[0] != k:
-                cur = [k, b[1], b[2], b[3], b[4], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None]
+                cur = [k, b[1], b[2], b[3], b[4], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, 0]
                 agg.append(cur)
             cur[2] = max(cur[2], b[2]); cur[3] = min(cur[3], b[3]); cur[4] = b[4]
             for i in range(5, 12):
                 cur[i] += b[i]
             if b[12] is not None:
                 cur[12] = b[12]
+            cur[13] += b[13] if len(b) > 13 else 0
         for a in agg:
             for i in range(5, 12):
                 a[i] = round(a[i], 2 if i < 7 else 1)
@@ -753,7 +755,7 @@ def main():
     for x in targets:
         p = os.path.join(M1, x + '.json')
         j = load_json(p, None)
-        if j and j.get('complete'):
+        if j and j.get('complete') and (not j.get('bars') or len(j['cols']) >= 14):
             continue
         todo.append(x)
     # 先補最近的，再往回補歷史
