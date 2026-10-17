@@ -1,0 +1,5 @@
+10-17 19:22:48 targets 221 todo 221 this run max 3
+10-17 19:23:11 file 2026-10-12 bars 841 dup 2.0 cls 0.994 fb 0.0 last 23:59:58 complete True 23s req 7
+10-17 19:23:31 file 2026-10-13 bars 1142 dup 1.993 cls 0.996 fb 0.0 last 23:59:59 complete True 20s req 11
+10-17 19:23:53 file 2026-10-14 bars 1142 dup 1.996 cls 0.996 fb 0.001 last 23:59:59 complete True 22s req 15
+10-17 19:23:53 time/file budget reached
