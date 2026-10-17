@@ -1,210 +1,177 @@
-10-18 03:37:49 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
-10-18 03:41:51   retry query6_1 4714 113 03 URLError <urlopen error timed out>
-10-18 03:43:07   retry query6_1 4908 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:44:05 progress 50 ok 0 none 375 s
-10-18 03:45:48   retry query6_1 6015 113 03 URLError <urlopen error timed out>
-10-18 03:49:27 progress 100 ok 0 none 697 s
-10-18 03:54:31 progress 147 ok 3 none 1001 s
-10-18 03:58:30   retry query6_1 1717 113 02 URLError <urlopen error timed out>
-10-18 04:01:06 progress 197 ok 3 none 1396 s
-10-18 04:08:13   retry query6_1 3021 113 02 URLError <urlopen error timed out>
-10-18 04:09:25   retry stapap1 3063 113 02 URLError <urlopen error timed out>
-10-18 04:09:36 progress 247 ok 3 none 1906 s
-10-18 04:11:24   retry query6_1 3494 113 02 URLError <urlopen error timed out>
-10-18 04:13:38   retry query6_1 3629 113 02 URLError <urlopen error timed out>
-10-18 04:15:02   retry query6_1 4162 113 02 URLError <urlopen error timed out>
-10-18 04:15:55   retry stapap1 4162 113 02 URLError <urlopen error timed out>
-10-18 04:17:59   retry stapap1 4536 113 02 URLError <urlopen error timed out>
-10-18 04:18:10 result shard 0 partial (time budget) requests 290 ok 287 none 3 files 262 in 2420 s
-10-18 03:37:49 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
-10-18 03:41:38 progress 50 ok 0 none 228 s
-10-18 03:45:13   retry stapap1 2608 113 03 URLError <urlopen error timed out>
-10-18 03:47:31   retry stapap1 2823 113 03 URLError <urlopen error timed out>
-10-18 03:48:25   retry query6_1 2837 113 03 URLError <urlopen error timed out>
-10-18 03:52:28   retry query6_1 3067 113 03 URLError <urlopen error timed out>
-10-18 03:53:18   retry query6_1 3067 113 03 URLError <urlopen error timed out>
-10-18 03:54:04 progress 100 ok 0 none 974 s
-10-18 03:55:43   retry query6_1 3213 113 03 URLError <urlopen error timed out>
-10-18 03:57:07   retry stapap1 3287 113 03 URLError <urlopen error timed out>
-10-18 03:58:39   retry stapap1 3293 113 03 URLError <urlopen error timed out>
-10-18 04:04:07 progress 150 ok 0 none 1577 s
-10-18 04:08:39   retry stapap1 6026 113 03 URLError <urlopen error timed out>
-10-18 04:11:27 progress 200 ok 0 none 2017 s
-10-18 04:18:00 result shard 1 partial (time budget) requests 246 ok 245 none 1 files 253 in 2411 s
-10-18 03:37:51 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-18 03:38:44   retry query6_1 6643 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:39:09   retry query6_1 6643 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:39:45   retry query6_1 6643 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:40:15 FAIL 6643 2024-03 RuntimeError request failed
-10-18 03:41:01   retry query6_1 6657 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:41:26   retry query6_1 6657 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:42:54   retry query6_1 6863 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:43:54   retry stapap1 7716 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:44:20   retry stapap1 7716 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:44:56   retry stapap1 7716 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:45:26   stapap1 fail 7716 2024-03 RuntimeError request failed
-10-18 03:45:44   retry stapap1 7721 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:46:10   retry stapap1 7721 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:47:48   retry query6_1 8374 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:48:17   retry query6_1 8418 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:48:52 progress 49 ok 1 none 660 s
-10-18 03:49:23   retry stapap1 9906 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:49:49   retry stapap1 9906 113 03 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:52:00   retry stapap1 1515 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:52:32   retry query6_1 1529 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:54:16   retry query6_1 2072 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:54:37 progress 99 ok 1 none 1005 s
-10-18 03:58:25 progress 149 ok 1 none 1233 s
-10-18 04:01:09   retry query6_1 4540 113 02 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:02:11   retry stapap1 4755 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:02:30 progress 199 ok 1 none 1478 s
-10-18 04:02:48   retry stapap1 4949 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:03:14   retry stapap1 4949 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:06:00   retry stapap1 6151 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:06:33   retry stapap1 6172 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:07:07   retry query6_1 6217 113 02 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:07:41   retry query6_1 6234 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:08:07   retry query6_1 6234 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:08:45   retry stapap1 6234 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:09:12   retry query6_1 6241 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:09:59 progress 249 ok 1 none 1927 s
-10-18 04:11:57   retry query6_1 6821 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:13:09   retry stapap1 8011 113 02 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:13:41   retry query6_1 8039 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:14:07   retry query6_1 8039 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:15:16 progress 299 ok 1 none 2244 s
-10-18 04:15:45   retry stapap1 8472 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:16:11   retry stapap1 8472 113 02 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:17:49   retry query6_1 1213 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:18:02 result shard 2 partial (time budget) requests 320 ok 318 none 1 files 265 in 2410 s
-10-18 03:37:51 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
-10-18 03:40:07   retry stapap1 2538 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:42:49   retry stapap1 2906 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:43:08   retry stapap1 3005 113 01 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:43:22 progress 49 ok 1 none 331 s
-10-18 03:43:44   retry query6_1 3032 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:44:09   retry query6_1 3032 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:47:25   retry stapap1 4127 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:48:07 progress 99 ok 1 none 616 s
-10-18 03:48:28   retry query6_1 4506 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:51:37   retry query6_1 6117 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:52:22 progress 149 ok 1 none 870 s
-10-18 03:52:43   retry query6_1 6207 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:55:45   retry stapap1 6934 113 01 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:56:40 progress 198 ok 2 none 1129 s
-10-18 03:58:33   retry stapap1 1220 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:00:32 progress 248 ok 2 none 1360 s
-10-18 04:01:03   retry query6_1 2069 112 12 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:01:40   retry stapap1 2221 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:02:49   retry query6_1 2429 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:03:15   retry query6_1 2429 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:04:55   retry stapap1 2642 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:05:22   retry query6_1 2705 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:06:25   retry query6_1 2841 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:07:15 progress 298 ok 2 none 1764 s
-10-18 04:07:38   retry query6_1 3026 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:10:45   retry query6_1 4171 112 12 HTTPError HTTP Error 307: Temporary Redirect
-10-18 04:11:11 progress 348 ok 2 none 1999 s
-10-18 04:13:03   retry query6_1 5355 112 12 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:13:39   retry stapap1 5388 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:14:05   retry stapap1 5388 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:14:45   retry stapap1 5426 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:15:13   retry query6_1 5432 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:16:38 progress 398 ok 2 none 2326 s
-10-18 04:17:51   retry stapap1 6438 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:18:16   retry stapap1 6438 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:18:37 result shard 3 partial (time budget) requests 415 ok 413 none 2 files 266 in 2446 s
-10-18 03:37:50 shard 4 / 8 stocks 271 months 2023-10 ~ 2026-09
-10-18 03:41:15 progress 50 ok 0 none 204 s
-10-18 03:45:57 progress 100 ok 0 none 486 s
-10-18 03:47:52   retry stapap1 4541 113 03 URLError <urlopen error timed out>
-10-18 03:49:06   retry stapap1 4943 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:50:52   retry query6_1 5016 113 03 URLError <urlopen error timed out>
-10-18 03:53:05 progress 150 ok 0 none 914 s
-10-18 03:55:46   retry stapap1 6202 113 03 URLError <urlopen error timed out>
-10-18 03:57:22   retry query6_1 6221 113 03 URLError <urlopen error timed out>
-10-18 03:59:24   retry stapap1 6422 113 03 URLError <urlopen error timed out>
-10-18 04:00:14   retry stapap1 6422 113 03 URLError <urlopen error timed out>
-10-18 04:04:58   retry query6_1 6747 113 03 URLError <urlopen error timed out>
-10-18 04:06:08 progress 200 ok 0 none 1697 s
-10-18 04:12:04 progress 250 ok 0 none 2053 s
-10-18 04:13:20   retry stapap1 1514 113 02 URLError <urlopen error timed out>
-10-18 04:17:31   retry query6_1 2108 113 02 URLError <urlopen error timed out>
-10-18 04:17:51 result shard 4 partial (time budget) requests 283 ok 283 none 0 files 270 in 2400 s
-10-18 03:37:50 shard 5 / 8 stocks 272 months 2023-10 ~ 2026-09
-10-18 03:40:38   retry query6_1 5287 113 03 HTTPError HTTP Error 307: Temporary Redirect
-10-18 03:41:07 progress 50 ok 0 none 196 s
-10-18 03:41:21   retry query6_1 5465 113 03 HTTPError HTTP Error 307: Temporary Redirect
-10-18 03:43:04   retry stapap1 6121 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:46:31 progress 100 ok 0 none 520 s
-10-18 03:47:46   retry query6_1 6807 113 03 URLError <urlopen error timed out>
-10-18 03:52:41 progress 149 ok 1 none 890 s
-10-18 03:55:07   retry query6_1 1436 113 02 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:55:59   retry stapap1 1436 113 02 URLError <urlopen error timed out>
-10-18 03:57:20   retry query6_1 1538 113 02 URLError <urlopen error timed out>
-10-18 03:58:10   retry query6_1 1538 113 02 URLError <urlopen error timed out>
-10-18 03:59:42   retry query6_1 1732 113 02 URLError <urlopen error timed out>
-10-18 04:00:35   retry stapap1 1732 113 02 URLError <urlopen error timed out>
-10-18 04:03:39 progress 198 ok 2 none 1548 s
-10-18 04:04:22   retry stapap1 2442 113 02 URLError <urlopen error timed out>
-10-18 04:07:03   retry stapap1 3027 113 02 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:10:58   retry query6_1 3406 113 02 URLError <urlopen error timed out>
-10-18 04:11:16 progress 248 ok 2 none 2005 s
-10-18 04:15:18 progress 298 ok 2 none 2247 s
-10-18 04:17:52 result shard 5 partial (time budget) requests 321 ok 319 none 2 files 270 in 2401 s
-10-18 03:37:50 shard 6 / 8 stocks 266 months 2023-10 ~ 2026-09
-10-18 03:39:31   retry query6_1 6894 112 12 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:41:42 progress 50 ok 0 none 231 s
-10-18 03:44:44   retry query6_1 2032 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:45:10   retry query6_1 2032 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:46:05   retry stapap1 2204 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:46:31   retry stapap1 2204 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:47:32 progress 100 ok 0 none 581 s
-10-18 03:47:54   retry query6_1 2374 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:48:56   retry query6_1 2466 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:49:06   retry query6_1 2466 112 11 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:49:42   retry query6_1 2466 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:50:12 FAIL 2466 2023-11 RuntimeError request failed
-10-18 03:51:01   retry stapap1 2472 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:51:35   retry stapap1 2493 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:52:04   retry query6_1 2498 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:54:35   retry stapap1 3041 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:55:04   retry query6_1 3055 112 11 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:55:38   retry query6_1 3083 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:56:04   retry query6_1 3083 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 03:57:16 progress 150 ok 0 none 1165 s
-10-18 03:58:57   retry query6_1 3705 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:00:27   retry query6_1 4549 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:01:01   retry stapap1 4556 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:01:27   retry stapap1 4556 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:02:42   retry query6_1 4916 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:03:04 progress 200 ok 0 none 1513 s
-10-18 04:03:43   retry query6_1 5280 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:06:21   retry query6_1 6222 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:07:41   retry query6_1 6482 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:08:20 progress 250 ok 0 none 1830 s
-10-18 04:09:00   retry query6_1 6617 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:09:30   retry query6_1 6620 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:10:03   retry stapap1 6641 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:11:05   retry query6_1 6725 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:11:34   retry stapap1 6725 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:13:33   retry query6_1 8109 112 11 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:14:50 progress 299 ok 1 none 2219 s
-10-18 04:16:23   retry query6_1 1337 112 10 URLError <urlopen error [Errno 111] Connection refused>
-10-18 04:17:52 result shard 6 partial (time budget) requests 335 ok 333 none 1 files 259 in 2401 s
-10-18 03:37:49 shard 7 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-18 03:41:35 progress 50 ok 0 none 225 s
-10-18 03:43:08   retry query6_1 2408 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:47:10 progress 100 ok 0 none 560 s
-10-18 03:49:06   retry stapap1 3219 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 03:54:52 progress 150 ok 0 none 1022 s
-10-18 03:58:11   retry stapap1 5864 113 03 URLError <urlopen error timed out>
-10-18 04:00:47 progress 200 ok 0 none 1377 s
-10-18 04:05:10   retry stapap1 6666 113 03 URLError <urlopen error timed out>
-10-18 04:07:11   retry stapap1 6838 113 03 HTTPError HTTP Error 502: Bad Gateway
-10-18 04:08:06   retry stapap1 6846 113 03 URLError <urlopen error timed out>
-10-18 04:09:33   retry stapap1 6936 113 03 URLError <urlopen error timed out>
-10-18 04:09:46 progress 248 ok 2 none 1916 s
-10-18 04:13:50 progress 298 ok 2 none 2161 s
-10-18 04:17:17   retry stapap1 2237 113 02 URLError <urlopen error timed out>
-10-18 04:18:17 result shard 7 partial (time budget) requests 323 ok 321 none 2 files 266 in 2427 s
+10-18 06:29:06 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
+10-18 06:30:28   retry stapap1 5215 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:30:55   retry stapap1 5215 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:32:09   retry query6_1 5489 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:33:09   retry query6_1 6015 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:33:35   retry query6_1 6015 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:35:16 progress 50 ok 0 none 369 s
+10-18 06:35:48   retry stapap1 6441 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:36:15   retry stapap1 6441 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:37:03   retry query6_1 6525 113 02 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:37:38   retry query6_1 6550 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:38:05   retry query6_1 6550 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:40:23   retry stapap1 7610 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:41:21   retry query6_1 8078 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:41:49   retry stapap1 8078 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:42:28 progress 99 ok 1 none 801 s
+10-18 06:43:06   retry stapap1 8427 113 02 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:46:20 progress 149 ok 1 none 1033 s
+10-18 06:48:24   retry stapap1 2406 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:49:07   retry query6_1 2467 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:49:45   retry query6_1 2486 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:51:11   retry query6_1 2702 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:51:38   retry query6_1 2702 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:52:30   retry query6_1 2833 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:52:47 progress 199 ok 1 none 1420 s
+10-18 06:53:30   retry query6_1 2890 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:53:56   retry query6_1 2890 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:56:07   retry stapap1 3297 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:56:33   retry stapap1 3297 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:57:43   retry stapap1 3511 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:58:11   retry query6_1 3526 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:59:37 progress 249 ok 1 none 1830 s
+10-18 07:00:33   retry stapap1 4543 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:01:40   retry stapap1 4557 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:02:07   retry stapap1 4557 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:03:47   retry query6_1 5222 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:04:54   retry query6_1 5489 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:06:02   retry stapap1 6104 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:06:55 progress 299 ok 1 none 2268 s
+10-18 07:07:07   retry query6_1 6228 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 07:07:45   retry query6_1 6242 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:09:12 result shard 0 partial (time budget) requests 320 ok 319 none 1 files 262 in 2405 s
+10-18 06:29:06 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
+10-18 06:32:21   retry stapap1 2014 113 02 HTTPError HTTP Error 307: Temporary Redirect
+10-18 06:32:32 progress 50 ok 0 none 205 s
+10-18 06:33:21   retry query6_1 2243 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:34:52   retry stapap1 2482 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:35:18   retry stapap1 2482 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:36:58   retry stapap1 2731 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:37:23   retry stapap1 2731 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:39:08   retry query6_1 3006 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:39:26 progress 100 ok 0 none 619 s
+10-18 06:40:40   retry stapap1 3188 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:42:41   retry stapap1 3548 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:43:11   retry stapap1 3557 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:43:38   retry query6_1 3581 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:44:38 progress 150 ok 0 none 931 s
+10-18 06:46:34   retry stapap1 5264 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:47:03   retry stapap1 5285 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:47:35   retry query6_1 5314 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:48:03   retry stapap1 5314 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:49:48   retry stapap1 6156 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:50:12 progress 200 ok 0 none 1266 s
+10-18 06:51:58   retry query6_1 6582 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:54:15 progress 250 ok 0 none 1508 s
+10-18 06:55:14   retry stapap1 8107 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:55:41   retry query6_1 8234 113 02 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:58:12   retry query6_1 1525 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:58:39   retry stapap1 1525 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:59:09   retry stapap1 1531 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:59:40   retry query6_1 1599 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:00:13   retry stapap1 1609 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:01:06   retry query6_1 1713 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 07:01:57 progress 299 ok 1 none 1970 s
+10-18 07:06:16 progress 349 ok 1 none 2229 s
+10-18 07:09:06 result shard 1 partial (time budget) requests 389 ok 388 none 1 files 263 in 2400 s
+10-18 06:29:06 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
+10-18 06:32:53 progress 50 ok 0 none 227 s
+10-18 06:37:22   retry stapap1 3152 113 01 URLError <urlopen error timed out>
+10-18 06:38:18 progress 100 ok 0 none 552 s
+10-18 06:42:28 progress 150 ok 0 none 802 s
+10-18 06:43:06   retry stapap1 5820 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:48:38   retry query6_1 6558 113 01 URLError <urlopen error timed out>
+10-18 06:50:03 progress 200 ok 0 none 1257 s
+10-18 06:50:45   retry query6_1 6629 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:52:23   retry query6_1 6877 113 01 URLError <urlopen error [Errno 111] Connection refused>
+10-18 06:56:20 progress 250 ok 0 none 1634 s
+10-18 07:01:14 progress 300 ok 0 none 1928 s
+10-18 07:06:12   retry stapap1 2748 112 12 URLError <urlopen error timed out>
+10-18 07:09:08 result shard 2 partial (time budget) requests 346 ok 346 none 0 files 265 in 2401 s
+10-18 06:29:07 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
+10-18 06:31:35   retry query6_1 6983 112 12 URLError <urlopen error timed out>
+10-18 06:33:45   retry query6_1 8171 112 12 URLError <urlopen error timed out>
+10-18 06:34:51 progress 50 ok 0 none 344 s
+10-18 06:37:03   retry stapap1 1558 112 11 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:39:19 progress 100 ok 0 none 612 s
+10-18 06:43:00 progress 150 ok 0 none 833 s
+10-18 06:43:04   retry stapap1 3265 112 11 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:46:42   retry stapap1 3708 112 11 URLError <urlopen error timed out>
+10-18 06:49:05 progress 200 ok 0 none 1198 s
+10-18 06:49:09   retry stapap1 4971 112 11 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:54:32   retry stapap1 6438 112 11 URLError <urlopen error timed out>
+10-18 06:55:22   retry stapap1 6438 112 11 URLError <urlopen error timed out>
+10-18 06:55:43 progress 250 ok 0 none 1596 s
+10-18 06:59:40   retry stapap1 6691 112 11 URLError <urlopen error timed out>
+10-18 07:03:52 progress 300 ok 0 none 2085 s
+10-18 07:09:18   retry stapap1 1802 112 10 URLError <urlopen error timed out>
+10-18 07:09:30 result shard 3 partial (time budget) requests 335 ok 335 none 0 files 266 in 2423 s
+10-18 06:29:06 shard 4 / 8 stocks 271 months 2023-10 ~ 2026-09
+10-18 06:31:06   retry query6_1 2723 113 02 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:32:03   retry stapap1 2756 113 02 URLError <urlopen error timed out>
+10-18 06:34:59   retry query6_1 2941 113 02 URLError <urlopen error timed out>
+10-18 06:35:49   retry query6_1 2941 113 02 URLError <urlopen error timed out>
+10-18 06:37:08   retry query6_1 3147 113 02 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:37:22 progress 50 ok 0 none 496 s
+10-18 06:38:08   retry stapap1 3158 113 02 URLError <urlopen error timed out>
+10-18 06:40:25   retry query6_1 3229 113 02 URLError <urlopen error timed out>
+10-18 06:46:40   retry query6_1 4735 113 02 URLError <urlopen error timed out>
+10-18 06:47:33   retry stapap1 4735 113 02 URLError <urlopen error timed out>
+10-18 06:47:44 progress 100 ok 0 none 1118 s
+10-18 06:49:28   retry stapap1 5234 113 02 URLError <urlopen error timed out>
+10-18 06:53:07 progress 150 ok 0 none 1441 s
+10-18 06:56:53 progress 200 ok 0 none 1667 s
+10-18 06:57:42   retry stapap1 8084 113 02 URLError <urlopen error timed out>
+10-18 07:03:01 progress 250 ok 0 none 2035 s
+10-18 07:07:08   retry query6_1 2831 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 07:09:12   retry query6_1 2908 113 01 URLError <urlopen error timed out>
+10-18 07:09:27 progress 300 ok 0 none 2421 s
+10-18 07:09:27 result shard 4 partial (time budget) requests 300 ok 300 none 0 files 270 in 2421 s
+10-18 06:29:06 shard 5 / 8 stocks 272 months 2023-10 ~ 2026-09
+10-18 06:30:54   retry stapap1 6163 113 02 URLError <urlopen error timed out>
+10-18 06:32:17   retry stapap1 6212 113 02 URLError <urlopen error timed out>
+10-18 06:33:09   retry query6_1 6219 113 02 URLError <urlopen error timed out>
+10-18 06:36:15   retry query6_1 6684 113 02 URLError <urlopen error timed out>
+10-18 06:36:52 progress 50 ok 0 none 466 s
+10-18 06:37:49   retry query6_1 6872 113 02 URLError <urlopen error timed out>
+10-18 06:39:44   retry query6_1 6982 113 02 URLError <urlopen error timed out>
+10-18 06:41:50   retry stapap1 8080 113 02 URLError <urlopen error timed out>
+10-18 06:42:41   retry stapap1 8080 113 02 URLError <urlopen error timed out>
+10-18 06:44:12   retry query6_1 8390 113 02 URLError <urlopen error timed out>
+10-18 06:47:20 progress 100 ok 0 none 1094 s
+10-18 06:48:58   retry stapap1 1460 113 01 URLError <urlopen error timed out>
+10-18 06:50:36   retry query6_1 1527 113 01 URLError <urlopen error timed out>
+10-18 06:55:03   retry stapap1 2399 113 01 URLError <urlopen error timed out>
+10-18 06:56:52 progress 150 ok 0 none 1666 s
+10-18 07:01:05   retry stapap1 3226 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 07:03:15 progress 200 ok 0 none 2049 s
+10-18 07:07:15 progress 250 ok 0 none 2289 s
+10-18 07:09:06 result shard 5 partial (time budget) requests 271 ok 271 none 0 files 270 in 2400 s
+10-18 06:29:06 shard 6 / 8 stocks 266 months 2023-10 ~ 2026-09
+10-18 06:31:02   retry stapap1 2451 112 10 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:32:00   retry stapap1 2472 112 10 URLError <urlopen error timed out>
+10-18 06:33:31 progress 49 ok 1 none 265 s
+10-18 06:39:08 progress 99 ok 1 none 601 s
+10-18 06:45:10 progress 149 ok 1 none 963 s
+10-18 06:49:07 progress 197 ok 3 none 1201 s
+10-18 06:49:11   retry stapap1 8045 112 10 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:50:55   retry query6_1 8102 112 10 URLError <urlopen error timed out>
+10-18 06:53:18 result shard 6 done requests 229 ok 226 none 3 files 235 in 1451 s
+10-18 06:29:07 shard 7 / 8 stocks 269 months 2023-10 ~ 2026-09
+10-18 06:32:20   retry query6_1 3308 113 02 HTTPError HTTP Error 307: Temporary Redirect
+10-18 06:32:33 progress 50 ok 0 none 206 s
+10-18 06:36:18 progress 100 ok 0 none 431 s
+10-18 06:36:30   retry stapap1 4931 113 02 HTTPError HTTP Error 307: Temporary Redirect
+10-18 06:40:52 progress 150 ok 0 none 705 s
+10-18 06:41:45   retry query6_1 6541 113 02 URLError <urlopen error timed out>
+10-18 06:43:17   retry query6_1 6672 113 02 URLError <urlopen error timed out>
+10-18 06:45:51 progress 198 ok 2 none 1004 s
+10-18 06:50:29 progress 248 ok 2 none 1282 s
+10-18 06:52:10   retry query6_1 2358 113 01 URLError <urlopen error timed out>
+10-18 06:55:02   retry stapap1 2707 113 01 HTTPError HTTP Error 502: Bad Gateway
+10-18 06:59:31   retry stapap1 2801 113 01 URLError <urlopen error timed out>
+10-18 07:00:23 progress 298 ok 2 none 1876 s
+10-18 07:02:53   retry stapap1 3388 113 01 URLError <urlopen error timed out>
+10-18 07:05:24   retry stapap1 3652 113 01 URLError <urlopen error timed out>
+10-18 07:09:05 progress 348 ok 2 none 2398 s
+10-18 07:09:09 result shard 7 partial (time budget) requests 351 ok 349 none 2 files 266 in 2402 s
