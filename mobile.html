@@ -419,6 +419,7 @@
           <div class="kv"><span>勝率統計看幾根後</span><input type="number" data-k="qsz.fwd" data-int data-redraw="qsz" min="1" max="60"></div>
           <div class="kv"><span>K 線圖上標出轉折</span><select data-k="qsz.mainTurn" data-redraw="qsz"><option value="strong">只標強底轉／強頭轉</option><option value="all">全部</option><option value="off">不標</option></select></div>
           <div class="kv"><span>底轉／頭轉顏色</span><span class="pair"><input type="color" data-k="qsz.cTurnUp" data-redraw="qsz"><input type="color" data-k="qsz.cTurnDn" data-redraw="qsz"></span></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showHold" data-redraw="qsz">顯示紅柱（持有）</label>
           <label class="chk"><input type="checkbox" data-k="qsz.showSlow" data-redraw="qsz">減速變淡色（還在漲／跌但力道變小，常在轉折前出現）</label>
           <div class="kv"><span>漲勢減速／跌勢減速顏色</span><span class="pair"><input type="color" data-k="qsz.cHoldSlow" data-redraw="qsz"><input type="color" data-k="qsz.cCashSlow" data-redraw="qsz"></span></div>
           <label class="chk"><input type="checkbox" data-k="qsz.showLine" data-redraw="qsz">畫出動能曲線（轉折的頭和底更清楚）</label>
@@ -596,7 +597,7 @@ const DEFAULTS = {
         cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true,
         showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1,
         showTurn:true, turnMin:3, turnZone:'zero', mainTurn:'strong', cTurnUp:'#00e676', cTurnDn:'#ff1744', fwd:10,
-        showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1 },
+        showHold:false, showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
@@ -2602,7 +2603,7 @@ Object.assign(IND, {
         if (!st){ rev.push({ time:b.time }); main.push({ time:b.time }); return; }
         const x = v.mom[i], g = v.sig[i];
         rev.push(st.rev ? { time:b.time, open:0, close:x, high:Math.max(0, x), low:Math.min(0, x), color:P.cRev, borderColor:P.cRev } : { time:b.time });
-        if (!st.kind || g == null){ main.push({ time:b.time }); return; }
+        if (!st.kind || g == null || (st.kind === 'hold' && !P.showHold)){ main.push({ time:b.time }); return; }   // 紅柱（持有）預設不畫
         let col = st.kind === 'hold' ? P.cHold : st.kind === 'wash' ? P.cWash : P.cCash;
         if (P.showSlow && st.kind === 'hold' && v.slow[i] === 'up') col = P.cHoldSlow;          // 漲勢減速
         if (P.showSlow && st.kind === 'cash' && v.slow[i] === 'dn') col = P.cCashSlow;          // 跌勢減速
