@@ -77,6 +77,7 @@
   th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--panel)}
   td:first-child,th:first-child{text-align:left}
   tr.atm td{background:var(--panel2);font-weight:600}
+  #mapSim{margin-top:8px} #mapSim:empty{display:none}
   .tbl{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
   details summary{cursor:pointer;color:var(--muted);font-size:13px;margin:8px 0 6px}
@@ -175,12 +176,14 @@
     <section id="mapSec">
       <h2>結算日控盤地圖
         <span class="seg" id="mapSeg"><button data-l="put">最大未平倉賣權</button><button data-l="pain">最大痛點</button></span>
+        <span class="seg" id="simSeg" title="用電腦隨機產生 5,000 條未來走勢，畫出可能的範圍"><button data-m="off">不推演</button><button data-m="iv">推演：隱含波動率</button><button data-m="boot">推演：過去一年漲跌</button></span>
         <span class="muted">橫軸時間、縱軸指數：左邊是過去每次結算的實際結算價，右邊是之後每個結算日的價位</span></h2>
       <div class="panel">
         <div class="legend" id="lgMap"></div>
         <svg id="svgMap" role="img" aria-label="各結算日的最大痛點、未平倉區間與實際結算價"></svg>
         <div class="tip" id="tipMap"></div>
       </div>
+      <div class="tbl" id="mapSim"></div>
       <p class="note" id="mapNote"></p>
     </section>
 
@@ -1824,6 +1827,45 @@ document.querySelectorAll('#histSeg button').forEach(b => b.onclick = () => { HN
 
 /* ───────── 結算日控盤地圖：過去的實際結算價 × 之後各結算日的最大痛點與未平倉區間 ───────── */
 let MAPLINE = store.get('txo.mapLine') === 'pain' ? 'pain' : 'put';
+let MAPSIM = ['off', 'iv', 'boot'].includes(store.get('txo.mapSim')) ? store.get('txo.mapSim') : 'iv';
+document.querySelectorAll('#simSeg button').forEach(b => b.onclick = () => { MAPSIM = b.dataset.m; store.set('txo.mapSim', MAPSIM); renderMap(); });
+// 走勢推演：從現價出發，每天一步，產生很多條可能的未來走勢（固定亂數種子，同樣資料每次結果一樣）
+//  隱含波動率：各結算日的價平隱含波動率換算成「到該日的總變異」，中間線性內插，指數只隨機不帶方向
+//  過去一年漲跌：從台指期過去一年的每日漲跌幅裡隨機抽（扣掉平均，不帶方向），保留真實的大漲大跌頻率
+function simPaths(P, base, fut, mode, N){
+  let a = 7 >>> 0; const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  let spare = null; const nrm = () => { if (spare != null){ const v = spare; spare = null; return v; } let u = 0; while (u < 1e-12) u = rnd(); const r = Math.sqrt(-2 * Math.log(u)), th = 2 * Math.PI * rnd(); spare = r * Math.sin(th); return r * Math.cos(th); };
+  const D = Math.max(...fut.map(r => r.left)); if (!(D >= 1)) return null;
+  const dates = []; for (let i = 0; i <= D; i++) dates.push(shiftDay(base, i));
+  const wk = d => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w !== 0 && w !== 6; };
+  let stepSd = null, pool = null;
+  if (mode === 'iv'){
+    const knots = [[0, 0], ...fut.filter(r => r.iv).map(r => [r.left, r.iv * r.iv * r.left / 365])];
+    for (let i = 1; i < knots.length; i++) if (knots[i][1] < knots[i - 1][1]) knots[i][1] = knots[i - 1][1];    // 總變異不能倒退
+    const V = t => { for (let i = 1; i < knots.length; i++) if (t <= knots[i][0]) { const [t0, v0] = knots[i - 1], [t1, v1] = knots[i]; return v0 + (v1 - v0) * (t - t0) / Math.max(1e-9, t1 - t0); }
+                     const [tl, vl] = knots[knots.length - 1]; return vl * t / Math.max(1, tl); };
+    if (knots.length < 2) return null;
+    stepSd = dates.map((d, i) => i ? Math.sqrt(Math.max(0, V(i) - V(i - 1))) : 0);
+  } else {
+    const c = (HIST || []).map(h => h.c).slice(-253);
+    if (c.length < 60) return null;
+    const r = []; for (let i = 1; i < c.length; i++) r.push(Math.log(c[i] / c[i - 1]));
+    const mu = r.reduce((x, y) => x + y, 0) / r.length; pool = r.map(x => x - mu);
+  }
+  const paths = new Array(N);
+  for (let k = 0; k < N; k++){
+    const p = new Float64Array(D + 1); p[0] = P; let lx = 0;
+    for (let i = 1; i <= D; i++){
+      if (mode === 'iv') lx += stepSd[i] * nrm() - 0.5 * stepSd[i] * stepSd[i];
+      else if (wk(dates[i])) lx += pool[Math.floor(rnd() * pool.length)];
+      p[i] = P * Math.exp(lx);
+    }
+    paths[k] = p;
+  }
+  const qs = [0.1, 0.25, 0.5, 0.75, 0.9], Q = qs.map(() => new Float64Array(D + 1)), col = new Float64Array(N);
+  for (let i = 0; i <= D; i++){ for (let k = 0; k < N; k++) col[k] = paths[k][i]; col.sort(); qs.forEach((q, j) => Q[j][i] = col[Math.floor(q * (N - 1))]); }
+  return { dates, D, paths, Q, N };
+}
 document.querySelectorAll('#mapSeg button').forEach(b => b.onclick = () => { MAPLINE = b.dataset.l; store.set('txo.mapLine', MAPLINE); renderMap(); });
 function renderMap(){
   const svg = $('#svgMap'); if (!svg || !DATA) return;
@@ -1841,7 +1883,9 @@ function renderMap(){
   const t0 = past.length ? past[0].d : shiftDay(base, -7), t1 = fut.length ? fut[fut.length - 1].d : shiftDay(base, 7);
   const closes = (HIST || []).filter(h => h.d >= t0 && h.d <= base).map(h => ({ d:h.d, c:h.c }));
   // 縱軸範圍
-  const ys = [P, ...past.flatMap(r => [r.pain, r.st, r.loOI, r.hiOI]), ...fut.flatMap(r => [r.pain, r.loOI, r.hiOI, r.emHi, r.emLo]), ...closes.map(c => c.c)].filter(v => v != null && isFinite(v));
+  const SIM = MAPSIM !== 'off' && fut.length ? simPaths(P, base, fut, MAPSIM, 5000) : null;
+  const ys = [P, ...past.flatMap(r => [r.pain, r.st, r.loOI, r.hiOI]), ...fut.flatMap(r => [r.pain, r.loOI, r.hiOI, r.emHi, r.emLo]), ...closes.map(c => c.c),
+              ...(SIM ? [Math.min(...SIM.Q[0]), Math.max(...SIM.Q[4])] : [])].filter(v => v != null && isFinite(v));
   let y0 = Math.min(...ys), y1 = Math.max(...ys); const pd = (y1 - y0) * 0.06 || 100; y0 -= pd; y1 += pd;
   // 版面
   const W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520, H = narrow ? 300 : 340;
@@ -1882,6 +1926,16 @@ function renderMap(){
     el('path', { d:'M' + up.concat(dn.slice().reverse()).map(p => p.join(',')).join('L') + 'Z', fill:css('--em'), 'fill-opacity':.07 }, svg);
     for (const pts of [up, dn]) el('polyline', { points:pts.map(p => p.join(',')).join(' '), fill:'none', stroke:css('--em'), 'stroke-width':1.6, 'stroke-dasharray':'7 4' }, svg);
   }
+  // 推演出來的可能走勢：淡色是 80% 範圍、深色是 50% 範圍、實線是中間值，另外畫幾條樣本走勢
+  if (SIM){
+    const cv = css('--curve'), xs = SIM.dates.map(X);
+    const cp = el('clipPath', { id:'mapClip' }, el('defs', {}, svg)); el('rect', { x:m.l, y:m.t, width:iw, height:ih }, cp);
+    const area = (lo, hi, op) => el('path', { 'clip-path':'url(#mapClip)', d:'M' + xs.map((x, i) => x + ',' + Y(hi[i])).join('L') + 'L' + xs.map((x, i) => x + ',' + Y(lo[i])).reverse().join('L') + 'Z', fill:cv, 'fill-opacity':op }, svg);
+    area(SIM.Q[0], SIM.Q[4], 0.12); area(SIM.Q[1], SIM.Q[3], 0.2);
+    for (let k = 0; k < 8; k++){ const p = SIM.paths[Math.floor(k * SIM.N / 8)];
+      el('polyline', { 'clip-path':'url(#mapClip)', points:xs.map((x, i) => x + ',' + Y(p[i])).join(' '), fill:'none', stroke:cv, 'stroke-width':0.9, 'stroke-opacity':0.35 }, svg); }
+    el('polyline', { points:xs.map((x, i) => x + ',' + Y(SIM.Q[2][i])).join(' '), fill:'none', stroke:cv, 'stroke-width':2 }, svg);
+  }
   // 過去的每日收盤（細線）與實際結算價
   if (closes.length > 1) el('polyline', { points:closes.map(c => X(c.d) + ',' + Y(c.c)).join(' ') + ' ' + xb + ',' + Y(P), fill:'none', stroke:muted, 'stroke-width':1.2, 'stroke-opacity':.8 }, svg);
   if (past.length){
@@ -1906,7 +1960,16 @@ function renderMap(){
   el('circle', { cx:xb, cy:Y(P), r:5, fill:text, stroke:css('--panel'), 'stroke-width':2 }, svg);
   el('text', { x:xb + 8, y:Y(P) - 7, 'font-size':11, 'font-weight':600, fill:text }, svg, fmtInt(P));
   legend($('#lgMap'), [['實際結算價', text, 'ln'], isPut ? ['最大未平倉賣權（實心點＝結算跌破）', col, 'ln'] : ['最大痛點（過去＝結算前一天算的）', col, 'dot'],
-    ['最大未平倉買權', css('--call'), 'ln']].concat(isPut ? [] : [['最大未平倉賣權', css('--put'), 'ln']]).concat([['預期高低區間', css('--em'), 'dash'], ['每日收盤', muted, 'ln']]));
+    ['最大未平倉買權', css('--call'), 'ln']].concat(isPut ? [] : [['最大未平倉賣權', css('--put'), 'ln']]).concat([['預期高低區間', css('--em'), 'dash'], ['每日收盤', muted, 'ln']]).concat(SIM ? [['推演中間值', css('--curve'), 'ln'], ['推演 50%／80% 範圍', css('--curve')]] : []));
+  document.querySelectorAll('#simSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === MAPSIM));
+  // 各結算日的推演結果
+  if (SIM){
+    const rowsT = fut.map(r => { const i = Math.min(SIM.D, r.left), v = SIM.paths.map(p => p[i]).sort((x, y) => x - y), n = v.length;
+      const below = v.filter(x => x < r.loOI).length / n, above = v.filter(x => x > r.hiOI).length / n;
+      return `<tr><td>${md(r.d)}（${WD[new Date(r.d + 'T00:00:00Z').getUTCDay()]}）<br><span class="muted">${esc(r.lab)}・${r.left} 天</span></td><td>${fmtInt(v[Math.floor(n / 2)])}<br><span class="muted">${fmtInt(v[Math.floor(n * 0.1)])}～${fmtInt(v[Math.floor(n * 0.9)])}</span></td>` +
+             `<td>${(below * 100).toFixed(0)}%<br><span class="muted">${fmtInt(r.loOI)}</span></td><td>${(above * 100).toFixed(0)}%<br><span class="muted">${fmtInt(r.hiOI)}</span></td><td>${((1 - below - above) * 100).toFixed(0)}%</td></tr>`; }).join('');
+    $('#mapSim').innerHTML = `<table><thead><tr><th>結算日</th><th>推演中間值<br>80% 範圍</th><th>跌破<br>最大賣權</th><th>突破<br>最大買權</th><th>在兩者<br>之間</th></tr></thead><tbody>${rowsT}</tbody></table>`;
+  } else $('#mapSim').innerHTML = '';
   document.querySelectorAll('#mapSeg button').forEach(b => b.classList.toggle('on', b.dataset.l === MAPLINE));
 
   // 觸控提示：找最近的結算日
@@ -1945,6 +2008,10 @@ function renderMap(){
       (hr < 0.56 ? '換句話說，最大痛點不是可靠的「主力目標價」，比較適合當參考；未平倉區間比較像實際的控盤空間。' : '最大痛點在這段期間有一定的拉力。') +
       '最大痛點用各履約價未平倉計算，只在日盤收盤後更新；之後的結算日離得越遠，未平倉越少、越會變動。';
   } else note = '結算回測資料還沒準備好，暫時只畫之後的結算日。';
+  if (SIM) note = (MAPSIM === 'iv'
+      ? `走勢推演：從現價 ${fmtInt(P)} 出發，用各結算日選擇權價格反推的隱含波動率，隨機產生 ${fmtInt(SIM.N)} 條每日走勢，不預設漲跌方向。`
+      : `走勢推演：從現價 ${fmtInt(P)} 出發，每個交易日從台指期過去一年的真實每日漲跌幅裡隨機抽一天（扣掉平均、不帶方向），產生 ${fmtInt(SIM.N)} 條走勢，大漲大跌的頻率比教科書常態分布更貼近實際。`) +
+      '推演只告訴你「可能落在哪裡、機率多少」，不會告訴你方向；賣方的防守和主力意圖不在模型裡，所以表格裡的跌破機率可以和上面的歷史守住比例對照著看。' + note;
   $('#mapNote').textContent = note;
 }
 
