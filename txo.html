@@ -172,6 +172,16 @@
       <p class="note" id="lvNote"></p>
     </section>
 
+    <section id="mapSec">
+      <h2>結算日控盤地圖<span class="muted">橫軸時間、縱軸指數：左邊是過去每次結算的實際結算價，右邊是之後每個結算日的最大痛點與未平倉區間</span></h2>
+      <div class="panel">
+        <div class="legend" id="lgMap"></div>
+        <svg id="svgMap" role="img" aria-label="各結算日的最大痛點、未平倉區間與實際結算價"></svg>
+        <div class="tip" id="tipMap"></div>
+      </div>
+      <p class="note" id="mapNote"></p>
+    </section>
+
 
     <section>
       <h2>Gamma 曝險（各履約價）<span class="muted">指數每變動 1%，造市與賣方需要調整的避險金額</span></h2>
@@ -700,7 +710,7 @@ function render(){
   const rows = v.rows.filter(r => r.K >= lo && r.K <= hi);
   CTX = { v, st, rows, lo, hi, EM };
   if (EM) $('#verdict').textContent += `依選擇權價格推算，到 ${mdw(EM.exp)} 結算的預期高低區間約 ${fmtInt(EM.lo)}～${fmtInt(EM.hi)}（約 68% 機率）。`;
-  drawLevels(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection(); renderGS(); renderHeat().catch(e => { $('#heatNote').textContent = '熱度圖錯誤：' + e.message; }); heatStart();
+  drawLevels(); renderMap(); drawGex(); drawCurve(); drawDist(); renderTable(); renderDirection(); renderGS(); renderHeat().catch(e => { $('#heatNote').textContent = '熱度圖錯誤：' + e.message; }); heatStart();
 }
 let CTX = null, INST = null, ZOOM = null;
 // 縮放：三張履約價圖共用同一個橫軸範圍
@@ -1708,7 +1718,7 @@ async function loadHistory(){
     renderHistory();
     if (CTX) renderGS();
     if (CHIPS) renderChips2();
-    if (CTX) drawLevels();
+    if (CTX){ drawLevels(); renderMap(); }
   } catch(e){ $('#histNow').textContent = '總 Gamma 曝險歷史還在計算中（第一次約需 20 分鐘），稍後重新整理。'; }
 }
 function renderHistory(){
@@ -1809,6 +1819,118 @@ function drawHistGex(D){
 }
 document.querySelectorAll('#histSeg button').forEach(b => b.onclick = () => { HN = +b.dataset.n; store.set('txo.histN', HN); renderHistory(); });
 
+
+/* ───────── 結算日控盤地圖：過去的實際結算價 × 之後各結算日的最大痛點與未平倉區間 ───────── */
+function renderMap(){
+  const svg = $('#svgMap'); if (!svg || !DATA) return;
+  const P = DATA.fut ? DATA.fut.price : DATA.exps[0].F, base = DATA.base;
+  // 之後的結算日（70 天內）：各自計算最大痛點、最大未平倉買權／賣權、Gamma 牆、預期區間
+  const fut = DATA.exps.filter(e => e.exp > base && dayDiff(base, e.exp) <= 70).map(e => {
+    const st = stats(viewOf([e])), d = dayDiff(base, e.exp), iv = e.atmIv || null;
+    return { d:e.exp, code:e.code, lab:e.info.label, pain:st.pain, hiOI:st.oiCallMax.K, loOI:st.oiPutMax.K, cw:st.callWall.K, pw:st.putWall.K,
+             iv, emHi: iv ? P + P * iv * Math.sqrt(d / 365) : null, emLo: iv ? P - P * iv * Math.sqrt(d / 365) : null, left:d,
+             oi:e.oiC + e.oiP };
+  });
+  // 過去的結算（近 10 次）：前一天收盤後的最大痛點、未平倉區間，對照實際結算價
+  const past = (LOT || []).filter(r => r.E <= base && r.st && r.pain).slice(-10).map(r => ({ d:r.E, code:r.code, pain:r.pain, hiOI:r.cwOI, loOI:r.pwOI, st:r.st, ref:r.n || r.cD }));
+  if (!fut.length && !past.length){ svg.innerHTML = ''; $('#mapNote').textContent = '沒有可畫的結算日資料。'; return; }
+  const t0 = past.length ? past[0].d : shiftDay(base, -7), t1 = fut.length ? fut[fut.length - 1].d : shiftDay(base, 7);
+  const closes = (HIST || []).filter(h => h.d >= t0 && h.d <= base).map(h => ({ d:h.d, c:h.c }));
+  // 縱軸範圍
+  const ys = [P, ...past.flatMap(r => [r.pain, r.st, r.loOI, r.hiOI]), ...fut.flatMap(r => [r.pain, r.loOI, r.hiOI, r.emHi, r.emLo]), ...closes.map(c => c.c)].filter(v => v != null && isFinite(v));
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const pd = (y1 - y0) * 0.06 || 100; y0 -= pd; y1 += pd;
+  // 版面
+  const W = Math.max(300, svg.parentElement.clientWidth - 12), narrow = W < 520, H = narrow ? 300 : 340;
+  const m = { l: narrow ? 50 : 62, r: narrow ? 46 : 62, t: 14, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const tms = d => Date.parse(d + 'T00:00:00Z'), T0 = tms(t0) - 864e5, T1 = tms(t1) + 864e5;
+  const X = d => m.l + (tms(d) - T0) / (T1 - T0) * iw;
+  const Y = v => m.t + (y1 - v) / (y1 - y0) * ih;
+  svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H);
+  const muted = css('--muted'), line = css('--line'), text = css('--text');
+  // 格線與刻度
+  for (const v of niceTicks(y0, y1, narrow ? 5 : 7)){
+    el('line', { x1:m.l, x2:W - m.r, y1:Y(v), y2:Y(v), stroke:line, 'stroke-width':1 }, svg);
+    el('text', { x:m.l - 5, y:Y(v) + 4, 'text-anchor':'end', 'font-size':11, fill:muted }, svg, fmtInt(v));
+  }
+  const xDays = [...past.map(r => r.d), base, ...fut.map(r => r.d)];
+  let lastX = -1e9;
+  for (const d of xDays){
+    const x = X(d); if (x - lastX < (narrow ? 34 : 40)) continue; lastX = x;
+    el('text', { x, y:H - m.b + 15, 'text-anchor':'middle', 'font-size':10.5, fill: d === base ? text : muted }, svg, d === base ? '今天' : md(d));
+  }
+  // 今天分隔線
+  const xb = X(base);
+  el('rect', { x:xb, y:m.t, width:W - m.r - xb, height:ih, fill:css('--zoneP') }, svg);
+  el('line', { x1:xb, x2:xb, y1:m.t, y2:H - m.b, stroke:muted, 'stroke-dasharray':'3 3' }, svg);
+  if (xb - m.l > 60) el('text', { x:xb - 6, y:m.t + 12, 'text-anchor':'end', 'font-size':11, fill:muted }, svg, '過去結算');
+  if (W - m.r - xb > 60) el('text', { x:xb + 6, y:m.t + 12, 'font-size':11, fill:muted }, svg, '之後結算');
+  // 未平倉區間（最大未平倉賣權～買權）：每個結算日一根直條
+  const band = (r, x) => { if (r.loOI == null || r.hiOI == null) return;
+    const a = Math.min(r.loOI, r.hiOI), b = Math.max(r.loOI, r.hiOI);
+    el('rect', { x:x - 5, y:Y(b), width:10, height:Math.max(1, Y(a) - Y(b)), rx:3, fill:css('--flip'), 'fill-opacity':.28 }, svg);
+    el('line', { x1:x - 6, x2:x + 6, y1:Y(r.hiOI), y2:Y(r.hiOI), stroke:css('--call'), 'stroke-width':2.5 }, svg);
+    el('line', { x1:x - 6, x2:x + 6, y1:Y(r.loOI), y2:Y(r.loOI), stroke:css('--put'), 'stroke-width':2.5 }, svg); };
+  past.forEach(r => band(r, X(r.d))); fut.forEach(r => band(r, X(r.d)));
+  // 預期高低區間（從今天現價展開的喇叭口）
+  const em = fut.filter(r => r.emHi != null);
+  if (em.length){
+    const up = [[xb, Y(P)], ...em.map(r => [X(r.d), Y(r.emHi)])], dn = [[xb, Y(P)], ...em.map(r => [X(r.d), Y(r.emLo)])];
+    el('path', { d:'M' + up.concat(dn.slice().reverse()).map(p => p.join(',')).join('L') + 'Z', fill:css('--em'), 'fill-opacity':.07 }, svg);
+    for (const pts of [up, dn]) el('polyline', { points:pts.map(p => p.join(',')).join(' '), fill:'none', stroke:css('--em'), 'stroke-width':1.6, 'stroke-dasharray':'7 4' }, svg);
+  }
+  // 過去的每日收盤（細線）與實際結算價
+  if (closes.length > 1) el('polyline', { points:closes.map(c => X(c.d) + ',' + Y(c.c)).join(' ') + ' ' + xb + ',' + Y(P), fill:'none', stroke:muted, 'stroke-width':1.2, 'stroke-opacity':.8 }, svg);
+  if (past.length){
+    el('polyline', { points:past.map(r => X(r.d) + ',' + Y(r.st)).join(' '), fill:'none', stroke:text, 'stroke-width':2 }, svg);
+    past.forEach(r => el('circle', { cx:X(r.d), cy:Y(r.st), r:3.6, fill:text }, svg));
+  }
+  // 最大痛點曲線：過去（前一天算的）＋之後
+  const painPts = [...past.map(r => [X(r.d), Y(r.pain)]), ...fut.map(r => [X(r.d), Y(r.pain)])];
+  if (painPts.length > 1) el('polyline', { points:painPts.map(p => p.join(',')).join(' '), fill:'none', stroke:css('--pain'), 'stroke-width':2.5, 'stroke-dasharray':'1.5 3', 'stroke-linecap':'round' }, svg);
+  past.forEach(r => el('circle', { cx:X(r.d), cy:Y(r.pain), r:3.6, fill:css('--panel'), stroke:css('--pain'), 'stroke-width':2 }, svg));
+  let lastLx = -1e9, lastLy = 0;
+  fut.forEach(r => { el('circle', { cx:X(r.d), cy:Y(r.pain), r:4.4, fill:css('--pain') }, svg);
+    const lx = X(r.d), ly = Y(r.pain);
+    if (lx - lastLx < 48 && Math.abs(ly - lastLy) < 14) return;      // 太擠就不標數字（點一下看提示）
+    lastLx = lx; lastLy = ly;
+    el('text', { x:lx + 7, y:ly + 4, 'font-size':10.5, 'font-weight':600, fill:css('--pain') }, svg, fmtInt(r.pain)); });
+  // 現價
+  el('circle', { cx:xb, cy:Y(P), r:5, fill:text, stroke:css('--panel'), 'stroke-width':2 }, svg);
+  el('text', { x:xb + 8, y:Y(P) - 7, 'font-size':11, 'font-weight':600, fill:text }, svg, fmtInt(P));
+  legend($('#lgMap'), [['實際結算價', text, 'ln'], ['最大痛點（過去＝結算前一天算的）', css('--pain'), 'dot'], ['最大未平倉買權', css('--call'), 'ln'], ['最大未平倉賣權', css('--put'), 'ln'], ['預期高低區間', css('--em'), 'dash'], ['每日收盤', muted, 'ln']]);
+
+  // 觸控提示：找最近的結算日
+  const recs = [...past.map(r => Object.assign({ past:true }, r)), ...fut.map(r => Object.assign({ past:false }, r))];
+  const f = { W, H, m, iw, ih };
+  hover(svg, $('#tipMap'), f, null, recs, r => r.past
+      ? `<b>${mdw(r.d)} 結算（已結算）</b><br>實際結算價 ${fmtInt(r.st)}<br>前一天最大痛點 ${fmtInt(r.pain)}（差 ${signInt(r.st - r.pain)} 點）<br>前一天未平倉區間 ${fmtInt(r.loOI)}～${fmtInt(r.hiOI)}${r.st >= Math.min(r.loOI, r.hiOI) && r.st <= Math.max(r.loOI, r.hiOI) ? '（結算在區間內）' : '（結算跑出區間）'}`
+      : `<b>${mdw(r.d)} 結算・${esc(r.lab)}・剩 ${r.left} 天</b><br>最大痛點 ${fmtInt(r.pain)}（距現價 ${signInt(r.pain - P)} 點）<br>最大未平倉 賣權 ${fmtInt(r.loOI)}～買權 ${fmtInt(r.hiOI)}<br>Gamma 牆 ${fmtInt(r.pw)}～${fmtInt(r.cw)}` +
+        (r.emHi ? `<br>預期區間 ${fmtInt(r.emLo)}～${fmtInt(r.emHi)}（隱含波動率 ${(r.iv * 100).toFixed(1)}%）` : '') + `<br><span class="muted">未平倉 ${fmtInt(r.oi)} 口</span>`,
+    mx => recs.reduce((a, b) => Math.abs(X(b.d) - mx) < Math.abs(X(a.d) - mx) ? b : a, recs[0]));
+
+  // 驗證：用全部歷史結算，看「前一天的最大痛點」和「未平倉區間」準不準
+  const all = (LOT || []).filter(r => r.st && r.pain && (r.n || r.cD));
+  let note = '';
+  if (all.length >= 10){
+    const med = a => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+    let hit = 0, nd = 0, closer = 0, inBand = 0;
+    for (const r of all){
+      const ref = r.n || r.cD;
+      if (Math.abs(r.pain - ref) >= 1){ nd++; if ((r.pain - ref) * (r.st - ref) > 0) hit++; }
+      if (Math.abs(r.st - r.pain) < Math.abs(ref - r.pain)) closer++;
+      if (r.st >= Math.min(r.pwOI, r.cwOI) && r.st <= Math.max(r.pwOI, r.cwOI)) inBand++;
+    }
+    const hr = nd ? hit / nd : 0, gapPain = med(all.map(r => Math.abs(r.st - r.pain))), gapRef = med(all.map(r => Math.abs(r.st - (r.n || r.cD))));
+    note = `用過去 ${all.length} 次結算驗證（${slashD(all[0].E)}～${slashD(all[all.length - 1].E)}）：` +
+      `結算價落在前一天「最大未平倉賣權～買權」區間內的有 ${(inBand / all.length * 100).toFixed(0)}%；` +
+      `前一天最大痛點指的方向（相對前一晚夜盤收盤）猜中結算方向 ${(hr * 100).toFixed(0)}%，` +
+      `結算價離最大痛點中位數 ${fmtInt(gapPain)} 點，反而比離前一晚夜盤收盤（${fmtInt(gapRef)} 點）還遠。` +
+      (hr < 0.56 ? '換句話說，最大痛點不是可靠的「主力目標價」，比較適合當參考；未平倉區間比較像實際的控盤空間。' : '最大痛點在這段期間有一定的拉力。') +
+      '最大痛點用各履約價未平倉計算，只在日盤收盤後更新；之後的結算日離得越遠，未平倉越少、越會變動。';
+  } else note = '結算回測資料還沒準備好，暫時只畫之後的結算日。';
+  $('#mapNote').textContent = note;
+}
+
 /* ───────── 結算日樂透回測（data/txo/lottery.json，GitHub 每天收盤後更新） ───────── */
 let LOT = null, LOTS = store.get('txo.lotSide') || 'p';
 // 每個條件：1＝要成立、-1＝要不成立、0＝不看
@@ -1818,6 +1940,7 @@ async function loadLottery(){
     const r = await fetch('data/txo/lottery.json?t=' + Date.now()); if (!r.ok) throw 0;
     const j = await r.json(); LOT = (j.rows || []).filter(x => x.st && x.n != null && x.FD); LOT.updated = j.updated;
     renderLottery();
+    if (CTX) renderMap();
   } catch(e){ $('#lotSum').innerHTML = '<div class="msg">回測資料還在計算中（第一次約需 20 分鐘），稍後重新整理。</div>'; }
 }
 function renderLottery(){
