@@ -187,6 +187,7 @@
   <div class="plabel" id="lbl-rsib"></div>
   <div class="plabel" id="lbl-abyss"></div>
   <div class="plabel" id="lbl-qsz"></div>
+  <div class="plabel" id="lbl-shz"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「看」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -204,6 +205,7 @@
         <label class="chk"><input type="checkbox" data-ind="rsib">RSI 美國線（RSIB）</label>
         <label class="chk"><input type="checkbox" data-ind="abyss">ABYSS v2 底部轉折（One TURN）</label>
         <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
+        <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
       </div>
     </div>
 
@@ -436,6 +438,26 @@
           <button class="small" data-reset="qsz">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>散戶線／主力線（超級散主線）</summary>
+        <div class="stack">
+          <div class="hint">名稱沿用原公式，但全部只用價格與成交量計算，沒有籌碼資料。綠＝散戶線（60 根位階反向，越高越接近低點），紅＝走勢（慢），黃＝主力線（快）。地量改成「低於近 N 日均量的某個比例」，不再用固定 10 萬手。標籤第二行是各訊號之後幾根的漲跌比例。</div>
+          <label class="chk"><input type="checkbox" data-k="shz.showRetail" data-redraw="shz">散戶線</label>
+          <label class="chk"><input type="checkbox" data-k="shz.showTM" data-redraw="shz">走勢＋主力線（含金叉、死叉）</label>
+          <label class="chk"><input type="checkbox" data-k="shz.showXc" data-redraw="shz">吸籌（紫紅柱，創 30 根新低時）</label>
+          <label class="chk"><input type="checkbox" data-k="shz.showDl" data-redraw="shz">地量</label>
+          <div class="kv"><span>地量：低於近幾日均量</span><input type="number" data-k="shz.volLen" data-int data-redraw="shz" min="5" max="120"></div>
+          <div class="kv"><span>地量：均量的幾倍以下</span><input type="number" data-k="shz.volRatio" data-redraw="shz" min="0.1" max="1" step="0.05"></div>
+          <label class="chk"><input type="checkbox" data-k="shz.showBig" data-redraw="shz">大資金進場</label>
+          <label class="chk"><input type="checkbox" data-k="shz.showEsc" data-redraw="shz">逃（短線過熱後回落）</label>
+          <div class="kv"><span>勝率統計看幾根後</span><input type="number" data-k="shz.fwd" data-int data-redraw="shz" min="1" max="60"></div>
+          <div class="kv"><span>K 線圖上標出</span><select data-k="shz.mainSig" data-redraw="shz"><option value="key">只標地量、逃</option><option value="all">全部訊號</option><option value="off">不標</option></select></div>
+          <div class="kv"><span>散戶線／走勢／主力線</span><span class="pair"><input type="color" data-k="shz.cRetail" data-redraw="shz"><input type="color" data-k="shz.cTrend" data-redraw="shz"><input type="color" data-k="shz.cMain" data-redraw="shz"></span></div>
+          <div class="kv"><span>吸籌／地量／大資金／逃</span><span class="pair"><input type="color" data-k="shz.cXc" data-redraw="shz"><input type="color" data-k="shz.cDl" data-redraw="shz"><input type="color" data-k="shz.cBig" data-redraw="shz"><input type="color" data-k="shz.cEsc" data-redraw="shz"></span></div>
+          <div class="kv"><span>散戶線粗細／紅黃線粗細</span><span class="pair"><select class="wsel" data-k="shz.wRetail" data-int data-redraw="shz"></select><select class="wsel" data-k="shz.wLine" data-int data-redraw="shz"></select></span></div>
+          <button class="small" data-reset="shz">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -598,10 +620,12 @@ const DEFAULTS = {
         showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1,
         showTurn:true, turnMin:3, turnZone:'zero', mainTurn:'strong', cTurnUp:'#00e676', cTurnDn:'#ff1744', fwd:10,
         showHold:false, showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1 },
+  shz:{ showRetail:true, showTM:true, showXc:true, showDl:true, volLen:20, volRatio:0.5, showBig:true, showEsc:true, fwd:10, mainSig:'key',
+        cRetail:'#26c281', cTrend:'#ef5350', cMain:'#ffd54f', cXc:'#e040fb', cDl:'#00e5ff', cBig:'#ff9800', cEsc:'#ff80ab', wRetail:1, wLine:2 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -631,10 +655,11 @@ if ((S.v || 0) < 11) S.ovl = Object.assign({}, S.ovl, { ribbon:true });
 if ((S.v || 0) < 12) S.ind = Object.assign({}, S.ind, { qsz:true });
 if ((S.v || 0) < 13 && S.qsz && typeof S.qsz.mainTurn !== 'string') delete S.qsz.mainTurn;
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 13;
+if ((S.v || 0) < 14) S.ind = Object.assign({}, S.ind, { shz:true });
+S.v = 14;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1163,7 +1188,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1579,6 +1604,7 @@ function refreshMarkers(){
   if (paneOf.wt !== undefined && IND.wt.vals && S.wt.mainSig) list = list.concat(IND.wt.mainMarkers());
   if (paneOf.abyss !== undefined && IND.abyss.vals && S.abyss.mainSig) list = list.concat(IND.abyss.mainMarkers());
   if (paneOf.qsz !== undefined && IND.qsz.vals && S.qsz.mainSig) list = list.concat(IND.qsz.mainMarkers());
+  if (paneOf.shz !== undefined && IND.shz.vals) list = list.concat(IND.shz.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2662,11 +2688,127 @@ Object.assign(IND, {
   },
 });
 
+
+/* ───────────── 散戶線／主力線（通達信「超級散主線」改寫） ─────────────
+   名稱沿用原公式，但全部只用價格與成交量計算，沒有任何籌碼資料：
+   散戶線＝60 根位階的反向（越高越接近 60 根低點）；走勢＝21 根隨機指標兩次平滑（慢線）；
+   主力線＝30 根隨機指標 J 值的 6 根指數平均（快線）。
+   吸籌＝創 30 根新低時的低點波動強度；地量＝相對量縮且 J＜0 的狀態結束那一根（原版是固定 10 萬手，改成和近 N 日均量比）；
+   大資金＝75 根位階平滑值翻揚且量增價漲（30 根內第一次）；逃＝6 根相對強弱指標從 82 以上跌下來。 */
+function shzCalc(o, h, l, c, v, P){
+  const n = c.length, nul = () => new Array(n).fill(null);
+  const tsma = (src, N, M) => { const out = nul(); let y = null; for (let i = 0; i < n; i++){ const x = src[i]; if (x == null || !isFinite(x)) { out[i] = y; continue; } y = y == null ? x : (M * x + (N - M) * y) / N; out[i] = y; } return out; };
+  const ema = (src, N) => { const out = nul(), a = 2 / (N + 1); let y = null; for (let i = 0; i < n; i++){ const x = src[i]; if (x == null || !isFinite(x)) { out[i] = y; continue; } y = y == null ? x : a * x + (1 - a) * y; out[i] = y; } return out; };
+  const llv = (src, N) => src.map((_, i) => { let m = Infinity; for (let k = Math.max(0, i - N + 1); k <= i; k++) if (src[k] != null && src[k] < m) m = src[k]; return i >= N - 1 ? m : null; });
+  const hhv = (src, N) => src.map((_, i) => { let m = -Infinity; for (let k = Math.max(0, i - N + 1); k <= i; k++) if (src[k] != null && src[k] > m) m = src[k]; return i >= N - 1 ? m : null; });
+  const stoch = (x, N) => { const lo = llv(l, N), hi = hhv(h, N); return x.map((xi, i) => lo[i] == null || hi[i] === lo[i] ? null : (xi - lo[i]) / (hi[i] - lo[i]) * 100); };
+  // 三條主線
+  const trend = tsma(tsma(stoch(c, 21), 13, 8), 13, 8).map(x => x == null ? null : Math.ceil(x));
+  const rsv30 = stoch(c, 30), k30 = tsma(rsv30, 5, 1), d30 = tsma(k30, 3, 1);
+  const main = ema(k30.map((k, i) => k == null || d30[i] == null ? null : 3 * k - 2 * d30[i]), 6);
+  const hi60 = hhv(h, 60), lo60 = llv(l, 60);
+  const retail = c.map((x, i) => hi60[i] == null || hi60[i] === lo60[i] ? null : 100 * (hi60[i] - x) / (hi60[i] - lo60[i]));
+  // 吸籌
+  const dl0 = l.map((x, i) => i ? Math.abs(x - l[i-1]) : null), dl1 = l.map((x, i) => i ? Math.max(x - l[i-1], 0) : null);
+  const a1 = tsma(dl0, 3, 1), a2 = tsma(dl1, 3, 1);
+  const v4 = ema(a1.map((x, i) => x == null || !a2[i] ? null : x / a2[i] * 100 * 10), 3);
+  const lo30 = llv(l, 30), v6 = hhv(v4, 30);
+  const xc = ema(l.map((x, i) => lo30[i] != null && x <= lo30[i] && v4[i] != null && v6[i] != null ? (v4[i] + v6[i] * 2) / 2 : 0), 3).map((x, i) => i < 58 || x == null ? null : Math.min(100, x / 618));
+  // 地量（相對量縮）：KDJ(9,3,3) 的 J
+  const k9 = tsma(stoch(c, 9), 3, 1), d9 = tsma(k9, 3, 1), j9 = k9.map((k, i) => k == null || d9[i] == null ? null : 3 * k - 2 * d9[i]);
+  const vma = v.map((_, i) => { if (i < P.volLen - 1) return null; let s = 0; for (let k = i - P.volLen + 1; k <= i; k++) s += v[k]; return s / P.volLen; });
+  const cond = v.map((x, i) => vma[i] != null && j9[i] != null && x < vma[i] * P.volRatio && j9[i] < 0);
+  const dl = cond.map((x, i) => i > 0 && cond[i-1] && !x);
+  // 大資金進場
+  const lo75 = llv(l, 75), hi75 = hhv(h, 75), pos = x => x.map((xi, i) => lo75[i] == null || hi75[i] === lo75[i] ? null : (xi - lo75[i]) / (hi75[i] - lo75[i]) * 100);
+  const mk = src => { const s1 = tsma(pos(src), 20, 1), s2 = tsma(s1, 15, 1); return s1.map((x, i) => x == null || s2[i] == null ? null : 100 - 3 * x + 2 * s2[i]); };
+  const v10 = mk(c), v11 = mk(o);
+  const raw = c.map((x, i) => i > 0 && v10[i] != null && v11[i-1] != null && v10[i] < v11[i-1] && v[i] > v[i-1] && x > c[i-1]);
+  const big = raw.map((x, i) => { if (!x) return false; let cnt = 0; for (let k = Math.max(0, i - 29); k <= i; k++) if (raw[k]) cnt++; return cnt === 1; });
+  // 逃：6 根相對強弱指標從 82 以上跌下來
+  const up6 = tsma(c.map((x, i) => i ? Math.max(x - c[i-1], 0) : null), 6, 1), ab6 = tsma(c.map((x, i) => i ? Math.abs(x - c[i-1]) : null), 6, 1);
+  const rsi6 = up6.map((x, i) => x == null || !ab6[i] ? null : x / ab6[i] * 100);
+  const esc = rsi6.map((x, i) => i > 0 && x != null && rsi6[i-1] != null && rsi6[i-1] > 82 && x < 82);
+  // 金叉（界線下）、死叉（強勢線上）、散戶線上穿強勢線、跌破弱勢線
+  const gx = main.map((x, i) => i > 0 && x != null && trend[i] != null && main[i-1] != null && trend[i-1] != null && main[i-1] <= trend[i-1] && x > trend[i] && x < 50 && trend[i] < 50);
+  const dx = main.map((x, i) => i > 0 && x != null && trend[i] != null && main[i-1] != null && trend[i-1] != null && main[i-1] >= trend[i-1] && x < trend[i] && x > 90 && trend[i] > 90);
+  const rUp = retail.map((x, i) => i > 0 && x != null && retail[i-1] != null && retail[i-1] < 90 && x >= 90);
+  const rDn = retail.map((x, i) => i > 0 && x != null && retail[i-1] != null && retail[i-1] > 10 && x <= 10);
+  // 各訊號之後 fwd 根的表現
+  const fw = Math.max(1, P.fwd | 0), bt = (arr, want) => { let m = 0, w = 0, s = 0;
+    arr.forEach((t, i) => { if (!t || i + fw >= n) return; const r = (c[i + fw] / c[i] - 1) * 100; m++; s += r; if (want * r > 0) w++; });
+    return { n:m, win: m ? w / m : 0, avg: m ? s / m : 0 }; };
+  return { trend, main, retail, xc, dl, big, esc, gx, dx, rUp, rDn, fw,
+           bt: { dl:bt(dl, 1), gx:bt(gx, 1), rUp:bt(rUp, 1), big:bt(big, 1), esc:bt(esc, -1), dx:bt(dx, -1) } };
+}
+window.__ind = Object.assign(window.__ind || {}, { shzCalc });
+Object.assign(IND, {
+  shz: {
+    s:{}, vals:null, refs:[],
+    create(p){
+      const { LineSeries, HistogramSeries } = LC();
+      const hs = () => ({ priceLineVisible:false, lastValueVisible:false, priceFormat:F1 });
+      this.s.xc = chart.addSeries(HistogramSeries, hs(), p);
+      this.s.dl = chart.addSeries(HistogramSeries, hs(), p);
+      const ln = () => ({ priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, priceFormat:F1 });
+      this.s.retail = chart.addSeries(LineSeries, ln(), p);
+      this.s.trend = chart.addSeries(LineSeries, ln(), p);
+      this.s.main = chart.addSeries(LineSeries, ln(), p);
+      this.mk = LC().createSeriesMarkers(this.s.retail, []);
+      this.refs = [];
+    },
+    draw(){
+      const P = S.shz, { LineStyle } = LC();
+      const v = this.vals = shzCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), bars.map(b => b.volume), P);
+      this.s.xc.setData(P.showXc ? bars.map((b, i) => v.xc[i] > 0.5 ? { time:b.time, value:v.xc[i], color:hexA(P.cXc, .85) } : { time:b.time }) : []);
+      this.s.dl.setData(P.showDl ? bars.map((b, i) => v.dl[i] ? { time:b.time, value:30, color:P.cDl } : { time:b.time }) : []);
+      this.s.retail.setData(toLine(v.retail)); this.s.retail.applyOptions({ color:P.cRetail, lineWidth:+P.wRetail, visible:P.showRetail });
+      this.s.trend.setData(toLine(v.trend));   this.s.trend.applyOptions({ color:P.cTrend, lineWidth:+P.wLine, visible:P.showTM });
+      this.s.main.setData(toLine(v.main));     this.s.main.applyOptions({ color:P.cMain, lineWidth:+P.wLine, visible:P.showTM });
+      const L = this.s.retail; this.refs.forEach(r => L.removePriceLine(r)); this.refs = [];
+      [[90, '強', P.cRetail], [50, '界線', hexA(S.col.text, .45)], [10, '弱', hexA(S.col.text, .7)]].forEach(([y, t, col]) =>
+        this.refs.push(L.createPriceLine({ price:y, color:col, lineWidth:1, lineStyle:LineStyle.Dotted, axisLabelVisible:true, title:t })));
+      const m = [], at = (i, pos, price, shape, color, text) => m.push({ time:bars[i].time, position:pos, price, shape, color, text });
+      bars.forEach((b, i) => {
+        if (P.showDl && v.dl[i]) at(i, 'atPriceTop', 30, 'arrowUp', P.cDl, '地量');
+        if (P.showTM && v.gx[i]) at(i, 'atPriceBottom', v.main[i], 'arrowUp', P.cMain, '金叉');
+        if (P.showTM && v.dx[i]) at(i, 'atPriceTop', v.main[i], 'arrowDown', P.cMain, '死叉');
+        if (P.showBig && v.big[i]) at(i, 'atPriceTop', 40, 'circle', P.cBig, '大資金');
+        if (P.showEsc && v.esc[i]) at(i, 'atPriceTop', 10, 'arrowDown', P.cEsc, '逃');
+      });
+      this.mk.setMarkers(m);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.shz, out = []; if (!v || P.mainSig === 'off') return out;
+      const all = P.mainSig === 'all';
+      v.dl.forEach((t, i) => { if (t && P.showDl) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cDl, text:'地量' }); });
+      v.esc.forEach((t, i) => { if (t && P.showEsc) out.push({ i, position:'aboveBar', shape:'arrowDown', color:P.cEsc, text:'逃' }); });
+      if (all && P.showTM){ v.gx.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cMain, text:'金叉' }); });
+                            v.dx.forEach((t, i) => { if (t) out.push({ i, position:'aboveBar', shape:'arrowDown', color:P.cMain, text:'死叉' }); }); }
+      if (all && P.showBig) v.big.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'circle', color:P.cBig, text:'大資金' }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.shz; if (!v) return '';
+      const tg = (on, txt, col) => on ? `<span class="tag" style="background:${col};color:#000">${txt}</span>` : '';
+      const tags = tg(P.showDl && v.dl[i], '地量', P.cDl) + tg(P.showTM && v.gx[i], '金叉', P.cMain) + tg(P.showTM && v.dx[i], '死叉', P.cMain) +
+                   tg(v.rUp[i], '散戶線上穿強', P.cRetail) + tg(v.rDn[i], '散戶線跌破弱', P.cRetail) + tg(P.showBig && v.big[i], '大資金', P.cBig) +
+                   tg(P.showEsc && v.esc[i], '逃', P.cEsc) + tg(P.showXc && v.xc[i] > 0.5, '吸籌 ' + fmt(v.xc[i], 0), P.cXc);
+      const pct = x => Math.round(x * 100) + '%', sg = x => Math.abs(x) < 0.05 ? '0.0%' : (x > 0 ? '+' : '') + fmt(x, 1) + '%';
+      const one = (name, b, up) => b.n ? `${name} ${b.n} 次 ${up ? '漲' : '跌'} ${pct(b.win)}（${sg(b.avg)}）` : '';
+      const st = [one('地量', v.bt.dl, 1), one('金叉', v.bt.gx, 1), one('散戶線上穿強', v.bt.rUp, 1), one('大資金', v.bt.big, 1), one('逃', v.bt.esc, 0), one('死叉', v.bt.dx, 0)].filter(Boolean).join('・');
+      return `散主線 <span style="color:${P.cRetail}">散戶 <b>${fmt(v.retail[i], 1)}</b></span>　<span style="color:${P.cTrend}">走勢 ${fmt(v.trend[i], 0)}</span>　<span style="color:${P.cMain}">主力 ${fmt(v.main[i], 1)}</span>` + tags +
+             (st ? `<br><span class="muted">${v.fw} 根後：${st}</span>` : '');
+    },
+  },
+});
+
 const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -2681,6 +2823,7 @@ const RESETS = {
   rsib:  ['rsib'],
   abyss: ['abyss'],
   qsz:   ['qsz'],
+  shz:   ['shz'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
