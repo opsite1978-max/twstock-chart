@@ -159,6 +159,7 @@
   <div class="plabel" id="lbl-ztsv"></div>
   <div class="plabel" id="lbl-rsib"></div>
   <div class="plabel" id="lbl-abyss"></div>
+  <div class="plabel" id="lbl-qsz"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -175,6 +176,7 @@
         <label class="chk"><input type="checkbox" data-ind="wt">BotWT×3 波浪趨勢 × 三段波浪</label>
         <label class="chk"><input type="checkbox" data-ind="rsib">RSI 美國線（RSIB）</label>
         <label class="chk"><input type="checkbox" data-ind="abyss">ABYSS v2 底部轉折（One TURN）</label>
+        <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
       </div>
     </div>
 
@@ -371,6 +373,25 @@
           <button class="small" data-reset="abyss">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>四色動能柱＋尋底</summary>
+        <div class="stack">
+          <div class="hint">紫＝訊號線上揚（反轉）、紅＝動能上升（持有）、綠空心＝動能下降（持幣）、青＝動能下降但訊號線仍上揚（洗盤）。白色「尋底」只在個股日 K 計算（需要集保股數算週轉率）；黃色「底／追」是 MACD 快線深度為負又大漲的那天。</div>
+          <div class="kv"><span>四條均線週期</span><span class="pair"><input type="number" data-k="qsz.ma1" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma2" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma3" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma4" data-int data-redraw="qsz" min="2" max="250"></span></div>
+          <div class="kv"><span>動能比較幾根前</span><input type="number" data-k="qsz.lag" data-int data-redraw="qsz" min="1" max="120"></div>
+          <div class="kv"><span>訊號線平均根數</span><input type="number" data-k="qsz.sigLen" data-int data-redraw="qsz" min="1" max="60"></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showBottom" data-redraw="qsz">顯示尋底</label>
+          <div class="kv"><span>尋底：離 50 根內高點跌幅超過（%）</span><input type="number" data-k="qsz.fromHi" data-redraw="qsz" min="5" max="80" step="1"></div>
+          <div class="kv"><span>尋底：近 5 日平均週轉率低於（%）</span><input type="number" data-k="qsz.turnMax" data-redraw="qsz" min="0.1" max="20" step="0.1"></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showDi" data-redraw="qsz">顯示底／追</label>
+          <div class="kv"><span>底／追：MACD 快線低於股價的（%）</span><input type="number" data-k="qsz.difPct" data-redraw="qsz" min="0.5" max="20" step="0.5"></div>
+          <div class="kv"><span>底／追：當根漲幅超過（%）</span><input type="number" data-k="qsz.upPct" data-redraw="qsz" min="1" max="10" step="0.5"></div>
+          <div class="kv"><span>反轉／持有／持幣／洗盤</span><span class="pair"><input type="color" data-k="qsz.cRev" data-redraw="qsz"><input type="color" data-k="qsz.cHold" data-redraw="qsz"><input type="color" data-k="qsz.cCash" data-redraw="qsz"><input type="color" data-k="qsz.cWash" data-redraw="qsz"></span></div>
+          <div class="kv"><span>尋底／底追 顏色</span><span class="pair"><input type="color" data-k="qsz.cBot" data-redraw="qsz"><input type="color" data-k="qsz.cDi" data-redraw="qsz"></span></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.mainSig" data-redraw="qsz">K 線圖上也標出尋底、底／追</label>
+          <button class="small" data-reset="qsz">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -528,10 +549,12 @@ const DEFAULTS = {
           useVol:true, reqVol:false, volFactor:1.1, smooth:10, cost:20, range:60, reg:7, mem:15, pct:250, trend:60,
           cMidUp:'#2daed9', cMidDn:'#6178b2', cDeepUp:'#00e676', cDeepDn:'#1e8f5e', cHiUp:'#ff5252', cHiDn:'#ff9800',
           deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
+  qsz:{ ma1:5, ma2:10, ma3:20, ma4:30, lag:15, sigLen:8, showBottom:true, fromHi:35, turnMax:1.8, showDi:true, difPct:5, upPct:7,
+        cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -551,11 +574,12 @@ if ((S.v || 0) < 8) S.ind = Object.assign({}, S.ind, { rsib:true });
 if ((S.v || 0) < 9) S.ovl = Object.assign({}, S.ovl, { bb3:true });
 if ((S.v || 0) < 10) S.ind = Object.assign({}, S.ind, { abyss:true });
 if ((S.v || 0) < 11) S.ovl = Object.assign({}, S.ovl, { ribbon:true });
+if ((S.v || 0) < 12) S.ind = Object.assign({}, S.ind, { qsz:true });
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 11;
+S.v = 12;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1084,7 +1108,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1499,6 +1523,7 @@ function refreshMarkers(){
   for (const k of OVL_ORDER) if (S.ovl[k] && OVL[k].vals) list = list.concat(OVL[k].markers());
   if (paneOf.wt !== undefined && IND.wt.vals && S.wt.mainSig) list = list.concat(IND.wt.mainMarkers());
   if (paneOf.abyss !== undefined && IND.abyss.vals && S.abyss.mainSig) list = list.concat(IND.abyss.mainMarkers());
+  if (paneOf.qsz !== undefined && IND.qsz.vals && S.qsz.mainSig) list = list.concat(IND.qsz.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2412,11 +2437,119 @@ async function load(){
 document.querySelectorAll('select.wsel').forEach(sel => [1,2,3,4].forEach(w => { const o = document.createElement('option'); o.value = w; o.textContent = w + ' 粗'; sel.appendChild(o); }));
 document.querySelectorAll('select.w').forEach(sel => [1,2,3,4].forEach(w => { const o = document.createElement('option'); o.value = w; o.textContent = w + ' 粗'; sel.appendChild(o); }));
 
+
+/* ───────────── 四色動能柱＋尋底（通達信公式改寫） ─────────────
+   四條均線（預設 5／10／20／30）取平均，看它和 N 根前相比漲跌幾 %（動能），再取 8 根指數平均當訊號線。
+   紫＝訊號線上揚（反轉），紅＝動能上升（持有），綠空心＝動能下降（持幣），青＝動能下降但訊號線仍上揚（洗盤）。
+   尋底：急跌（兩根跌約 13.5% 或 13 根跌約 23%）、離 50 根內最高點那根的開盤跌超過 35%、近 5 日週轉率偏低（只用日 K 與個股）。
+   底／追：MACD 快線深度為負（改用占股價百分比，避免高價股、低價股門檻不一致）且當根大漲。 */
+const QSZ_SHARES = new Map();                 // 股票代號 → 集保總股數（張）
+async function qszLoadShares(id){
+  if (QSZ_SHARES.has(id)) return QSZ_SHARES.get(id);
+  QSZ_SHARES.set(id, null);
+  try {
+    const r = await fetch('data/holders/' + id + '.json');
+    if (r.ok){ const j = await r.json(), w = j.w || {}, ks = Object.keys(w).sort(), last = ks.length ? w[ks[ks.length - 1]] : null;
+      if (last && last[1] > 0) QSZ_SHARES.set(id, last[1] / 1000); }
+  } catch(e){}
+  return QSZ_SHARES.get(id);
+}
+function qszCalc(o, h, l, c, v, P, shares, daily){
+  const n = c.length, nul = () => new Array(n).fill(null);
+  const sma = (len) => { const out = nul(); let s = 0; for (let i = 0; i < n; i++){ s += c[i]; if (i >= len) s -= c[i - len]; if (i >= len - 1) out[i] = s / len; } return out; };
+  const ema = (src, len) => { const out = nul(), a = 2 / (len + 1); let p = null; for (let i = 0; i < n; i++){ const x = src[i]; if (x == null) continue; p = p == null ? x : a * x + (1 - a) * p; out[i] = p; } return out; };
+  const ms = [P.ma1, P.ma2, P.ma3, P.ma4].map(sma);
+  const avg = nul(); for (let i = 0; i < n; i++) if (ms.every(m => m[i] != null)) avg[i] = (ms[0][i] + ms[1][i] + ms[2][i] + ms[3][i]) / 4;
+  const mom = nul(); for (let i = P.lag; i < n; i++) if (avg[i] != null && avg[i - P.lag] != null) mom[i] = (avg[i] - avg[i - P.lag]) / avg[i - P.lag] * 100;
+  const sig = ema(mom, P.sigLen);
+  // 尋底
+  const bottom = new Array(n).fill(false), turn = nul();
+  if (shares && daily){
+    for (let i = 0; i < n; i++) turn[i] = v[i] / shares * 100;
+    for (let i = 13; i < n; i++){
+      let hi = -Infinity, hb = i; for (let k = Math.max(0, i - 49); k <= i; k++) if (h[k] >= hi){ hi = h[k]; hb = k; }
+      const fromHi = (c[i] - o[hb]) / o[hb] * 100;
+      let t5 = 0; for (let k = i - 4; k <= i; k++) t5 += turn[k]; t5 /= 5;
+      const floor = Math.min(c[i - 2] * 0.865, c[i - 13] * 0.772);
+      bottom[i] = (c[i] - floor) / c[i] < 0.03 && fromHi < -P.fromHi && t5 < P.turnMax;
+    }
+  }
+  // 底／追
+  const e12 = ema(c, 12), e26 = ema(c, 26), dif = c.map((_, i) => e12[i] - e26[i]), dea = ema(dif, 9);
+  const di = new Array(n).fill(null);
+  for (let i = 26; i < n; i++){
+    const chg = (c[i] - c[i - 1]) / c[i - 1] * 100;
+    if (dif[i] / c[i] * 100 < -P.difPct && chg > P.upPct) di[i] = dif[i] < dea[i] ? '底' : '追';
+  }
+  return { mom, sig, bottom, di, turnOK: !!(shares && daily) };
+}
+window.__ind = Object.assign(window.__ind || {}, { qszCalc });
+Object.assign(IND, {
+  qsz: {
+    s:{}, vals:null,
+    create(p){
+      const { CandlestickSeries, HistogramSeries } = LC();
+      const cs = () => ({ priceLineVisible:false, lastValueVisible:false, wickVisible:false, borderVisible:true, priceFormat:F2 });
+      this.s.bot = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F2 }, p);
+      this.s.di  = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F2 }, p);
+      this.s.rev = chart.addSeries(CandlestickSeries, cs(), p);
+      this.s.main = chart.addSeries(CandlestickSeries, cs(), p);
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    state(i){
+      const v = this.vals; if (!v || v.mom[i] == null || i < 1 || v.mom[i-1] == null) return null;
+      const mUp = v.mom[i] > v.mom[i-1], mDn = v.mom[i] < v.mom[i-1], sUp = v.sig[i-1] != null && v.sig[i] > v.sig[i-1];
+      return { rev: sUp, kind: mDn && sUp ? 'wash' : mUp ? 'hold' : mDn ? 'cash' : null };
+    },
+    draw(){
+      const P = S.qsz, id = currentSym && currentSym.kind === 'stock' ? currentSym.id : null, daily = S.tf === 'D';
+      const shares = id ? QSZ_SHARES.get(id) : null;
+      if (id && !QSZ_SHARES.has(id)) qszLoadShares(id).then(() => { if (currentSym && currentSym.id === id) drawInd('qsz'); });
+      const v = this.vals = qszCalc(bars.map(b => b.open), bars.map(b => b.high), bars.map(b => b.low), bars.map(b => b.close), bars.map(b => b.volume), P, shares, daily);
+      const rev = [], main = [];
+      bars.forEach((b, i) => {
+        const st = this.state(i);
+        if (!st){ rev.push({ time:b.time }); main.push({ time:b.time }); return; }
+        const x = v.mom[i], g = v.sig[i];
+        rev.push(st.rev ? { time:b.time, open:0, close:x, high:Math.max(0, x), low:Math.min(0, x), color:P.cRev, borderColor:P.cRev } : { time:b.time });
+        if (!st.kind || g == null){ main.push({ time:b.time }); return; }
+        const col = st.kind === 'hold' ? P.cHold : st.kind === 'wash' ? P.cWash : P.cCash;
+        main.push({ time:b.time, open:g, close:x, high:Math.max(g, x), low:Math.min(g, x), color: st.kind === 'cash' ? CLEAR : col, borderColor:col });
+      });
+      this.s.rev.setData(rev); this.s.main.setData(main);
+      this.s.bot.setData(P.showBottom ? bars.map((b, i) => v.bottom[i] ? { time:b.time, value:10, color:P.cBot } : { time:b.time }) : []);
+      this.s.di.setData(P.showDi ? bars.map((b, i) => v.di[i] ? { time:b.time, value:-10, color:P.cDi } : { time:b.time }) : []);
+      const m = [];
+      if (P.showDi) v.di.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceBottom', price:t === '底' ? -10 : 5, shape:'circle', size:0.1, color:P.cDi, text:t }); });
+      if (P.showBottom) v.bottom.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceTop', price:10, shape:'arrowUp', color:P.cBot, text:'尋底' }); });
+      m.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+      this.mk.setMarkers(m);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.qsz, out = []; if (!v) return out;
+      if (P.showBottom) v.bottom.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cBot, text:'尋底' }); });
+      if (P.showDi) v.di.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'circle', color:P.cDi, text:t }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.qsz; if (!v) return '';
+      const st = this.state(i), name = { hold:['持有', P.cHold], cash:['持幣', P.cCash], wash:['洗盤', P.cWash] };
+      let tag = st && st.kind ? `<span class="tag" style="background:${name[st.kind][1]};color:#000">${name[st.kind][0]}</span>` : '';
+      if (st && st.rev) tag += `<span class="tag" style="background:${P.cRev};color:#000">反轉</span>`;
+      if (v.bottom[i]) tag += `<span class="tag" style="background:${P.cBot};color:#000">尋底</span>`;
+      if (v.di[i]) tag += `<span class="tag" style="background:${P.cDi};color:#000">${v.di[i]}</span>`;
+      const note = !(currentSym && currentSym.kind === 'stock') ? '　<span class="muted">尋底只適用個股</span>' : S.tf !== 'D' ? '　<span class="muted">尋底只用日 K</span>' : !v.turnOK ? '　<span class="muted">讀不到股數，尋底停用</span>' : '';
+      return `四色動能柱 動能 <b>${fmt(v.mom[i], 2)}%</b>　訊號線 ${fmt(v.sig[i], 2)}%` + tag + note;
+    },
+  },
+});
+
 const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -2430,6 +2563,7 @@ const RESETS = {
   wt:    ['wt'],
   rsib:  ['rsib'],
   abyss: ['abyss'],
+  qsz:   ['qsz'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
