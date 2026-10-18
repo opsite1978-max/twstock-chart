@@ -1,34 +1,34 @@
-10-18 05:20:27 本小時 FinMind 已用 4 ／上限 6000
-10-18 05:20:28 price fixed 2026-10-17 changed minutes 0 req 2
-10-18 05:20:29 price fixed 2026-10-08 changed minutes 0 req 3
-10-18 05:20:30 price fixed 2026-10-07 changed minutes 0 req 4
-10-18 05:20:32 price fixed 2026-10-06 changed minutes 0 req 5
-10-18 05:20:32 price fixed 2026-10-05 changed minutes 0 req 6
-10-18 05:20:33 price fixed 2026-10-03 changed minutes 0 req 7
-10-18 05:20:34 price fixed 2026-10-02 changed minutes 0 req 8
-10-18 05:20:35 price fixed 2026-10-01 changed minutes 0 req 9
-10-18 05:20:36 price fixed 2026-09-30 changed minutes 0 req 10
-10-18 05:20:37 price fixed 2026-09-29 changed minutes 0 req 11
-10-18 05:20:38 price fixed 2026-09-24 changed minutes 0 req 12
-10-18 05:20:39 price fixed 2026-09-23 changed minutes 0 req 13
-10-18 05:20:41 price fixed 2026-09-22 changed minutes 0 req 14
-10-18 05:20:41 price fixed 2026-09-21 changed minutes 0 req 15
-10-18 05:20:42 price fixed 2026-09-19 changed minutes 0 req 16
-10-18 05:20:43 price fixed 2026-09-18 changed minutes 0 req 17
-10-18 05:20:44 price fixed 2026-09-17 changed minutes 0 req 18
-10-18 05:20:45 price fixed 2026-09-16 changed minutes 285 req 19
-10-18 05:20:47 price fixed 2026-09-15 changed minutes 0 req 20
-10-18 05:20:48 price fixed 2026-09-14 changed minutes 0 req 21
-10-18 05:20:49 price fixed 2026-09-12 changed minutes 0 req 22
-10-18 05:20:50 price fixed 2026-09-11 changed minutes 0 req 23
-10-18 05:20:51 price fixed 2026-09-10 changed minutes 0 req 24
-10-18 05:20:52 price fixed 2026-09-09 changed minutes 0 req 25
-10-18 05:20:53 price fixed 2026-09-08 changed minutes 0 req 26
-10-18 05:20:54 price fixed 2026-09-07 changed minutes 0 req 27
-10-18 05:20:55 price fixed 2026-09-05 changed minutes 0 req 28
-10-18 05:20:56 price fixed 2026-09-04 changed minutes 0 req 29
-10-18 05:20:57 price fixed 2026-09-03 changed minutes 0 req 30
-10-18 05:20:58 price fixed 2026-09-02 changed minutes 0 req 31
-10-18 05:20:59 price fixed 2026-09-01 changed minutes 0 req 32
-10-18 05:20:59 STOP 本次查詢次數用完
-10-18 05:21:00 fixprice done 31 requests 32
+10-19 05:19:28 本小時 FinMind 已用 0 ／上限 6000
+10-19 05:19:30 price fixed 2026-08-31 changed minutes 0 req 2
+10-19 05:19:31 price fixed 2026-08-29 changed minutes 0 req 3
+10-19 05:19:32 price fixed 2026-08-28 changed minutes 0 req 4
+10-19 05:19:33 price fixed 2026-08-27 changed minutes 0 req 5
+10-19 05:19:34 price fixed 2026-08-26 changed minutes 0 req 6
+10-19 05:19:36 price fixed 2026-08-25 changed minutes 0 req 7
+10-19 05:19:37 price fixed 2026-08-24 changed minutes 0 req 8
+10-19 05:19:38 price fixed 2026-08-22 changed minutes 0 req 9
+10-19 05:19:39 price fixed 2026-08-21 changed minutes 0 req 10
+10-19 05:19:40 price fixed 2026-08-20 changed minutes 0 req 11
+10-19 05:19:41 price fixed 2026-08-19 changed minutes 285 req 12
+10-19 05:19:43 price fixed 2026-08-18 changed minutes 0 req 13
+10-19 05:19:45 price fixed 2026-08-17 changed minutes 0 req 14
+10-19 05:19:45 price fixed 2026-08-15 changed minutes 0 req 15
+10-19 05:19:47 price fixed 2026-08-14 changed minutes 0 req 16
+10-19 05:19:48 price fixed 2026-08-13 changed minutes 0 req 17
+10-19 05:19:50 price fixed 2026-08-12 changed minutes 0 req 18
+10-19 05:19:51 price fixed 2026-08-11 changed minutes 0 req 19
+10-19 05:19:52 price fixed 2026-08-10 changed minutes 0 req 20
+10-19 05:19:53 price fixed 2026-08-08 changed minutes 0 req 21
+10-19 05:19:54 price fixed 2026-08-07 changed minutes 0 req 22
+10-19 05:19:55 price fixed 2026-08-06 changed minutes 0 req 23
+10-19 05:19:57 price fixed 2026-08-05 changed minutes 0 req 24
+10-19 05:19:58 price fixed 2026-08-04 changed minutes 0 req 25
+10-19 05:19:59 price fixed 2026-08-03 changed minutes 0 req 26
+10-19 05:20:00 price fixed 2026-08-01 changed minutes 0 req 27
+10-19 05:20:01 price fixed 2026-07-31 changed minutes 0 req 28
+10-19 05:20:02 price fixed 2026-07-30 changed minutes 0 req 29
+10-19 05:20:04 price fixed 2026-07-29 changed minutes 0 req 30
+10-19 05:20:06 price fixed 2026-07-28 changed minutes 0 req 31
+10-19 05:20:07 price fixed 2026-07-27 changed minutes 0 req 32
+10-19 05:20:07 STOP 本次查詢次數用完
+10-19 05:20:09 fixprice done 31 requests 32
