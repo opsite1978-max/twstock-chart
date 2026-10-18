@@ -380,6 +380,12 @@
           <div class="kv"><span>四條均線週期</span><span class="pair"><input type="number" data-k="qsz.ma1" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma2" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma3" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma4" data-int data-redraw="qsz" min="2" max="250"></span></div>
           <div class="kv"><span>動能比較幾根前</span><input type="number" data-k="qsz.lag" data-int data-redraw="qsz" min="1" max="120"></div>
           <div class="kv"><span>訊號線平均根數</span><input type="number" data-k="qsz.sigLen" data-int data-redraw="qsz" min="1" max="60"></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showBand" data-redraw="qsz">顯示動態上下界（依這檔股票過去的動能自動調整）</label>
+          <div class="kv"><span>上下界算法</span><select data-k="qsz.bandMode" data-redraw="qsz"><option value="pct">歷史百分位</option><option value="sd">平均 ± 標準差</option></select></div>
+          <div class="kv"><span>回看根數</span><input type="number" data-k="qsz.bandLen" data-int data-redraw="qsz" min="20" max="1000"></div>
+          <div class="kv"><span>百分位　上界／下界</span><span class="pair"><input type="number" data-k="qsz.bandUp" data-redraw="qsz" min="50" max="100"><input type="number" data-k="qsz.bandLo" data-redraw="qsz" min="0" max="50"></span></div>
+          <div class="kv"><span>標準差倍數</span><input type="number" data-k="qsz.bandK" data-redraw="qsz" min="0.5" max="4" step="0.1"></div>
+          <div class="kv"><span>上界／下界顏色／粗細</span><span class="pair"><input type="color" data-k="qsz.cUp" data-redraw="qsz"><input type="color" data-k="qsz.cLo" data-redraw="qsz"><select class="wsel" data-k="qsz.bandW" data-int data-redraw="qsz"></select></span></div>
           <label class="chk"><input type="checkbox" data-k="qsz.showBottom" data-redraw="qsz">顯示尋底</label>
           <div class="kv"><span>尋底：離 50 根內高點跌幅超過（%）</span><input type="number" data-k="qsz.fromHi" data-redraw="qsz" min="5" max="80" step="1"></div>
           <div class="kv"><span>尋底：近 5 日平均週轉率低於（%）</span><input type="number" data-k="qsz.turnMax" data-redraw="qsz" min="0.1" max="20" step="0.1"></div>
@@ -550,7 +556,8 @@ const DEFAULTS = {
           cMidUp:'#2daed9', cMidDn:'#6178b2', cDeepUp:'#00e676', cDeepDn:'#1e8f5e', cHiUp:'#ff5252', cHiDn:'#ff9800',
           deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
   qsz:{ ma1:5, ma2:10, ma3:20, ma4:30, lag:15, sigLen:8, showBottom:true, fromHi:35, turnMax:1.8, showDi:true, difPct:5, upPct:7,
-        cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true },
+        cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true,
+        showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
@@ -2481,7 +2488,20 @@ function qszCalc(o, h, l, c, v, P, shares, daily){
     const chg = (c[i] - c[i - 1]) / c[i - 1] * 100;
     if (dif[i] / c[i] * 100 < -P.difPct && chg > P.upPct) di[i] = dif[i] < dea[i] ? '底' : '追';
   }
-  return { mom, sig, bottom, di, turnOK: !!(shares && daily) };
+  // 動態上下界：只用當根以前的動能值（不偷看未來），每檔股票依自己的波動自動調整
+  const up = nul(), lo = nul(), W = Math.max(20, P.bandLen | 0);
+  for (let i = 0; i < n; i++){
+    const win = []; for (let k = Math.max(0, i - W + 1); k <= i; k++) if (mom[k] != null) win.push(mom[k]);
+    if (win.length < Math.min(W, 60)) continue;
+    if (P.bandMode === 'sd'){
+      const m = win.reduce((a, b) => a + b, 0) / win.length, sd = Math.sqrt(win.reduce((a, b) => a + (b - m) ** 2, 0) / win.length);
+      up[i] = m + P.bandK * sd; lo[i] = m - P.bandK * sd;
+    } else {
+      win.sort((a, b) => a - b); const q = p => win[Math.min(win.length - 1, Math.max(0, Math.round(p / 100 * (win.length - 1))))];
+      up[i] = q(P.bandUp); lo[i] = q(P.bandLo);
+    }
+  }
+  return { mom, sig, bottom, di, up, lo, turnOK: !!(shares && daily) };
 }
 window.__ind = Object.assign(window.__ind || {}, { qszCalc });
 Object.assign(IND, {
@@ -2494,6 +2514,9 @@ Object.assign(IND, {
       this.s.di  = chart.addSeries(HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:F2 }, p);
       this.s.rev = chart.addSeries(CandlestickSeries, cs(), p);
       this.s.main = chart.addSeries(CandlestickSeries, cs(), p);
+      const { LineSeries } = LC(), ln = t => ({ lineWidth:1, priceLineVisible:false, crosshairMarkerVisible:false, lastValueVisible:true, title:t, priceFormat:F2 });
+      this.s.up = chart.addSeries(LineSeries, ln('上界'), p);
+      this.s.lo = chart.addSeries(LineSeries, ln('下界'), p);
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
     state(i){
@@ -2517,6 +2540,10 @@ Object.assign(IND, {
         main.push({ time:b.time, open:g, close:x, high:Math.max(g, x), low:Math.min(g, x), color: st.kind === 'cash' ? CLEAR : col, borderColor:col });
       });
       this.s.rev.setData(rev); this.s.main.setData(main);
+      const { LineStyle } = LC();
+      this.s.up.setData(P.showBand ? toLine(v.up) : []); this.s.lo.setData(P.showBand ? toLine(v.lo) : []);
+      this.s.up.applyOptions({ color:P.cUp, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
+      this.s.lo.applyOptions({ color:P.cLo, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
       this.s.bot.setData(P.showBottom ? bars.map((b, i) => v.bottom[i] ? { time:b.time, value:10, color:P.cBot } : { time:b.time }) : []);
       this.s.di.setData(P.showDi ? bars.map((b, i) => v.di[i] ? { time:b.time, value:-10, color:P.cDi } : { time:b.time }) : []);
       const m = [];
@@ -2537,10 +2564,13 @@ Object.assign(IND, {
       const st = this.state(i), name = { hold:['持有', P.cHold], cash:['持幣', P.cCash], wash:['洗盤', P.cWash] };
       let tag = st && st.kind ? `<span class="tag" style="background:${name[st.kind][1]};color:#000">${name[st.kind][0]}</span>` : '';
       if (st && st.rev) tag += `<span class="tag" style="background:${P.cRev};color:#000">反轉</span>`;
+      if (P.showBand && v.mom[i] != null && v.up[i] != null && v.mom[i] >= v.up[i]) tag += `<span class="tag" style="background:${P.cUp};color:#000">過熱</span>`;
+      if (P.showBand && v.mom[i] != null && v.lo[i] != null && v.mom[i] <= v.lo[i]) tag += `<span class="tag" style="background:${P.cLo};color:#000">過冷</span>`;
       if (v.bottom[i]) tag += `<span class="tag" style="background:${P.cBot};color:#000">尋底</span>`;
       if (v.di[i]) tag += `<span class="tag" style="background:${P.cDi};color:#000">${v.di[i]}</span>`;
       const note = !(currentSym && currentSym.kind === 'stock') ? '　<span class="muted">尋底只適用個股</span>' : S.tf !== 'D' ? '　<span class="muted">尋底只用日 K</span>' : !v.turnOK ? '　<span class="muted">讀不到股數，尋底停用</span>' : '';
-      return `四色動能柱 動能 <b>${fmt(v.mom[i], 2)}%</b>　訊號線 ${fmt(v.sig[i], 2)}%` + tag + note;
+      const band = P.showBand && v.up[i] != null ? `　<span style="color:${P.cUp}">上界 ${fmt(v.up[i], 2)}</span>　<span style="color:${P.cLo}">下界 ${fmt(v.lo[i], 2)}</span>` : '';
+      return `四色動能柱 動能 <b>${fmt(v.mom[i], 2)}%</b>　訊號線 ${fmt(v.sig[i], 2)}%` + band + tag + note;
     },
   },
 });
