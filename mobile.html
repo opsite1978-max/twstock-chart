@@ -413,6 +413,16 @@
           <div class="kv"><span>百分位　上界／下界</span><span class="pair"><input type="number" data-k="qsz.bandUp" data-redraw="qsz" min="50" max="100"><input type="number" data-k="qsz.bandLo" data-redraw="qsz" min="0" max="50"></span></div>
           <div class="kv"><span>標準差倍數</span><input type="number" data-k="qsz.bandK" data-redraw="qsz" min="0.5" max="4" step="0.1"></div>
           <div class="kv"><span>上界／下界顏色／粗細</span><span class="pair"><input type="color" data-k="qsz.cUp" data-redraw="qsz"><input type="color" data-k="qsz.cLo" data-redraw="qsz"><select class="wsel" data-k="qsz.bandW" data-int data-redraw="qsz"></select></span></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showTurn" data-redraw="qsz">標出轉折（動能連續下降後第一次勾起＝底轉，連續上升後第一次下彎＝頭轉）</label>
+          <div class="kv"><span>轉折前至少連續幾根</span><input type="number" data-k="qsz.turnMin" data-int data-redraw="qsz" min="1" max="20"></div>
+          <div class="kv"><span>轉折要發生在</span><select data-k="qsz.turnZone" data-redraw="qsz"><option value="zero">零軸下方的底／上方的頭</option><option value="band">超過動態上下界才算</option><option value="any">不限位置</option></select></div>
+          <div class="kv"><span>勝率統計看幾根後</span><input type="number" data-k="qsz.fwd" data-int data-redraw="qsz" min="1" max="60"></div>
+          <div class="kv"><span>K 線圖上標出轉折</span><select data-k="qsz.mainTurn" data-redraw="qsz"><option value="strong">只標強底轉／強頭轉</option><option value="all">全部</option><option value="off">不標</option></select></div>
+          <div class="kv"><span>底轉／頭轉顏色</span><span class="pair"><input type="color" data-k="qsz.cTurnUp" data-redraw="qsz"><input type="color" data-k="qsz.cTurnDn" data-redraw="qsz"></span></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showSlow" data-redraw="qsz">減速變淡色（還在漲／跌但力道變小，常在轉折前出現）</label>
+          <div class="kv"><span>漲勢減速／跌勢減速顏色</span><span class="pair"><input type="color" data-k="qsz.cHoldSlow" data-redraw="qsz"><input type="color" data-k="qsz.cCashSlow" data-redraw="qsz"></span></div>
+          <label class="chk"><input type="checkbox" data-k="qsz.showLine" data-redraw="qsz">畫出動能曲線（轉折的頭和底更清楚）</label>
+          <div class="kv"><span>動能曲線粗細</span><select class="wsel" data-k="qsz.lineW" data-int data-redraw="qsz"></select></div>
           <label class="chk"><input type="checkbox" data-k="qsz.showBottom" data-redraw="qsz">顯示尋底</label>
           <div class="kv"><span>尋底：離 50 根內高點跌幅超過（%）</span><input type="number" data-k="qsz.fromHi" data-redraw="qsz" min="5" max="80" step="1"></div>
           <div class="kv"><span>尋底：近 5 日平均週轉率低於（%）</span><input type="number" data-k="qsz.turnMax" data-redraw="qsz" min="0.1" max="20" step="0.1"></div>
@@ -584,7 +594,9 @@ const DEFAULTS = {
           deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
   qsz:{ ma1:5, ma2:10, ma3:20, ma4:30, lag:15, sigLen:8, showBottom:true, fromHi:35, turnMax:1.8, showDi:true, difPct:5, upPct:7,
         cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true,
-        showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1 },
+        showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1,
+        showTurn:true, turnMin:3, turnZone:'zero', mainTurn:'strong', cTurnUp:'#00e676', cTurnDn:'#ff1744', fwd:10,
+        showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
@@ -616,8 +628,9 @@ if ((S.v || 0) < 9) S.ovl = Object.assign({}, S.ovl, { bb3:true });
 if ((S.v || 0) < 10) S.ind = Object.assign({}, S.ind, { abyss:true });
 if ((S.v || 0) < 11) S.ovl = Object.assign({}, S.ovl, { ribbon:true });
 if ((S.v || 0) < 12) S.ind = Object.assign({}, S.ind, { qsz:true });
+if ((S.v || 0) < 13 && S.qsz && typeof S.qsz.mainTurn !== 'string') delete S.qsz.mainTurn;
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
-S.v = 12;
+S.v = 13;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
@@ -2535,7 +2548,26 @@ function qszCalc(o, h, l, c, v, P, shares, daily){
       up[i] = q(P.bandUp); lo[i] = q(P.bandLo);
     }
   }
-  return { mom, sig, bottom, di, up, lo, turnOK: !!(shares && daily) };
+  // 轉折：動能連續下降（或上升）至少 turnMin 根後第一次反向，就是低點（高點）轉折；跌破下界（突破上界）時算「強」
+  //  減速：還在跌（漲），但這根的變化比上一根小，常出現在轉折前一兩根
+  const turnUp = new Array(n).fill(null), turnDn = new Array(n).fill(null), slow = new Array(n).fill(null);
+  const inZone = (x, b, sgn) => P.turnZone === 'any' ? true : P.turnZone === 'band' ? (b != null && sgn * (x - b) >= 0) : sgn * x >= 0;
+  for (let i = 2; i < n; i++){
+    if (mom[i] == null || mom[i-1] == null || mom[i-2] == null) continue;
+    const d0 = mom[i] - mom[i-1], d1 = mom[i-1] - mom[i-2];
+    if (d0 < 0 && d1 < 0 && d0 > d1) slow[i] = 'dn'; else if (d0 > 0 && d1 > 0 && d0 < d1) slow[i] = 'up';
+    if (d0 * d1 >= 0) continue;
+    let run = 0; for (let k = i - 1; k >= 1 && mom[k] != null && mom[k-1] != null && Math.sign(mom[k] - mom[k-1]) === Math.sign(d1); k--) run++;
+    if (run < P.turnMin) continue;
+    const x = mom[i-1];
+    if (d0 > 0 && inZone(x, lo[i-1], -1)) turnUp[i] = lo[i-1] != null && x <= lo[i-1] ? '強底轉' : '底轉';
+    if (d0 < 0 && inZone(x, up[i-1], 1)) turnDn[i] = up[i-1] != null && x >= up[i-1] ? '強頭轉' : '頭轉';
+  }
+  // 過去訊號之後 fwd 根的表現（只算已經走完 fwd 根的訊號）
+  const fw = Math.max(1, P.fwd | 0), bt = (arr, want) => { let n0 = 0, w = 0, s0 = 0;
+    arr.forEach((t, i) => { if (!t || i + fw >= n) return; const r = (c[i + fw] / c[i] - 1) * 100; n0++; s0 += r; if (want * r > 0) w++; });
+    return { n:n0, win: n0 ? w / n0 : 0, avg: n0 ? s0 / n0 : 0 }; };
+  return { mom, sig, bottom, di, up, lo, turnUp, turnDn, slow, btUp: bt(turnUp, 1), btDn: bt(turnDn, -1), fw, turnOK: !!(shares && daily) };
 }
 window.__ind = Object.assign(window.__ind || {}, { qszCalc });
 Object.assign(IND, {
@@ -2551,6 +2583,7 @@ Object.assign(IND, {
       const { LineSeries } = LC(), ln = t => ({ lineWidth:1, priceLineVisible:false, crosshairMarkerVisible:false, lastValueVisible:true, title:t, priceFormat:F2 });
       this.s.up = chart.addSeries(LineSeries, ln('上界'), p);
       this.s.lo = chart.addSeries(LineSeries, ln('下界'), p);
+      this.s.line = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F2 }, p);
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
     state(i){
@@ -2570,11 +2603,15 @@ Object.assign(IND, {
         const x = v.mom[i], g = v.sig[i];
         rev.push(st.rev ? { time:b.time, open:0, close:x, high:Math.max(0, x), low:Math.min(0, x), color:P.cRev, borderColor:P.cRev } : { time:b.time });
         if (!st.kind || g == null){ main.push({ time:b.time }); return; }
-        const col = st.kind === 'hold' ? P.cHold : st.kind === 'wash' ? P.cWash : P.cCash;
+        let col = st.kind === 'hold' ? P.cHold : st.kind === 'wash' ? P.cWash : P.cCash;
+        if (P.showSlow && st.kind === 'hold' && v.slow[i] === 'up') col = P.cHoldSlow;          // 漲勢減速
+        if (P.showSlow && st.kind === 'cash' && v.slow[i] === 'dn') col = P.cCashSlow;          // 跌勢減速
         main.push({ time:b.time, open:g, close:x, high:Math.max(g, x), low:Math.min(g, x), color: st.kind === 'cash' ? CLEAR : col, borderColor:col });
       });
       this.s.rev.setData(rev); this.s.main.setData(main);
       const { LineStyle } = LC();
+      this.s.line.setData(P.showLine ? toLine(v.mom) : []);
+      this.s.line.applyOptions({ color:hexA(S.col.text, .75), lineWidth:+P.lineW });
       this.s.up.setData(P.showBand ? toLine(v.up) : []); this.s.lo.setData(P.showBand ? toLine(v.lo) : []);
       this.s.up.applyOptions({ color:P.cUp, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
       this.s.lo.applyOptions({ color:P.cLo, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
@@ -2583,6 +2620,10 @@ Object.assign(IND, {
       const m = [];
       if (P.showDi) v.di.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceBottom', price:t === '底' ? -10 : 5, shape:'circle', size:0.1, color:P.cDi, text:t }); });
       if (P.showBottom) v.bottom.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceTop', price:10, shape:'arrowUp', color:P.cBot, text:'尋底' }); });
+      if (P.showTurn){
+        v.turnUp.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceBottom', price:v.mom[i-1], shape:'arrowUp', color:P.cTurnUp, text:t, size: t[0] === '強' ? 1.6 : 1 }); });
+        v.turnDn.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceTop', price:v.mom[i-1], shape:'arrowDown', color:P.cTurnDn, text:t, size: t[0] === '強' ? 1.6 : 1 }); });
+      }
       m.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
       this.mk.setMarkers(m);
       refreshMarkers();
@@ -2591,6 +2632,11 @@ Object.assign(IND, {
       const v = this.vals, P = S.qsz, out = []; if (!v) return out;
       if (P.showBottom) v.bottom.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cBot, text:'尋底' }); });
       if (P.showDi) v.di.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'circle', color:P.cDi, text:t }); });
+      if (P.showTurn && P.mainTurn && P.mainTurn !== 'off'){
+        const ok = t => t && (P.mainTurn === 'all' || t[0] === '強');
+        v.turnUp.forEach((t, i) => { if (ok(t)) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cTurnUp, text:t }); });
+        v.turnDn.forEach((t, i) => { if (ok(t)) out.push({ i, position:'aboveBar', shape:'arrowDown', color:P.cTurnDn, text:t }); });
+      }
       return out;
     },
     label(i){
@@ -2600,11 +2646,17 @@ Object.assign(IND, {
       if (st && st.rev) tag += `<span class="tag" style="background:${P.cRev};color:#000">反轉</span>`;
       if (P.showBand && v.mom[i] != null && v.up[i] != null && v.mom[i] >= v.up[i]) tag += `<span class="tag" style="background:${P.cUp};color:#000">過熱</span>`;
       if (P.showBand && v.mom[i] != null && v.lo[i] != null && v.mom[i] <= v.lo[i]) tag += `<span class="tag" style="background:${P.cLo};color:#000">過冷</span>`;
+      if (P.showSlow && st && st.kind === 'hold' && v.slow[i] === 'up') tag += `<span class="tag" style="background:${P.cHoldSlow};color:#000">漲勢減速</span>`;
+      if (P.showSlow && st && st.kind === 'cash' && v.slow[i] === 'dn') tag += `<span class="tag" style="background:${P.cCashSlow};color:#000">跌勢減速</span>`;
+      if (P.showTurn && v.turnUp[i]) tag += `<span class="tag" style="background:${P.cTurnUp};color:#000">${v.turnUp[i]}</span>`;
+      if (P.showTurn && v.turnDn[i]) tag += `<span class="tag" style="background:${P.cTurnDn};color:#000">${v.turnDn[i]}</span>`;
       if (v.bottom[i]) tag += `<span class="tag" style="background:${P.cBot};color:#000">尋底</span>`;
       if (v.di[i]) tag += `<span class="tag" style="background:${P.cDi};color:#000">${v.di[i]}</span>`;
       const note = !(currentSym && currentSym.kind === 'stock') ? '　<span class="muted">尋底只適用個股</span>' : S.tf !== 'D' ? '　<span class="muted">尋底只用日 K</span>' : !v.turnOK ? '　<span class="muted">讀不到股數，尋底停用</span>' : '';
       const band = P.showBand && v.up[i] != null ? `　<span style="color:${P.cUp}">上界 ${fmt(v.up[i], 2)}</span>　<span style="color:${P.cLo}">下界 ${fmt(v.lo[i], 2)}</span>` : '';
-      return `四色動能柱 動能 <b>${fmt(v.mom[i], 2)}%</b>　訊號線 ${fmt(v.sig[i], 2)}%` + band + tag + note;
+      const sg = x => (x > 0 ? '+' : '') + fmt(x, 1) + '%';
+      const bt = P.showTurn && (v.btUp.n || v.btDn.n) ? `<br><span class="muted">這段期間：底轉 ${v.btUp.n} 次，${v.fw} 根後上漲 ${Math.round(v.btUp.win * 100)}%（平均 ${sg(v.btUp.avg)}）・頭轉 ${v.btDn.n} 次，${v.fw} 根後下跌 ${Math.round(v.btDn.win * 100)}%（平均 ${sg(v.btDn.avg)}）</span>` : '';
+      return `四色動能柱 動能 <b>${fmt(v.mom[i], 2)}%</b>　訊號線 ${fmt(v.sig[i], 2)}%` + band + tag + note + bt;
     },
   },
 });
