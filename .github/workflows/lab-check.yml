@@ -12,12 +12,13 @@ jobs:
       - env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: |
-          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium > ../out/install.txt 2>&1 || true
           cat > c.js <<'JS'
           const { chromium } = require('playwright');
           const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***');
           (async () => {
-            const b = await chromium.launch(); const log = [];
+            const log = []; const fs = require('fs'); process.on('unhandledRejection', e => { log.push('ERR ' + scrub(e && e.stack || e)); fs.writeFileSync('../out/log.txt', log.join('\n')); process.exit(0); });
+            const b = await chromium.launch();
             for (const [vp, name, mob] of [[{width:1280,height:900}, 'd', false], [{width:390,height:844}, 'm', true]]){
               const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block', hasTouch:mob }); const pg = await ctx.newPage();
               pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + scrub(m.text())); });
@@ -37,7 +38,8 @@ jobs:
             await b.close();
           })();
           JS
-          node c.js
+          node c.js || true
+          echo done > ../out/ran.txt
       - if: always()
         run: |
           cd out && git init -q && git checkout -q -b probe-out && git add -A
