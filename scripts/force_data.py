@@ -975,14 +975,18 @@ def main():
                 daily[d] = rec
             OPT_DAILY.pop(prev_td(prev_td(d)) or '', None)
         # 最新一天的履約價地圖
-        if tds:
-            last = tds[-1]
+        # 今天盤後資料還沒出來時（例如早上），往回找最近一個已經有選擇權日成交資料的交易日
+        for last in reversed(tds[-3:]):
             _, ch = structure(last, None)
+            if not ch:
+                log('strikes: no option daily yet', last)
+                continue
             pv = prev_td(last)
             pch = chain(opt_daily(pv)) if pv else None
-            if ch:
-                json.dump(strike_map(last, ch, pch, fut_ref.get(last)), open(os.path.join(OUT, 'strikes.json'), 'w', encoding='utf-8'),
-                          ensure_ascii=False, separators=(',', ':'))
+            json.dump(strike_map(last, ch, pch, fut_ref.get(last)), open(os.path.join(OUT, 'strikes.json'), 'w', encoding='utf-8'),
+                      ensure_ascii=False, separators=(',', ':'))
+            log('strikes written', last)
+            break
     except RateLimited as e:
         log('STOP structure', e)
     except Exception as e:
