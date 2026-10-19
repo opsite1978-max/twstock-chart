@@ -5,7 +5,7 @@ permissions:
   contents: write
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
