@@ -1,0 +1,45 @@
+name: 買方推演實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***');
+          (async () => {
+            const b = await chromium.launch(); const log = [];
+            for (const [vp, name, mob] of [[{width:1280,height:900}, 'd', false], [{width:390,height:844}, 'm', true]]){
+              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block', hasTouch:mob }); const pg = await ctx.newPage();
+              pg.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log.push(name + ' console: ' + scrub(m.text())); });
+              pg.on('pageerror', e => log.push(name + ' pageerror: ' + scrub(e.message)));
+              await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
+              await pg.goto('https://opsite1978-max.github.io/twstock-chart/optsim.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.waitForTimeout(8000);
+              const g = await pg.$('#graveBox'); await g.screenshot({ path:'../out/' + name + '-grave.png' });
+              log.push(name + ' NOTE ' + scrub(await pg.textContent('#gNote')));
+              log.push(name + ' TBL ' + scrub((await pg.textContent('#gTbl')).replace(/\s+/g, ' ')).slice(0, 900));
+              const bb = await (await pg.$('#cvGrave')).boundingBox();
+              await pg.click('#gOffChips button[data-off="300"]'); await pg.waitForTimeout(500);
+              const g2 = await pg.$('#graveBox'); await g2.screenshot({ path:'../out/' + name + '-grave300.png' });
+              await ctx.close();
+            }
+            require('fs').writeFileSync('../out/log.txt', log.join('\n'));
+            await b.close();
+          })();
+          JS
+          node c.js
+      - if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out

@@ -12,13 +12,13 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --up:#ef5350; --down:#26a69a;
-    --opt:#f0883e; --fut:#4c8dff; --left:#b98cff; --zone:rgba(138,147,166,.16);
+    --opt:#f0883e; --fut:#4c8dff; --left:#b98cff; --zone:rgba(138,147,166,.16); --zone2:rgba(138,147,166,.42);
     color-scheme:dark;
   }
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4;
     --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
-    --opt:#e8711f; --fut:#2f6fe0; --left:#8a5cf0; --zone:rgba(102,112,133,.14); color-scheme:light;
+    --opt:#e8711f; --fut:#2f6fe0; --left:#8a5cf0; --zone:rgba(102,112,133,.14); --zone2:rgba(102,112,133,.36); color-scheme:light;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);
@@ -75,6 +75,7 @@
   th{background:var(--panel);color:var(--muted);font-weight:500}
   td.l,th.l{text-align:left;position:sticky;left:0;background:var(--panel)}
   .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:8px 0;font-size:13px}
+  .gtip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.6;min-width:180px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
   footer{margin-top:18px;font-size:12px;color:var(--muted)}
   footer p{margin:4px 0}
 </style>
@@ -112,6 +113,16 @@
     <div class="chips" id="kChips"></div>
     <div class="chips" id="dChips"></div>
     <div class="row"><button class="primary" id="run">開始推演</button><span class="muted small" id="runInfo"></span></div>
+  </div>
+
+  <div class="box" id="graveBox">
+    <h2>買方墳場地圖：頂部與底部的灰色地帶</h2>
+    <p class="desc">每個結算日同時看「買買權」與「買賣權」：<b>頂部</b>＝看漲方向對了、但結算還沒漲過買權損益兩平（照樣虧）；<b>底部</b>＝看跌方向對了、但還沒跌破賣權損益兩平。深灰＝連履約價都沒碰到、權利金全部歸零；淺灰＝有價值但不夠付權利金。</p>
+    <div class="chips" id="gOffChips"></div>
+    <div class="legend" id="gLg"></div>
+    <div class="chartwrap"><canvas id="cvGrave"></canvas><div class="gtip" id="gTip"></div></div>
+    <div class="tblwrap" id="gTbl"></div>
+    <p class="stat" id="gNote"></p>
   </div>
 
   <div id="out"><div class="msg">設定好條件後按「開始推演」。</div></div>
@@ -189,11 +200,13 @@ const SAVE_KEY = 'twchart.optsim';
 let saved = {}; try { saved = JSON.parse(store.get(SAVE_KEY) || '{}') || {}; } catch(e){}
 let side = saved.side === 'P' ? 'P' : 'C';
 let MKT = null;   // 最新台指資料
+let STRK = null;  // 各結算日、各履約價的隱含波動率（本站每天收盤後算好）
+let gOff = typeof saved.gOff === 'number' ? saved.gOff : 0;
 const ids = ['S0', 'K', 'days', 'exitDay', 'iv0', 'iv1', 'rv', 'mu', 'prem', 'fee', 'N', 'tail'];
 const num = id => { const v = parseFloat($('#' + id).value); return isNaN(v) ? null : v; };
 function setVal(id, v){ $('#' + id).value = v == null ? '' : v; }
 function saveInputs(){
-  const o = { side, kOff: (num('K') ?? 0) - roundStrike(num('S0') ?? 0), mu: num('mu'), fee: num('fee'), N: $('#N').value, tail: $('#tail').value, exitFrac: (num('exitDay') || 1) / (num('days') || 1) };
+  const o = { side, gOff, kOff: (num('K') ?? 0) - roundStrike(num('S0') ?? 0), mu: num('mu'), fee: num('fee'), N: $('#N').value, tail: $('#tail').value, exitFrac: (num('exitDay') || 1) / (num('days') || 1) };
   store.set(SAVE_KEY, JSON.stringify(o));
 }
 const roundStrike = s => Math.round(s / 100) * 100;
@@ -240,10 +253,13 @@ async function loadMarket(){
       const m = rs.reduce((a, b) => a + b, 0) / rs.length;
       rv = Math.sqrt(rs.reduce((a, b) => a + (b - m) ** 2, 0) / rs.length * 252);
     }
-    MKT = { d: last.d, c: last.c, iv: last.iv, nearExp: last.nearExp, rv, night: null };
+    MKT = { d: last.d, c: last.c, iv: last.iv, nearExp: last.nearExp, rv, night: null, hist: ds.slice(-20).map(x => ({ d: x.d, c: x.c })) };
   } catch(e){ MKT = null; return; }
   // 現價改用台指期近月最新價（含夜盤），和看盤軟體一致；只查一次 FinMind
   try { const f = await futLatest(MKT.d); if (f) MKT.fut = f; } catch(e){ MKT.futErr = /fetch|network/i.test(e.message || '') ? '連不上 FinMind' : (e.message || String(e)); }
+}
+async function loadStrikes(){
+  try { const r = await fetch('data/force/strikes.json?t=' + Date.now()); STRK = r.ok ? await r.json() : null; } catch(e){ STRK = null; }
 }
 async function finmindOnce(params){
   const FM = 'https://api.finmindtrade.com/api/v4/data', tok = (SET.token || '').trim();
@@ -443,6 +459,125 @@ function drawScatter(cv, R, p){
   if (zB > zA && X(zB) - X(zA) > 24) ctx.fillText('墳場區', (X(Math.max(zA, x0)) + X(Math.min(zB, x1))) / 2, pad.t + 2);
 }
 
+/* ───────── 買方墳場地圖 ───────── */
+const expMs = d => Date.parse(d + 'T13:30:00+08:00');
+function ivAt(e, K){
+  const R = e.rows || []; if (!R.length) return e.iv;
+  if (K <= R[0][0]) return R[0][10]; if (K >= R[R.length - 1][0]) return R[R.length - 1][10];
+  for (let i = 1; i < R.length; i++) if (R[i][0] >= K){ const a = R[i - 1], b = R[i]; return a[10] + (b[10] - a[10]) * (K - a[0]) / (b[0] - a[0]); }
+  return e.iv;
+}
+function lnProb(F, sig, T, a, b){   // 結算落在 a～b 的機率（依隱含波動率，市場定價隱含，不是預測）
+  const sv = sig * Math.sqrt(T), cdf = x => x <= 0 ? 0 : ncdf((Math.log(x / F) + 0.5 * sv * sv) / sv);
+  return Math.max(0, cdf(b) - cdf(a));
+}
+function graveCalc(){
+  const S0 = num('S0'), fee = num('fee') ?? 0; if (!(S0 > 0)) return null;
+  const feePt = fee / POINT, now = Date.now(), atm = roundStrike(S0), Kc = atm + gOff, Kp = atm - gOff;
+  let src = [], flat = false;
+  if (STRK && STRK.exps) src = STRK.exps.filter(e => expMs(e.exp) > now && expMs(e.exp) - now < 36 * 864e5).map(e => ({ exp:e.exp, code:e.code, F:e.F * S0 / (STRK.fut || e.F), iv:e.iv, e }));
+  if (!src.length){   // 沒有履約價資料時，用上面填的進場隱含波動率
+    flat = true; const iv = num('iv0') || 18, today = twToday();
+    for (let i = 1; i <= 35 && src.length < 6; i++){ const d = new Date(Date.parse(today) + i * 864e5).toISOString().slice(0, 10), w = new Date(d + 'T00:00:00Z').getUTCDay(); if (w === 3 || w === 5) src.push({ exp:d, code:'', F:S0, iv, e:null }); }
+  }
+  const rows = src.map(x => {
+    const T = Math.max(3600e3, expMs(x.exp) - now) / (365 * 864e5);
+    const ivc = (x.e ? ivAt(x.e, Kc) : x.iv) / 100, ivp = (x.e ? ivAt(x.e, Kp) : x.iv) / 100, sig = x.iv / 100;
+    const pc = price('C', x.F, Kc, T, ivc), pp = price('P', x.F, Kp, T, ivp);
+    const beC = Kc + pc + (feePt + TAX * pc) + feePt, beP = Kp - (pp + feePt + TAX * pp + feePt);
+    const top = { lo:S0, hi:beC, zero:Math.max(S0, Kc) }, bot = { hi:S0, lo:beP, zero:Math.min(S0, Kp) };
+    return { exp:x.exp, code:x.code, days:(expMs(x.exp) - now) / 864e5, T, F:x.F, iv:x.iv, Kc, Kp, pc, pp, ivc, ivp, beC, beP, top, bot,
+      pTop:lnProb(x.F, sig, T, S0, beC), pBot:lnProb(x.F, sig, T, beP, S0), pCwin:lnProb(x.F, sig, T, beC, 1e9), pPwin:lnProb(x.F, sig, T, 1, beP) };
+  });
+  return { S0, Kc, Kp, rows, flat };
+}
+function renderGrave(){
+  const atm0 = roundStrike(num('S0') || 0);
+  $("#gOffChips").innerHTML = '<span class="muted small" style="align-self:center">履約價：</span>' + [0, 100, 200, 300, 500, 800].map(o =>
+    `<button data-off="${o}" class="${o === gOff ? 'on' : ''}">${o ? '價外 ' + o : '價平'}（買權 ${fmtInt(atm0 + o)}／賣權 ${fmtInt(atm0 - o)}）</button>`).join('');
+  const G = graveCalc(); if (!G || !G.rows.length){ $('#gTbl').innerHTML = ''; return; }
+  $('#gLg').innerHTML = `<span><i style="background:var(--text)"></i>台指期（近 20 天收盤＋現價）</span><span><i style="background:var(--zone2)"></i>歸零（權利金全賠）</span><span><i style="background:var(--zone)"></i>有價值仍虧</span><span><i style="background:var(--up)"></i>頂部上界：買權損益兩平</span><span><i style="background:var(--down)"></i>底部下界：賣權損益兩平</span>`;
+  drawGrave(G);
+  const pcc = v => (v * 100).toFixed(0) + '%';
+  let h = `<table><tr><th class="l">結算日</th><th>剩</th><th>買權 權利金</th><th>頂部上界<br>（買權兩平）</th><th>歸零到<br>（買權履約價）</th><th>頂部下界<br>（現價）</th><th>落在頂部</th><th>底部上界<br>（現價）</th><th>歸零到<br>（賣權履約價）</th><th>底部下界<br>（賣權兩平）</th><th>賣權 權利金</th><th>落在底部</th><th>買方全虧帶寬</th></tr>`;
+  for (const r of G.rows){
+    const kind = /W/.test(r.code) ? '週三' : /F/.test(r.code) ? '週五' : r.code ? '月選' : '約';
+    h += `<tr><td class="l">${md(r.exp)}（${WD[new Date(r.exp + 'T00:00:00Z').getUTCDay()]}）${kind}</td><td>${r.days < 1 ? (r.days * 24).toFixed(0) + ' 時' : r.days.toFixed(1) + ' 天'}</td>`
+      + `<td>${f1(r.pc)}</td><td class="up"><b>${fmtInt(r.beC)}</b></td><td>${r.Kc > G.S0 ? fmtInt(r.Kc) : '–'}</td><td>${fmtInt(G.S0)}</td><td>${pcc(r.pTop)}</td>`
+      + `<td>${fmtInt(G.S0)}</td><td>${r.Kp < G.S0 ? fmtInt(r.Kp) : '–'}</td><td class="dn"><b>${fmtInt(r.beP)}</b></td><td>${f1(r.pp)}</td><td>${pcc(r.pBot)}</td>`
+      + `<td>${fmtInt(r.beC - r.beP)} 點（${pcc(r.pTop + r.pBot)}）</td></tr>`;
+  }
+  $('#gTbl').innerHTML = h + '</table>';
+  const near = G.rows[0];
+  $('#gNote').innerHTML = `以最近一個結算日 ${md(near.exp)} 來看：結算要 <b class="up">高於 ${fmtInt(near.beC)}</b>（漲 ${fmtInt(near.beC - G.S0)} 點）買買權才賺，要 <b class="dn">低於 ${fmtInt(near.beP)}</b>（跌 ${fmtInt(G.S0 - near.beP)} 點）買賣權才賺；`
+    + `中間 ${fmtInt(near.beC - near.beP)} 點是買方全虧帶。依目前隱含波動率估算，結算落在全虧帶的機率約 <b>${pcc(near.pTop + near.pBot)}</b>，買權賺 ${pcc(near.pCwin)}、賣權賺 ${pcc(near.pPwin)}。`
+    + `<br><span class="small">權利金用 ${G.flat ? '上面填的進場隱含波動率' : `本站 ${STRK.d} 收盤後算好的各履約價隱含波動率`}＋現價 ${fmtInt(G.S0)} 計算的理論價，已含手續費（每口單邊 ${fmtInt(num('fee') ?? 0)} 元）與期交稅；機率是市場隱含的估計，不是預測。和實際報價可能差幾點，下單前以券商報價為準。</span>`;
+}
+function drawGrave(G){
+  const cv = $('#cvGrave'), H = (cv.parentElement.clientWidth < 600 ? 300 : 340);
+  const { ctx, w, h } = setupCanvas(cv, H);
+  const now = Date.now(), hist = (MKT && MKT.hist) || [];
+  const dOf = ms => (ms - now) / 864e5;
+  const hp = hist.map(x => ({ x:dOf(Date.parse(x.d + 'T13:45:00+08:00')), y:x.c })).filter(p => p.x < 0);
+  const rows = G.rows, x0 = Math.min(-3, hp.length ? hp[0].x : -3) - 0.5, x1 = rows[rows.length - 1].days + 1.5;
+  const ys = hp.map(p => p.y).concat([G.S0], rows.flatMap(r => [r.beC, r.beP]));
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const sp = (y1 - y0) || 100; y0 -= sp * 0.08; y1 += sp * 0.12;
+  const pad = { l:50, r:12, t:10, b:22 };
+  const { X, Y } = axes(ctx, w, h, pad, x0, x1, y0, y1, v => md(new Date(now + v * 864e5 + 8 * 3600e3).toISOString().slice(0, 10)), v => fmtInt(v));
+  // 現在分隔線、現價延伸線
+  ctx.strokeStyle = css('--muted'); ctx.setLineDash([2, 3]);
+  ctx.beginPath(); ctx.moveTo(X(0), pad.t); ctx.lineTo(X(0), h - pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X(0), Y(G.S0)); ctx.lineTo(w - pad.r, Y(G.S0)); ctx.stroke(); ctx.setLineDash([]);
+  // 每個結算日一根柱：頂部、底部灰色地帶
+  const xs = rows.map(r => X(r.days)), gaps = xs.slice(1).map((x, i) => x - xs[i]);
+  const bw = Math.max(8, Math.min(30, (gaps.length ? Math.min(...gaps) : 40) * 0.7));
+  rows.forEach((r, i) => {
+    const x = xs[i] - bw / 2;
+    const box = (a, b, col) => { const ya = Y(Math.max(a, b)), yb = Y(Math.min(a, b)); if (yb - ya > 0.5){ ctx.fillStyle = col; ctx.fillRect(x, ya, bw, yb - ya); } };
+    box(r.top.zero, r.top.hi, css('--zone')); box(G.S0, r.top.zero, css('--zone2'));
+    box(r.bot.lo, r.bot.zero, css('--zone')); box(r.bot.zero, G.S0, css('--zone2'));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = css('--up'); ctx.beginPath(); ctx.moveTo(x - 2, Y(r.beC)); ctx.lineTo(x + bw + 2, Y(r.beC)); ctx.stroke();
+    ctx.strokeStyle = css('--down'); ctx.beginPath(); ctx.moveTo(x - 2, Y(r.beP)); ctx.lineTo(x + bw + 2, Y(r.beP)); ctx.stroke();
+    ctx.lineWidth = 1;
+  });
+  // 損益兩平連線
+  const link = (key, col) => { ctx.strokeStyle = col; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(X(0), Y(G.S0)); rows.forEach((r, i) => ctx.lineTo(xs[i], Y(r[key]))); ctx.stroke(); ctx.setLineDash([]); };
+  link('beC', css('--up')); link('beP', css('--down'));
+  // 價格線
+  ctx.strokeStyle = css('--text'); ctx.lineWidth = 1.8; ctx.beginPath();
+  hp.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.y)) : ctx.moveTo(X(p.x), Y(p.y))); ctx.lineTo(X(0), Y(G.S0)); ctx.stroke(); ctx.lineWidth = 1;
+  ctx.fillStyle = css('--text'); ctx.beginPath(); ctx.arc(X(0), Y(G.S0), 3.5, 0, 7); ctx.fill();
+  // 數字標籤（空間不夠時只標頭尾）
+  ctx.font = 'bold 11px -apple-system,"Noto Sans TC",sans-serif'; ctx.textAlign = 'center';
+  let lastLab = -1e9;
+  rows.forEach((r, i) => { if (xs[i] - lastLab < 46 && i !== rows.length - 1) return; if (i === rows.length - 1 && xs[i] - lastLab < 46 && lastLab > -1e9) return; lastLab = xs[i];
+    ctx.fillStyle = css('--up'); ctx.textBaseline = 'bottom'; ctx.fillText(fmtInt(r.beC), xs[i], Y(r.beC) - 3);
+    ctx.fillStyle = css('--down'); ctx.textBaseline = 'top'; ctx.fillText(fmtInt(r.beP), xs[i], Y(r.beP) + 3); });
+  ctx.fillStyle = css('--muted'); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = '11px -apple-system,"Noto Sans TC",sans-serif';
+  ctx.fillText('現價 ' + fmtInt(G.S0), X(0) + 5, Y(G.S0) - 3);
+  cv._g = { G, xs, bw };
+}
+function graveTip(ev){
+  const cv = $('#cvGrave'), g = cv._g, tp = $('#gTip'); if (!g) return;
+  const rc = cv.getBoundingClientRect(), x = ev.clientX - rc.left;
+  let k = -1, best = 1e9; g.xs.forEach((v, i) => { const d = Math.abs(v - x); if (d < best){ best = d; k = i; } });
+  if (k < 0 || best > Math.max(24, g.bw)){ tp.style.display = 'none'; return; }
+  const r = g.G.rows[k], S0 = g.G.S0;
+  tp.innerHTML = `<b>${md(r.exp)} 結算</b>（剩 ${r.days < 1 ? (r.days * 24).toFixed(0) + ' 小時' : r.days.toFixed(1) + ' 天'}）<br>`
+    + `<span class="up">頂部（買權 ${fmtInt(r.Kc)}，權利金 ${f1(r.pc)}）</span><br>上界 <b>${fmtInt(r.beC)}</b>・下界 ${fmtInt(S0)}${r.Kc > S0 ? `・${fmtInt(S0)}～${fmtInt(r.Kc)} 歸零` : ''}<br>`
+    + `<span class="dn">底部（賣權 ${fmtInt(r.Kp)}，權利金 ${f1(r.pp)}）</span><br>上界 ${fmtInt(S0)}・下界 <b>${fmtInt(r.beP)}</b>${r.Kp < S0 ? `・${fmtInt(r.Kp)}～${fmtInt(S0)} 歸零` : ''}<br>`
+    + `買方全虧帶 ${fmtInt(r.beC - r.beP)} 點，機率約 ${((r.pTop + r.pBot) * 100).toFixed(0)}%`;
+  tp.style.display = 'block'; const pw = cv.parentElement.clientWidth, tw = tp.offsetWidth;
+  tp.style.left = Math.max(4, Math.min(pw - tw - 4, x + 14 > pw - tw ? x - tw - 14 : x + 14)) + 'px'; tp.style.top = '8px';
+}
+$('#cvGrave').addEventListener('pointermove', graveTip);
+$('#cvGrave').addEventListener('pointerdown', graveTip);
+$('#cvGrave').addEventListener('pointerleave', () => { $('#gTip').style.display = 'none'; });
+$("#gOffChips").addEventListener('click', e => { const b = e.target.closest('button[data-off]'); if (!b) return; gOff = +b.dataset.off; try { const o = JSON.parse(store.get(SAVE_KEY) || '{}'); o.gOff = gOff; store.set(SAVE_KEY, JSON.stringify(o)); } catch(e2){} renderGrave(); });
+['S0', 'fee', 'iv0'].forEach(id => $('#' + id).addEventListener('change', renderGrave));
+let gRsz; window.addEventListener('resize', () => { clearTimeout(gRsz); gRsz = setTimeout(renderGrave, 150); });
+
 /* ───────── 劇本表：漲跌幾點 × 抱幾天 ───────── */
 function scenarioTable(p, R){
   const { S0, K, days, iv1, rv } = p, sgn = side === 'C' ? 1 : -1;
@@ -612,7 +747,7 @@ $('#dChips').addEventListener('click', e => {
   setVal('days', d); setVal('exitDay', Math.max(1, Math.min(d, Math.round(d * frac)))); setVal('prem', '');
   buildDChips(); run();
 });
-$('#refill').addEventListener('click', async () => { $('#src').textContent = '讀取最新台指期資料中…'; await loadMarket(); fillMarket(); paintSide(); run(); });
+$('#refill').addEventListener('click', async () => { $('#src').textContent = '讀取最新台指期資料中…'; await Promise.all([loadMarket(), loadStrikes()]); fillMarket(); paintSide(); renderGrave(); run(); });
 $('#run').addEventListener('click', run);
 ['S0', 'K', 'days'].forEach(id => $('#' + id).addEventListener('change', () => { buildKChips(); buildDChips(); }));
 ids.forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') run(); }));
@@ -623,9 +758,10 @@ ids.forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === '
   if (saved.N) $('#N').value = saved.N; else $('#N').value = '100000';
   if (saved.tail) $('#tail').value = saved.tail;
   paintSide();
-  await loadMarket();
+  await Promise.all([loadMarket(), loadStrikes()]);
   fillMarket();
   paintSide();
+  renderGrave();
   run();
 })();
 </script>
