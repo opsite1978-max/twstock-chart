@@ -12,13 +12,13 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --up:#ef5350; --down:#26a69a;
-    --opt:#f0883e; --fut:#4c8dff; --left:#b98cff; --zone:rgba(138,147,166,.16); --zone2:rgba(138,147,166,.42);
+    --opt:#f0883e; --fut:#4c8dff; --left:#b98cff; --zone:rgba(138,147,166,.16); --zone2:rgba(138,147,166,.55); --zoneL:rgba(138,147,166,.22);
     color-scheme:dark;
   }
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4;
     --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
-    --opt:#e8711f; --fut:#2f6fe0; --left:#8a5cf0; --zone:rgba(102,112,133,.14); --zone2:rgba(102,112,133,.36); color-scheme:light;
+    --opt:#e8711f; --fut:#2f6fe0; --left:#8a5cf0; --zone:rgba(102,112,133,.14); --zone2:rgba(102,112,133,.45); --zoneL:rgba(102,112,133,.18); color-scheme:light;
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);
@@ -117,7 +117,7 @@
 
   <div class="box" id="graveBox">
     <h2>買方墳場地圖：頂部與底部的灰色地帶</h2>
-    <p class="desc">每個結算日同時看「買買權」與「買賣權」：<b>頂部</b>＝看漲方向對了、但結算還沒漲過買權損益兩平（照樣虧）；<b>底部</b>＝看跌方向對了、但還沒跌破賣權損益兩平。深灰＝連履約價都沒碰到、權利金全部歸零；淺灰＝有價值但不夠付權利金。</p>
+    <p class="desc">每個結算日同時看「買買權」與「買賣權」：<b>頂部</b>＝看漲方向對了、但結算還沒漲過買權損益兩平（照樣虧）；<b>底部</b>＝看跌方向對了、但還沒跌破賣權損益兩平。濃灰＝連履約價都沒碰到、權利金全部歸零；淡灰＝有價值但不夠付權利金。紅線＝頂部上界、綠線＝底部下界，中間就是買方全虧帶。</p>
     <div class="chips" id="gOffChips"></div>
     <div class="legend" id="gLg"></div>
     <div class="chartwrap"><canvas id="cvGrave"></canvas><div class="gtip" id="gTip"></div></div>
@@ -496,7 +496,7 @@ function renderGrave(){
   $("#gOffChips").innerHTML = '<span class="muted small" style="align-self:center">履約價：</span>' + [0, 100, 200, 300, 500, 800].map(o =>
     `<button data-off="${o}" class="${o === gOff ? 'on' : ''}">${o ? '價外 ' + o : '價平'}（買權 ${fmtInt(atm0 + o)}／賣權 ${fmtInt(atm0 - o)}）</button>`).join('');
   const G = graveCalc(); if (!G || !G.rows.length){ $('#gTbl').innerHTML = ''; return; }
-  $('#gLg').innerHTML = `<span><i style="background:var(--text)"></i>台指期（近 20 天收盤＋現價）</span><span><i style="background:var(--zone2)"></i>歸零（權利金全賠）</span><span><i style="background:var(--zone)"></i>有價值仍虧</span><span><i style="background:var(--up)"></i>頂部上界：買權損益兩平</span><span><i style="background:var(--down)"></i>底部下界：賣權損益兩平</span>`;
+  $('#gLg').innerHTML = `<span><i style="background:var(--text)"></i>台指期（近期收盤＋現價）</span><span><i style="background:var(--zone2)"></i>歸零（權利金全賠）</span><span><i style="background:var(--zoneL);outline:1px solid var(--muted)"></i>有價值仍虧</span><span><i style="background:var(--up)"></i>頂部上界：買權損益兩平</span><span><i style="background:var(--down)"></i>底部下界：賣權損益兩平</span>`;
   drawGrave(G);
   const pcc = v => (v * 100).toFixed(0) + '%';
   let h = `<table><tr><th class="l">結算日</th><th>剩</th><th>買權 權利金</th><th>頂部上界<br>（買權兩平）</th><th>歸零到<br>（買權履約價）</th><th>頂部下界<br>（現價）</th><th>落在頂部</th><th>底部上界<br>（現價）</th><th>歸零到<br>（賣權履約價）</th><th>底部下界<br>（賣權兩平）</th><th>賣權 權利金</th><th>落在底部</th><th>買方全虧帶寬</th></tr>`;
@@ -516,7 +516,7 @@ function renderGrave(){
 function drawGrave(G){
   const cv = $('#cvGrave'), H = (cv.parentElement.clientWidth < 600 ? 300 : 340);
   const { ctx, w, h } = setupCanvas(cv, H);
-  const now = Date.now(), hist = (MKT && MKT.hist) || [];
+  const now = Date.now(), hist = ((MKT && MKT.hist) || []).slice(w < 600 ? -8 : -20);
   const dOf = ms => (ms - now) / 864e5;
   const hp = hist.map(x => ({ x:dOf(Date.parse(x.d + 'T13:45:00+08:00')), y:x.c })).filter(p => p.x < 0);
   const rows = G.rows, x0 = Math.min(-3, hp.length ? hp[0].x : -3) - 0.5, x1 = rows[rows.length - 1].days + 1.5;
@@ -534,8 +534,9 @@ function drawGrave(G){
   rows.forEach((r, i) => {
     const x = xs[i] - bw / 2;
     const box = (a, b, col) => { const ya = Y(Math.max(a, b)), yb = Y(Math.min(a, b)); if (yb - ya > 0.5){ ctx.fillStyle = col; ctx.fillRect(x, ya, bw, yb - ya); } };
-    box(r.top.zero, r.top.hi, css('--zone')); box(G.S0, r.top.zero, css('--zone2'));
-    box(r.bot.lo, r.bot.zero, css('--zone')); box(r.bot.zero, G.S0, css('--zone2'));
+    box(r.top.zero, r.top.hi, css('--zoneL')); box(G.S0, r.top.zero, css('--zone2'));
+    box(r.bot.lo, r.bot.zero, css('--zoneL')); box(r.bot.zero, G.S0, css('--zone2'));
+    ctx.strokeStyle = css('--muted'); ctx.globalAlpha = 0.6; ctx.strokeRect(x + 0.5, Y(r.beC) + 0.5, bw - 1, Y(r.beP) - Y(r.beC) - 1); ctx.globalAlpha = 1;
     ctx.lineWidth = 2;
     ctx.strokeStyle = css('--up'); ctx.beginPath(); ctx.moveTo(x - 2, Y(r.beC)); ctx.lineTo(x + bw + 2, Y(r.beC)); ctx.stroke();
     ctx.strokeStyle = css('--down'); ctx.beginPath(); ctx.moveTo(x - 2, Y(r.beP)); ctx.lineTo(x + bw + 2, Y(r.beP)); ctx.stroke();
@@ -554,8 +555,8 @@ function drawGrave(G){
   rows.forEach((r, i) => { if (xs[i] - lastLab < 46 && i !== rows.length - 1) return; if (i === rows.length - 1 && xs[i] - lastLab < 46 && lastLab > -1e9) return; lastLab = xs[i];
     ctx.fillStyle = css('--up'); ctx.textBaseline = 'bottom'; ctx.fillText(fmtInt(r.beC), xs[i], Y(r.beC) - 3);
     ctx.fillStyle = css('--down'); ctx.textBaseline = 'top'; ctx.fillText(fmtInt(r.beP), xs[i], Y(r.beP) + 3); });
-  ctx.fillStyle = css('--muted'); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.font = '11px -apple-system,"Noto Sans TC",sans-serif';
-  ctx.fillText('現價 ' + fmtInt(G.S0), X(0) + 5, Y(G.S0) - 3);
+  ctx.fillStyle = css('--muted'); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.font = '11px -apple-system,"Noto Sans TC",sans-serif';
+  ctx.fillText('現價 ' + fmtInt(G.S0), xs[xs.length - 1] - bw / 2 - 4, Y(G.S0) - 3);
   cv._g = { G, xs, bw };
 }
 function graveTip(ev){
