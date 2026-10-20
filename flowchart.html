@@ -205,7 +205,7 @@ async function tradingDays(n){
   if (!c || c.d !== twToday()){ const rows = await finmind({ dataset:'TaiwanStockTradingDate', start_date:shiftDay(twToday(), -200) }); c = { d:twToday(), list:[...new Set(rows.map(r => r.date))].sort() }; store.set('flow.cal', JSON.stringify(c)); }
   return c.list.filter(d => d <= twToday()).slice(-n);
 }
-const NDAYS = { '1':5, '5':10, '15':20, '30':30, '60':40, '240':60 };
+const NDAYS = { '1':5, '5':10, '15':20, '30':30, '60':40, '240':80 };
 const TCACHE = new Map();
 async function loadTicks(sym, tf){
   const days = await tradingDays(NDAYS[tf] || 40), per = new Array(days.length); let done = 0, i = 0;
@@ -322,19 +322,20 @@ function calibrate(z, span = 5, q = 0.9, qmin = 120, qmax = 1500){
 }
 function flowLines(bars, tf, short){
   const net = bars.map(b => b.net), ret = bars.map(b => b.o ? (b.c - b.o) / b.o : 0);
-  const zN = slotZ(bars, net), zR = slotZ(bars, ret);
+  const mh = short ? 5 : 8, bmin = short ? 40 : 100;   // 個股只抓幾十天，暖機門檻放低
+  const zN = slotZ(bars, net, 30, mh), zR = slotZ(bars, ret, 30, mh);
   const resid = []; const xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0;
   for (let i = 0; i < bars.length; i++){
     let r = null;
     if (zN[i] != null && zR[i] != null){
       const m = xs.length;
-      if (m >= 100 && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
+      if (m >= bmin && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
       xs.push(zR[i]); ys.push(zN[i]); sx += zR[i]; sy += zN[i]; sxx += zR[i] ** 2; sxy += zR[i] * zN[i];
       if (xs.length > 500){ const p = xs.shift(), q2 = ys.shift(); sx -= p; sy -= q2; sxx -= p * p; sxy -= p * q2; }
     }
     resid.push(r);
   }
-  const daily = tf === 'D', qmin = daily ? 30 : short ? 60 : 120, qmax = daily ? 150 : 1500;
+  const daily = tf === 'D', qmin = daily ? 30 : short ? 40 : 120, qmax = daily ? 150 : 1500;
   return { F:calibrate(zN, 5, 0.9, qmin, qmax), FR:calibrate(resid, 5, 0.9, qmin, qmax) };
 }
 
