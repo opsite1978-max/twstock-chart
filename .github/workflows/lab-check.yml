@@ -6,6 +6,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
@@ -17,32 +18,33 @@ jobs:
           const { chromium } = require('playwright');
           const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***');
           (async () => {
-            const log = []; const fs = require('fs');
+            const log = []; const fs = require('fs'); const L = x => { log.push(x); fs.writeFileSync('../out/log.txt', log.join('\n')); };
+            const T = (p, ms = 20000) => Promise.race([p, new Promise(r => setTimeout(() => r('TIMEOUT'), ms))]);
             const b = await chromium.launch();
             for (const [vp, name] of [[{width:1280,height:900}, 'd'], [{width:390,height:844}, 'm']]){
-              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage();
-              pg.on('pageerror', e => log.push(name + ' pageerror: ' + scrub(e.message)));
-              pg.on('console', m => { if (m.type() === 'error') log.push(name + ' console: ' + scrub(m.text())); });
+              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage(); pg.setDefaultTimeout(20000); L(name + ' start');
+              pg.on('pageerror', e => L(name + ' pageerror: ' + scrub(e.message)));
+              pg.on('console', m => { if (m.type() === 'error') L(name + ' console: ' + scrub(m.text())); });
               await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); localStorage.setItem('flow.tf', '60'); } catch(e){} }, tok);
               await pg.goto('https://opsite1978-max.github.io/twstock-chart/flowchart.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
               await pg.waitForTimeout(14000);
-              await pg.screenshot({ path:'../out/' + name + '-flow60.png' });
-              log.push(name + ' EARLY ' + (await pg.textContent('#tblEarly')).replace(/\s+/g, ' '));
+              await T(pg.screenshot({ path:'../out/' + name + '-flow60.png' }));
+              L(name + ' EARLY ' + (await T(pg.textContent('#tblEarly')) || '').replace(/\s+/g, ' '));
               await pg.click('#tfSeg button[data-tf="240"]'); await pg.waitForTimeout(4000);
-              log.push(name + ' EARLY240 ' + (await pg.textContent('#tblEarly')).replace(/\s+/g, ' '));
+              L(name + ' EARLY240 ' + (await T(pg.textContent('#tblEarly')) || '').replace(/\s+/g, ' '));
               const url = name === 'd' ? 'index.html' : 'mobile.html';
               await pg.goto('https://opsite1978-max.github.io/twstock-chart/' + url + '?t=' + Date.now(), { waitUntil:'domcontentloaded' });
               await pg.waitForTimeout(3000);
               await pg.fill('#sym', 'TX'); await pg.click(`#tfSeg button[data-tf="60"]`).catch(() => {}); await pg.click('#loadBtn'); await pg.waitForTimeout(20000);
-              log.push(name + ' LBL ' + scrub(await pg.textContent('#lbl-flow').catch(() => '?')));
-              await pg.screenshot({ path:'../out/' + name + '-idx.png', fullPage:true });
+              L(name + ' LBL ' + scrub(await T(pg.textContent('#lbl-flow').catch(() => '?'))));
+              await T(pg.screenshot({ path:'../out/' + name + '-idx.png', fullPage:true }));
               await ctx.close();
             }
             fs.writeFileSync('../out/log.txt', log.join('\n'));
             await b.close();
           })().catch(e => { require('fs').writeFileSync('../out/log.txt', 'ERR ' + scrub(e.stack || e)); });
           JS
-          node c.js || true
+          timeout 600 node c.js || true
       - if: always()
         run: |
           cd out && git init -q && git checkout -q -b probe-out && git add -A
