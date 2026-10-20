@@ -2935,7 +2935,8 @@ function flwSeries(tf){
     resid.push(r);
   }
   const qmin = tf === 'D' ? 30 : 120, qmax = tf === 'D' ? 150 : 1500;
-  const R = { bars, FR:flwCal(resid, 5, qmin, qmax), F:flwCal(zN, 5, qmin, qmax), FRf:flwCal(resid, 2, qmin, qmax), Ff:flwCal(zN, 2, qmin, qmax), map:new Map(bars.map((b, i) => [b.t, i])) };
+  const R = { bars, map:new Map(bars.map((b, i) => [b.t, i])) }, src = { FR:[resid, 5], F:[zN, 5], FRf:[resid, 2], Ff:[zN, 2] };
+  for (const [k, [z, sp]] of Object.entries(src)) Object.defineProperty(R, k, { get(){ const v = flwCal(z, sp, qmin, qmax); Object.defineProperty(R, k, { value:v }); return v; }, configurable:true });   // 用到才算，手機比較快
   FLW.cache.set(tf, R);
   return R;
 }

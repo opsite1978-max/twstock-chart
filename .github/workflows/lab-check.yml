@@ -27,11 +27,11 @@ jobs:
               pg.on('console', m => { if (m.type() === 'error') L(name + ' console: ' + scrub(m.text())); });
               await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); localStorage.setItem('flow.tf', '60'); } catch(e){} }, tok);
               await pg.goto('https://opsite1978-max.github.io/twstock-chart/flowchart.html?t=' + Date.now(), { waitUntil:'domcontentloaded' });
-              await pg.waitForTimeout(14000);
+              await pg.waitForTimeout(14000); L(name + ' panes ' + await pg.evaluate(() => document.querySelectorAll('table').length + ' tables, ver ' + (document.querySelector('#lg3') ? 'new' : 'old')));
               await T(pg.screenshot({ path:'../out/' + name + '-flow60.png' }));
-              L(name + ' EARLY ' + (await T(pg.textContent('#tblEarly')) || '').replace(/\s+/g, ' '));
+              L(name + ' EARLY ' + (await T(pg.evaluate(() => (document.querySelector('#tblEarly') || {}).textContent || 'NONE')) || '').replace(/\s+/g, ' '));
               await pg.click('#tfSeg button[data-tf="240"]'); await pg.waitForTimeout(4000);
-              L(name + ' EARLY240 ' + (await T(pg.textContent('#tblEarly')) || '').replace(/\s+/g, ' '));
+              L(name + ' EARLY240 ' + (await T(pg.evaluate(() => (document.querySelector('#tblEarly') || {}).textContent || 'NONE')) || '').replace(/\s+/g, ' '));
               const url = name === 'd' ? 'index.html' : 'mobile.html';
               await pg.goto('https://opsite1978-max.github.io/twstock-chart/' + url + '?t=' + Date.now(), { waitUntil:'domcontentloaded' });
               await pg.waitForTimeout(3000);
@@ -42,7 +42,7 @@ jobs:
             }
             fs.writeFileSync('../out/log.txt', log.join('\n'));
             await b.close();
-          })().catch(e => { require('fs').writeFileSync('../out/log.txt', 'ERR ' + scrub(e.stack || e)); });
+          })().catch(e => { require('fs').appendFileSync('../out/log.txt', '\nERR ' + scrub(e.stack || e)); });
           JS
           timeout 600 node c.js || true
       - if: always()
