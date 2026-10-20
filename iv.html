@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>台指隱含波動率</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --ivl:#b8bcc8; --hi:#22c55e; --lo:#e04848;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --ivl:#5b6170; --hi:#16a34a; --lo:#dc2626;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px;cursor:pointer;white-space:nowrap}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0;line-height:1.7}
+  .bar2{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:4px 0 8px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:var(--panel);height:32px;padding:0 12px}
+  .seg button.on{background:var(--accent);color:#fff}
+  .panel{background:var(--bg);border:1px solid var(--line);border-radius:10px;position:relative;overflow:hidden}
+  .lg{position:absolute;left:10px;top:6px;z-index:3;pointer-events:none;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+  .lg span{margin-right:8px}
+  .lg .sub{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:1px}
+  #ck{height:300px} #ci{height:230px}
+  .ckw{border-bottom:1px solid var(--line)}
+  .sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 10px}
+  .sum div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .sum b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+  .sum small{color:var(--muted);font-size:12px}
+  @media (max-width:560px){ .sum{grid-template-columns:repeat(2,minmax(0,1fr))} #ck{height:260px} #ci{height:210px} }
+  .note{font-size:12px;color:var(--muted);margin:10px 2px 0;line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <h1>台指隱含波動率</h1>
+  <span class="muted small" id="upd"></span>
+  <span class="spacer"></span>
+  <button onclick="location.href='txo.html'">選擇權</button>
+  <button onclick="location.href='force.html'">多空力道</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">讀取中…</div>
+  <div id="app" hidden>
+    <div class="sum" id="sum"></div>
+    <div class="bar2">
+      <span class="muted small">高低區間</span>
+      <div class="seg" id="segWin"><button data-v="20">20日</button><button data-v="60">60日</button><button data-v="120">120日</button><button data-v="250">一年</button></div>
+      <span class="muted small">算法</span>
+      <div class="seg" id="segMode"><button data-v="iv30">30天恆定</button><button data-v="near">最近合約</button></div>
+      <span class="muted small">顯示</span>
+      <div class="seg" id="segRange"><button data-v="66">3個月</button><button data-v="130">6個月</button><button data-v="0">全部</button></div>
+    </div>
+    <div class="panel">
+      <div class="ckw" style="position:relative"><div class="lg" id="lgK"></div><div id="ck"></div></div>
+      <div style="position:relative"><div class="lg" id="lgI"></div><div id="ci"></div></div>
+    </div>
+    <p class="note">
+      灰線：台指選擇權價平附近的隱含波動率（市場預期未來一年化的震盪幅度，%）。
+      綠點線：過去 N 個交易日的最高值；紅點線：過去 N 個交易日的最低值。
+      「波動率位階」＝（目前 − 區間低）÷（區間高 − 區間低）：越接近 0% 代表選擇權相對便宜，越接近 100% 代表相對貴。<br>
+      「30天恆定」把前後兩個到期日內插到 30 天，概念同台指 VIX，曲線較平順；「最近合約」用距結算 5 天以上最近的合約，對週選比較敏感。
+      資料每個交易日 16:40、18:40 由網站自動計算，不使用你手機上的 FinMind 查詢額度。
+    </p>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+let SET = {}; try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+let OPT = { win:60, mode:'iv30', range:130 };
+try { Object.assign(OPT, JSON.parse(localStorage.getItem('twchart.iv') || '{}') || {}); } catch(e){}
+const saveOpt = () => { try { localStorage.setItem('twchart.iv', JSON.stringify(OPT)); } catch(e){} };
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const f2 = v => v == null || !isFinite(v) ? '—' : v.toFixed(2);
+
+let HIST = [], IVD = [], cK, cI, sK, sIV, sHi, sLo, ROWS = [];
+
+async function getJSON(p){
+  const r = await fetch(p + '?t=' + Date.now(), { cache:'no-store' });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function rollHL(vals, N){
+  const hi = [], lo = [];
+  for (let i = 0; i < vals.length; i++){
+    let h = -Infinity, l = Infinity;
+    for (let j = Math.max(0, i - N + 1); j <= i; j++){ const v = vals[j]; if (v == null) continue; if (v > h) h = v; if (v < l) l = v; }
+    hi.push(isFinite(h) ? h : null); lo.push(isFinite(l) ? l : null);
+  }
+  return { hi, lo };
+}
+
+function build(){
+  const ivMap = {}; for (const x of IVD) ivMap[x.d] = x;
+  const kMap = {}; for (const x of HIST) if (x.c) kMap[x.d] = x;
+  const dates = [...new Set([...Object.keys(ivMap), ...Object.keys(kMap)])].sort();
+  const vals = dates.map(d => ivMap[d] && ivMap[d][OPT.mode] > 0 ? ivMap[d][OPT.mode] : null);
+  const { hi, lo } = rollHL(vals, OPT.win);
+  ROWS = dates.map((d, i) => ({ d, k:kMap[d], v:vals[i], hi:hi[i], lo:lo[i] }));
+}
+
+function mkChart(el, bottom){
+  const C = LightweightCharts.createChart(el, {
+    width:el.clientWidth, height:el.clientHeight,
+    layout:{ background:{ color:css('--bg') }, textColor:css('--muted'), attributionLogo:false },
+    grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } },
+    rightPriceScale:{ borderColor:css('--line'), minimumWidth:64, scaleMargins:{ top:0.24, bottom:0.08 } },
+    timeScale:{ borderColor:css('--line'), visible:bottom, rightOffset:3 },
+    crosshair:{ mode:0 },
+    handleScale:{ axisPressedMouseMove:{ time:true, price:false } }
+  });
+  addEventListener('resize', () => C.resize(el.clientWidth, el.clientHeight));
+  return C;
+}
+
+function initCharts(){
+  const L = LightweightCharts;
+  cK = mkChart($('ck'), false);
+  cI = mkChart($('ci'), true);
+  sK = cK.addSeries(L.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } });
+  const dot = { lineWidth:3, lineStyle:L.LineStyle.Dotted, lastValueVisible:false, priceLineVisible:false, crosshairMarkerVisible:false };
+  sHi = cI.addSeries(L.LineSeries, Object.assign({ color:css('--hi') }, dot));
+  sLo = cI.addSeries(L.LineSeries, Object.assign({ color:css('--lo') }, dot));
+  sIV = cI.addSeries(L.LineSeries, { color:css('--ivl'), lineWidth:2, priceLineVisible:false, priceFormat:{ type:'price', precision:2, minMove:0.01 } });
+  // 兩張圖同步縮放與十字線
+  let lock = false;
+  const sync = (a, b) => a.timeScale().subscribeVisibleLogicalRangeChange(r => { if (lock || !r) return; lock = true; b.timeScale().setVisibleLogicalRange(r); lock = false; });
+  sync(cK, cI); sync(cI, cK);
+  const onMove = (other, otherSeries, key) => p => {
+    const i = p && p.time ? ROWS.findIndex(r => r.d === p.time) : -1;
+    legend(i < 0 ? ROWS.length - 1 : i);
+    if (!p || !p.time){ other.clearCrosshairPosition(); return; }
+    const r = ROWS[i]; const v = r && (key === 'k' ? (r.k && r.k.c) : r.v);
+    if (v != null) other.setCrosshairPosition(v, p.time, otherSeries); else other.clearCrosshairPosition();
+  };
+  cK.subscribeCrosshairMove(onMove(cI, sIV, 'iv'));
+  cI.subscribeCrosshairMove(onMove(cK, sK, 'k'));
+}
+
+function legend(i){
+  const r = ROWS[i]; if (!r) return;
+  const k = r.k, ch = k && i > 0 && ROWS[i-1].k ? k.c - ROWS[i-1].k.c : null;
+  const col = ch == null ? css('--text') : ch >= 0 ? css('--up') : css('--down');
+  $('lgK').innerHTML = `<span style="color:${css('--text')}">台指期</span>` + (k ? `<span style="color:${col}">${k.c.toFixed(0)}${ch == null ? '' : ' ' + (ch >= 0 ? '+' : '') + ch.toFixed(0)}</span><span class="sub">${r.d}　開 ${k.o.toFixed(0)}　高 ${k.h.toFixed(0)}　低 ${k.l.toFixed(0)}</span>` : `<span class="sub">${r.d}</span>`);
+  const rank = r.v != null && r.hi > r.lo ? Math.round((r.v - r.lo) / (r.hi - r.lo) * 100) + '%' : '—';
+  $('lgI').innerHTML = `<span style="color:${css('--text')}">隱含波動率</span><span style="color:${css('--text')}">${f2(r.v)}</span><span style="color:${css('--hi')}">${f2(r.hi)}</span><span style="color:${css('--lo')}">${f2(r.lo)}</span><span class="sub">波動率位階 ${rank}</span>`;
+}
+
+function summary(){
+  const last = [...ROWS].reverse().find(r => r.v != null); if (!last) { $('sum').innerHTML = ''; return; }
+  const rank = last.hi > last.lo ? (last.v - last.lo) / (last.hi - last.lo) * 100 : null;
+  const word = rank == null ? '' : rank <= 20 ? '低檔：選擇權相對便宜' : rank >= 80 ? '高檔：選擇權相對貴' : '中間區域';
+  const N = OPT.win === 250 ? '一年' : OPT.win + '日';
+  $('sum').innerHTML =
+    `<div><small>目前隱含波動率</small><b>${f2(last.v)}</b><small>${last.d}</small></div>` +
+    `<div><small>${N}最高</small><b style="color:${css('--hi')}">${f2(last.hi)}</b><small>綠點線</small></div>` +
+    `<div><small>${N}最低</small><b style="color:${css('--lo')}">${f2(last.lo)}</b><small>紅點線</small></div>` +
+    `<div><small>波動率位階</small><b>${rank == null ? '—' : rank.toFixed(0) + '%'}</b><small>${word}</small></div>`;
+}
+
+function draw(){
+  build();
+  sK.setData(ROWS.map(r => r.k ? { time:r.d, open:r.k.o, high:r.k.h, low:r.k.l, close:r.k.c } : { time:r.d }));
+  sIV.setData(ROWS.map(r => r.v != null ? { time:r.d, value:r.v } : { time:r.d }));
+  sHi.setData(ROWS.map(r => r.v != null ? { time:r.d, value:r.hi } : { time:r.d }));
+  sLo.setData(ROWS.map(r => r.v != null ? { time:r.d, value:r.lo } : { time:r.d }));
+  const n = ROWS.length;
+  if (OPT.range && n > OPT.range) cI.timeScale().setVisibleLogicalRange({ from:n - OPT.range, to:n + 2 });
+  else cI.timeScale().fitContent();
+  legend(n - 1); summary();
+  for (const [id, key] of [['segWin','win'], ['segMode','mode'], ['segRange','range']])
+    for (const b of $(id).children) b.classList.toggle('on', String(OPT[key]) === b.dataset.v);
+}
+
+for (const [id, key, num] of [['segWin','win',1], ['segMode','mode',0], ['segRange','range',1]])
+  $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; OPT[key] = num ? +b.dataset.v : b.dataset.v; saveOpt(); draw(); });
+
+(async () => {
+  try {
+    const [h, iv] = await Promise.all([ getJSON('data/txo/history.json').catch(() => ({ days:[] })), getJSON('data/txo/iv.json').catch(() => null) ]);
+    HIST = h.days || [];
+    if (!iv || !(iv.days || []).length){
+      $('status').textContent = '隱含波動率歷史資料正在由網站自動建立（第一次約需一兩個小時，今晚 18:40 後會補齊約一年），請稍後再開。';
+      return;
+    }
+    IVD = iv.days;
+    $('upd').textContent = '更新 ' + (iv.updated || '');
+    $('status').hidden = true; $('app').hidden = false;
+    initCharts(); draw();
+  } catch(e){ $('status').textContent = '讀取失敗：' + (e.message || e); }
+})();
+</script>
+</body>
+</html>
