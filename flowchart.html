@@ -64,6 +64,12 @@
   <button onclick="location.href='index.html'">看盤</button>
 </header>
 <div class="bar">
+  <input id="sym" list="symList" placeholder="代號、名稱、TX 或「2330期」" autocomplete="off" style="font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 9px;height:32px;width:min(260px,58vw)">
+  <datalist id="symList"></datalist>
+  <button id="go" style="background:var(--accent);border-color:var(--accent);color:#fff">載入</button>
+  <span class="muted" style="font-size:12px" id="symName"></span>
+</div>
+<div class="bar">
   <div class="seg" id="tfSeg"><button data-tf="1">1分</button><button data-tf="5">5分</button><button data-tf="15">15分</button><button data-tf="30">30分</button><button data-tf="60">60分</button><button data-tf="240">4時</button><button data-tf="D">日</button></div>
   <div class="seg" id="lnSeg"><button data-k="FR">資金流殘差</button><button data-k="F">淨流量力道</button></div>
   <div class="seg"><button id="zIn">＋</button><button id="zOut">－</button><button id="zEnd">最新</button></div>
@@ -95,6 +101,141 @@ const tlabel = (t, tf) => { const s = iso(t); return tf === 'D' ? s.slice(0, 10)
 const dayT = (d, m) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 1000 + m * 60;
 const ST = { tf:store.get('flow.tf', '60'), k:store.get('flow.k', 'FR') };
 let IDX = null, CAL = [], CALSET = new Set(), BASE5 = null, BASE1 = null, CHART = null, SER = {}, VIEW = null;
+const TXSYM = { kind:'tx', id:'TX', name:'台指期（選擇權資金流）' };
+let SYM = (() => { try { const v = JSON.parse(store.get('flow.sym', 'null')); return v && v.kind ? v : TXSYM; } catch(e){ return TXSYM; } })();
+let STOCKS = new Map(), SFUT = [], NREQ = 0;
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const shiftDay = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+async function finmind(params){
+  const tok = (SET.token || '').trim(); if (!tok) throw new Error('個股與個股期貨需要 FinMind 憑證：請到看盤頁「⚙ 設定」填入');
+  const qs = new URLSearchParams(params); qs.set('token', tok); NREQ++;
+  let r; try { r = await fetch('https://api.finmindtrade.com/api/v4/data?' + qs); } catch(e){ throw new Error('連不上 FinMind，請檢查網路'); }
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完，請稍後再試');
+  if (!r.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || r.status) + (/level|sponsor|backer/i.test((j && j.msg) || '') ? '（逐筆資料需要贊助會員）' : ''));
+  return j.data || [];
+}
+// 清單：股票用看盤頁存好的清單（同一個網站，不用再查）；個股期貨清單每天查一次
+async function loadLists(){
+  try { const c = JSON.parse(store.get('twchart.stocklist', 'null')); if (c && c.list) STOCKS = new Map(c.list); } catch(e){}
+  try {
+    if (!STOCKS.size && (SET.token || '').trim()){
+      const rows = await finmind({ dataset:'TaiwanStockInfo' }), latest = new Map();
+      for (const r of rows){ const q = latest.get(r.stock_id); if (!q || (r.date || '') > (q.date || '')) latest.set(r.stock_id, r); }
+      const list = [...latest.values()].map(r => [r.stock_id, r.stock_name]).sort((a, b) => a[0].localeCompare(b[0]));
+      store.set('twchart.stocklist', JSON.stringify({ d:twToday(), list })); STOCKS = new Map(list);
+    }
+  } catch(e){}
+  try {
+    const c = JSON.parse(store.get('flow.futlist', 'null'));
+    if (c && c.d === twToday() && c.list) SFUT = c.list;
+    else if ((SET.token || '').trim()){
+      const rows = await finmind({ dataset:'TaiwanFutOptDailyInfo' }), byName = new Map([...STOCKS].map(([id, nm]) => [nm, id]));
+      SFUT = rows.filter(r => r.type === 'TaiwanFuturesDaily' && /期貨$/.test(r.name || '') && !/^(TX|MTX|TMF|TE|TF|XIF|GTF|G2F|E4F|ZEF|ZFF|SPF|UDF|UNF|F1F|BTF|SXF|SOF|SHF|TJF|RHF|RTF|XJF|XAF|XBF|XEF|TGF|GDF|BRF|TJF)$/.test(r.code))
+        .map(r => { const nm = r.name.replace(/^小型/, '').replace(/期貨$/, ''); return [r.code, r.name, byName.get(nm) || '']; }).filter(x => x[2]);
+      store.set('flow.futlist', JSON.stringify({ d:twToday(), list:SFUT }));
+    }
+  } catch(e){}
+  const dl = $('#symList'); const opts = ['<option value="TX 台指期">'];
+  for (const [id, nm] of STOCKS) if (/^\d{4}$/.test(id)) opts.push(`<option value="${id} ${nm}">`);
+  for (const [code, nm] of SFUT) opts.push(`<option value="${code} ${nm}">`);
+  dl.innerHTML = opts.join('');
+}
+function parseSym(txt){
+  txt = (txt || '').trim(); if (!txt) return null;
+  if (/^(TX|MTX|TMF|台指|大台|小台|微台|加權)/i.test(txt)) return TXSYM;
+  const first = txt.split(/\s+/)[0], up = first.toUpperCase();
+  const fut = SFUT.find(x => x[0] === up);
+  if (fut) return { kind:'sfut', id:fut[0], name:fut[1], under:fut[2] };
+  const isFut = /期貨?$/.test(first), key = first.replace(/期貨?$/, '');
+  let sid = STOCKS.has(key) ? key : null;
+  if (!sid) for (const [id, nm] of STOCKS) if (nm === key){ sid = id; break; }
+  if (!sid) for (const [id, nm] of STOCKS) if (/^\d{4}$/.test(id) && nm.includes(key)){ sid = id; break; }
+  if (!sid && /^\d{4,6}[A-Z]?$/.test(key)) sid = key;
+  if (!sid) return null;
+  if (isFut){ const f = SFUT.filter(x => x[2] === sid).sort((a, b) => a[1].length - b[1].length)[0]; if (!f) throw new Error(sid + ' 沒有個股期貨'); return { kind:'sfut', id:f[0], name:f[1], under:sid }; }
+  return { kind:'stock', id:sid, name:STOCKS.get(sid) || '' };
+}
+// 每天的逐筆整理成每分鐘：[分鐘, 開, 高, 低, 收, 主動買, 主動賣, 無法判斷, 時段]；過去的日子存在這台裝置，不再用額度
+const tdb = (() => { let p = null; return () => p || (p = new Promise(res => {
+  try { const r = indexedDB.open('flow-tick', 1); r.onupgradeneeded = () => r.result.createObjectStore('d');
+    r.onsuccess = () => { const db = r.result; try { const q = db.transaction('d').objectStore('d').count(); q.onsuccess = () => { if (q.result > 3000) try { db.transaction('d', 'readwrite').objectStore('d').clear(); } catch(e){} }; } catch(e){} res(db); };
+    r.onerror = r.onblocked = () => res(null); } catch(e){ res(null); } })); })();
+async function tGet(k){ const db = await tdb(); if (!db) return null; return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } }); }
+async function tPut(k, v){ const db = await tdb(); if (!db) return; try { db.transaction('d', 'readwrite').objectStore('d').put(v, k); } catch(e){} }
+function minuteAgg(list){   // list: [分鐘, 價, 量, 方向(1/−1/0), 時段]
+  const out = new Map();
+  for (const [m, p, v, sd, ss] of list){
+    let a = out.get(m); if (!a){ a = [m, p, p, p, p, 0, 0, 0, ss]; out.set(m, a); }
+    a[2] = Math.max(a[2], p); a[3] = Math.min(a[3], p); a[4] = p;
+    if (sd > 0) a[5] += v; else if (sd < 0) a[6] += v; else a[7] += v;
+  }
+  return [...out.values()].sort((x, y) => x[0] - y[0]);
+}
+async function tickDay(sym, date){
+  const key = sym.kind + ':' + sym.id + ':' + date, today = twToday(), stable = sym.kind === 'stock' ? date < today : date <= shiftDay(today, -2);
+  if (stable){ const v = await tGet(key); if (v) return v; }
+  let out = [];
+  if (sym.kind === 'stock'){
+    const rows = await finmind({ dataset:'TaiwanStockPriceTick', data_id:sym.id, start_date:date });
+    const list = [];
+    for (const r of rows){ const tm = String(r.Time || ''); const m = +tm.slice(0, 2) * 60 + +tm.slice(3, 5); if (!(m >= 540 && m <= 810)) continue;
+      const tt = String(r.TickType); list.push([m, +r.deal_price, +r.volume || 0, tt === '1' ? 1 : tt === '2' ? -1 : 0, 'D']); }
+    out = minuteAgg(list);
+  } else {
+    const rows = await finmind({ dataset:'TaiwanFuturesTick', data_id:sym.id, start_date:date });
+    // 每個時段只用成交量最大的單一月份；方向用價格跳動推估（比上一筆高＝主動買）
+    const sess = new Map();
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); if (!/^\d{6}$/.test(c)) continue;
+      const ds = String(r.date || ''), m = +ds.slice(11, 13) * 60 + +ds.slice(14, 16);
+      const ss = m <= 300 ? 'P' : m >= 525 && m <= 825 ? 'D' : m >= 900 ? 'N' : null; if (!ss) continue;
+      let q = sess.get(ss); if (!q){ q = { vol:new Map(), rows:[] }; sess.set(ss, q); }
+      q.vol.set(c, (q.vol.get(c) || 0) + (+r.volume || 0)); q.rows.push([ds, m, c, +r.price, +r.volume || 0]); }
+    const list = [];
+    for (const [ss, q] of sess){ const main = [...q.vol].sort((a, b) => b[1] - a[1])[0][0]; let last = null, side = 0;
+      q.rows.filter(x => x[2] === main).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0).forEach(([ds, m, c, p, v]) => {
+        if (last != null){ if (p > last) side = 1; else if (p < last) side = -1; } last = p; list.push([m, p, v, side, ss]); }); }
+    out = minuteAgg(list);
+  }
+  if (stable && out.length) tPut(key, out);
+  return out;
+}
+async function tradingDays(n){
+  let c = null; try { c = JSON.parse(store.get('flow.cal', 'null')); } catch(e){}
+  if (!c || c.d !== twToday()){ const rows = await finmind({ dataset:'TaiwanStockTradingDate', start_date:shiftDay(twToday(), -200) }); c = { d:twToday(), list:[...new Set(rows.map(r => r.date))].sort() }; store.set('flow.cal', JSON.stringify(c)); }
+  return c.list.filter(d => d <= twToday()).slice(-n);
+}
+const NDAYS = { '1':5, '5':10, '15':20, '30':30, '60':40, '240':60 };
+const TCACHE = new Map();
+async function loadTicks(sym, tf){
+  const days = await tradingDays(NDAYS[tf] || 40), per = new Array(days.length); let done = 0, i = 0;
+  const t0 = NREQ;
+  await Promise.all(Array.from({ length:3 }, async () => { while (i < days.length){ const k = i++;
+    const ck = sym.kind + ':' + sym.id + ':' + days[k];
+    if (!TCACHE.has(ck)) TCACHE.set(ck, tickDay(sym, days[k]).catch(e => { TCACHE.delete(ck); throw e; }));
+    per[k] = await TCACHE.get(ck); done++;
+    $('#status').textContent = `下載逐筆成交 ${done}／${days.length} 天（這次用了 ${NREQ - t0} 次 FinMind 查詢；看過的日子會存在這台裝置）…`; } }));
+  const out = [];
+  days.forEach((d, k) => { for (const a of per[k] || []){
+    const [m, o, h, l, c, bv, sv, uv, ss] = a;
+    let td = d, s0;
+    if (ss === 'D'){ s0 = dayT(d, sym.kind === 'stock' ? 540 : 525); }
+    else if (ss === 'N'){ s0 = dayT(d, 900); }
+    else { td = shiftDay(d, -1); s0 = dayT(td, 900); }
+    out.push({ t:dayT(d, m), o, h, l, c, net:bv - sv, gross:bv + sv, v:bv + sv + uv, td:td + (ss === 'P' ? 'N' : ss), s:ss === 'P' ? 'N' : ss, s0 }); } });
+  out.sort((a, b) => a.t - b.t);
+  return { bars:out, req:NREQ - t0, days:days.length };
+}
+async function dailyPrice(sym){
+  const start = shiftDay(twToday(), -400);
+  if (sym.kind === 'stock'){
+    const rows = await finmind({ dataset:'TaiwanStockPrice', data_id:sym.id, start_date:start });
+    return rows.filter(r => r.close > 0).map(r => ({ t:dayT(r.date, 0), o:r.open, h:r.max, l:r.min, c:r.close, net:null, td:r.date, s:'X', k:0 }));
+  }
+  const rows = await finmind({ dataset:'TaiwanFuturesDaily', data_id:sym.id, start_date:start }), best = new Map();
+  for (const r of rows){ if (r.trading_session !== 'position' || !/^\d{6}$/.test(String(r.contract_date).trim()) || !(r.close > 0)) continue; const q = best.get(r.date); if (!q || r.volume > q.volume) best.set(r.date, r); }
+  return [...best.values()].sort((a, b) => a.date < b.date ? -1 : 1).map(r => ({ t:dayT(r.date, 0), o:r.open, h:r.max, l:r.min, c:r.close, net:null, td:r.date, s:'X', k:0 }));
+}
 
 async function getJSON(p){ const r = await fetch(p + '?v=' + Math.floor(Date.now() / 60000)); if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }
 function nextTD(x){ for (const d of CAL) if (d > x) return d; let t = new Date(x + 'T00:00:00Z'); do { t = new Date(t.getTime() + 864e5); } while (t.getUTCDay() === 0 || t.getUTCDay() === 6); return t.toISOString().slice(0, 10); }
@@ -179,7 +320,7 @@ function calibrate(z, span = 5, q = 0.9, qmin = 120, qmax = 1500){
   });
   return out;
 }
-function flowLines(bars, tf){
+function flowLines(bars, tf, short){
   const net = bars.map(b => b.net), ret = bars.map(b => b.o ? (b.c - b.o) / b.o : 0);
   const zN = slotZ(bars, net), zR = slotZ(bars, ret);
   const resid = []; const xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0;
@@ -193,7 +334,7 @@ function flowLines(bars, tf){
     }
     resid.push(r);
   }
-  const daily = tf === 'D', qmin = daily ? 30 : 120, qmax = daily ? 150 : 1500;
+  const daily = tf === 'D', qmin = daily ? 30 : short ? 60 : 120, qmax = daily ? 150 : 1500;
   return { F:calibrate(zN, 5, 0.9, qmin, qmax), FR:calibrate(resid, 5, 0.9, qmin, qmax) };
 }
 
@@ -213,11 +354,11 @@ function lowSignals(bars, S){
 function holdBars(tf){ return tf === 'D' ? 1 : tf <= 15 ? Math.max(1, 60 / tf) : Math.max(1, 240 / tf); }
 function stats(bars, sig){
   const m = holdBars(ST.tf === 'D' ? 'D' : +ST.tf), W = 12, n = bars.length;
-  const fwd = i => (i + m < n) ? bars[i + m].c - bars[i + 1].o : null;
+  const pct = SYM.kind !== 'tx', fwd = i => (i + m < n) ? (pct ? (bars[i + m].c / bars[i + 1].o - 1) * 100 : bars[i + m].c - bars[i + 1].o) : null;
   const held = (i, lowV) => { if (i + W >= n) return null; let mn = Infinity; for (let k = i + 1; k <= i + W; k++) mn = Math.min(mn, bars[k].l); return mn > lowV; };
   const summ = list => { const r = list.map(x => fwd(x.i)).filter(v => v != null); const h = list.map(x => held(x.i, x.low)).filter(v => v != null);
     return { n:list.length, nr:r.length, mean:avg(r), up:r.length ? r.filter(v => v > 0).length / r.length * 100 : null, held:h.length ? h.filter(Boolean).length / h.length * 100 : null,
-      lag:avg(list.map(x => x.lag)), dist:avg(list.map(x => bars[x.i].c - x.low)) }; };
+      lag:avg(list.map(x => x.lag)), dist:avg(list.map(x => pct ? (bars[x.i].c / x.low - 1) * 100 : bars[x.i].c - x.low)) }; };
   // 基準：任何一根都進場；不再破低＝之後 12 根沒有跌破前 12 根的最低點
   const br = [], bh = [];
   for (let i = 12; i < n - 1; i++){ const r = fwd(i); if (r != null) br.push(r); let lo = Infinity; for (let k = i - 12; k <= i; k++) lo = Math.min(lo, bars[k].l); const h = held(i, lo); if (h != null) bh.push(h); }
@@ -250,7 +391,7 @@ function buildChart(){
     localization:{ locale:'zh-TW', dateFormat:'yyyy/MM/dd' },
   });
   const lo = () => ({ lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
-  SER.c = CHART.addSeries(L.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }, 0);
+  SER.c = CHART.addSeries(L.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceLineVisible:false, priceFormat:{ type:'price', precision:2, minMove:0.01 } }, 0);
   SER.bu = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--bb'), lineWidth:2 }), 0);
   SER.bm = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--gold'), lineStyle:L.LineStyle.Dashed }), 0);
   SER.bl = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--bb'), lineWidth:2 }), 0);
@@ -272,11 +413,11 @@ function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const 
 
 function legend(i){
   if (!VIEW) return; const n = VIEW.bars.length; if (i == null || i < 0 || i >= n) i = n - 1;
-  const b = VIEW.bars[i], p = i > 0 ? VIEW.bars[i - 1].c : null, ch = p ? b.c - p : null, bb = VIEW.bb;
-  $('#lg').innerHTML = `<b>台指期 ${ST.tf === 'D' ? '日' : ST.tf + ' 分'}</b>　${tlabel(b.t, ST.tf)}${ST.tf !== 'D' ? (b.s === 'N' ? ' 夜盤' : ' 日盤') : ''}<br>開 ${fmt(b.o)} 高 ${fmt(b.h)} 低 ${fmt(b.l)} 收 <b class="${cls(ch)}">${fmt(b.c)}</b> <span class="${cls(ch)}">${sgn(ch)}</span><br>`
-    + `<span style="color:${css('--bb')}">布林上 ${fmt(bb.u[i])}</span>　<span style="color:${css('--gold')}">中 ${fmt(bb.m[i])}</span>　<span style="color:${css('--bb')}">下 ${fmt(bb.l[i])}</span>`;
+  const b = VIEW.bars[i], p = i > 0 ? VIEW.bars[i - 1].c : null, ch = p ? b.c - p : null, bb = VIEW.bb, D = SYM.kind === 'tx' ? 0 : 2;
+  $('#lg').innerHTML = `<b>${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name} ${ST.tf === 'D' ? '日' : ST.tf + ' 分'}</b>　${tlabel(b.t, ST.tf)}${ST.tf !== 'D' && SYM.kind !== 'stock' ? (b.s === 'N' ? ' 夜盤' : ' 日盤') : ''}<br>開 ${fmt(b.o, D)} 高 ${fmt(b.h, D)} 低 ${fmt(b.l, D)} 收 <b class="${cls(ch)}">${fmt(b.c, D)}</b> <span class="${cls(ch)}">${sgn(ch, D)}</span><br>`
+    + `<span style="color:${css('--bb')}">布林上 ${fmt(bb.u[i], D)}</span>　<span style="color:${css('--gold')}">中 ${fmt(bb.m[i], D)}</span>　<span style="color:${css('--bb')}">下 ${fmt(bb.l[i], D)}</span>`;
   const v = VIEW.S[i], s = VIEW.sigAt.get(i);
-  $('#lg2').innerHTML = `<b style="color:${css('--flow')}">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'} ${v == null ? '資料不足' : sgn(v, 1)}</b>${v != null && v <= -60 ? '　<span class="dn">超賣區</span>' : v >= 60 ? '　<span class="up">超買區</span>' : ''}`
+  $('#lg2').innerHTML = VIEW.info === 'nodaily' ? '<span class="muted">個股、個股期貨的日 K 資金流需要太多逐筆資料，請切到 1 分～4 小時看資金流</span>' : `<b style="color:${css('--flow')}">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'} ${v == null ? '資料不足' : sgn(v, 1)}</b>${v != null && v <= -60 ? '　<span class="dn">超賣區</span>' : v >= 60 ? '　<span class="up">超買區</span>' : ''}`
     + (s ? `　<b style="color:${css('--sig')}">${s.strong ? '強低點' : '低點'}</b>` : '');
 }
 
@@ -285,12 +426,23 @@ async function render(){
   document.querySelectorAll('#lnSeg button').forEach(b => b.classList.toggle('on', b.dataset.k === ST.k));
   $('#status').hidden = false; $('#status').textContent = '計算中…';
   const tf = ST.tf === 'D' ? 'D' : +ST.tf;
-  const base = tf === 1 ? await loadBase1() : await loadBase5();
-  const bars = tf === 1 || tf === 5 ? aggregate(base, tf) : aggregate(base, tf);
-  const L = flowLines(bars, tf), S = L[ST.k], bb = bollinger(bars);
+  $('#symName').textContent = SYM.kind === 'tx' ? '台指期（資金流＝台指選擇權逐筆 Delta）' : SYM.kind === 'stock' ? `${SYM.id} ${SYM.name}（資金流＝主動買賣）` : `${SYM.id} ${SYM.name}（${SYM.under}，資金流＝價格跳動推估主動買賣）`;
+  let bars, S, info = '';
+  if (SYM.kind === 'tx'){
+    const base = tf === 1 ? await loadBase1() : await loadBase5();
+    bars = aggregate(base, tf); S = flowLines(bars, tf)[ST.k];
+  } else if (tf === 'D'){
+    bars = await dailyPrice(SYM); S = bars.map(() => null); info = 'nodaily';
+  } else {
+    const r = await loadTicks(SYM, ST.tf);
+    bars = aggregate(r.bars, tf); S = flowLines(bars, tf, true)[ST.k]; info = `逐筆 ${r.days} 天・這次用了 ${r.req} 次 FinMind 查詢`;
+  }
+  if (!bars.length) throw new Error('沒有資料（逐筆成交通常收盤後 15:30 才有當天的）');
+  const bb = bollinger(bars);
   const sig = lowSignals(bars, S), sigAt = new Map(sig.map(x => [x.i, x]));
-  VIEW = { bars, S, bb, sig, sigAt, idx:new Map(bars.map((b, i) => [b.t, i])) };
+  VIEW = { bars, S, bb, sig, sigAt, info, idx:new Map(bars.map((b, i) => [b.t, i])) };
   const ln = arr => bars.map((b, i) => arr[i] == null ? { time:b.t } : { time:b.t, value:arr[i] });
+  const pd = SYM.kind === 'tx' ? 0 : 2; SER.c.applyOptions({ priceFormat:{ type:'price', precision:pd, minMove:pd ? 0.01 : 1 } });
   SER.c.setData(bars.map(b => ({ time:b.t, open:b.o, high:b.h, low:b.l, close:b.c })));
   SER.bu.setData(ln(bb.u)); SER.bm.setData(ln(bb.m)); SER.bl.setData(ln(bb.l));
   SER.f.setData(ln(S));
@@ -306,27 +458,35 @@ async function render(){
 function renderStats(){
   const { bars, S, sig } = VIEW, R = stats(bars, sig), n = bars.length, last = bars[n - 1], v = S[n - 1];
   const tfName = ST.tf === 'D' ? '日 K' : ST.tf + ' 分 K', hold = ST.tf === 'D' ? '隔天' : (R.m * (+ST.tf)) + ' 分鐘';
-  const lastSig = sig[sig.length - 1];
+  const lastSig = sig[sig.length - 1], pct = SYM.kind !== 'tx', unit = pct ? '%' : '點', pd = pct ? 2 : 0, pv = x => pct ? sgn(x, 2) + '%' : sgn(x, 1);
   let rows0 = '<tr><td colspan="8" class="muted">這個週期還沒有訊號</td></tr>';
   $('#cards').innerHTML = `
-    <div class="card"><div class="lb">台指期（${tfName}）</div><div class="v">${fmt(last.c)}</div><div class="s">${tlabel(last.t, ST.tf)}</div></div>
+    <div class="card"><div class="lb">${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name}（${tfName}）</div><div class="v">${fmt(last.c, pd)}</div><div class="s">${tlabel(last.t, ST.tf)}</div></div>
     <div class="card"><div class="lb">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}</div><div class="v ${v <= -60 ? 'dn' : v >= 60 ? 'up' : ''}">${v == null ? '–' : sgn(v, 0)}</div><div class="s">${v == null ? '資料不足' : v <= -70 ? '低於悲觀線 −70' : v <= -60 ? '在超賣區，等它往上穿回 −60' : v >= 60 ? '超買區' : '一般區間'}</div></div>
     <div class="card"><div class="lb">最近一次低點訊號</div><div class="v" style="font-size:17px;color:${css('--sig')}">${lastSig ? (lastSig.strong ? '強低點' : '低點') : '–'}</div><div class="s">${lastSig ? tlabel(bars[lastSig.i].t, ST.tf) + '・' + (n - 1 - lastSig.i) + ' 根前' : '這個週期還沒有'}</div></div>`;
-  const row = (name, s) => `<tr><td>${name}</td><td>${s.n}</td><td class="${cls(s.mean)}">${sgn(s.mean, 1)}</td><td>${s.up == null ? '–' : s.up.toFixed(0) + '%'}</td><td>${s.held == null ? '–' : s.held.toFixed(0) + '%'}</td><td>${s.lag == null ? '–' : s.lag.toFixed(1) + ' 根'}</td><td>${s.dist == null ? '–' : fmt(s.dist) + ' 點'}</td></tr>`;
-  $('#tblStat').innerHTML = `<table><tr><th>訊號</th><th>次數</th><th>之後${hold}平均（點）</th><th>上漲比例</th><th>之後 12 根沒再破低</th><th>比真正低點晚</th><th>離真正低點</th></tr>`
+  const row = (name, s) => `<tr><td>${name}</td><td>${s.n}</td><td class="${cls(s.mean)}">${pv(s.mean)}</td><td>${s.up == null ? '–' : s.up.toFixed(0) + '%'}</td><td>${s.held == null ? '–' : s.held.toFixed(0) + '%'}</td><td>${s.lag == null ? '–' : s.lag.toFixed(1) + ' 根'}</td><td>${s.dist == null ? '–' : pct ? fmt(s.dist, 2) + '%' : fmt(s.dist) + ' 點'}</td></tr>`;
+  $('#tblStat').innerHTML = `<table><tr><th>訊號</th><th>次數</th><th>之後${hold}平均（${unit}）</th><th>上漲比例</th><th>之後 12 根沒再破低</th><th>比真正低點晚</th><th>離真正低點</th></tr>`
     + row('全部低點', R.all) + row('強低點（曾跌破 −70）', R.strong) + row('一般低點', R.normal)
-    + `<tr class="muted"><td>隨便哪一根（基準）</td><td>${R.base.n}</td><td>${sgn(R.base.mean, 1)}</td><td>${R.base.up == null ? '–' : R.base.up.toFixed(0) + '%'}</td><td>${R.base.held == null ? '–' : R.base.held.toFixed(0) + '%'}</td><td></td><td></td></tr></table>`;
-  $('#statNote').textContent = `${tfName}・${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}・下一根開盤進場`;
-  const rows = sig.slice(-12).reverse().map(x => { const i = x.i, m = R.m, r = i + m < n ? bars[i + m].c - bars[i + 1].o : null;
+    + `<tr class="muted"><td>隨便哪一根（基準）</td><td>${R.base.n}</td><td>${pv(R.base.mean)}</td><td>${R.base.up == null ? '–' : R.base.up.toFixed(0) + '%'}</td><td>${R.base.held == null ? '–' : R.base.held.toFixed(0) + '%'}</td><td></td><td></td></tr></table>`;
+  $('#statNote').textContent = `${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name}・${tfName}・${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}・下一根開盤進場${VIEW.info && VIEW.info !== 'nodaily' ? '・' + VIEW.info : ''}`;
+  const rows = sig.slice(-12).reverse().map(x => { const i = x.i, m = R.m, r = i + m < n ? (pct ? (bars[i + m].c / bars[i + 1].o - 1) * 100 : bars[i + m].c - bars[i + 1].o) : null;
     let held = null; if (i + 12 < n){ let mn = Infinity; for (let k = i + 1; k <= i + 12; k++) mn = Math.min(mn, bars[k].l); held = mn > x.low; }
-    return `<tr><td>${tlabel(bars[i].t, ST.tf)}</td><td style="color:${css('--sig')}">${x.strong ? '強低點' : '低點'}</td><td>${fmt(bars[i].c)}</td><td>${fmt(x.low)}</td><td>${x.lag} 根</td><td>${sgn(x.mn, 0)}</td><td class="${cls(r)}">${r == null ? '還沒到' : sgn(r)}</td><td>${held == null ? '還沒到' : held ? '守住' : '<span class="dn">又破低</span>'}</td></tr>`; }).join('');
-  if (!sig.length && ST.tf === 'D') rows0 = '<tr><td colspan="8" class="muted">日 K 資料只有約 190 根，資金流線還沒有跌進超賣區後再回升的紀錄；請用 60 分或 4 小時看低點</td></tr>';
+    return `<tr><td>${tlabel(bars[i].t, ST.tf)}</td><td style="color:${css('--sig')}">${x.strong ? '強低點' : '低點'}</td><td>${fmt(bars[i].c, pd)}</td><td>${fmt(x.low, pd)}</td><td>${x.lag} 根</td><td>${sgn(x.mn, 0)}</td><td class="${cls(r)}">${r == null ? '還沒到' : pct ? sgn(r, 2) + '%' : sgn(r)}</td><td>${held == null ? '還沒到' : held ? '守住' : '<span class="dn">又破低</span>'}</td></tr>`; }).join('');
+  if (VIEW.info === 'nodaily') rows0 = '<tr><td colspan="8" class="muted">個股、個股期貨的日 K 只畫 K 線與布林通道；資金流請切到 1 分～4 小時</td></tr>';
+  else if (!sig.length && ST.tf === 'D') rows0 = '<tr><td colspan="8" class="muted">日 K 資料只有約 190 根，資金流線還沒有跌進超賣區後再回升的紀錄；請用 60 分或 4 小時看低點</td></tr>';
   $('#tblSig').innerHTML = `<table><tr><th>訊號時間</th><th>強度</th><th>收盤</th><th>這段真正低點</th><th>晚了</th><th>這段最低力道</th><th>之後${hold}</th><th>12 根內</th></tr>${rows || rows0}</table>`;
   $('#note').innerHTML = `<b>低點訊號</b>＝${ST.k === 'FR' ? '資金流殘差（藍線）' : '淨流量力道'}先跌進超賣區（≤ −60，綠色區），再往上穿回 −60 的那一根（K 棒收盤才確認，畫過的不會消失）；這段期間曾跌破悲觀線 −70 的標成「強低點」。它一定比真正的最低點晚幾根出現，表格裡的「比真正低點晚」「離真正低點」就是平均晚多少、高多少。`
-    + `<br><b>資金流殘差</b>＝選擇權主動成交的 Delta 淨流量，扣掉「價格本身漲跌帶動」的部分，剩下的才是資金真正的偏向；價格還在跌、但殘差已經不再往下時，比較可能是真的底。`
-    + `<br>研究結果（2026 年 1～10 月）：60 分、4 小時的低點訊號之後上漲比例和平均漲幅明顯高於基準，5 分略好，15 分沒有優勢；歷史還短，請搭配布林通道下緣、K 棒型態一起看。資料每天收盤後與夜盤結束後自動更新，不即時，不佔 FinMind 查詢次數。K 線用台指期近月，布林通道 20 根、2 倍標準差。`;
+    + (SYM.kind === 'tx' ? `<br><b>資金流殘差</b>＝選擇權主動成交的 Delta 淨流量，扣掉「價格本身漲跌帶動」的部分，剩下的才是資金真正的偏向；價格還在跌、但殘差已經不再往下時，比較可能是真的底。`
+    + `<br>研究結果（2026 年 1～10 月）：60 分、4 小時的低點訊號之後上漲比例和平均漲幅明顯高於基準，5 分略好，15 分沒有優勢；歷史還短，請搭配布林通道下緣、K 棒型態一起看。資料每天收盤後與夜盤結束後自動更新，不即時，不佔 FinMind 查詢次數。K 線用台指期近月，布林通道 20 根、2 倍標準差。`
+    : `<br><b>這檔的資金流</b>＝逐筆成交的主動買量 − 主動賣量（${SYM.kind === 'stock' ? '股票用交易所標記的外盤、內盤' : '個股期貨沒有內外盤標記，用價格跳動推估：比上一筆高＝主動買'}），一樣扣掉價格本身漲跌帶動的部分，算法和台指期相同。`
+    + `<br><b class="dn">注意：這是研究訊號。</b>台指期的低點訊號有用，是因為用的是台指選擇權的資金流；個股我只測過 4 檔（台積電、鴻海、長榮、緯創）各 80 天，低點訊號之後的表現和隨便進場差不多，沒有看到穩定優勢。上面表格是這一檔自己的歷史結果，次數少於 30 次時參考就好。`
+    + `<br>資料來自 FinMind 逐筆成交（需要贊助會員）：第一次看一檔要下載 ${NDAYS[ST.tf] || 40} 天，每天 1 次查詢；看過的日子存在這台裝置，之後只查新的日子。當天資料收盤後 15:30 才有，不是即時。布林通道 20 根、2 倍標準差。`);
 }
 
+async function goSym(){
+  try { const s2 = parseSym($('#sym').value); if (!s2){ err(new Error('找不到這個代號或名稱')); return; } SYM = s2; store.set('flow.sym', JSON.stringify(SYM)); $('#sym').value = SYM.kind === 'tx' ? 'TX 台指期' : SYM.id + ' ' + SYM.name; $('#sym').blur(); await render(); } catch(e){ err(e); }
+}
+$('#go').onclick = goSym; $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') goSym(); }); $('#sym').addEventListener('change', () => { if (/\s/.test($('#sym').value)) goSym(); });
 document.querySelectorAll('#tfSeg button').forEach(b => b.onclick = () => { ST.tf = b.dataset.tf; store.set('flow.tf', ST.tf); render().catch(err); });
 document.querySelectorAll('#lnSeg button').forEach(b => b.onclick = () => { ST.k = b.dataset.k; store.set('flow.k', ST.k); render().catch(err); });
 const zoom = f => { const ts = CHART.timeScale(), r = ts.getVisibleLogicalRange(); if (!r) return; const mid = r.to - 3, w = (r.to - r.from) * f; ts.setVisibleLogicalRange({ from:mid - w + 3, to:mid + 3 }); };
@@ -335,7 +495,7 @@ $('#zEnd').onclick = () => { const n = VIEW.bars.length, show = Math.min(n, wind
 function err(e){ console.error(e); $('#status').hidden = false; $('#status').className = 'msg'; $('#status').textContent = '讀取失敗：' + (e.message || e); }
 (function start(){
   if (!window.LightweightCharts){ setTimeout(start, 200); return; }
-  try { buildChart(); render().catch(err); } catch(e){ err(e); }
+  try { buildChart(); $('#sym').value = SYM.kind === 'tx' ? 'TX 台指期' : SYM.id + ' ' + SYM.name; loadLists(); render().catch(err); } catch(e){ err(e); }
 })();
 </script>
 </body>
