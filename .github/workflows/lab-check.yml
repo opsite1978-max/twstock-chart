@@ -1,0 +1,44 @@
+name: 看盤頁副圖實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium > ../out/install.txt 2>&1 || true
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***');
+          (async () => {
+            const log = []; const fs = require('fs');
+            const b = await chromium.launch();
+            for (const [url, vp, name] of [['index.html', {width:1280,height:1600}, 'd'], ['mobile.html', {width:390,height:1800}, 'm']]){
+              const ctx = await b.newContext({ viewport:vp, serviceWorkers:'block' }); const pg = await ctx.newPage();
+              pg.on('pageerror', e => log.push(name + ' pageerror: ' + scrub(e.message)));
+              await pg.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
+              await pg.goto('https://opsite1978-max.github.io/twstock-chart/' + url + '?t=' + Date.now(), { waitUntil:'domcontentloaded' });
+              await pg.waitForTimeout(3000);
+              await pg.fill('#sym', 'TX'); await pg.click('#loadBtn'); await pg.waitForTimeout(15000);
+              await pg.screenshot({ path:'../out/' + name + '-tx.png', fullPage:true });
+              log.push(name + ' ivx label: ' + scrub(await pg.textContent('#lbl-ivx').catch(() => '?')).slice(0, 200));
+              await pg.fill('#sym', '2330'); await pg.click('#loadBtn'); await pg.waitForTimeout(12000);
+              await pg.screenshot({ path:'../out/' + name + '-2330.png', fullPage:true });
+              await ctx.close();
+            }
+            fs.writeFileSync('../out/log.txt', log.join('\n'));
+            await b.close();
+          })().catch(e => { require('fs').writeFileSync('../out/log.txt', 'ERR ' + scrub(e.stack || e)); });
+          JS
+          node c.js || true
+      - if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
