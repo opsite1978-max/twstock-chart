@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d5a62">
+<meta name="description" content="第二型糖尿病用藥與台灣健保給付規定導航：依 HbA1c、eGFR、UACR 列出可申報藥物、腎功能劑量與病歷草稿。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="健保導航">
+<style>[hidden]{display:none!important}body{margin:0}</style>
+<title>降血糖藥健保導航</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one column, four numbered steps read top to bottom — patient, regimen history, drug choice, recommendation */
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --sunk:#eaf0ee; --ink:#18282c; --muted:#5a6b6e; --line:#d3dcda;
+  --accent:#0d5a62; --accent-soft:#d9ebec;
+  --ok:#1d7346; --ok-soft:#dcefe3; --warn:#9a6200; --warn-soft:#f6ead2; --bad:#ad3127; --bad-soft:#f6dedb; --info:#38558a; --info-soft:#e0e7f3;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111a1c; --surface:#182427; --sunk:#0f1a1c; --ink:#e3ecea; --muted:#9aaeae; --line:#2c3b3e;
+  --accent:#6cc3c9; --accent-soft:#173a3e;
+  --ok:#6fcf98; --ok-soft:#163626; --warn:#e7b25a; --warn-soft:#3a2d12; --bad:#f08a7f; --bad-soft:#3d1a17; --info:#94b2e8; --info-soft:#1b2944;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111a1c; --surface:#182427; --sunk:#0f1a1c; --ink:#e3ecea; --muted:#9aaeae; --line:#2c3b3e;
+  --accent:#6cc3c9; --accent-soft:#173a3e;
+  --ok:#6fcf98; --ok-soft:#163626; --warn:#e7b25a; --warn-soft:#3a2d12; --bad:#f08a7f; --bad-soft:#3d1a17; --info:#94b2e8; --info-soft:#1b2944;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+h1{font-family:var(--f-display);font-size:1.6rem;line-height:1.25;margin:0;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-body);font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.04em}
+.ver{font-size:.75rem;color:var(--muted)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sample{font-size:.75rem;color:var(--warn);background:var(--warn-soft);border-radius:4px;padding:2px 8px}
+section.step{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+section.step>h2{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-size:1.2rem;margin:0}
+section.step>h2 .n{font-family:var(--f-num);font-size:.9rem;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--surface);flex:none}
+section.step>h2 small{font-family:var(--f-body);font-size:.78rem;font-weight:400;color:var(--muted)}
+.sub{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--accent);margin:0}
+.fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+@media (max-width:640px){.fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field label,.lab{font-size:.8rem;color:var(--muted)}
+.field label b{color:var(--ink);font-weight:500}
+input[type=number],select{font:inherit;font-family:var(--f-num);font-size:1rem;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+select{font-family:var(--f-body);font-size:.88rem}
+.calc{font-size:.72rem;color:var(--accent)}
+button{font:inherit;font-size:.85rem;border-radius:6px;padding:6px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:7px 6px;background:var(--sunk)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{border-radius:999px;padding:5px 12px;font-size:.84rem}
+.tchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.summary{display:flex;flex-wrap:wrap;gap:8px;font-size:.82rem}
+.pill{border-radius:6px;padding:3px 9px;background:var(--sunk);font-family:var(--f-num);font-size:.8rem}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.hint{margin:0;font-size:.78rem;color:var(--muted);line-height:1.5}
+/* drug pickers */
+.picker{display:flex;flex-direction:column;gap:10px}
+.grp{display:grid;grid-template-columns:118px minmax(0,1fr);gap:4px 10px;align-items:start}
+@media (max-width:560px){.grp{grid-template-columns:minmax(0,1fr)}}
+.grp h4{margin:0;padding-top:5px;font-size:.8rem;font-weight:700;line-height:1.3}
+.grp h4 small{display:block;font-weight:400;color:var(--muted);font-size:.7rem}
+.grp .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dchip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:.84rem}
+.dchip .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.dchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.dchip[disabled]{opacity:.45;cursor:not-allowed}
+.badge{font-size:.66rem;font-weight:700;padding:0 5px;border-radius:3px;line-height:1.6}
+.badge.rec{background:var(--accent-soft);color:var(--accent)} .badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.pending{background:var(--warn-soft);color:var(--warn)} .badge.no{background:var(--bad-soft);color:var(--bad)} .badge.self{background:var(--info-soft);color:var(--info)}
+.dchip[aria-pressed="true"] .badge{background:var(--surface)}
+.dose{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:7px}
+.dh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.84rem;align-items:center}
+.dh b{font-weight:700}
+.mx{font-family:var(--f-num);font-size:.76rem;font-weight:700;padding:1px 7px;border-radius:4px}
+.mx.ok{background:var(--ok-soft);color:var(--ok)} .mx.warn{background:var(--warn-soft);color:var(--warn)} .mx.bad{background:var(--bad-soft);color:var(--bad)}
+.dopts{display:flex;flex-wrap:wrap;gap:5px}
+.dopts button{font-family:var(--f-num);font-size:.8rem;padding:4px 9px;border-radius:5px}
+.dopts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.dopts button.over{border-style:dashed;border-color:var(--bad);color:var(--bad)}
+.dopts button.over[aria-pressed="true"]{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.dn{font-size:.76rem;color:var(--muted)}
+.dw{font-size:.78rem;color:var(--bad);font-weight:700}
+.chk{display:flex;align-items:flex-start;gap:7px;font-size:.8rem;cursor:pointer}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+.crit{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:.8rem}
+.crit li{display:grid;grid-template-columns:16px 1fr;gap:4px}
+.crit li::before{font-family:var(--f-num);font-weight:700}
+.crit li.y::before{content:"✓";color:var(--ok)} .crit li.n::before{content:"✗";color:var(--bad)} .crit li.q::before{content:"?";color:var(--warn)} .crit li.i::before{content:"·";color:var(--muted)}
+.cand{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;background:var(--surface)}
+.cand.ok{border-left-color:var(--ok)} .cand.pending{border-left-color:var(--warn)} .cand.no{border-left-color:var(--bad)} .cand.self{border-left-color:var(--info)}
+.doseline{font-family:var(--f-num);font-size:.84rem}
+.stops{font-size:.8rem;color:var(--warn)}
+.stops b{color:var(--ink)}
+/* recommendation */
+.plan{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;counter-reset:s}
+.plan li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.plan li::before{counter-increment:s;content:counter(s);font-family:var(--f-num);font-weight:700;font-size:.85rem;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.plan li.alert::before{background:var(--bad-soft);color:var(--bad)}
+.plan p{margin:0}
+.plan .why{color:var(--muted);font-size:.85rem}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.85rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--sunk);font-size:.74rem;letter-spacing:.05em;color:var(--muted);font-weight:700}
+td.drug{font-weight:500}
+td.drug small{display:block;color:var(--muted);font-weight:400;font-size:.74rem}
+td.dose{font-family:var(--f-num);font-size:.8rem;white-space:nowrap}
+tr.cls td{background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.78rem}
+tr.mine td{background:var(--accent-soft)}
+.act{display:inline-block;font-size:.74rem;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.act.keep{background:var(--sunk);color:var(--ink)} .act.add{background:var(--ok-soft);color:var(--ok)} .act.down{background:var(--warn-soft);color:var(--warn)} .act.stop{background:var(--bad-soft);color:var(--bad)}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 6px;border-radius:4px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)} .tag.warn{background:var(--warn-soft);color:var(--warn)} .tag.bad{background:var(--bad-soft);color:var(--bad)}
+.notebox{font-family:var(--f-num);font-size:.8rem;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto}
+details{border-top:1px dashed var(--line);padding-top:10px}
+details>summary{cursor:pointer;font-weight:700;font-size:.9rem;color:var(--accent)}
+details[open]>summary{margin-bottom:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card.ok{border-left-color:var(--ok)} .card.pending{border-left-color:var(--warn)} .card.no{border-left-color:var(--bad)} .card.self{border-left-color:var(--info)} .card.using{border-left-color:var(--accent)}
+.card h3{font-size:.9rem;margin:0}
+.card .note{font-size:.76rem;color:var(--muted)}
+.refs{font-size:.82rem;display:flex;flex-direction:column;gap:6px}
+.refs a{color:var(--accent)}
+.disclaim{font-size:.78rem;color:var(--muted);border-left:3px solid var(--warn);padding-left:10px}
+.copied{font-size:.8rem;color:var(--ok);margin-left:6px}
+.empty{font-size:.85rem;color:var(--muted);background:var(--sunk);border-radius:8px;padding:10px 12px}
+table.hist{min-width:480px}
+table.hist td{padding:5px 6px}
+table.hist input{font-family:var(--f-num);font-size:.85rem;padding:5px 7px;background:var(--sunk);border:1px solid var(--line);border-radius:5px;color:var(--ink);width:100%}
+table.hist td.now{font-family:var(--f-num);font-size:.85rem;color:var(--accent);font-weight:700;padding:8px 8px}
+table.hist tr.nowrow td{background:var(--accent-soft)}
+.del{padding:3px 8px;font-size:.78rem;color:var(--bad)}
+.trendbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.trend{border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.trend .t{font-size:.76rem;color:var(--muted)}
+.trend .v{font-family:var(--f-num);font-size:.95rem;font-weight:700}
+.trend .v.bad{color:var(--bad)} .trend .v.ok{color:var(--ok)} .trend .v.warn{color:var(--warn)}
+.trend svg{width:100%;height:36px;display:block}
+.calc.A2,.calc.warn{color:var(--warn)} .calc.A3,.calc.bad{color:var(--bad)} .calc.A1{color:var(--ok)}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <h1>降血糖藥健保導航<small>網頁版 v1.0 · 規定整理至 115/10/20 · Type 2 Diabetes Pharmacotherapy · NHI Navigator</small></h1>
+    <div class="tools"><span class="sample" id="sampleTag">範例病人</span><button id="clearBtn" type="button">新病人</button><button id="sampleBtn" type="button">載入範例</button></div>
+  </header>
+
+  <section class="step" aria-labelledby="h1s">
+    <h2 id="h1s"><span class="n">1</span>病患資料<small>Patient</small></h2>
+    <div class="field" style="max-width:420px"><span class="lab">病人類別</span><div class="seg" id="modeSeg"><button type="button" data-mode="new" aria-pressed="false">新診斷</button><button type="button" data-mode="fu" aria-pressed="false">追蹤病人（有過往資料）</button></div></div>
+    <div class="fields">
+      <div class="field"><label for="age">年齡（歲）</label><input id="age" type="number" min="18" max="110"></div>
+      <div class="field"><span class="lab">性別</span><div class="seg" id="sexSeg"><button type="button" data-sex="M" aria-pressed="false">男</button><button type="button" data-sex="F" aria-pressed="false">女</button></div></div>
+      <div class="field"><label for="ht">身高（cm）</label><input id="ht" type="number" min="100" max="220"></div>
+      <div class="field"><label for="wt">體重（kg）</label><input id="wt" type="number" min="25" max="250" step="0.1"><span class="calc" id="bmiOut"></span></div>
+      <div class="field"><label for="a1c"><b>HbA1c</b> 糖化血色素（%）</label><input id="a1c" type="number" step="0.1" min="4" max="18"></div>
+      <div class="field"><label for="target">目標 HbA1c</label><select id="target"><option value="6.5">&lt;6.5%</option><option value="7" selected>&lt;7.0%</option><option value="7.5">&lt;7.5%</option><option value="8">&lt;8.0%</option></select></div>
+      <div class="field"><label for="cr">血清肌酸酐（mg/dL）</label><input id="cr" type="number" step="0.01" min="0.2" max="15"></div>
+      <div class="field"><label for="egfr"><b>eGFR</b>（mL/min/1.73m²）</label><input id="egfr" type="number" min="0" max="160"><span class="calc" id="egfrCalc"></span></div>
+      <div class="field"><label for="uacr"><b>UACR</b> 尿白蛋白／肌酸酐（mg/g）</label><input id="uacr" type="number" min="0"><span class="calc" id="uacrCalc"></span></div>
+      <div class="field" style="grid-column:span 2"><label for="hf">心衰竭（左心室射出分率）</label><select id="hf"><option value="none">無心衰竭</option><option value="r">射出分率 ≤40%</option><option value="mr">射出分率 41–49%</option><option value="p">射出分率 ≥50%</option></select></div>
+    </div>
+    <p class="hint">填肌酸酐、年齡、性別會自動以 CKD-EPI 2021 公式算出 eGFR；也可以直接填 eGFR。</p>
+    <p class="sub">共病與狀態（點選）</p>
+    <div class="chips" id="flags">
+      <button type="button" class="tchip" data-flag="ascvd" aria-pressed="false">心肌梗塞／血管再通術／動脈硬化腦中風</button>
+      <button type="button" class="tchip" data-flag="ckdprog" aria-pressed="false">已收案慢性腎臟病照護方案</button>
+      <button type="button" class="tchip" data-flag="raas" aria-pressed="false">ACEI／ARB 最大耐受劑量 ≥4 週</button>
+      <button type="button" class="tchip" data-flag="hypo" aria-pressed="false">低血糖高風險</button>
+      <button type="button" class="tchip" data-flag="catab" aria-pressed="false">明顯高血糖症狀、體重減輕</button>
+    </div>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <section class="step" aria-labelledby="h2s">
+    <h2 id="h2s"><span class="n">2</span><span id="h2t">用藥資料與過往紀錄</span><small id="h2e">Current regimen &amp; history</small></h2>
+    <div id="newBlock" hidden style="display:flex;flex-direction:column;gap:12px">
+      <p class="hint">新診斷病人尚未用藥。填入診斷時的血糖數值，系統會核對糖尿病診斷標準（HbA1c 已在上方填寫）。</p>
+      <div class="fields">
+        <div class="field"><label for="fpg">空腹血糖（mg/dL）</label><input id="fpg" type="number" min="40" max="800"></div>
+        <div class="field"><label for="ogtt">口服葡萄糖耐受試驗 2 小時（mg/dL）</label><input id="ogtt" type="number" min="40" max="800"></div>
+        <div class="field"><label for="rpg">隨機血糖（mg/dL）</label><input id="rpg" type="number" min="40" max="900"></div>
+      </div>
+      <ul class="crit" id="dxCheck"></ul>
+      <div class="field" style="max-width:420px"><span class="lab">起始治療</span><div class="seg" id="initSeg"><button type="button" data-init="single" aria-pressed="false">單藥 metformin</button><button type="button" data-init="dual" aria-pressed="false">雙藥合併起始</button></div><span class="calc" id="initHint"></span></div>
+    </div>
+    <div id="fuBlock" style="display:flex;flex-direction:column;gap:14px">
+      <p class="hint">點藥名表示正在使用，再點每日劑量。虛線框為超過此 eGFR 的建議上限。metformin 複方請分開點兩個成分。</p>
+      <div class="picker" id="curPicker"></div>
+      <div class="field" style="max-width:420px"><span class="lab">目前組合已使用</span><div class="seg" id="durSeg"><button type="button" data-dur="0" aria-pressed="false">&lt;3 個月</button><button type="button" data-dur="3" aria-pressed="false">3–6 個月</button><button type="button" data-dur="6" aria-pressed="false">≥6 個月</button></div></div>
+      <p class="sub">過往檢驗紀錄（由舊到新，上方步驟 1 為本次數值）</p>
+      <div class="tbl"><table class="hist"><thead><tr><th>日期</th><th>HbA1c（%）</th><th>eGFR</th><th>UACR（mg/g）</th><th></th></tr></thead><tbody id="histBody"></tbody></table></div>
+      <div><button id="addHist" type="button">＋ 新增一筆紀錄</button></div>
+      <div id="histTrend" class="trendbox"></div>
+      <p class="sub">曾因副作用停用的藥類（點選，建議時會避開）</p>
+      <div class="chips" id="intol"></div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h3s">
+    <h2 id="h3s"><span class="n">3</span>用藥選擇<small>Choose what to add or switch</small></h2>
+    <p class="hint">「推薦」依本病人的腎臟、心血管狀態與健保條件標示。點選後會顯示健保資格、起始與最大劑量，以及必須一起停用的藥。可複選。</p>
+    <div class="picker" id="candPicker"></div>
+    <div id="candDetail" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
+  <section class="step" aria-labelledby="h4s">
+    <h2 id="h4s"><span class="n">4</span>用藥建議<small>Recommendation</small></h2>
+    <ol class="plan" id="plan"></ol>
+    <p class="sub">調整後處方</p>
+    <div class="tbl"><table><thead><tr><th>藥品</th><th>處置</th><th>劑量</th><th>此 eGFR 最大劑量</th><th>健保依據</th></tr></thead><tbody id="newRx"></tbody></table></div>
+    <p class="sub">病歷記載草稿</p>
+    <div class="notebox" id="note" tabindex="0"></div>
+    <div><button id="copyBtn" type="button">複製病歷草稿</button><span class="copied" id="copied" hidden></span></div>
+    <details><summary>各類藥物健保條件總覽</summary><div class="cards" id="cards"></div></details>
+    <details><summary>依目前 eGFR 的劑量表</summary><div class="tbl"><table><thead><tr><th>藥品</th><th>此 eGFR</th><th>建議最大劑量</th><th>說明</th></tr></thead><tbody id="renal"></tbody></table></div></details>
+    <details><summary>規定依據與限制</summary><div class="refs">
+      <div>• 健保藥品給付規定 5.1 糖尿病用藥（114/6/1）：metformin 優先；TZD、DPP-4、SGLT-2 及其複方限用於最大耐受劑量 metformin 仍控制不佳者，SGLT-2 與 DPP-4 宜二擇一；三種口服藥仍控制不佳宜考慮胰島素；口服藥最多四種的上限已刪除。</div>
+      <div>• 5.1.3 GLP-1 受體促效劑：最大耐受劑量 metformin 及／或磺醯脲類，併用 SGLT-2、DPP-4、其複方或胰島素 6 個月後 HbA1c &gt;8.5%；不得與 DPP-4、SGLT-2 併用。心肌梗塞、血管再通術、動脈硬化缺血性腦中風者可在 metformin 後直接使用。Soliqua 門檻 HbA1c &gt;8.0%、胰島素每日 &lt;60 單位。</div>
+      <div>• SGLT-2＋DPP-4 複方：最大耐受劑量 metformin 併用其中一成分至少 6 個月，HbA1c 仍 &gt;7.5%。</div>
+      <div>• 2.16（114/3/1）dapagliflozin、empagliflozin 10 mg：慢性腎臟病須收案 Early CKD／Pre-ESRD、ACEI 或 ARB 最大耐受劑量 ≥4 週、eGFR 25–60、UACR 200–5000 mg/g；心衰竭須射出分率 ≤49% 並記載標準治療。</div>
+      <div>• 腎功能劑量依各藥仿單、KDIGO 2022 與美國糖尿病學會 2026 照護標準整理；健保審查實務上「理想控制」多以 HbA1c 7.0% 判定，metformin 至少使用 3 個月。</div>
+      <div class="disclaim">本工具不取代醫師判斷，也不保證核付。開立前請以健保署最新給付規定、院所用藥品項與仿單為準。Tirzepatide 與口服 semaglutide 多為自費。</div>
+      <div><a href="https://www.nhi.gov.tw/ch/cp-18237-96c34-3258-1.html" target="_blank" rel="noopener">5.1 修訂公告</a> · <a href="https://www.nhi.gov.tw/ch/dl-86110-c5b8d8d685c04fff8aa284e25af3be0e-1.pdf" target="_blank" rel="noopener">2.16 修訂對照表</a> · <a href="https://ws.nhi.gov.tw/001/Upload/292/relfile/chapterfile/5.1.pdf" target="_blank" rel="noopener">5.1 條文全文</a></div>
+    </div></details>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+// ---- Drug catalogue: daily (or weekly) dose options and eGFR-adjusted maximum ----
+// mx(e) returns the highest recommended dose at that eGFR (0 = avoid); lv(e) ok/warn/bad; nt(e) note
+const GROUPS=[
+  ["met","雙胍類","Biguanide"],["sglt2","SGLT-2 抑制劑","鈉-葡萄糖共同轉運蛋白2 抑制劑"],["dpp4","DPP-4 抑制劑","二肽基肽酶-4 抑制劑"],
+  ["fdc","SGLT-2＋DPP-4 複方","Fixed-dose combination"],["glp1","GLP-1 受體促效劑","類升糖素胜肽-1；週打或日打"],["su","磺醯脲類","Sulfonylurea"],
+  ["tzd","噻唑烷二酮類","Thiazolidinedione"],["agi","α-葡萄糖苷酶抑制劑","Alpha-glucosidase inhibitor"],["glinide","非磺醯脲類促泌劑","Meglitinide"],["ins","胰島素","Insulin"]];
+const L=(a,b)=>e=>e>=a?"ok":e>=b?"warn":"bad";
+const DR=[
+  {id:"metformin",g:"met",n:"Metformin",b:"Glucophage",u:"mg",p:"日",o:[500,1000,1500,2000,2550],mx:e=>e>=45?2550:e>=30?1000:0,lv:L(45,30),nt:e=>e>=45?"500 mg 起始，每 1–2 週加量；每 3–6 個月追蹤 eGFR，顯影劑檢查前後暫停。":e>=30?"不建議新開始；已在用者每日總量不超過 1000 mg。":"禁忌，乳酸中毒風險，應停用。"},
+  {id:"dapagliflozin",g:"sglt2",n:"Dapagliflozin",b:"Forxiga",u:"mg",p:"日",o:[5,10],mx:e=>10,lv:L(45,25),nt:e=>e>=45?"糖尿病 5–10 mg；腎臟、心衰竭適應症 10 mg。":e>=25?"降糖效果有限，以腎臟、心臟保護為主。":"eGFR <25 不建議新開始；已在用者可續用至透析。"},
+  {id:"empagliflozin",g:"sglt2",n:"Empagliflozin",b:"Jardiance",u:"mg",p:"日",o:[10,25],mx:e=>e>=45?25:10,lv:L(45,20),nt:e=>e>=45?"10 mg 起始，可加到 25 mg；腎臟、心衰竭適應症健保限 10 mg。":e>=20?"eGFR <45 只用 10 mg（腎臟保護劑量）。":"eGFR <20 不建議新開始；已在用者可續用。"},
+  {id:"canagliflozin",g:"sglt2",n:"Canagliflozin",b:"Canaglu",u:"mg",p:"日",o:[100,300],mx:e=>e>=60?300:100,lv:L(60,30),nt:e=>e>=60?"":e>=30?"eGFR 30–59 限 100 mg。":"不建議新開始；白蛋白尿者可續用 100 mg。"},
+  {id:"ertugliflozin",g:"sglt2",n:"Ertugliflozin",b:"Steglatro",u:"mg",p:"日",o:[5,15],mx:e=>e>=45?15:0,lv:L(45,999),nt:e=>e>=45?"":"eGFR <45 不建議使用。"},
+  {id:"sitagliptin",g:"dpp4",n:"Sitagliptin",b:"Januvia",u:"mg",p:"日",o:[25,50,100],mx:e=>e>=45?100:e>=30?50:25,lv:L(45,0),nt:e=>"依 eGFR 減量：≥45 用 100 mg、30–44 用 50 mg、<30（含透析）用 25 mg。"},
+  {id:"linagliptin",g:"dpp4",n:"Linagliptin",b:"Trajenta",u:"mg",p:"日",o:[5],mx:e=>5,lv:e=>"ok",nt:e=>"不需依腎功能調整，腎功能差時首選。"},
+  {id:"saxagliptin",g:"dpp4",n:"Saxagliptin",b:"Onglyza",u:"mg",p:"日",o:[2.5,5],mx:e=>e>45?5:2.5,lv:e=>e>45?"ok":"warn",nt:e=>"eGFR ≤45 一律 2.5 mg。"},
+  {id:"vildagliptin",g:"dpp4",n:"Vildagliptin",b:"Galvus",u:"mg",p:"日",o:[50,100],mx:e=>e>=50?100:50,lv:L(50,0),nt:e=>e>=50?"50 mg 每日兩次。":"eGFR <50 改 50 mg 每日一次。"},
+  {id:"alogliptin",g:"dpp4",n:"Alogliptin",b:"Nesina",u:"mg",p:"日",o:[6.25,12.5,25],mx:e=>e>=60?25:e>=30?12.5:6.25,lv:L(60,0),nt:e=>"仿單以肌酸酐清除率分級：≥60 用 25 mg、30–59 用 12.5 mg、<30 用 6.25 mg。"},
+  {id:"glyxambi",g:"fdc",n:"Glyxambi",b:"empagliflozin/linagliptin",u:"mg",p:"日",o:["10/5","25/5"],mx:e=>e>=45?"25/5":e>=30?"10/5":0,lv:L(45,30),nt:e=>e>=45?"每日限 1 粒。":e>=30?"eGFR <45 用 10/5 mg，SGLT-2 降糖效果有限。":"eGFR <30 不建議。"},
+  {id:"qtern",g:"fdc",n:"Qtern",b:"dapagliflozin/saxagliptin",u:"mg",p:"日",o:["10/5"],mx:e=>e>=45?"10/5":0,lv:L(45,999),nt:e=>e>=45?"每日限 1 粒。":"eGFR <45 不建議（saxagliptin 需減量）。"},
+  {id:"steglujan",g:"fdc",n:"Steglujan",b:"ertugliflozin/sitagliptin",u:"mg",p:"日",o:["5/100","15/100"],mx:e=>e>=45?"15/100":0,lv:L(45,999),nt:e=>e>=45?"每日限 1 粒。":"eGFR <45 不建議。"},
+  {id:"semaglutide",g:"glp1",n:"Semaglutide",b:"Ozempic",u:"mg",p:"週",o:[0.25,0.5,1,2],mx:e=>2,lv:e=>"ok",nt:e=>"0.25 mg 起始，每 4 週加量；不需依腎功能調整。"},
+  {id:"dulaglutide",g:"glp1",n:"Dulaglutide",b:"Trulicity",u:"mg",p:"週",o:[0.75,1.5,3,4.5],mx:e=>4.5,lv:e=>"ok",nt:e=>"每 4 週可加量；不需依腎功能調整。"},
+  {id:"liraglutide",g:"glp1",n:"Liraglutide",b:"Victoza",u:"mg",p:"日",o:[0.6,1.2,1.8],mx:e=>1.8,lv:e=>e>=15?"ok":"warn",nt:e=>e>=15?"0.6 mg 起始，每週加量。":"末期腎病使用經驗有限。"},
+  {id:"exenatide",g:"glp1",n:"Exenatide",b:"Byetta",u:"mcg",p:"日",o:[10,20],mx:e=>e>=30?20:0,lv:L(50,30),nt:e=>e>=50?"5 mcg 每日兩次起始。":e>=30?"慎用、緩慢加量。":"eGFR <30 避免。"},
+  {id:"tirzepatide",g:"glp1",n:"Tirzepatide",b:"Mounjaro",u:"mg",p:"週",o:[2.5,5,7.5,10,12.5,15],mx:e=>15,lv:e=>"ok",self:1,nt:e=>"2.5 mg 起始，每 4 週加 2.5 mg；多為自費。"},
+  {id:"glipizide",g:"su",n:"Glipizide",b:"Minidiab",u:"mg",p:"日",o:[2.5,5,10,15,20],mx:e=>20,lv:L(30,0),nt:e=>"肝臟代謝，腎病相對安全；超過 20 mg 加成效果有限。"+(e<30?" eGFR <30 以 2.5 mg 起始。":"")},
+  {id:"gliclazide",g:"su",n:"Gliclazide MR",b:"Diamicron MR",u:"mg",p:"日",o:[30,60,90,120],mx:e=>120,lv:L(30,0),nt:e=>e>=30?"早餐時一次服用。":"慎用，30 mg 起始。"},
+  {id:"glimepiride",g:"su",n:"Glimepiride",b:"Amaryl",u:"mg",p:"日",o:[1,2,3,4,6,8],mx:e=>e>=30?8:0,lv:L(60,30),nt:e=>e>=60?"超過 4 mg 加成效果有限。":e>=30?"1 mg 起始、緩慢加量；活性代謝物經腎排除。":"避免，低血糖會延長。"},
+  {id:"glibenclamide",g:"su",n:"Glibenclamide",b:"Euglucon",u:"mg",p:"日",o:[2.5,5,10,15],mx:e=>e>=60?15:0,lv:e=>e>=60?"warn":"bad",nt:e=>"低血糖風險最高，高齡與腎功能下降者避免。"},
+  {id:"pioglitazone",g:"tzd",n:"Pioglitazone",b:"Actos",u:"mg",p:"日",o:[15,30,45],mx:e=>45,lv:e=>"ok",nt:e=>"不需依腎功能調整；心衰竭禁用，注意水腫、骨折。"},
+  {id:"acarbose",g:"agi",n:"Acarbose",b:"Glucobay",u:"mg",p:"日",o:[150,300],mx:e=>e>=25?300:0,lv:L(25,999),nt:e=>e>=25?"50 mg 每日三次隨餐起始；體重 ≤60 公斤上限 150 mg／日。":"eGFR <25 避免。"},
+  {id:"repaglinide",g:"glinide",n:"Repaglinide",b:"NovoNorm",u:"mg",p:"日",o:[1.5,3,6,12,16],mx:e=>16,lv:L(30,0),nt:e=>e>=30?"隨餐服用，每餐 0.5–4 mg。":"每餐 0.5 mg 起始。"},
+  {id:"nateglinide",g:"glinide",n:"Nateglinide",b:"Starlix",u:"mg",p:"日",o:[180,360],mx:e=>360,lv:L(30,0),nt:e=>e>=30?"120 mg 每日三次隨餐。":"慎用，每餐 60 mg 起始。"},
+  {id:"basal",g:"ins",n:"基礎胰島素",b:"glargine · degludec · detemir",ins:1},
+  {id:"premix",g:"ins",n:"預混型胰島素",b:"aspart 70/30 · lispro 75/25",ins:1},
+  {id:"bolus",g:"ins",n:"速效胰島素",b:"aspart · lispro · glulisine",ins:1}];
+const DRM=Object.fromEntries(DR.map(d=>[d.id,d]));
+const fmt=v=>typeof v==="number"?String(v):v;
+function over(d,dose,e){const m=d.mx(e);if(dose==null)return false;if(m===0)return true;return d.o.indexOf(dose)>d.o.indexOf(m);}
+
+
+const START={metformin:500,dapagliflozin:10,empagliflozin:10,canagliflozin:100,ertugliflozin:5,linagliptin:5,vildagliptin:50,glyxambi:"10/5",qtern:"10/5",steglujan:"5/100",semaglutide:0.25,dulaglutide:0.75,liraglutide:0.6,exenatide:10,tirzepatide:2.5,glipizide:2.5,gliclazide:30,glimepiride:1,glibenclamide:2.5,pioglitazone:15,acarbose:150,repaglinide:1.5,nateglinide:180};
+function startDose(d,e){const m=d.mx(e);if(m===0)return null;const s=START[d.id];if(s==null)return m;return d.o.indexOf(s)<=d.o.indexOf(m)?s:m;}
+
+let SEL={},PICK={},INTOL={},FLAGS={},SEX=null,DUR=null,MET_TOL=false,INS_U=null,isSample=true,egfrAuto=false,MODE="fu",HIST=[],STASH=null,INIT=null;
+const DUAL_TH=8.0; // 診斷標準 6.5% + 1.5%
+const SAMPLE={mode:"fu",age:68,sex:"F",ht:158,wt:71,a1c:8.9,target:"7",cr:1.35,uacr:420,hf:"none",flags:{ckdprog:1,raas:1},dur:6,sel:{metformin:1000,sitagliptin:100},pick:{empagliflozin:1},intol:{},
+  hist:[{d:"2025-10-14",a1c:7.6,egfr:55,uacr:210},{d:"2026-04-21",a1c:8.6,egfr:48,uacr:330}]};
+const TODAY=new Date().toISOString().slice(0,10);
+// KDIGO heat map: risk by eGFR stage × albuminuria stage
+function kdigo(e,u){if(e==null)return null;const gi=e>=60?0:e>=45?1:e>=30?2:3, ai=u==null?null:u<30?0:u<=300?1:2;
+  if(ai==null)return {k:gi===0?"unk":["mod","high","vhigh"][gi-1],partial:1};
+  const T=[["low","mod","high"],["mod","high","vhigh"],["high","vhigh","vhigh"],["vhigh","vhigh","vhigh"]];return {k:T[gi][ai]};}
+const KD={low:["低風險","ok",1],mod:["中度風險","warn",1],high:["高風險","bad",2],vhigh:["極高風險","bad",3],unk:["需驗 UACR 才能分級","warn",1]};
+function trends(s){
+  const pts=HIST.filter(h=>h.d).slice().sort((a,b)=>a.d<b.d?-1:1);
+  const all=[...pts,{d:TODAY,a1c:s.a1c,egfr:s.egfr,uacr:s.uacr,now:1}];
+  const ser=k=>all.filter(p=>p[k]!=null);
+  const yrs=(a,b)=>(new Date(b)-new Date(a))/(365.25*864e5);
+  const out={a1c:ser("a1c"),egfr:ser("egfr"),uacr:ser("uacr")};
+  const eg=out.egfr;if(eg.length>=2){const y=yrs(eg[0].d,eg[eg.length-1].d);if(y>=0.25){out.slope=+((eg[eg.length-1].egfr-eg[0].egfr)/y).toFixed(1);out.pct=Math.round((eg[eg.length-1].egfr-eg[0].egfr)/eg[0].egfr*100);out.span=y;}}
+  const a=out.a1c;if(a.length>=2){out.a1cDelta=+(a[a.length-1].a1c-a[a.length-2].a1c).toFixed(1);out.a1cPrev=a[a.length-2];out.above=0;for(let i=a.length-1;i>=0&&a[i].a1c>s.target;i--)out.above++;}
+  const u=out.uacr;if(u.length>=2){out.uacrPct=Math.round((u[u.length-1].uacr-u[u.length-2].uacr)/u[u.length-2].uacr*100);}
+  out.rapid=out.slope!=null&&(out.slope<=-5||(out.pct!=null&&out.pct<=-25&&stage(eg[0].egfr)[0]!==stage(eg[eg.length-1].egfr)[0]));
+  return out;
+}
+function diagnose(s){
+  const L=[],sym=!!FLAGS.catab;let n=0;
+  const t=(v,th,name,unit)=>{if(v==null)return;const hit=v>=th;if(hit)n++;L.push({c:hit?"y":"n",t:`${name} ${v}${unit}（診斷標準 ≥${th}${unit}）`});};
+  t(s.a1c,6.5,"HbA1c","%");t(s.fpg,126,"空腹血糖"," mg/dL");t(s.ogtt,200,"葡萄糖耐受試驗 2 小時"," mg/dL");
+  if(s.rpg!=null){const hit=s.rpg>=200&&sym;L.push({c:hit?"y":s.rpg>=200?"q":"n",t:`隨機血糖 ${s.rpg} mg/dL${s.rpg>=200?(sym?"，且有典型高血糖症狀：單次即可診斷":"（≥200 但未勾選高血糖症狀）"):""}`});if(hit)n=Math.max(n,2);}
+  let verdict;
+  if(n>=2)verdict={c:"y",t:"符合糖尿病診斷（兩項異常，或隨機血糖 ≥200 合併症狀）"};
+  else if(n===1)verdict={c:"q",t:"只有一項異常：需在不同日重複檢測確認（同一次抽血的 HbA1c 與空腹血糖同時異常也可確診）"};
+  else if(L.length)verdict={c:"n",t:"未達糖尿病診斷標準"+((s.a1c!=null&&s.a1c>=5.7)||(s.fpg!=null&&s.fpg>=100)||(s.ogtt!=null&&s.ogtt>=140)?"，屬糖尿病前期":"")};
+  else verdict={c:"q",t:"尚未輸入診斷數值"};
+  const t1=(s.age!=null&&s.age<35&&s.bmi!=null&&s.bmi<23)||(sym&&s.bmi!=null&&s.bmi<23);
+  return {L,verdict,ok:n>=2,t1};
+}
+
+function ckdepi(cr,age,sex){if(!cr||!age||!sex)return null;const f=sex==="F",k=f?.7:.9,a=f?-.241:-.302,r=cr/k;
+  return Math.round(142*Math.pow(Math.min(r,1),a)*Math.pow(Math.max(r,1),-1.2)*Math.pow(.9938,age)*(f?1.012:1));}
+const num=k=>{const v=parseFloat($(k).value);return isNaN(v)?null:v};
+
+function load(o){
+  ["age","ht","wt","a1c","cr","uacr","fpg","ogtt","rpg"].forEach(k=>$(k).value=o[k]??"");
+  $("target").value=o.target||"7";$("hf").value=o.hf||"none";$("egfr").value=o.egfr??"";
+  SEX=o.sex||null;DUR=o.dur??null;FLAGS={...(o.flags||{})};SEL={...(o.sel||{})};PICK={...(o.pick||{})};INTOL={...(o.intol||{})};MET_TOL=!!o.metTol;INS_U=o.insU??null;
+  MODE=o.mode||MODE;INIT=o.init||null;HIST=(o.hist||[]).map(h=>({...h}));STASH=null;egfrAuto=false;
+  autoEgfr();renderHist();renderStatic();
+}
+function autoEgfr(){const v=ckdepi(num("cr"),num("age"),SEX);if(v!=null){$("egfr").value=v;egfrAuto=true;}renderCalc();}
+function renderCalc(){$("egfrCalc").textContent=egfrAuto&&num("egfr")!=null?"由肌酸酐計算（CKD-EPI 2021）":"";
+  const h=num("ht"),w=num("wt");$("bmiOut").textContent=h&&w?`BMI ${(w/(h/100)**2).toFixed(1)}`:"";}
+
+function read(){
+  const h=num("ht"),w=num("wt"),age=num("age");
+  const s={mode:MODE,fpg:num("fpg"),ogtt:num("ogtt"),rpg:num("rpg"),age,sex:SEX,wt:w,a1c:num("a1c"),target:parseFloat($("target").value),egfr:num("egfr"),uacr:num("uacr"),
+    bmi:h&&w?+(w/(h/100)**2).toFixed(1):null,dur:DUR??0,hf:$("hf").value,insU:INS_U,
+    ascvd:!!FLAGS.ascvd,ckdprog:!!FLAGS.ckdprog,raas:!!FLAGS.raas,catab:!!FLAGS.catab,elder:(age!=null&&age>=65)||!!FLAGS.hypo,intol:INTOL};
+  const e=s.egfr??90, has=g=>Object.keys(SEL).some(id=>DRM[id].g===g);
+  if(!("metformin" in SEL))s.met="none";
+  else if(SEL.metformin==="contra")s.met="contra";
+  else{const m=DRM.metformin.mx(e),d=SEL.metformin;s.met=(MET_TOL&&d!=null)||(d!=null&&m>0&&d>=m)||(m===0)?"max":"sub";}
+  ["su","dpp4","sglt2","fdc","tzd","agi","glinide","glp1","ins"].forEach(g=>s["m_"+g]=has(g));
+  s.tr=MODE==="fu"?trends(s):{};
+  s.initAuto=s.a1c!=null&&s.a1c>=DUAL_TH?"dual":"single";s.init=INIT||s.initAuto;
+  return s;
+}
+
+function stage(e){if(e==null)return null;if(e>=90)return["G1","正常或偏高"];if(e>=60)return["G2","輕度下降"];if(e>=45)return["G3a","輕至中度下降"];if(e>=30)return["G3b","中至重度下降"];if(e>=15)return["G4","重度下降"];return["G5","腎衰竭"];}
+function astage(u){if(u==null)return null;if(u<30)return"A1";if(u<=300)return"A2";return"A3";}
+
+// ---- NHI eligibility engine ----
+function evaluate(s){
+  const e=s.egfr??90, a=s.a1c;
+  const metOn=s.met==="sub"||s.met==="max";
+  const metMax=s.met==="max"||s.met==="contra"||(s.met==="none"&&e<30);
+  const metContraNote=s.met==="contra"||(s.met==="none"&&e<30);
+  const uncontrolled=a!=null&&a>7.0;
+  const dur3=s.dur>=3, dur6=s.dur>=6;
+  const second=s.m_sglt2||s.m_dpp4||s.m_fdc||s.m_ins;
+  const oral=(metOn?1:0)+["m_su","m_dpp4","m_sglt2","m_tzd","m_agi","m_glinide"].filter(k=>s[k]).length+(s.m_fdc?2:0);
+  const C=[];
+  const c=(ok,t)=>({c:ok===true?"y":ok===false?"n":ok==="q"?"q":"i",t});
+  const metLine=s.met==="max"?c(true,"已達最大耐受劑量 metformin"):metContraNote?c("q","metformin 禁忌／無法耐受，病歷須寫明原因（例如 eGFR <30）"):c(false,"尚未達最大耐受劑量 metformin");
+  const a1cLine=(th,txt)=>a==null?c("q","尚未輸入 HbA1c"):c(a>th,`HbA1c ${a}%${a>th?" >":" ≤"} ${th}%${txt||""}`);
+
+  // SGLT-2 for diabetes (5.1)
+  {
+    let crit=[metLine,a1cLine(7.0,"（未達理想控制）"),c(dur3||s.met==="contra","metformin 已使用 ≥3 個月（審查實務）"),
+      c(!(s.m_dpp4&&!s.m_fdc),s.m_dpp4?"正在使用 DPP-4 抑制劑：須擇一，或改用複方":"未同時使用單方 DPP-4 抑制劑")];
+    if(s.m_glp1)crit.push(c(false,"正在使用 GLP-1 受體促效劑，健保不得併用"));
+    let st, note;
+    if(s.m_sglt2||s.m_fdc){st="using";}
+    else if(e<20){st="no";}
+    else st=crit.every(x=>x.c!=="n")?"ok":"pending";
+    note=e<20?"eGFR <20 不建議起始；已在使用者可續用至透析。":e<45?"eGFR <45 降血糖效果有限（約 0.2–0.4%），主要為腎臟與心臟保護，需搭配其他降糖藥。":"Dapagliflozin、empagliflozin、canagliflozin、ertugliflozin 每日限 1 粒。";
+    C.push({k:"sglt2",name:"SGLT-2 抑制劑（糖尿病給付）",en:"5.1 · dapagliflozin, empagliflozin…",st,crit,note,eff:e<45?"HbA1c ↓ 0.2–0.4%":"HbA1c ↓ 0.5–0.8%"});
+  }
+  // SGLT-2 for CKD (2.16)
+  {
+    const crit=[c(s.ckdprog,"收案 Early CKD 或 Pre-ESRD 方案"),c(s.raas,"最大耐受劑量 ACEI／ARB ≥4 週"),
+      c(s.egfr==null?"q":(e>=25&&e<=60),`起始 eGFR 25–60（目前 ${s.egfr??"未填"}）`),
+      s.uacr==null?c("q","需 UACR 200–5000 mg/g（尚未輸入）"):c(s.uacr>=200&&s.uacr<=5000,`UACR 200–5000 mg/g（目前 ${s.uacr}）`),
+      c(null,"排除：第 1 型糖尿病、多囊腎、狼瘡腎炎、ANCA 血管炎、6 個月內化療或免疫抑制、器官移植、12 週內急性冠心症／中風／血運重建")];
+    let st=crit.slice(0,4).every(x=>x.c==="y")?"ok":crit.slice(0,4).some(x=>x.c==="n")?"no":"pending";
+    if(st==="no"&&(!s.ckdprog||!s.raas)&&e>=25&&e<=60&&s.uacr!=null&&s.uacr>=200&&s.uacr<=5000)st="pending";
+    C.push({k:"ckd",name:"SGLT-2 抑制劑（慢性腎臟病給付）",en:"2.16 · dapagliflozin 10 mg / empagliflozin 10 mg",st,crit,note:"不需有糖尿病即可給付；與 5.1 條件無關，適合 metformin 條件未滿但腎臟風險高的病人。使用後 eGFR <15 須停藥。",eff:"腎病進展風險 ↓ 約 30–40%"});
+  }
+  // SGLT-2 for HF
+  if(s.hf!=="none"){
+    let crit, st;
+    if(s.hf==="p"){crit=[c(false,"健保 2.16 只給付射出分率 ≤49% 的心衰竭")];st="no";}
+    else{crit=[c("q","紐約心臟協會分級第 II–IV 級"),c("q","一年內心臟超音波等檢查的射出分率數值"),c("q","ACEI／ARB 穩定劑量＋β-阻斷劑最大耐受劑量 ≥4 週，仍有症狀"),...(s.hf==="mr"?[c("q","曾因心衰竭住院或經心臟專科診斷")]:[])];st="pending";}
+    C.push({k:"hf",name:"SGLT-2 抑制劑（心衰竭給付）",en:"2.16 · LVEF ≤40% / 41–49%",st,crit,note:s.hf==="p"?"保留型心衰竭仍有臨床效益（美國糖尿病學會建議），但需依 5.1 糖尿病條件或自費。":"以上須逐項在病歷記載。",eff:"心衰竭住院 ↓ 約 30%"});
+  }
+  // DPP-4
+  {
+    const crit=[metLine,a1cLine(7.0,"（未達理想控制）"),c(dur3||s.met==="contra","metformin 已使用 ≥3 個月（審查實務）"),
+      c(!(s.m_sglt2&&!s.m_fdc),s.m_sglt2?"正在使用 SGLT-2 抑制劑：須擇一，或改用複方":"未同時使用單方 SGLT-2 抑制劑"),
+      c(!s.m_glp1,s.m_glp1?"正在使用 GLP-1 受體促效劑，不可併用":"未使用 GLP-1 受體促效劑")];
+    const st=(s.m_dpp4||s.m_fdc)?"using":crit.every(x=>x.c!=="n")?"ok":"pending";
+    C.push({k:"dpp4",name:"DPP-4 抑制劑",en:"5.1 · sitagliptin, linagliptin, saxagliptin…",st,crit,note:e<30?"eGFR <30 優先選 linagliptin 5 mg（不需調整），其餘需減量，見下方劑量表。":"低血糖風險低、體重中性；與 SGLT-2 抑制劑單方只能二擇一。",eff:"HbA1c ↓ 0.5–0.8%"});
+  }
+  // FDC
+  {
+    const crit=[c(s.met==="max","已接受最大耐受劑量 metformin"+(s.met==="contra"?"（複方條文未列禁忌例外）":"")),
+      c(s.m_sglt2||s.m_dpp4,"已併用 SGLT-2 或 DPP-4 抑制劑其中一種"),c(dur6,"上述組合已使用 ≥6 個月"),a1cLine(7.5)];
+    let st=s.m_fdc?"using":crit.every(x=>x.c==="y")?"ok":"pending";
+    if(!s.m_fdc&&e<30)st="no";
+    C.push({k:"fdc",name:"SGLT-2＋DPP-4 複方",en:"Glyxambi · Qtern · Steglujan",st,crit,note:e<45?"SGLT-2 成分在 eGFR <45 降糖效果有限；eGFR <30 不建議使用複方。":"每日限 1 粒。注意不可再另開單方 SGLT-2 或 DPP-4。",eff:"HbA1c 再 ↓ 約 0.5–0.7%"});
+  }
+  // GLP-1
+  {
+    const pathA=[c(s.met==="max"||metContraNote||s.m_su,"已用最大耐受劑量 metformin 及／或磺醯脲類"),
+      c(second,"併用 SGLT-2、DPP-4、其複方或胰島素其中之一"),c(dur6,"上述組合已持續 ≥6 個月"),a1cLine(8.5)];
+    const aOK=pathA.every(x=>x.c!=="n");
+    const bOK=s.ascvd&&metMax&&uncontrolled;
+    const crit=[...pathA];
+    if(s.ascvd)crit.unshift(c(bOK,"心血管捷徑：有心肌梗塞／血管再通術／動脈硬化腦中風，最大耐受劑量 metformin 後控制不佳，可直接使用"));
+    if(s.m_sglt2||s.m_dpp4||s.m_fdc)crit.push(c(null,"開始 GLP-1 時須停用 DPP-4 與 SGLT-2 抑制劑（健保不得併用）"));
+    const st=s.m_glp1?"using":(aOK||bOK)?"ok":"pending";
+    let note="Liraglutide、dulaglutide、semaglutide 不需依腎功能調整；腸胃副作用致脫水時注意急性腎損傷。";
+    if((s.m_sglt2||s.ckdprog)&&e<60)note+=" 此病人有腎臟病：改用 GLP-1 須停 SGLT-2，會失去腎保護；若 SGLT-2 是依 2.16 腎臟條文給付，能否併用請先向分區業務組確認。";
+    C.push({k:"glp1",name:"GLP-1 受體促效劑",en:"5.1.3 · liraglutide, dulaglutide, semaglutide",st,crit,note,eff:"HbA1c ↓ 1.0–1.5%，體重 ↓"});
+  }
+  // Soliqua
+  {
+    const crit=[c(s.met==="max"||metContraNote||s.m_su,"已用最大耐受劑量 metformin 及／或磺醯脲類"),c(second,"併用 SGLT-2、DPP-4、其複方或胰島素其中之一"),c(dur6,"已持續 ≥6 個月"),a1cLine(8.0),
+      c(!s.m_ins||(s.insU!=null&&s.insU<60),s.m_ins?`胰島素每日 <60 單位（目前 ${s.insU??"未填"}）`:"未使用胰島素或每日 <60 單位")];
+    const st=crit.every(x=>x.c==="y")?"ok":"pending";
+    C.push({k:"soliqua",name:"Lixisenatide＋insulin glargine 複方",en:"Soliqua · 5.1.3.3",st,crit,note:"同樣不得與 DPP-4、SGLT-2 併用。適合已打基礎胰島素、想減少注射次數者。",eff:"HbA1c ↓ 1.1–1.6%"});
+  }
+  // TZD
+  {
+    const crit=[metLine,a1cLine(7.0),c(s.hf==="none","無心衰竭"+(s.hf!=="none"?"：心衰竭為禁忌":""))];
+    let st=s.m_tzd?"using":s.hf!=="none"?"no":crit.every(x=>x.c!=="n")?"ok":"pending";
+    C.push({k:"tzd",name:"Pioglitazone",en:"5.1 · 噻唑烷二酮類",st,crit,note:"不需依腎功能調整，但會水腫、體重增加、骨折風險上升；膀胱癌病史避免。脂肪肝病人有額外好處。",eff:"HbA1c ↓ 0.5–1.4%"});
+  }
+  // Insulin
+  {
+    const why=[];
+    if(a!=null&&a>=10)why.push(c(true,"HbA1c ≥10%"));
+    if(s.catab)why.push(c(true,"有高血糖症狀或異化狀態"));
+    if(oral>=3&&uncontrolled)why.push(c(true,`已用 ${oral} 種口服成分仍控制不佳（規定：宜考慮胰島素）`));
+    if(e<15)why.push(c(true,"eGFR <15，多數口服藥受限"));
+    if(!why.length)why.push(c(null,"健保無特殊限制，各期均可使用"));
+    C.push({k:"ins",name:"胰島素",en:"Basal insulin · glargine, degludec, detemir",st:s.m_ins?"using":"ok",crit:why,note:e<50?`eGFR ${e}：胰島素清除下降，總劑量通常需減約 ${e<10?"50":"25"}%，緩慢調整。`:"起始 10 單位／日或 0.1–0.2 單位／公斤／日，依空腹血糖每 3 天調整。",eff:"HbA1c 下降無上限"});
+  }
+  // SU / AGI / glinide
+  C.push({k:"su",name:"磺醯脲類",en:"glimepiride, gliclazide, glipizide",st:s.m_su?"using":e<30?"pending":"ok",
+    crit:[c(null,"健保無額外條件"),...(s.elder?[c(false,"高齡或低血糖高風險：避免或用最低劑量")]:[])],note:e<60?"腎功能下降時避免 glibenclamide；glipizide、gliclazide 相對安全，低劑量起始。":"便宜、降糖效果強，但低血糖與體重增加。",eff:"HbA1c ↓ 1.0–1.5%"});
+  C.push({k:"agi",name:"Acarbose／Repaglinide",en:"α-葡萄糖苷酶抑制劑 · 非磺醯脲類促泌劑",st:(s.m_agi||s.m_glinide)?"using":e<25?"pending":"ok",
+    crit:[c(null,"健保無額外條件"),c(e>=25,`Acarbose：eGFR ≥25 才可使用（目前 ${s.egfr??"未填"}）`),c(null,"Repaglinide 不需依腎功能調整，eGFR <30 以 0.5 mg 起始")],note:"適合餐後血糖高的病人；acarbose 腸胃脹氣常見。",eff:"HbA1c ↓ 0.5–1.0%"});
+  // Self-pay
+  C.push({k:"self",name:"Tirzepatide／口服 semaglutide",en:"Mounjaro · Rybelsus",st:"self",crit:[c(null,"多數院所藥品表列為自費（2025/9 資料）"),c(null,"Tirzepatide 降糖與減重效果最大；不需依腎功能調整")],note:"開立前請查健保用藥品項是否已收載。",eff:"HbA1c ↓ 1.5–2.3%"});
+  return {cards:C,metMax,metContraNote,uncontrolled,oral,e,a};
+}
+
+// ---- Plan narrative ----
+function plan(s,R){
+  const out=[], e=R.e, a=R.a, gap=a!=null?+(a-s.target).toFixed(1):null;
+  const ck=k=>R.cards.find(x=>x.k===k);
+  const ckdRisk=(s.egfr!=null&&e<60)||(s.uacr!=null&&s.uacr>=30);
+  if(a==null||s.egfr==null){out.push({t:"先輸入 HbA1c 與 eGFR，系統會依健保條件排出建議。"});return out;}
+  const ov=Object.keys(SEL).filter(id=>!DRM[id].ins&&SEL[id]!=="contra"&&(DRM[id].mx(e)===0||over(DRM[id],SEL[id],e)));
+  if(ov.length)out.push({alert:1,t:"目前處方有劑量超過此 eGFR 的建議上限。",why:ov.map(id=>{const d=DRM[id],m=d.mx(e);return `${d.n}${SEL[id]!=null?` ${fmt(SEL[id])} ${d.u}/${d.p}`:""} → ${m===0?(d.g==="sglt2"?"不建議新開始（已在用者可續用）":"建議停用"):`減至 ${fmt(m)} ${d.u}/${d.p}`}`}).join("；")+"。"});
+  const nodose=Object.keys(SEL).filter(id=>!DRM[id].ins&&SEL[id]==null).map(id=>DRM[id].n);
+  if(nodose.length)out.push({t:`請點選 ${nodose.join("、")} 的目前劑量。`,why:"metformin 需要劑量才能判斷是否達最大耐受劑量，這是健保第二線藥物的前提。"});
+  if(s.mode==="new"){
+    const dx=diagnose(s);
+    out.push({alert:dx.verdict.c==="n"?1:0,t:"診斷："+dx.verdict.t+"。",why:dx.t1?"年輕或體型偏瘦、有明顯症狀：建議驗 GAD 抗體與 C 胜肽，排除第 1 型或成人隱匿型自體免疫糖尿病；若懷疑，直接以胰島素治療。":"確診後衛教飲食與運動，BMI ≥24 者減重 5–10%；可收案糖尿病共同照護網，並安排眼底、足部與尿液白蛋白檢查。"});
+    if(dx.ok&&s.init==="single"&&a>=DUAL_TH&&a<10&&!s.catab)out.push({t:"HbA1c ≥8.0%（診斷標準 6.5% 加 1.5%），建議改為雙藥起始。",why:"可在步驟 2 的「起始治療」改選雙藥。"});
+    if(dx.ok&&s.init==="dual"&&a<10&&!s.catab)out.push({t:a>=DUAL_TH?`HbA1c ${a}% ≥8.0%（診斷標準 6.5% 加 1.5%）：建議一開始就用兩種藥。`:`雙藥起始（手動選擇）：HbA1c ${a}% 未達 8.0%，健保仍允許合併。`,why:`健保下可與 metformin 一起起始、沒有額外條件的是磺醯脲類（${s.elder?"高齡者用 gliclazide 30 mg 或 glipizide 2.5 mg 起始":"gliclazide、glipizide、glimepiride"}）、acarbose、repaglinide 或基礎胰島素。DPP-4、SGLT-2、pioglitazone 與 GLP-1 要等 metformin 用到最大耐受劑量仍控制不佳（審查實務約 3 個月）；想一開始就用則屬自費。`});
+  }
+  if(a>=10||s.catab)out.push({alert:1,t:"優先考慮加上基礎胰島素。",why:`HbA1c ${a}%${s.catab?"且有高血糖或異化症狀":""}，口服藥單獨很難在 3 個月內達標。起始 10 單位／日或 0.1–0.2 單位／公斤／日，血糖穩定後可再減量或轉換。`});
+  if(s.met==="none"){
+    if(e>=45)out.push({t:"開始 metformin，逐步調到最大耐受劑量。",why:"健保第一線用藥；500 mg 每日 1–2 次起始，每 1–2 週增加，最高每日 2550 mg。之後若控制不佳才能申報 DPP-4、SGLT-2 或 pioglitazone。"});
+    else if(e>=30)out.push({t:"eGFR 30–44 不建議新開始 metformin，病歷記載為腎功能禁忌。",why:"記載後可進入第二線藥物；若已在使用可續用，每日上限 1000 mg。"});
+    else out.push({t:"eGFR <30 為 metformin 禁忌，請在病歷寫明。",why:"健保審查會看 metformin 為何未使用；明確記載禁忌理由可避免核刪。"});
+  }else if(s.met==="sub"){
+    out.push({t:"先把 metformin 調到最大耐受劑量。",why:`DPP-4、SGLT-2、pioglitazone 及複方都要求「最大耐受劑量 metformin 仍控制不佳」。${e<45?"此 eGFR 下上限為每日 1000 mg。":"病歷要寫出規格與每日總量（例如 1000 mg 每日 2 次）。"}`});
+  }else if(s.met!=="contra"&&e<30){
+    out.push({alert:1,t:"eGFR <30：停用 metformin。",why:"乳酸中毒風險；停藥後在病歷記載腎功能禁忌，作為後續用藥依據。"});
+  }else if(s.met!=="contra"&&e<45){
+    out.push({t:"Metformin 每日總量不超過 1000 mg。",why:"eGFR 30–44 可續用但需減量，每 3–6 個月追蹤 eGFR；顯影劑檢查前後暫停。"});
+  }
+  // organ protection
+  if(ckdRisk&&e>=20&&!s.m_sglt2&&!s.m_fdc&&!s.m_glp1){
+    const ckd=ck("ckd"), dm=ck("sglt2");
+    let route=dm.st==="ok"?"可依 5.1 糖尿病條文申報":ckd.st==="ok"?"可依 2.16 慢性腎臟病條文申報":ckd.st==="pending"?"2.16 腎臟條文差："+ckd.crit.filter(x=>x.c!=="y"&&x.c!=="i").map(x=>x.t).join("、"):"目前兩條路徑都未符合，需補足條件或自費";
+    out.push({t:"加上 SGLT-2 抑制劑作為腎臟保護（dapagliflozin 或 empagliflozin 10 mg）。",why:`有慢性腎臟病（eGFR ${e}${s.uacr!=null?`、UACR ${s.uacr} mg/g`:""}），不論血糖是否達標都建議使用。${route}。${s.m_dpp4?"目前用 DPP-4：健保只能擇一，或在符合條件時改複方。":""}`});
+  }
+  if(s.hf==="r"||s.hf==="mr"){if(!s.m_sglt2&&!s.m_fdc)out.push({t:"心衰竭：使用 dapagliflozin 或 empagliflozin 10 mg。",why:"2.16 心衰竭條文不需糖尿病條件，但須記載射出分率、心衰竭分級與 β-阻斷劑等標準治療。避免 pioglitazone。"});}
+  if(s.ascvd&&!s.m_glp1){const g=ck("glp1");out.push({t:"有動脈硬化心血管疾病：考慮 GLP-1 受體促效劑（semaglutide、dulaglutide、liraglutide）。",why:g.st==="ok"?"已符合健保心血管捷徑條件。開始時須停用 DPP-4 與 SGLT-2。":"需先達最大耐受劑量 metformin 且 HbA1c 未達理想控制。"});}
+  // albuminuria and kidney trajectory
+  if(s.uacr!=null&&s.uacr>=30){
+    if(!s.raas)out.push({t:`UACR ${s.uacr} mg/g（${s.uacr>300?"重度":"中度"}白蛋白尿）：加血管張力素轉化酶抑制劑或受體阻斷劑，調到最大耐受劑量。`,why:"可降低蛋白尿與腎病進展，血壓正常者也適用；開始或加量後 2–4 週追蹤肌酸酐與血鉀。這也是健保 2.16 SGLT-2 腎臟給付的前提。"+(s.uacr<200?" 目前 UACR <200 mg/g，尚未達 2.16 門檻，SGLT-2 需走 5.1 糖尿病條文。":"")});
+    else if(e>=25)out.push({t:"已用最大耐受劑量 ACEI／ARB 仍有白蛋白尿：可考慮 finerenone（非類固醇礦物皮質素受體拮抗劑）。",why:"KDIGO 2022 建議用於第二型糖尿病、eGFR ≥25、血鉀正常且持續白蛋白尿者，需監測血鉀。健保給付條件未列入本工具，請另查。"});
+  }
+  if(s.tr&&s.tr.rapid)out.push({alert:1,t:`eGFR 下降快速：約每年 ${-s.tr.slope} mL/min/1.73m²（${s.tr.span.toFixed(1)} 年內 ${s.tr.pct}%）。`,why:"每年下降超過 5 屬快速惡化。先排除可逆因素（脫水、非類固醇消炎止痛藥、顯影劑、尿路阻塞），優先使用 SGLT-2 抑制劑，並轉介腎臟科。"+(!s.ckdprog?" 尚未收案者可收案初期慢性腎臟病照護方案。":"")});
+  if(s.tr&&s.tr.uacrPct!=null&&s.tr.uacrPct>=30&&s.uacr>=30)out.push({t:`UACR 較上次上升 ${s.tr.uacrPct}%。`,why:"白蛋白尿惡化代表腎臟與心血管風險增加，檢查血壓、血糖與 ACEI／ARB 劑量。"});
+  if(s.tr&&s.tr.above>=3)out.push({t:`HbA1c 已連續 ${s.tr.above} 次高於目標：建議本次就調整處方。`,why:"避免治療惰性；每 3 個月評估，未達標就加強治療。"});
+  // glycemic intensification
+  if(s.mode!=="new"&&a>s.target&&!(a>=10||s.catab)){
+    const dpp=ck("dpp4"), sg=ck("sglt2"), fdc=ck("fdc"), glp=ck("glp1"), sol=ck("soliqua");
+    if(glp.st==="ok"&&!s.ascvd&&!s.m_glp1)out.push({t:"可申報 GLP-1 受體促效劑。",why:`符合 5.1.3：組合用滿 6 個月、HbA1c ${a}% >8.5%。改用時停 DPP-4／SGLT-2；${ckdRisk?"有腎臟病者也可考慮改加基礎胰島素以保留 SGLT-2。":"若病人不願注射，基礎胰島素是另一選擇。"}`});
+    else if(fdc.st==="ok")out.push({t:"可換成 SGLT-2＋DPP-4 複方。",why:`符合複方條件：最大耐受劑量 metformin＋單一成分滿 6 個月，HbA1c ${a}% >7.5%。`});
+    else if(sol.st==="ok"&&s.m_ins)out.push({t:"可考慮 Soliqua（lixisenatide＋insulin glargine）。",why:"胰島素每日 <60 單位、HbA1c >8.0%，可減少注射次數。"});
+    else if(R.metMax&&!s.m_sglt2&&!s.m_dpp4&&!s.m_fdc&&!s.m_glp1){
+      if(e>=45)out.push({t:"加 SGLT-2 抑制劑或 DPP-4 抑制劑（二擇一）。",why:`兩者都已符合 5.1 條件。${s.bmi&&s.bmi>=27?"BMI 偏高，SGLT-2 可減重約 2–3 公斤。":""}有腎臟、心臟風險者優先 SGLT-2。`});
+      else out.push({t:"加 DPP-4 抑制劑控制血糖"+(e<30?"（首選 linagliptin 5 mg）":"")+"。",why:`eGFR ${e} 時 SGLT-2 降糖效果有限；若已因腎臟保護使用 SGLT-2，血糖仍高則依健保規定只能二擇一，可改加 pioglitazone、磺醯脲類或胰島素。`});
+    }else if(!dur6check(s)&&(s.m_sglt2||s.m_dpp4))out.push({t:`目前組合未滿 6 個月：先追蹤，${s.dur>=3?"3 個月內":"約 3 個月後"}複驗 HbA1c。`,why:"GLP-1 與複方都需要「持續 6 個月」的紀錄，提早更換容易被核刪。可先加磺醯脲類、pioglitazone 或 acarbose（健保無額外條件）。"});
+    else if(R.oral>=3)out.push({t:"已用三種以上口服成分：建議加基礎胰島素。",why:"健保 5.1 通則：三種口服藥仍控制不佳宜考慮胰島素。"});
+    else out.push({t:`可加磺醯脲類${R.metMax&&s.hf==="none"?"、pioglitazone":""}、acarbose，或基礎胰島素。`,why:`距目標還差 ${gap}%。這些藥健保無額外條件；${s.elder?"高齡者避免磺醯脲類，":""}${s.hf!=="none"?"心衰竭避免 pioglitazone。":""}`});
+  }else if(a<=s.target){
+    out.push({t:"已達個人化目標，維持目前處方。",why:`每 3–6 個月追蹤 HbA1c、每年至少一次 eGFR 與 UACR。${s.elder&&(s.m_su||s.m_ins)?"高齡且用磺醯脲類或胰島素：若 HbA1c 明顯低於目標，考慮減藥避免低血糖。":""}`});
+  }
+  if(s.mode!=="new"&&s.egfr!=null&&e<45)out.push({t:"檢查目前處方的腎功能劑量。",why:"下方「劑量表」已依此 eGFR 列出每個藥的建議劑量，sitagliptin、saxagliptin、alogliptin、vildagliptin、glimepiride 需要調整。"});
+  const kd=kdigo(s.egfr,s.uacr);
+  if(kd){const K=KD[kd.k],refer=e<30||(s.uacr!=null&&s.uacr>=300)||(s.tr&&s.tr.rapid);
+    out.push({t:`腎臟風險：${K[0]}${kd.partial?"":`（${stage(s.egfr)[0]}${astage(s.uacr)}）`}。`,why:kd.partial?"本次未驗 UACR，請補驗；糖尿病病人每年至少驗一次 eGFR 與 UACR。":`建議每年追蹤 eGFR 與 UACR ${e<30?4:K[2]} 次。${refer?"符合轉介腎臟科條件（eGFR <30、UACR ≥300 mg/g 或快速惡化）。":""}`});}
+  return out;
+}
+function dur6check(s){return s.dur>=6;}
+
+// ---- Renal table (from catalogue) ----
+function renal(e){
+  const R=[];
+  GROUPS.forEach(([g,zh,en])=>{
+    R.push({cls:`${zh}　${en}`});
+    DR.filter(d=>d.g===g).forEach(d=>{
+      if(d.ins){return;}
+      const m=d.mx(e);
+      R.push({id:d.id,drug:d.n,sub:d.b,lvl:d.lv(e),dose:m===0?(g==="sglt2"?"不建議新開始":"避免"):`${fmt(m)} ${d.u}/${d.p}`,txt:d.nt(e)});
+    });
+    if(g==="ins")R.push({id:"ins",drug:"各類胰島素",sub:"",lvl:e>=50?"ok":"warn",dose:e>=50?"依血糖調整":e>=10?"總量約減 25%":"總量約減 50%",txt:"腎功能下降時胰島素清除變慢，加量要慢。"});
+  });
+  return R;
+}
+
+
+// ---- Recommended candidates ----
+function recommend(s,R){
+  const e=R.e,a=R.a,rec={},ck=k=>R.cards.find(x=>x.k===k),add=(ids,why)=>ids.forEach(id=>{if(!(id in SEL)&&!rec[id])rec[id]=why});
+  if(a==null||s.egfr==null)return rec;
+  const ckdRisk=e<60||(s.uacr!=null&&s.uacr>=30);
+  if(a>=10||s.catab||(R.oral>=3&&R.uncontrolled))add(["basal"],"血糖過高或口服藥已多");
+  if(s.met==="none"&&e>=45)add(["metformin"],"第一線");
+  if(s.mode==="new"&&s.init==="dual"&&a<10&&!s.catab){add(["gliclazide","glipizide"],"可與 metformin 合併起始");if(!s.elder)add(["acarbose"],"可與 metformin 合併起始");}
+  if((ckdRisk||s.hf==="r"||s.hf==="mr")&&e>=20&&!s.m_sglt2&&!s.m_fdc&&!s.m_glp1)add(["empagliflozin","dapagliflozin"],ckdRisk?"腎臟保護":"心衰竭");
+  if(s.ascvd&&!s.m_glp1&&ck("glp1").st==="ok")add(["semaglutide","dulaglutide","liraglutide"],"心血管保護");
+  if(a>s.target){
+    if(ck("glp1").st==="ok"&&!s.m_glp1)add(["semaglutide","dulaglutide"],"已符合 GLP-1 條件");
+    if(ck("fdc").st==="ok"){const pair=("empagliflozin" in SEL||"linagliptin" in SEL)?"glyxambi":("dapagliflozin" in SEL||"saxagliptin" in SEL)?"qtern":("ertugliflozin" in SEL||"sitagliptin" in SEL)?"steglujan":"glyxambi";add([pair],"已符合複方條件");}
+    if(R.metMax&&!s.m_sglt2&&!s.m_dpp4&&!s.m_fdc&&!s.m_glp1)add(e>=45?["empagliflozin","dapagliflozin","linagliptin"]:["linagliptin"],"第二線");
+  }
+  Object.keys(rec).forEach(id=>{const d=DRM[id];if(INTOL[d.g]||(!d.ins&&d.mx(e)===0))delete rec[id];});
+  return rec;
+}
+
+// ---- Evaluate one candidate drug ----
+const CONFLICT=/擇一|併用/;
+function cand(id,s,R){
+  const d=DRM[id],e=R.e,g=d.g,ck=k=>R.cards.find(x=>x.k===k);
+  let st="ok",basis="",crit=[],stops=[],warns=[];
+  const cur=g2=>Object.keys(SEL).filter(x=>DRM[x].g===g2);
+  const fromCard=k=>{const c=ck(k);crit=c.crit.filter(x=>!CONFLICT.test(x.t));st=crit.every(x=>x.c!=="n")?"ok":"pending";};
+  if(g==="met"){basis="5.1 第一線";crit=[{c:e>=45?"y":e>=30?"q":"n",t:e>=45?"第一線用藥，健保無額外條件":e>=30?"eGFR 30–44 不建議新開始":"eGFR <30 禁忌"}];st=e>=45?"ok":e>=30?"pending":"no";}
+  else if(g==="sglt2"){fromCard("sglt2");basis=st==="ok"?"5.1 糖尿病":"";
+    if(id==="dapagliflozin"||id==="empagliflozin"){const c2=ck("ckd");crit.push({c:c2.st==="ok"?"y":"i",t:`2.16 慢性腎臟病條文：${c2.st==="ok"?"已符合，可不受 5.1 條件限制":"尚未符合"+(c2.crit.filter(x=>x.c==="n"||x.c==="q").slice(0,2).map(x=>"（"+x.t+"）").join(""))}`});
+      if(c2.st==="ok"){st="ok";basis=basis?basis+"／2.16 腎臟":"2.16 慢性腎臟病";}
+      const hf=ck("hf");if(hf&&(s.hf==="r"||s.hf==="mr"))crit.push({c:"q",t:"2.16 心衰竭條文：須記載射出分率、分級與標準治療"});}
+    if(s.m_dpp4&&!s.m_fdc)stops.push(...cur("dpp4").map(x=>[x,"健保 SGLT-2 與 DPP-4 單方二擇一；兩者都要請改複方"]));
+    if(s.m_glp1){warns.push("正在使用 GLP-1 受體促效劑，健保不得併用 SGLT-2；需二擇一");if(st==="ok")st="pending";}
+  }
+  else if(g==="dpp4"){fromCard("dpp4");basis=st==="ok"?"5.1":"";
+    if(s.m_sglt2&&!s.m_fdc)stops.push(...cur("sglt2").map(x=>[x,"健保二擇一"+(e<60||s.uacr>=30?"；此病人有腎臟病，保留 SGLT-2 較好，可改複方":"")]));
+    if(s.m_glp1){warns.push("正在使用 GLP-1 受體促效劑，不可併用 DPP-4");st="no";}
+    if(id==="saxagliptin"&&s.hf!=="none")warns.push("心衰竭病人用 saxagliptin 有心衰竭住院增加的訊號，建議改 linagliptin 或 sitagliptin");
+    if(id==="alogliptin"&&s.hf!=="none")warns.push("心衰竭病人慎用 alogliptin");}
+  else if(g==="fdc"){fromCard("fdc");basis=st==="ok"?"5.1 複方":"";stops.push(...cur("sglt2").map(x=>[x,"由複方取代"]),...cur("dpp4").map(x=>[x,"由複方取代"]));
+    if(s.m_glp1){warns.push("正在使用 GLP-1，不可併用");st="no";}}
+  else if(g==="glp1"){
+    if(d.self){st="self";basis="自費";crit=[{c:"i",t:"多數院所為自費"}];if(s.m_dpp4)stops.push(...cur("dpp4").map(x=>[x,"與 DPP-4 機轉重疊"]));}
+    else if(id==="exenatide"){crit=[{c:(s.met==="max"||R.metContraNote||s.m_su)?"y":"n",t:"已用最大耐受劑量 metformin 及／或磺醯脲類"},{c:R.uncontrolled?"y":"n",t:"HbA1c 未達理想控制"}];st=crit.every(x=>x.c==="y")?"ok":"pending";basis=st==="ok"?"5.1.3":"";
+      stops.push(...cur("dpp4").map(x=>[x,"健保不得併用"]),...cur("sglt2").map(x=>[x,"健保不得併用"]),...cur("fdc").map(x=>[x,"健保不得併用"]),...cur("ins").map(x=>[x,"exenatide 不得與胰島素併用"]));}
+    else{fromCard("glp1");basis=st==="ok"?(s.ascvd&&ck("glp1").crit[0].c==="y"?"5.1.3 心血管條款":"5.1.3"):"";
+      stops.push(...cur("dpp4").map(x=>[x,"健保不得併用"]),...cur("sglt2").map(x=>[x,"健保不得併用"+(e<60||s.uacr>=30?"；會失去腎臟保護，若 SGLT-2 依 2.16 給付請先向分區確認":"")]),...cur("fdc").map(x=>[x,"健保不得併用"]));}
+    cur("glp1").forEach(x=>{if(x!==id)stops.push([x,"同類換藥"])});
+  }
+  else if(g==="tzd"){fromCard("tzd");basis=st==="ok"?"5.1":"";if(s.hf!=="none"){st="no";warns.push("心衰竭禁用 pioglitazone");}}
+  else if(g==="ins"){basis="無限制";crit=[{c:"i",t:"健保無特殊限制"}];}
+  else{basis="無額外條件";crit=[{c:"i",t:"健保無額外條件"}];if(s.elder&&g==="su")warns.push(id==="glibenclamide"?"高齡或低血糖高風險：避免 glibenclamide":"高齡或低血糖高風險：最低劑量起始，優先 gliclazide 或 glipizide");
+    cur(g).forEach(x=>{if(x!==id)stops.push([x,"同類換藥"])});}
+  if(g==="sglt2"||g==="dpp4")cur(g).forEach(x=>{if(x!==id)stops.push([x,"同類換藥"])});
+  // conflicts with other drugs picked in this visit
+  const others=Object.keys(PICK).filter(x=>x!==id&&!(x in SEL)).map(x=>DRM[x]);
+  const clash=(gs,msg)=>others.filter(o=>gs.includes(o.g)&&!o.self).forEach(o=>{warns.push(`與同時新增的 ${o.n} ${msg}`);if(st==="ok")st="pending";});
+  if(g==="glp1"&&!d.self)clash(["sglt2","dpp4","fdc"],"健保不得併用，請二擇一");
+  if(g==="sglt2")clash(["dpp4","glp1"],"健保不得併用，請二擇一（SGLT-2＋DPP-4 可改複方）");
+  if(g==="dpp4")clash(["sglt2","glp1"],"健保不得併用，請二擇一（SGLT-2＋DPP-4 可改複方）");
+  if(g==="fdc")clash(["sglt2","dpp4","glp1"],"不可同時開立");
+  if(!d.ins&&g!=="fdc"&&others.some(o=>o.g===g))warns.push("同類藥本次請只選一個");
+  if(!d.ins&&d.mx(e)===0){st="no";warns.unshift(g==="sglt2"?`eGFR ${e} 不建議新開始`:`eGFR ${e} 應避免使用`);}
+  if(INTOL[g])warns.push("病人曾因副作用停用此類藥");
+  return {d,st,basis:basis||"條件未滿",crit,stops,warns};
+}
+
+// ---- Rendering ----
+function chipLv(d,e){return d.ins?(e>=50?"ok":"warn"):d.lv(e);}
+function renderCur(e){
+  let h="";
+  GROUPS.forEach(([g,zh,en])=>{
+    const ds=DR.filter(d=>d.g===g);
+    h+=`<div class="grp"><h4>${zh}<small>${en}</small></h4><div class="body"><div class="chips">`;
+    ds.forEach(d=>h+=`<button type="button" class="dchip" data-cur="${d.id}" aria-pressed="${d.id in SEL}" title="${d.b}"><span class="dot ${chipLv(d,e)}"></span>${d.n}${d.self?' <span class="badge self">自費</span>':""}</button>`);
+    h+=`</div>`;
+    ds.filter(d=>d.id in SEL).forEach(d=>{
+      if(d.ins){h+=`<div class="dose"><div class="dh"><b>${d.n}</b><span class="mx ${e>=50?"ok":"warn"}">${e>=50?"依血糖調整":e>=10?"總量約減 25%":"總量約減 50%"}</span></div><div class="dn">${d.b}</div></div>`;return;}
+      const m=d.mx(e),dose=SEL[d.id],ov=over(d,dose,e);
+      h+=`<div class="dose"><div class="dh"><b>${d.n} <span style="font-weight:400;color:var(--muted)">${d.b}</span></b><span class="mx ${d.lv(e)}">${m===0?(g==="sglt2"?"不建議新開始":"此 eGFR 避免"):`最大 ${fmt(m)} ${d.u}/${d.p}`}</span></div><div class="dopts">`;
+      d.o.forEach(v=>{const o=m===0||d.o.indexOf(v)>d.o.indexOf(m);h+=`<button type="button" data-cdose="${d.id}" data-v="${v}" aria-pressed="${dose===v}" class="${o?"over":""}">${fmt(v)} ${d.u}/${d.p}</button>`;});
+      if(d.id==="metformin")h+=`<button type="button" data-cdose="metformin" data-v="contra" aria-pressed="${dose==="contra"}">禁忌／不耐受</button>`;
+      h+=`</div>`;
+      if(ov&&dose!=="contra")h+=`<div class="dw">${fmt(dose)} ${d.u}/${d.p} 超過上限，建議${m===0?"停用":`減至 ${fmt(m)} ${d.u}/${d.p}`}</div>`;
+      if(dose==null)h+=`<div class="dn">請點選目前劑量</div>`;
+      if(d.id==="metformin"&&dose!=null&&dose!=="contra"&&m>0&&dose<m)h+=`<label class="chk"><input type="checkbox" id="metTol" ${MET_TOL?"checked":""}><span>因副作用無法再加量（記為最大耐受劑量）</span></label>`;
+      h+=`</div>`;
+    });
+    if(g==="ins"&&ds.some(d=>d.id in SEL))h+=`<div class="field" style="max-width:220px"><label for="insU">胰島素每日總劑量（單位）</label><input id="insU" type="number" min="0" value="${INS_U??""}"></div>`;
+    h+=`</div></div>`;
+  });
+  $("curPicker").innerHTML=h;
+}
+const BADGE={ok:["ok","健保"],pending:["pending","未滿"],no:["no","避免"],self:["self","自費"]};
+function renderCand(s,R,REC){
+  const e=R.e;let h="";
+  GROUPS.forEach(([g,zh,en])=>{
+    h+=`<div class="grp"><h4>${zh}<small>${en}</small></h4><div class="body"><div class="chips">`;
+    DR.filter(d=>d.g===g).forEach(d=>{
+      if(d.id in SEL){h+=`<button type="button" class="dchip" disabled title="使用中"><span class="dot ${chipLv(d,e)}"></span>${d.n} <span class="badge">使用中</span></button>`;return;}
+      const c=cand(d.id,s,R),b=BADGE[c.st];
+      h+=`<button type="button" class="dchip" data-pick="${d.id}" aria-pressed="${d.id in PICK}"><span class="dot ${chipLv(d,e)}"></span>${d.n}${REC[d.id]?' <span class="badge rec">推薦</span>':""} <span class="badge ${b[0]}">${b[1]}</span></button>`;
+    });
+    h+=`</div></div></div>`;
+  });
+  $("candPicker").innerHTML=h;
+  const ids=Object.keys(PICK).filter(id=>!(id in SEL));
+  $("candDetail").innerHTML=ids.length?ids.map(id=>{
+    const c=cand(id,s,R),d=c.d,m=d.ins?null:d.mx(e),st0=d.ins?null:startDose(d,e);
+    const doseTxt=d.ins?(s.wt?`起始 ${Math.round(s.wt*.1)}–${Math.round(s.wt*.2)} 單位/日（0.1–0.2 單位/公斤）或 10 單位/日${e<50?`；eGFR ${e} 總量約減 ${e<10?50:25}%`:""}`:`起始 10 單位/日或 0.1–0.2 單位/公斤/日`)
+      :m===0?"此 eGFR 不建議使用":`起始 ${fmt(st0)} ${d.u}/${d.p} → 最大 ${fmt(m)} ${d.u}/${d.p}`;
+    return `<div class="cand ${c.st}"><div class="dh"><b>${d.n} <span style="font-weight:400;color:var(--muted)">${d.b}</span>${REC[id]?` <span class="badge rec">推薦：${REC[id]}</span>`:""}</b><span class="badge ${BADGE[c.st][0]}">${c.st==="ok"?"健保可申報 · "+c.basis:BADGE[c.st][1]==="未滿"?"健保條件未滿":BADGE[c.st][1]}</span></div>
+      <div class="doseline">${doseTxt}</div>
+      <ul class="crit">${c.crit.map(x=>`<li class="${x.c}">${x.t}</li>`).join("")}</ul>
+      ${c.stops.length?`<div class="stops">需同時停用：${c.stops.map(([x,why])=>`<b>${DRM[x].n}</b>（${why}）`).join("、")}</div>`:""}
+      ${c.warns.map(w=>`<div class="dw">${w}</div>`).join("")}
+      ${d.nt?`<div class="dn">${d.nt(e)}</div>`:""}</div>`;}).join(""):`<div class="empty">尚未選擇。可以先看上方標示「推薦」的藥，點選後這裡會列出健保條件與劑量。</div>`;
+}
+function newRegimen(s,R){
+  const e=R.e,rows=[],stopMap={};
+  const picks=Object.keys(PICK).filter(id=>!(id in SEL));
+  picks.forEach(id=>cand(id,s,R).stops.forEach(([x,why])=>{if(!stopMap[x])stopMap[x]=`${why}（改用 ${DRM[id].n}）`}));
+  Object.keys(SEL).forEach(id=>{const d=DRM[id],dose=SEL[id];
+    if(d.ins){rows.push({d,act:stopMap[id]?"stop":"keep",dose:`${s.insU??"—"} 單位/日（合計）`,mx:e>=50?"依血糖調整":`總量約減 ${e<10?50:25}%`,basis:stopMap[id]||"依血糖調整"});return;}
+    const m=d.mx(e);let act="keep",why="續用",dz=dose==null?"—":dose==="contra"?"—":`${fmt(dose)} ${d.u}/${d.p}`;
+    if(dose==="contra"){act="stop";why="禁忌／不耐受";}
+    else if(stopMap[id]){act="stop";why=stopMap[id];}
+    else if(m===0&&d.g!=="sglt2"){act="stop";why=`eGFR ${e} 應避免`;}
+    else if(over(d,dose,e)){act="down";why=`超過腎功能上限`;dz=`${fmt(dose)} → ${fmt(m)} ${d.u}/${d.p}`;}
+    rows.push({d,act,dose:dz,mx:m===0?"不建議新開始":`${fmt(m)} ${d.u}/${d.p}`,basis:why});});
+  picks.forEach(id=>{const c=cand(id,s,R),d=c.d,m=d.ins?null:d.mx(e);
+    rows.push({d,act:"add",dose:d.ins?(s.wt?`${Math.round(s.wt*.1)}–${Math.round(s.wt*.2)} 單位/日 起始`:"10 單位/日 起始"):m===0?"—":`${fmt(startDose(d,e))} ${d.u}/${d.p} 起始`,mx:d.ins?"依血糖調整":m===0?"避免":`${fmt(m)} ${d.u}/${d.p}`,basis:c.st==="ok"?c.basis:c.st==="self"?"自費":c.st==="no"?"不建議":"健保條件未滿"});});
+  return rows;
+}
+const ACT={keep:"續用",add:"新增",down:"減量",stop:"停用"};
+
+function render(){
+  const s=read(),R=evaluate(s),REC=recommend(s,R),e=R.e;
+  $("sampleTag").hidden=!isSample;
+  document.querySelectorAll("[data-sex]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sex===SEX));
+  document.querySelectorAll("[data-dur]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.dur===DUR));
+  document.querySelectorAll("[data-flag]").forEach(b=>b.setAttribute("aria-pressed",!!FLAGS[b.dataset.flag]));
+  document.querySelectorAll("[data-intol]").forEach(b=>b.setAttribute("aria-pressed",!!INTOL[b.dataset.intol]));
+  renderCalc();
+  // summary pills
+  const st=stage(s.egfr),as=astage(s.uacr),pills=[];
+  if(s.a1c!=null){const d=+(s.a1c-s.target).toFixed(1);pills.push(`<span class="pill ${d>0?(s.a1c>=10?"bad":"warn"):"ok"}">HbA1c ${s.a1c}%${d>0?`，高於目標 ${d}%`:"，已達標"}</span>`);}
+  if(st)pills.push(`<span class="pill ${s.egfr>=60?"ok":s.egfr>=30?"warn":"bad"}">慢性腎臟病 ${st[0]}${as||""}：${st[1]}</span>`);
+  if(s.bmi)pills.push(`<span class="pill">BMI ${s.bmi}</span>`);
+  const kd=kdigo(s.egfr,s.uacr);if(kd&&!kd.partial)pills.push(`<span class="pill ${KD[kd.k][1]}">腎臟風險：${KD[kd.k][0]}</span>`);
+  if(s.elder)pills.push(`<span class="pill warn">低血糖風險較高</span>`);
+  $("summary").innerHTML=pills.join("")||`<span class="hint">填入數值後這裡會顯示摘要。</span>`;
+  $("uacrCalc").textContent=as?{A1:"A1 正常至輕度增加",A2:"A2 中度增加（微量白蛋白尿）",A3:"A3 重度增加（巨量白蛋白尿）"}[as]+(s.uacr>=200&&s.uacr<=5000?"・達 2.16 門檻":""):"";
+  $("uacrCalc").className="calc "+(as||"");
+  // mode
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===MODE));
+  $("newBlock").hidden=MODE!=="new";$("fuBlock").hidden=MODE==="new";
+  $("h2t").textContent=MODE==="new"?"診斷依據":"用藥資料與過往紀錄";$("h2e").textContent=MODE==="new"?"Diagnosis":"Current regimen & history";
+  document.querySelectorAll("[data-init]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.init===s.init));
+  $("initHint").textContent=s.a1c==null?"":`依 HbA1c 自動建議：${s.initAuto==="dual"?"雙藥（HbA1c ≥8.0%，即 6.5% 加 1.5%）":"單藥（HbA1c <8.0%），可手動改雙藥"}${INIT&&INIT!==s.initAuto?"・已手動變更":""}`;
+  if(MODE==="new"){const dx=diagnose(s);$("dxCheck").innerHTML=[...dx.L,dx.verdict].map((x,i,arr)=>`<li class="${x.c}"${i===arr.length-1?' style="font-weight:700"':""}>${x.t}</li>`).join("")+(dx.t1?`<li class="q">年輕或偏瘦或症狀明顯：考慮驗 GAD 抗體與 C 胜肽</li>`:"");}
+  else renderTrend(s);
+  renderCand(s,R,REC);
+  $("plan").innerHTML=plan(s,R).map(p=>`<li class="${p.alert?"alert":""}"><div><p><b>${p.t}</b></p>${p.why?`<p class="why">${p.why}</p>`:""}</div></li>`).join("");
+  const rows=newRegimen(s,R);
+  $("newRx").innerHTML=rows.length?rows.map(r=>`<tr><td class="drug">${r.d.n}<small>${r.d.b}</small></td><td><span class="act ${r.act}">${ACT[r.act]}</span></td><td class="dose">${r.dose}</td><td class="dose">${r.mx}</td><td>${r.basis}</td></tr>`).join(""):`<tr><td colspan="5" style="color:var(--muted)">尚未輸入用藥。</td></tr>`;
+  const order={using:0,ok:1,pending:2,self:3,no:4},STL={ok:"健保可申報",pending:"條件未滿",no:"不適用",self:"自費",using:"使用中"};
+  $("cards").innerHTML=R.cards.slice().sort((x,y)=>order[x.st]-order[y.st]).map(k=>`<article class="card ${k.st}"><div class="dh"><h3>${k.name}</h3><span class="badge ${k.st==="using"?"rec":k.st}">${STL[k.st]}</span></div><ul class="crit">${k.crit.map(x=>`<li class="${x.c}">${x.t}</li>`).join("")}</ul><div class="note">${k.note}</div></article>`).join("");
+  $("renal").innerHTML=renal(e).map(r=>r.cls?`<tr class="cls"><td colspan="4">${r.cls}</td></tr>`:`<tr class="${(r.id==="ins"?s.m_ins:(r.id in SEL))?"mine":""}"><td class="drug">${r.drug}${r.sub?`<small>${r.sub}</small>`:""}</td><td><span class="tag ${r.lvl}">${r.lvl==="ok"?"可用":r.lvl==="warn"?"調整／慎用":"避免"}</span></td><td class="dose">${r.dose}</td><td>${r.txt}</td></tr>`).join("");
+  // chart note
+  const isNew=MODE==="new",dxr=isNew?diagnose(s):null,tr=s.tr||{};
+  let n=`第二型糖尿病${isNew?"新診斷":"追蹤"}　${s.age??"__"} 歲 ${SEX==="M"?"男":SEX==="F"?"女":"__"}${s.bmi?`，BMI ${s.bmi}`:""}\n`;
+  if(isNew)n+=`診斷依據：${dxr.L.map(x=>x.t.replace(/（.*）/,"")).join("、")||"___"}；${dxr.verdict.t}\n`;
+  n+=`HbA1c ${s.a1c??"__"}%（${TODAY}）${!isNew&&tr.a1cPrev?`，前次 ${tr.a1cPrev.a1c}%（${tr.a1cPrev.d}）`:""}；目標 <${s.target}%\n`;
+  n+=`eGFR ${s.egfr??"__"} mL/min/1.73m²${st?`（${st[0]}${as||""}）`:""}${num("cr")!=null?`，Cr ${num("cr")} mg/dL`:""}${s.uacr!=null?`，UACR ${s.uacr} mg/g`:""}${kd&&!kd.partial?`，腎臟風險 ${KD[kd.k][0]}`:""}\n`;
+  if(!isNew&&tr.slope!=null)n+=`eGFR 趨勢：${tr.egfr[0].d} ${tr.egfr[0].egfr} → 本次 ${s.egfr}，約每年 ${tr.slope>0?"+":""}${tr.slope}${tr.rapid?"（快速惡化）":""}\n`;
+  const cur=Object.keys(SEL).filter(id=>!DRM[id].ins).map(id=>{const d=DRM[id],v=SEL[id];return v==="contra"?`${d.n}（禁忌／不耐受：___）`:`${d.n} ${v!=null?fmt(v):"__"} ${d.u}/${d.p}${id==="metformin"?(s.met==="max"?(MET_TOL?"（因副作用無法再加量）":"（最大耐受劑量）"):"（未達最大劑量）"):""}`});
+  const insN=Object.keys(SEL).filter(id=>DRM[id].ins).map(id=>DRM[id].n);if(insN.length)cur.push(`${insN.join("＋")} ${s.insU??"__"} 單位/日`);
+  if(!isNew)n+=`目前用藥：${cur.join("、")||"無"}；此組合已使用 ${{0:"未滿 3 個月",3:"3–6 個月",6:"6 個月以上"}[s.dur]}\n`;
+  const co=[];if(s.ascvd)co.push("動脈硬化心血管疾病（___）");if(s.hf!=="none")co.push(`心衰竭，射出分率 ___%，NYHA ___ 級`);if(s.ckdprog)co.push("已收案慢性腎臟病照護方案");if(s.raas)co.push("ACEI／ARB 最大耐受劑量：___");
+  const it=Object.keys(INTOL).filter(k=>INTOL[k]).map(k=>GROUPS.find(x=>x[0]===k)[1]);if(it.length)co.push(`曾無法耐受：${it.join("、")}`);
+  if(co.length)n+=`其他：${co.join("；")}\n`;
+  const ch=rows.filter(r=>r.act!=="keep");
+  n+=`計畫：${ch.length?ch.map(r=>`${ACT[r.act]} ${r.d.n} ${r.act==="stop"?"":r.dose}${r.act==="add"&&r.basis!=="無額外條件"&&r.basis!=="無限制"?`（依健保 ${r.basis}）`:""}`.trim()).join("；"):(isNew?"起始 metformin 500 mg/日，逐步加量":"維持目前處方")}；3 個月後複驗 HbA1c`;
+  const pl=plan(s,R).filter(p=>!/超過此 eGFR|請點選|檢查目前處方/.test(p.t)).map(p=>p.t.replace(/。$/,""));
+  if(pl.length)n+=`\n評估要點：${pl.join("；")}`;
+  $("note").textContent=n;
+}
+function renderStatic(){
+  $("intol").innerHTML=GROUPS.filter(g=>g[0]!=="met"||true).map(([g,zh])=>`<button type="button" class="tchip" data-intol="${g}" aria-pressed="false">${zh}</button>`).join("");
+  renderCur(num("egfr")??90);render();
+}
+
+// ---- History table and trends ----
+function renderHist(){
+  $("histBody").innerHTML=HIST.map((h,i)=>`<tr><td><input type="date" id="h_d_${i}" data-h="${i}" data-k="d" value="${h.d||""}"></td><td><input type="number" step="0.1" id="h_a_${i}" data-h="${i}" data-k="a1c" value="${h.a1c??""}"></td><td><input type="number" id="h_e_${i}" data-h="${i}" data-k="egfr" value="${h.egfr??""}"></td><td><input type="number" id="h_u_${i}" data-h="${i}" data-k="uacr" value="${h.uacr??""}"></td><td><button type="button" class="del" data-del="${i}" aria-label="刪除這筆">刪除</button></td></tr>`).join("")
+    +`<tr class="nowrow"><td class="now">本次 ${TODAY}</td><td class="now" id="nowA">—</td><td class="now" id="nowE">—</td><td class="now" id="nowU">—</td><td></td></tr>`;
+}
+function spark(pts,k,lo,hi,ref){
+  if(pts.length<2)return "";
+  const W=200,H=36,P=4,x=i=>P+i*(W-2*P)/(pts.length-1),y=v=>H-P-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*(H-2*P);
+  const line=pts.map((p,i)=>`${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).join(" ");
+  const r=ref!=null?`<line x1="${P}" x2="${W-P}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--muted)" stroke-dasharray="3 3" stroke-width="1"/>`:"";
+  const l=pts.length-1;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${r}<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${line}"/>${pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p[k])}" r="${i===l?3.5:2}" fill="${i===l?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="1.5"/>`).join("")}</svg>`;
+}
+function renderTrend(s){
+  const t=s.tr;
+  $("nowA").textContent=s.a1c??"—";$("nowE").textContent=s.egfr??"—";$("nowU").textContent=s.uacr??"—";
+  const box=[];
+  if(t.a1c.length>=2){const d=t.a1cDelta;box.push(`<div class="trend"><span class="t">HbA1c（虛線為目標）</span><span class="v ${d>0?"bad":d<0?"ok":""}">${t.a1c.map(p=>p.a1c).join(" → ")}%</span><span class="t">${d===0?"與上次持平":d>0?`比上次上升 ${d}%`:`比上次下降 ${-d}%`}${t.above>=2?`；連續 ${t.above} 次未達標`:""}</span>${spark(t.a1c,"a1c",5,13,s.target)}</div>`);}
+  if(t.egfr.length>=2){box.push(`<div class="trend"><span class="t">eGFR（mL/min/1.73m²）</span><span class="v ${t.rapid?"bad":t.slope!=null&&t.slope<0?"warn":"ok"}">${t.egfr.map(p=>p.egfr).join(" → ")}</span><span class="t">${t.slope!=null?`約每年 ${t.slope>0?"+":""}${t.slope}${t.rapid?"，快速惡化":""}`:"紀錄間隔太短，無法估算斜率"}</span>${spark(t.egfr,"egfr",0,Math.max(120,...t.egfr.map(p=>p.egfr)))}</div>`);}
+  if(t.uacr.length>=2){box.push(`<div class="trend"><span class="t">UACR（mg/g）</span><span class="v ${t.uacrPct>=30?"bad":t.uacrPct<=-30?"ok":""}">${t.uacr.map(p=>p.uacr).join(" → ")}</span><span class="t">${t.uacrPct>0?`比上次上升 ${t.uacrPct}%`:`比上次下降 ${-t.uacrPct}%`}${t.uacrPct<=-30?"，治療反應良好":""}</span>${spark(t.uacr,"uacr",0,Math.max(300,...t.uacr.map(p=>p.uacr)),30)}</div>`);}
+  $("histTrend").innerHTML=box.join("")||`<div class="empty">新增過往的 HbA1c、eGFR、UACR，這裡會顯示變化趨勢與 eGFR 每年下降速度。</div>`;
+}
+
+// ---- Events ----
+const touched=()=>{isSample=false};
+$("modeSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-mode]");if(!b||b.dataset.mode===MODE)return;
+  if(b.dataset.mode==="new"){STASH={SEL,PICK,DUR,MET_TOL,INS_U};SEL={};PICK={};DUR=0;MET_TOL=false;INS_U=null;}
+  else if(STASH){({SEL,PICK,DUR,MET_TOL,INS_U}=STASH);STASH=null;}
+  MODE=b.dataset.mode;touched();renderCur(num("egfr")??90);render();});
+$("histBody").addEventListener("input",ev=>{const el=ev.target,i=el.dataset.h;if(i==null)return;const k=el.dataset.k;
+  HIST[i][k]=k==="d"?el.value:(isNaN(parseFloat(el.value))?null:parseFloat(el.value));touched();render();});
+$("histBody").addEventListener("click",ev=>{const b=ev.target.closest("[data-del]");if(!b)return;HIST.splice(+b.dataset.del,1);touched();renderHist();render();});
+$("addHist").addEventListener("click",()=>{HIST.push({d:"",a1c:null,egfr:null,uacr:null});touched();renderHist();render();const i=HIST.length-1;$("h_d_"+i).focus();});
+$("initSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-init]");if(!b)return;INIT=b.dataset.init;touched();render();});
+["fpg","ogtt","rpg"].forEach(k=>$(k).addEventListener("input",()=>{touched();render();}));
+$("sexSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-sex]");if(!b)return;SEX=b.dataset.sex;touched();autoEgfr();renderCur(num("egfr")??90);render();});
+$("durSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-dur]");if(!b)return;DUR=+b.dataset.dur;touched();render();});
+$("flags").addEventListener("click",ev=>{const b=ev.target.closest("[data-flag]");if(!b)return;FLAGS[b.dataset.flag]=!FLAGS[b.dataset.flag];touched();render();});
+$("intol").addEventListener("click",ev=>{const b=ev.target.closest("[data-intol]");if(!b)return;INTOL[b.dataset.intol]=!INTOL[b.dataset.intol];touched();render();});
+$("curPicker").addEventListener("click",ev=>{
+  const c=ev.target.closest("[data-cur]"),b=ev.target.closest("[data-cdose]");
+  if(c){const id=c.dataset.cur;if(id in SEL){delete SEL[id];if(id==="metformin")MET_TOL=false;}else{SEL[id]=null;delete PICK[id];}}
+  else if(b){const id=b.dataset.cdose,d=DRM[id];let v=b.dataset.v;if(v!=="contra")v=d.o.find(o=>String(o)===v);SEL[id]=SEL[id]===v?null:v;}
+  else return;
+  touched();renderCur(num("egfr")??90);render();
+});
+$("curPicker").addEventListener("change",ev=>{if(ev.target.id==="metTol"){MET_TOL=ev.target.checked;touched();renderCur(num("egfr")??90);render();}});
+$("curPicker").addEventListener("input",ev=>{if(ev.target.id==="insU"){const v=parseFloat(ev.target.value);INS_U=isNaN(v)?null:v;touched();render();}});
+$("candPicker").addEventListener("click",ev=>{const b=ev.target.closest("[data-pick]");if(!b)return;const id=b.dataset.pick;if(id in PICK)delete PICK[id];else PICK[id]=1;touched();render();});
+["age","cr"].forEach(k=>$(k).addEventListener("input",()=>{touched();autoEgfr();renderCur(num("egfr")??90);render();}));
+$("egfr").addEventListener("input",()=>{touched();egfrAuto=false;renderCur(num("egfr")??90);render();});
+["ht","wt","a1c","uacr","target","hf"].forEach(k=>{$(k).addEventListener("input",()=>{touched();render();});$(k).addEventListener("change",()=>{touched();render();});});
+$("copyBtn").addEventListener("click",()=>{
+  const t=$("note").textContent,m=$("copied");
+  const done=msg=>{m.textContent=msg;m.hidden=false;setTimeout(()=>m.hidden=true,2200)};
+  const sel=()=>{const r=document.createRange();r.selectNodeContents($("note"));const w=getSelection();w.removeAllRanges();w.addRange(r);done("已選取，請按 Ctrl+C")};
+  try{navigator.clipboard.writeText(t).then(()=>done("已複製"),sel)}catch(e){sel()}
+});
+$("clearBtn").addEventListener("click",()=>{load({});isSample=false;render();$("age").focus();});
+$("sampleBtn").addEventListener("click",()=>{load(SAMPLE);isSample=true;render();});
+load(SAMPLE);
+})();
+</script>
+
+<script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script>
+</body>
+</html>
