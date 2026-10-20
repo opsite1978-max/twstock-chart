@@ -538,7 +538,11 @@ def process_file(x, fut_ref, dup_hist):
         dup_hist.append(dup)
     bars = []
     last_c = None
+    # 資料還沒抓齊時（例如夜盤進行中），最後一筆真實成交之後不要補空白 K 棒
+    last_real = max([m for m in tx] + [m for m in acc] or [-1])
     for m in allmin:
+        if m > last_real:
+            break
         b = tx.get(m)
         a = acc.get(m)
         if b is None and a is None and last_c is None:
