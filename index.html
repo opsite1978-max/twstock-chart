@@ -2848,7 +2848,8 @@ Object.assign(IND, {
     avail(){ return !!(currentSym && currentSym.kind === 'fut') && !['W', 'M'].includes(S.tf); },
     create(p){
       const { LineSeries, LineStyle } = LC();
-      const o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F2 });
+      // 上下顛倒用「把數值變負號」畫，刻度顯示時再轉回正數；不能改價格座標的 invertScale，那會套到全部副圖
+      const o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:{ type:'custom', minMove:0.01, formatter:x => Math.abs(x).toFixed(2) } });
       this.s.hi = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:3, lineStyle:LineStyle.Dotted }), p);
       this.s.lo = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:3, lineStyle:LineStyle.Dotted }), p);
       this.s.mid = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:1, lineStyle:LineStyle.Dashed }), p);
@@ -2859,11 +2860,11 @@ Object.assign(IND, {
       const P = S.ivx, raw = ivxValues();
       if (!raw){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
       const v = this.vals = ivxCalc(raw, P);
-      this.s.iv.setData(toLine(v.v));   this.s.iv.applyOptions({ color:P.cIv });
-      this.s.hi.setData(toLine(v.hi));  this.s.hi.applyOptions({ color:P.cHi });
-      this.s.lo.setData(toLine(v.lo));  this.s.lo.applyOptions({ color:P.cLo });
-      this.s.mid.setData(toLine(v.mid)); this.s.mid.applyOptions({ color:hexA(S.col.text, .35) });
-      this.s.iv.priceScale().applyOptions({ invertScale:!!P.invert });
+      const sg = P.invert ? -1 : 1, flip = a => a.map(x => x == null ? null : sg * x);
+      this.s.iv.setData(toLine(flip(v.v)));   this.s.iv.applyOptions({ color:P.cIv });
+      this.s.hi.setData(toLine(flip(v.hi)));  this.s.hi.applyOptions({ color:P.cHi });
+      this.s.lo.setData(toLine(flip(v.lo)));  this.s.lo.applyOptions({ color:P.cLo });
+      this.s.mid.setData(toLine(flip(v.mid))); this.s.mid.applyOptions({ color:hexA(S.col.text, .35) });
       this.mk.setMarkers(bars.map((b, i) => v.bot[i] ? { time:b.time, position:P.invert ? 'belowBar' : 'aboveBar', shape:'circle', color:P.cBot, text:'底' } : null).filter(Boolean));
       refreshMarkers();
     },
