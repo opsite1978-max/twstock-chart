@@ -188,6 +188,7 @@
   <div class="plabel" id="lbl-abyss"></div>
   <div class="plabel" id="lbl-qsz"></div>
   <div class="plabel" id="lbl-shz"></div>
+  <div class="plabel" id="lbl-ivx"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「看」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -206,6 +207,7 @@
         <label class="chk"><input type="checkbox" data-ind="abyss">ABYSS v2 底部轉折（One TURN）</label>
         <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
         <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
+        <label class="chk"><input type="checkbox" data-ind="ivx">隱含波動率（台指期）</label>
       </div>
     </div>
 
@@ -458,6 +460,20 @@
           <button class="small" data-reset="shz">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>隱含波動率（只適用台指期）</summary>
+        <div class="stack">
+          <div class="hint">日 K 用網站每天收盤後算的台指選擇權價平隱含波動率；5 分到 4 小時 K 用期交所的台指 VIX（只有日盤 08:45–13:45 有數值，2026 年 3 月起）。不使用你的 FinMind 查詢額度。綠點線＝動態上界、紅點線＝動態下界；「底」＝波動率先衝出上界（恐慌）再回到上界以內。</div>
+          <label class="chk"><input type="checkbox" data-k="ivx.invert" data-redraw="ivx">上下顛倒（波動率衝高變成低點，對齊 K 線底部）</label>
+          <div class="kv"><span>日 K 算法</span><select data-k="ivx.src" data-redraw="ivx"><option value="iv30">30 天恆定（類似台指 VIX）</option><option value="near">最近合約價平</option></select></div>
+          <div class="kv"><span>上下界：平均幾根</span><input type="number" data-k="ivx.len" data-int data-redraw="ivx" min="5" max="120"></div>
+          <div class="kv"><span>上下界：幾倍標準差</span><input type="number" data-k="ivx.mult" data-redraw="ivx" min="0.5" max="4" step="0.1"></div>
+          <div class="kv"><span>勝率統計看幾根後</span><input type="number" data-k="ivx.fwd" data-int data-redraw="ivx" min="1" max="60"></div>
+          <label class="chk"><input type="checkbox" data-k="ivx.mainSig" data-redraw="ivx">K 線圖上也標出「底」</label>
+          <div class="kv"><span>波動率線／上界／下界／底</span><span class="pair"><input type="color" data-k="ivx.cIv" data-redraw="ivx"><input type="color" data-k="ivx.cHi" data-redraw="ivx"><input type="color" data-k="ivx.cLo" data-redraw="ivx"><input type="color" data-k="ivx.cBot" data-redraw="ivx"></span></div>
+          <button class="small" data-reset="ivx">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -624,8 +640,9 @@ const DEFAULTS = {
         cRetail:'#26c281', cTrend:'#ef5350', cMain:'#ffd54f', cXc:'#e040fb', cDl:'#00e5ff', cBig:'#ff9800', cEsc:'#ff80ab', wRetail:1, wLine:2 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
+  ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -656,10 +673,11 @@ if ((S.v || 0) < 12) S.ind = Object.assign({}, S.ind, { qsz:true });
 if ((S.v || 0) < 13 && S.qsz && typeof S.qsz.mainTurn !== 'string') delete S.qsz.mainTurn;
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
 if ((S.v || 0) < 14) S.ind = Object.assign({}, S.ind, { shz:true });
-S.v = 14;
+if ((S.v || 0) < 15) S.ind = Object.assign({}, S.ind, { ivx:true });
+S.v = 15;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1188,7 +1206,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1418,7 +1436,7 @@ function buildIndicators(){
   for (const k of IND_ORDER){ const d = IND[k]; Object.values(d.s).forEach(s => chart.removeSeries(s)); d.s = {}; d.vals = null; }
   while (chart.panes().length > 1) chart.removePane(chart.panes().length - 1);
   paneOf = {}; let p = 1;
-  for (const k of IND_ORDER) if (S.ind[k]){ IND[k].create(p); paneOf[k] = p++; }
+  for (const k of IND_ORDER) if (S.ind[k] && (!IND[k].avail || IND[k].avail())){ IND[k].create(p); paneOf[k] = p++; }
   drawIndicators();
   layoutPanes();
   if (typeof refreshMarkers === 'function') refreshMarkers();
@@ -1605,6 +1623,7 @@ function refreshMarkers(){
   if (paneOf.abyss !== undefined && IND.abyss.vals && S.abyss.mainSig) list = list.concat(IND.abyss.mainMarkers());
   if (paneOf.qsz !== undefined && IND.qsz.vals && S.qsz.mainSig) list = list.concat(IND.qsz.mainMarkers());
   if (paneOf.shz !== undefined && IND.shz.vals) list = list.concat(IND.shz.mainMarkers());
+  if (paneOf.ivx !== undefined && IND.ivx.vals && S.ivx.mainSig) list = list.concat(IND.ivx.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2486,6 +2505,7 @@ async function load(){
 
     candle.setData(bars.map(({time,open,high,low,close}) => ({ time, open, high, low, close })));
     drawMain();
+    if (S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) buildIndicators();
     drawIndicators();
     layoutPanes();
 
@@ -2804,11 +2824,108 @@ Object.assign(IND, {
   },
 });
 
+/* ───────────── 隱含波動率（只適用台指期；資料由網站自動計算，不用 FinMind 額度） ─────────────
+   日 K：data/txo/iv.json（網站每天收盤後自算的價平隱含波動率）
+   分 K：data/force/m5/YYYY-MM.json 裡的台指 VIX（期交所，只有日盤有數值，2026 年 3 月起）
+   動態上下界＝最近 len 根的平均 ± mult 倍標準差；「底」＝先衝出上界、再回到上界以內 */
+const IVX = { daily:null, m5:new Map(), pend:new Map() };
+const ivxFetch = url => {
+  if (!IVX.pend.has(url)) IVX.pend.set(url, fetch(url + '?t=' + Date.now(), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null));
+  return IVX.pend.get(url);
+};
+function ivxValues(){
+  const P = S.ivx, conf = TF[S.tf] || {};
+  if (!conf.intraday){
+    if (!IVX.daily){ ivxFetch('data/txo/iv.json').then(j => { const m = new Map(); ((j && j.days) || []).forEach(x => m.set(x.d, x)); IVX.daily = m; drawInd('ivx'); }); return null; }
+    return bars.map(b => { const x = IVX.daily.get(b.date); return x && x[P.src] > 0 ? x[P.src] : null; });
+  }
+  const months = [...new Set(bars.map(b => new Date(b.time * 1000).toISOString().slice(0, 7)))].filter(m => m >= '2026-03');
+  const miss = months.filter(m => !IVX.m5.has(m));
+  if (miss.length){
+    Promise.all(miss.map(m => ivxFetch('data/force/m5/' + m + '.json').then(j => {
+      const map = new Map();
+      if (j && j.cols){ const it = j.cols.indexOf('t'), iv = j.cols.indexOf('vix');
+        for (const s of j.sessions || []) for (const b of s.bars) if (b[iv] != null && b[iv] > 0) map.set(b[it], b[iv]); }
+      IVX.m5.set(m, map);
+    }))).then(() => drawInd('ivx'));
+    return null;
+  }
+  const step = conf.P * 60;
+  return bars.map(b => {
+    const map = IVX.m5.get(new Date(b.time * 1000).toISOString().slice(0, 7)); if (!map) return null;
+    let v = null; for (let t = b.time; t < b.time + step; t += 300){ const x = map.get(t); if (x != null) v = x; }
+    return v;
+  });
+}
+function ivxCalc(vals, P){
+  const n = vals.length, hi = Array(n).fill(null), lo = Array(n).fill(null), mid = Array(n).fill(null), bot = Array(n).fill(false);
+  const idx = []; vals.forEach((v, i) => { if (v != null) idx.push(i); });
+  const L = Math.max(2, P.len | 0);
+  idx.forEach((i, k) => {
+    if (k + 1 < L) return;
+    const w = idx.slice(k + 1 - L, k + 1).map(j => vals[j]), m = w.reduce((a, b) => a + b, 0) / L;
+    const sd = Math.sqrt(w.reduce((a, b) => a + (b - m) * (b - m), 0) / L);
+    mid[i] = m; hi[i] = m + P.mult * sd; lo[i] = m - P.mult * sd;
+  });
+  for (let k = 1; k < idx.length; k++){ const a = idx[k - 1], b = idx[k];
+    if (hi[a] != null && hi[b] != null && vals[a] > hi[a] && vals[b] <= hi[b]) bot[b] = true; }
+  const c = bars.map(b => b.close), fw = Math.max(1, P.fwd | 0);
+  const bt = pick => { let m = 0, w = 0, s = 0;
+    for (let i = 0; i < n; i++){ if (!pick(i) || i + fw >= n) continue; const r = (c[i + fw] / c[i] - 1) * 100; m++; s += r; if (r > 0) w++; }
+    return { n:m, win: m ? w / m : 0, avg: m ? s / m : 0 }; };
+  return { v:vals, hi, lo, mid, bot, fw, bt:{ bot:bt(i => bot[i]), all:bt(i => hi[i] != null) } };
+}
+window.__ind = Object.assign(window.__ind || {}, { ivxCalc });
+Object.assign(IND, {
+  ivx: {
+    s:{}, vals:null, refs:[],
+    avail(){ return !!(currentSym && currentSym.kind === 'fut') && !['W', 'M'].includes(S.tf); },
+    create(p){
+      const { LineSeries, LineStyle } = LC();
+      const o = () => ({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F2 });
+      this.s.hi = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:3, lineStyle:LineStyle.Dotted }), p);
+      this.s.lo = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:3, lineStyle:LineStyle.Dotted }), p);
+      this.s.mid = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:1, lineStyle:LineStyle.Dashed }), p);
+      this.s.iv = chart.addSeries(LineSeries, Object.assign(o(), { lineWidth:2, lastValueVisible:true, crosshairMarkerVisible:true, crosshairMarkerRadius:2 }), p);
+      this.mk = LC().createSeriesMarkers(this.s.iv, []);
+    },
+    draw(){
+      const P = S.ivx, raw = ivxValues();
+      if (!raw){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
+      const v = this.vals = ivxCalc(raw, P);
+      this.s.iv.setData(toLine(v.v));   this.s.iv.applyOptions({ color:P.cIv });
+      this.s.hi.setData(toLine(v.hi));  this.s.hi.applyOptions({ color:P.cHi });
+      this.s.lo.setData(toLine(v.lo));  this.s.lo.applyOptions({ color:P.cLo });
+      this.s.mid.setData(toLine(v.mid)); this.s.mid.applyOptions({ color:hexA(S.col.text, .35) });
+      this.s.iv.priceScale().applyOptions({ invertScale:!!P.invert });
+      this.mk.setMarkers(bars.map((b, i) => v.bot[i] ? { time:b.time, position:P.invert ? 'belowBar' : 'aboveBar', shape:'circle', color:P.cBot, text:'底' } : null).filter(Boolean));
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.ivx, out = []; if (!v || !v.bot) return out;
+      v.bot.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cBot, text:'底' }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.ivx, name = (TF[S.tf] || {}).intraday ? '台指VIX' : '隱含波動率';
+      if (!v) return '';
+      if (v.wait) return `${name}　<span class="muted">讀取中…</span>`;
+      const pos = v.v[i] != null && v.hi[i] > v.lo[i] ? Math.round((v.v[i] - v.lo[i]) / (v.hi[i] - v.lo[i]) * 100) + '%' : '—';
+      const tag = v.bot[i] ? `<span class="tag" style="background:${P.cBot};color:#000">底</span>` : '';
+      const sg = x => (x > 0 ? '+' : '') + fmt(x, 2) + '%', b = v.bt;
+      const st = b.bot.n ? `${v.fw} 根後：底 ${b.bot.n} 次 漲 ${Math.round(b.bot.win * 100)}%（${sg(b.bot.avg)}）・全部 漲 ${Math.round(b.all.win * 100)}%（${sg(b.all.avg)}）` : '';
+      const note = (TF[S.tf] || {}).intraday ? '　<span class="muted">分 K 用台指 VIX，只有日盤有值</span>' : '';
+      return `${name} <b style="color:${P.cIv}">${fmt(v.v[i], 2)}</b>　<span style="color:${P.cHi}">上界 ${fmt(v.hi[i], 2)}</span>　<span style="color:${P.cLo}">下界 ${fmt(v.lo[i], 2)}</span>　位置 ${pos}${P.invert ? '　<span class="muted">（上下顛倒）</span>' : ''}` + tag + note +
+             (st ? `<br><span class="muted">${st}</span>` : '');
+    },
+  },
+});
+
 const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -2824,6 +2941,7 @@ const RESETS = {
   abyss: ['abyss'],
   qsz:   ['qsz'],
   shz:   ['shz'],
+  ivx:   ['ivx'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
