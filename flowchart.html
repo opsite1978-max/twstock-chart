@@ -439,7 +439,7 @@ function buildChart(){
   setPaneHeights();
   window.addEventListener('resize', () => { $('#chart').style.height = chartHeight() + 'px'; setTimeout(setPaneHeights, 50); });
 }
-function setPaneHeights(){ const ps = CHART.panes(), H = chartHeight(); if (ps.length > 2){ ps[0].setHeight(Math.round(H * 0.5)); ps[1].setHeight(Math.round(H * 0.27)); ps[2].setHeight(Math.round(H * 0.23) - 30); } positionLegend2(); }
+function setPaneHeights(){ const ps = CHART.panes(), H = chartHeight(); if (ps.length > 2){ ps[0].setStretchFactor(50); ps[1].setStretchFactor(27); ps[2].setStretchFactor(23); } positionLegend2(); }
 function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const h = ps[0].getHeight(); $('#lg2').style.top = (h + 6) + 'px'; if (ps.length > 2) $('#lg3').style.top = (h + ps[1].getHeight() + 6) + 'px'; } }
 
 function legend(i){
