@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>資金流看盤</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"
+        onerror="var s=document.createElement('script');s.src='https://unpkg.com/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js';document.head.appendChild(s);"></script>
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1f2636;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --up:#ef5350; --down:#26a69a; --flow:#4c8dff; --gold:#ffca28; --bb:#8f9bb3; --sig:#ffb020;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#eef0f4;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --flow:#2563eb; --gold:#b98900; --bb:#7a869e; --sig:#e08a00;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;
+    padding:6px 10px;padding-top:max(6px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+  button,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 9px;height:32px;cursor:pointer;white-space:nowrap}
+  .spacer{flex:1}
+  .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:var(--panel);height:30px;padding:0 10px}
+  .seg button.on{background:var(--accent);color:#fff}
+  #wrap{position:relative}
+  #chart{width:100%}
+  .legend{position:absolute;left:8px;top:4px;z-index:3;pointer-events:none;font-size:12px;line-height:1.55;font-variant-numeric:tabular-nums;text-shadow:0 0 3px var(--bg),0 0 3px var(--bg)}
+  .legend b{font-weight:700}
+  .legend2{position:absolute;left:8px;z-index:3;pointer-events:none;font-size:12px;font-variant-numeric:tabular-nums;text-shadow:0 0 3px var(--bg),0 0 3px var(--bg)}
+  .muted{color:var(--muted)} .up{color:var(--up)} .dn{color:var(--down)}
+  main{max-width:1180px;margin:0 auto;padding:10px 12px 40px}
+  .msg{padding:12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px;line-height:1.7}
+  h2{font-size:15px;margin:14px 0 6px} h2 .muted{font-size:12px;font-weight:400;margin-left:6px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  .card .lb{font-size:12px;color:var(--muted)} .card .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums} .card .s{font-size:12px;color:var(--muted)}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500} td:first-child,th:first-child{text-align:left}
+  .note{font-size:12px;color:var(--muted);line-height:1.7;margin:6px 2px}
+  @media (max-width:520px){ .seg button{padding:0 8px} header button{height:30px;padding:0 8px;font-size:13px} table{font-size:11.5px} th,td{padding:5px 4px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>資金流看盤</h1>
+  <span class="muted" style="font-size:12px" id="upd"></span>
+  <span class="spacer"></span>
+  <button onclick="location.href='force.html'">多空力道</button>
+  <button onclick="location.href='force-lab.html'">研究版</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<div class="bar">
+  <div class="seg" id="tfSeg"><button data-tf="1">1分</button><button data-tf="5">5分</button><button data-tf="15">15分</button><button data-tf="30">30分</button><button data-tf="60">60分</button><button data-tf="240">4時</button><button data-tf="D">日</button></div>
+  <div class="seg" id="lnSeg"><button data-k="FR">資金流殘差</button><button data-k="F">淨流量力道</button></div>
+  <div class="seg"><button id="zIn">＋</button><button id="zOut">－</button><button id="zEnd">最新</button></div>
+</div>
+<div id="status" class="msg">讀取中…</div>
+<div id="wrap"><div id="chart"></div><div class="legend" id="lg"></div><div class="legend2" id="lg2"></div></div>
+<main>
+  <div class="cards" id="cards"></div>
+  <h2>資金流低點訊號：這個週期的歷史表現<span class="muted" id="statNote"></span></h2>
+  <div class="tblx" id="tblStat"></div>
+  <h2>最近的低點訊號</h2>
+  <div class="tblx" id="tblSig"></div>
+  <p class="note" id="note"></p>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const store = { get:(k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }, set:(k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
+const fmt = (v, d) => v == null || isNaN(v) ? '–' : (+v).toLocaleString('en-US', { minimumFractionDigits:d || 0, maximumFractionDigits:d || 0 });
+const sgn = (v, d) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v), d);
+const cls = v => v > 0 ? 'up' : v < 0 ? 'dn' : '';
+const avg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+const iso = t => new Date(t * 1000).toISOString();
+const tlabel = (t, tf) => { const s = iso(t); return tf === 'D' ? s.slice(0, 10) : +s.slice(5, 7) + '/' + +s.slice(8, 10) + ' ' + s.slice(11, 16); };
+const dayT = (d, m) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 1000 + m * 60;
+const ST = { tf:store.get('flow.tf', '60'), k:store.get('flow.k', 'FR') };
+let IDX = null, CAL = [], CALSET = new Set(), BASE5 = null, BASE1 = null, CHART = null, SER = {}, VIEW = null;
+
+async function getJSON(p){ const r = await fetch(p + '?v=' + Math.floor(Date.now() / 60000)); if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }
+function nextTD(x){ for (const d of CAL) if (d > x) return d; let t = new Date(x + 'T00:00:00Z'); do { t = new Date(t.getTime() + 864e5); } while (t.getUTCDay() === 0 || t.getUTCDay() === 6); return t.toISOString().slice(0, 10); }
+function rowObj(cols, r, extra){ const o = {}; cols.forEach((c, i) => o[c] = r[i]); o.v = o.v || 0; return Object.assign(o, extra); }
+
+/* ───────── 讀資料（網站每晚算好的逐筆資金流，不用 FinMind） ───────── */
+async function loadBase5(){
+  if (BASE5) return BASE5;
+  IDX = await getJSON('data/force/index.json'); CAL = IDX.cal || []; CALSET = new Set(CAL);
+  $('#upd').textContent = '資料 ' + (IDX.updated || '');
+  const months = await Promise.all((IDX.months || []).map(m => getJSON('data/force/m5/' + m + '.json').catch(() => null)));
+  const out = [];
+  for (const m of months){ if (!m) continue;
+    for (const s of m.sessions){ const s0 = s.bars[0][0]; for (const r of s.bars) out.push(rowObj(m.cols, r, { td:s.td, s:s.s, s0, step:300 })); } }
+  out.sort((a, b) => a.t - b.t);
+  return BASE5 = out;
+}
+async function loadBase1(){
+  if (BASE1) return BASE1;
+  await loadBase5();
+  const files = (IDX.files || []).slice(-26);
+  const js = await Promise.all(files.map(x => getJSON('data/force/m1/' + x + '.json').catch(() => null)));
+  const sess = new Map();
+  js.forEach((j, i) => { if (!j || !j.bars) return; const x = files[i], cols = ['t'].concat(j.cols.slice(1));
+    for (const r of j.bars){ const m = r[0]; let td, s;
+      if (m <= 300){ td = CALSET.has(x) ? x : nextTD(x); s = 'N'; } else if (m >= 525 && m <= 825){ td = x; s = 'D'; } else if (m >= 900){ td = nextTD(x); s = 'N'; } else continue;
+      const key = td + s; if (!sess.has(key)) sess.set(key, []);
+      sess.get(key).push(rowObj(cols, [dayT(x, m)].concat(r.slice(1)), { td, s })); } });
+  const out = [];
+  for (const bars of sess.values()){ bars.sort((a, b) => a.t - b.t); const s0 = bars[0].t; bars.forEach(b => { b.s0 = s0; b.step = 60; out.push(b); }); }
+  out.sort((a, b) => a.t - b.t);
+  return BASE1 = out;
+}
+
+/* ───────── 時間框架（不跨日盤／夜盤合併） ───────── */
+function aggregate(base, tf){
+  const out = []; let cur = null;
+  for (const b of base){
+    let key, t, k;
+    if (tf === 'D'){ key = b.td; t = dayT(b.td, 0); k = 0; }
+    else { k = Math.floor((b.t - b.s0) / (tf * 60)); key = b.td + b.s + k; t = b.s0 + k * tf * 60; }
+    if (!cur || cur.key !== key){
+      cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, gross:0, v:0, td:b.td, s:tf === 'D' ? 'X' : b.s, k };
+      out.push(cur);
+    }
+    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c;
+    cur.net += b.net || 0; cur.gross += b.gross || 0; cur.v += b.v || 0;
+  }
+  return out;
+}
+
+/* ───────── 資金流線（和研究版、多空力道頁同一套算法） ───────── */
+const med = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function slotZ(bars, vals, W = 30, MINH = 8){
+  const slots = new Map(), z = [];
+  bars.forEach((b, i) => {
+    const key = b.s + ':' + b.k, x = vals[i]; let h = slots.get(key); if (!h){ h = []; slots.set(key, h); }
+    let zz = null;
+    if (x != null && h.length >= MINH){ const m = med(h), mad = med(h.map(v => Math.abs(v - m))) * 1.4826;
+      if (mad > 0) zz = (x - m) / mad; else { const sd = Math.sqrt(avg(h.map(v => (v - m) ** 2))); zz = sd > 0 ? (x - m) / sd : 0; }
+      zz = Math.max(-8, Math.min(8, zz)); }
+    z.push(zz);
+    if (x != null){ h.push(x); if (h.length > W) h.shift(); }
+  });
+  return z;
+}
+function calibrate(z, span = 5, q = 0.9, qmin = 120, qmax = 1500){
+  const a = 2 / (span + 1), hist = [], out = []; let ema = null, qv = null;
+  const K = Math.atanh(0.6);
+  z.forEach((x, i) => {
+    let f = null;
+    if (x != null){
+      ema = ema == null ? x : ema + a * (x - ema);
+      hist.push(Math.abs(ema)); if (hist.length > qmax) hist.shift();
+      if (hist.length >= qmin && (qv == null || i % 25 === 0)){ const s = hist.slice().sort((p, r) => p - r); qv = s[Math.min(s.length - 1, Math.floor(s.length * q))] || 1e-9; }
+      if (qv) f = 100 * Math.tanh(K * ema / qv);
+    }
+    out.push(f);
+  });
+  return out;
+}
+function flowLines(bars, tf){
+  const net = bars.map(b => b.net), ret = bars.map(b => b.o ? (b.c - b.o) / b.o : 0);
+  const zN = slotZ(bars, net), zR = slotZ(bars, ret);
+  const resid = []; const xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < bars.length; i++){
+    let r = null;
+    if (zN[i] != null && zR[i] != null){
+      const m = xs.length;
+      if (m >= 100 && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
+      xs.push(zR[i]); ys.push(zN[i]); sx += zR[i]; sy += zN[i]; sxx += zR[i] ** 2; sxy += zR[i] * zN[i];
+      if (xs.length > 500){ const p = xs.shift(), q2 = ys.shift(); sx -= p; sy -= q2; sxx -= p * p; sxy -= p * q2; }
+    }
+    resid.push(r);
+  }
+  const daily = tf === 'D', qmin = daily ? 30 : 120, qmax = daily ? 150 : 1500;
+  return { F:calibrate(zN, 5, 0.9, qmin, qmax), FR:calibrate(resid, 5, 0.9, qmin, qmax) };
+}
+
+/* ───────── 資金流低點：從超賣區（≤ −60）往上穿回 −60 ───────── */
+function lowSignals(bars, S){
+  const sig = [];
+  for (let i = 1; i < bars.length; i++){
+    if (S[i] == null || S[i - 1] == null || !(S[i - 1] <= -60 && S[i] > -60)) continue;
+    let j = i - 1, mn = S[i - 1], lowI = i - 1;
+    while (j >= 0 && S[j] != null && S[j] <= -60){ if (S[j] < mn) mn = S[j]; j--; }
+    const st = Math.max(0, j - 2);
+    for (let k = st; k <= i; k++) if (bars[k].l < bars[lowI].l) lowI = k;
+    sig.push({ i, strong:mn <= -70, mn, lowI, low:bars[lowI].l, lag:i - lowI });
+  }
+  return sig;
+}
+function holdBars(tf){ return tf === 'D' ? 1 : tf <= 15 ? Math.max(1, 60 / tf) : Math.max(1, 240 / tf); }
+function stats(bars, sig){
+  const m = holdBars(ST.tf === 'D' ? 'D' : +ST.tf), W = 12, n = bars.length;
+  const fwd = i => (i + m < n) ? bars[i + m].c - bars[i + 1].o : null;
+  const held = (i, lowV) => { if (i + W >= n) return null; let mn = Infinity; for (let k = i + 1; k <= i + W; k++) mn = Math.min(mn, bars[k].l); return mn > lowV; };
+  const summ = list => { const r = list.map(x => fwd(x.i)).filter(v => v != null); const h = list.map(x => held(x.i, x.low)).filter(v => v != null);
+    return { n:list.length, nr:r.length, mean:avg(r), up:r.length ? r.filter(v => v > 0).length / r.length * 100 : null, held:h.length ? h.filter(Boolean).length / h.length * 100 : null,
+      lag:avg(list.map(x => x.lag)), dist:avg(list.map(x => bars[x.i].c - x.low)) }; };
+  // 基準：任何一根都進場；不再破低＝之後 12 根沒有跌破前 12 根的最低點
+  const br = [], bh = [];
+  for (let i = 12; i < n - 1; i++){ const r = fwd(i); if (r != null) br.push(r); let lo = Infinity; for (let k = i - 12; k <= i; k++) lo = Math.min(lo, bars[k].l); const h = held(i, lo); if (h != null) bh.push(h); }
+  return { m, W, all:summ(sig), strong:summ(sig.filter(x => x.strong)), normal:summ(sig.filter(x => !x.strong)),
+    base:{ mean:avg(br), up:br.length ? br.filter(v => v > 0).length / br.length * 100 : null, held:bh.length ? bh.filter(Boolean).length / bh.length * 100 : null, n:br.length } };
+}
+
+/* ───────── 圖表 ───────── */
+function bollinger(bars, L = 20, K = 2){
+  const u = [], m = [], l = [];
+  for (let i = 0; i < bars.length; i++){
+    if (i < L - 1){ u.push(null); m.push(null); l.push(null); continue; }
+    let s = 0; for (let k = i - L + 1; k <= i; k++) s += bars[k].c; const mu = s / L;
+    let v = 0; for (let k = i - L + 1; k <= i; k++) v += (bars[k].c - mu) ** 2; const sd = Math.sqrt(v / L);
+    m.push(mu); u.push(mu + K * sd); l.push(mu - K * sd);
+  }
+  return { u, m, l };
+}
+function chartHeight(){ return Math.max(520, Math.round(window.innerHeight * (window.innerWidth < 700 ? 0.86 : 0.8))); }
+function buildChart(){
+  const L = LightweightCharts, el = $('#chart');
+  el.style.height = chartHeight() + 'px';
+  CHART = L.createChart(el, {
+    autoSize:true,
+    layout:{ background:{ type:'solid', color:css('--bg') }, textColor:css('--muted'), fontSize:11, panes:{ separatorColor:css('--line'), enableResize:true } },
+    grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } },
+    crosshair:{ mode:L.CrosshairMode.Normal },
+    rightPriceScale:{ borderColor:css('--line') },
+    timeScale:{ borderColor:css('--line'), timeVisible:true, secondsVisible:false, rightOffset:4, minBarSpacing:0.5 },
+    localization:{ locale:'zh-TW', dateFormat:'yyyy/MM/dd' },
+  });
+  const lo = () => ({ lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
+  SER.c = CHART.addSeries(L.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceLineVisible:false }, 0);
+  SER.bu = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--bb'), lineWidth:2 }), 0);
+  SER.bm = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--gold'), lineStyle:L.LineStyle.Dashed }), 0);
+  SER.bl = CHART.addSeries(L.LineSeries, Object.assign(lo(), { color:css('--bb'), lineWidth:2 }), 0);
+  SER.f = CHART.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:-60 }, lineWidth:2,
+    topLineColor:css('--flow'), topFillColor1:'rgba(0,0,0,0)', topFillColor2:'rgba(0,0,0,0)',
+    bottomLineColor:css('--down'), bottomFillColor1:'rgba(38,166,154,0.10)', bottomFillColor2:'rgba(38,166,154,0.40)',
+    priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 },
+    autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }) }, 1);
+  [[60, css('--up'), 0, '+60'], [20, css('--muted'), 2, ''], [0, css('--muted'), 0, ''], [-20, css('--muted'), 2, ''], [-60, css('--down'), 0, '−60'], [-70, css('--down'), 2, '−70']].forEach(([p, c, st, t]) =>
+    SER.f.createPriceLine({ price:p, color:c, lineWidth:p === 0 || Math.abs(p) === 20 ? 1 : 2, lineStyle:st, axisLabelVisible:!!t, title:t }));
+  SER.mkC = L.createSeriesMarkers(SER.c, []);
+  SER.mkF = L.createSeriesMarkers(SER.f, []);
+  CHART.subscribeCrosshairMove(p => legend(p && p.time !== undefined ? VIEW.idx.get(p.time) : undefined));
+  setPaneHeights();
+  window.addEventListener('resize', () => { $('#chart').style.height = chartHeight() + 'px'; setTimeout(setPaneHeights, 50); });
+}
+function setPaneHeights(){ const ps = CHART.panes(), H = chartHeight(); if (ps.length > 1){ ps[0].setHeight(Math.round(H * 0.6)); ps[1].setHeight(Math.round(H * 0.4) - 30); } positionLegend2(); }
+function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const h = ps[0].getHeight(); $('#lg2').style.top = (h + 6) + 'px'; } }
+
+function legend(i){
+  if (!VIEW) return; const n = VIEW.bars.length; if (i == null || i < 0 || i >= n) i = n - 1;
+  const b = VIEW.bars[i], p = i > 0 ? VIEW.bars[i - 1].c : null, ch = p ? b.c - p : null, bb = VIEW.bb;
+  $('#lg').innerHTML = `<b>台指期 ${ST.tf === 'D' ? '日' : ST.tf + ' 分'}</b>　${tlabel(b.t, ST.tf)}${ST.tf !== 'D' ? (b.s === 'N' ? ' 夜盤' : ' 日盤') : ''}<br>開 ${fmt(b.o)} 高 ${fmt(b.h)} 低 ${fmt(b.l)} 收 <b class="${cls(ch)}">${fmt(b.c)}</b> <span class="${cls(ch)}">${sgn(ch)}</span><br>`
+    + `<span style="color:${css('--bb')}">布林上 ${fmt(bb.u[i])}</span>　<span style="color:${css('--gold')}">中 ${fmt(bb.m[i])}</span>　<span style="color:${css('--bb')}">下 ${fmt(bb.l[i])}</span>`;
+  const v = VIEW.S[i], s = VIEW.sigAt.get(i);
+  $('#lg2').innerHTML = `<b style="color:${css('--flow')}">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'} ${v == null ? '資料不足' : sgn(v, 1)}</b>${v != null && v <= -60 ? '　<span class="dn">超賣區</span>' : v >= 60 ? '　<span class="up">超買區</span>' : ''}`
+    + (s ? `　<b style="color:${css('--sig')}">${s.strong ? '強低點' : '低點'}</b>` : '');
+}
+
+async function render(){
+  document.querySelectorAll('#tfSeg button').forEach(b => b.classList.toggle('on', b.dataset.tf === ST.tf));
+  document.querySelectorAll('#lnSeg button').forEach(b => b.classList.toggle('on', b.dataset.k === ST.k));
+  $('#status').hidden = false; $('#status').textContent = '計算中…';
+  const tf = ST.tf === 'D' ? 'D' : +ST.tf;
+  const base = tf === 1 ? await loadBase1() : await loadBase5();
+  const bars = tf === 1 || tf === 5 ? aggregate(base, tf) : aggregate(base, tf);
+  const L = flowLines(bars, tf), S = L[ST.k], bb = bollinger(bars);
+  const sig = lowSignals(bars, S), sigAt = new Map(sig.map(x => [x.i, x]));
+  VIEW = { bars, S, bb, sig, sigAt, idx:new Map(bars.map((b, i) => [b.t, i])) };
+  const ln = arr => bars.map((b, i) => arr[i] == null ? { time:b.t } : { time:b.t, value:arr[i] });
+  SER.c.setData(bars.map(b => ({ time:b.t, open:b.o, high:b.h, low:b.l, close:b.c })));
+  SER.bu.setData(ln(bb.u)); SER.bm.setData(ln(bb.m)); SER.bl.setData(ln(bb.l));
+  SER.f.setData(ln(S));
+  const col = css('--sig');
+  SER.mkC.setMarkers(sig.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'arrowUp', color:col, text:x.strong ? '強低' : '低', size:x.strong ? 1.6 : 1 })));
+  SER.mkF.setMarkers(sig.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'circle', color:col, size:x.strong ? 1.2 : 0.8 })));
+  const n = bars.length, show = Math.min(n, window.innerWidth < 700 ? 120 : 220);
+  CHART.timeScale().setVisibleLogicalRange({ from:n - show, to:n + 3 });
+  legend(n - 1); setPaneHeights();
+  $('#status').hidden = true;
+  renderStats();
+}
+function renderStats(){
+  const { bars, S, sig } = VIEW, R = stats(bars, sig), n = bars.length, last = bars[n - 1], v = S[n - 1];
+  const tfName = ST.tf === 'D' ? '日 K' : ST.tf + ' 分 K', hold = ST.tf === 'D' ? '隔天' : (R.m * (+ST.tf)) + ' 分鐘';
+  const lastSig = sig[sig.length - 1];
+  $('#cards').innerHTML = `
+    <div class="card"><div class="lb">台指期（${tfName}）</div><div class="v">${fmt(last.c)}</div><div class="s">${tlabel(last.t, ST.tf)}</div></div>
+    <div class="card"><div class="lb">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}</div><div class="v ${v <= -60 ? 'dn' : v >= 60 ? 'up' : ''}">${v == null ? '–' : sgn(v, 0)}</div><div class="s">${v == null ? '資料不足' : v <= -70 ? '低於悲觀線 −70' : v <= -60 ? '在超賣區，等它往上穿回 −60' : v >= 60 ? '超買區' : '一般區間'}</div></div>
+    <div class="card"><div class="lb">最近一次低點訊號</div><div class="v" style="font-size:17px;color:${css('--sig')}">${lastSig ? (lastSig.strong ? '強低點' : '低點') : '–'}</div><div class="s">${lastSig ? tlabel(bars[lastSig.i].t, ST.tf) + '・' + (n - 1 - lastSig.i) + ' 根前' : '這個週期還沒有'}</div></div>`;
+  const row = (name, s) => `<tr><td>${name}</td><td>${s.n}</td><td class="${cls(s.mean)}">${sgn(s.mean, 1)}</td><td>${s.up == null ? '–' : s.up.toFixed(0) + '%'}</td><td>${s.held == null ? '–' : s.held.toFixed(0) + '%'}</td><td>${s.lag == null ? '–' : s.lag.toFixed(1) + ' 根'}</td><td>${s.dist == null ? '–' : fmt(s.dist) + ' 點'}</td></tr>`;
+  $('#tblStat').innerHTML = `<table><tr><th>訊號</th><th>次數</th><th>之後${hold}平均（點）</th><th>上漲比例</th><th>之後 12 根沒再破低</th><th>比真正低點晚</th><th>離真正低點</th></tr>`
+    + row('全部低點', R.all) + row('強低點（曾跌破 −70）', R.strong) + row('一般低點', R.normal)
+    + `<tr class="muted"><td>隨便哪一根（基準）</td><td>${R.base.n}</td><td>${sgn(R.base.mean, 1)}</td><td>${R.base.up == null ? '–' : R.base.up.toFixed(0) + '%'}</td><td>${R.base.held == null ? '–' : R.base.held.toFixed(0) + '%'}</td><td></td><td></td></tr></table>`;
+  $('#statNote').textContent = `${tfName}・${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}・下一根開盤進場`;
+  const rows = sig.slice(-12).reverse().map(x => { const i = x.i, m = R.m, r = i + m < n ? bars[i + m].c - bars[i + 1].o : null;
+    let held = null; if (i + 12 < n){ let mn = Infinity; for (let k = i + 1; k <= i + 12; k++) mn = Math.min(mn, bars[k].l); held = mn > x.low; }
+    return `<tr><td>${tlabel(bars[i].t, ST.tf)}</td><td style="color:${css('--sig')}">${x.strong ? '強低點' : '低點'}</td><td>${fmt(bars[i].c)}</td><td>${fmt(x.low)}</td><td>${x.lag} 根</td><td>${sgn(x.mn, 0)}</td><td class="${cls(r)}">${r == null ? '還沒到' : sgn(r)}</td><td>${held == null ? '還沒到' : held ? '守住' : '<span class="dn">又破低</span>'}</td></tr>`; }).join('');
+  $('#tblSig').innerHTML = `<table><tr><th>訊號時間</th><th>強度</th><th>收盤</th><th>這段真正低點</th><th>晚了</th><th>這段最低力道</th><th>之後${hold}</th><th>12 根內</th></tr>${rows || '<tr><td colspan="8" class="muted">這個週期還沒有訊號</td></tr>'}</table>`;
+  $('#note').innerHTML = `<b>低點訊號</b>＝${ST.k === 'FR' ? '資金流殘差（藍線）' : '淨流量力道'}先跌進超賣區（≤ −60，綠色區），再往上穿回 −60 的那一根（K 棒收盤才確認，畫過的不會消失）；這段期間曾跌破悲觀線 −70 的標成「強低點」。它一定比真正的最低點晚幾根出現，表格裡的「比真正低點晚」「離真正低點」就是平均晚多少、高多少。`
+    + `<br><b>資金流殘差</b>＝選擇權主動成交的 Delta 淨流量，扣掉「價格本身漲跌帶動」的部分，剩下的才是資金真正的偏向；價格還在跌、但殘差已經不再往下時，比較可能是真的底。`
+    + `<br>研究結果（2026 年 1～10 月）：60 分、4 小時的低點訊號之後上漲比例和平均漲幅明顯高於基準，5 分略好，15 分沒有優勢；歷史還短，請搭配布林通道下緣、K 棒型態一起看。資料每天收盤後與夜盤結束後自動更新，不即時，不佔 FinMind 查詢次數。K 線用台指期近月，布林通道 20 根、2 倍標準差。`;
+}
+
+document.querySelectorAll('#tfSeg button').forEach(b => b.onclick = () => { ST.tf = b.dataset.tf; store.set('flow.tf', ST.tf); render().catch(err); });
+document.querySelectorAll('#lnSeg button').forEach(b => b.onclick = () => { ST.k = b.dataset.k; store.set('flow.k', ST.k); render().catch(err); });
+const zoom = f => { const ts = CHART.timeScale(), r = ts.getVisibleLogicalRange(); if (!r) return; const mid = r.to - 3, w = (r.to - r.from) * f; ts.setVisibleLogicalRange({ from:mid - w + 3, to:mid + 3 }); };
+$('#zIn').onclick = () => zoom(1 / 1.5); $('#zOut').onclick = () => zoom(1.5);
+$('#zEnd').onclick = () => { const n = VIEW.bars.length, show = Math.min(n, window.innerWidth < 700 ? 120 : 220); CHART.timeScale().setVisibleLogicalRange({ from:n - show, to:n + 3 }); };
+function err(e){ console.error(e); $('#status').hidden = false; $('#status').className = 'msg'; $('#status').textContent = '讀取失敗：' + (e.message || e); }
+(function start(){
+  if (!window.LightweightCharts){ setTimeout(start, 200); return; }
+  try { buildChart(); render().catch(err); } catch(e){ err(e); }
+})();
+</script>
+</body>
+</html>
