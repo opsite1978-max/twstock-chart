@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d5a62">
-<meta name="description" content="第二型糖尿病用藥與台灣健保給付規定導航：依 HbA1c、eGFR、UACR 列出可申報藥物、腎功能劑量與病歷草稿。">
+<meta name="description" content="第二型糖尿病用藥與台灣健保給付規定導航">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -154,6 +154,44 @@ table.hist tr.nowrow td{background:var(--accent-soft)}
 .trend .v{font-family:var(--f-num);font-size:.95rem;font-weight:700}
 .trend .v.bad{color:var(--bad)} .trend .v.ok{color:var(--ok)} .trend .v.warn{color:var(--warn)}
 .trend svg{width:100%;height:36px;display:block}
+.tab{display:flex;flex-direction:column;gap:14px;min-width:0}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl>li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px dashed var(--line)}
+.tl>li:first-child{border-top:0}
+@media (max-width:520px){.tl>li{grid-template-columns:minmax(0,1fr);gap:4px}}
+.tl .when{font-weight:700;color:var(--accent);font-size:.9rem;line-height:1.3}
+.tl .when small{display:block;font-family:var(--f-num);font-size:.74rem;color:var(--muted);font-weight:500}
+.tl ul{margin:4px 0 0;padding-left:18px;font-size:.86rem;display:flex;flex-direction:column;gap:3px}
+.rx{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rx h4{margin:0;font-size:.92rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rx ol{margin:0;padding-left:20px;font-size:.85rem;display:flex;flex-direction:column;gap:3px}
+.rx ol li{font-variant-numeric:tabular-nums}
+.rx .date{font-family:var(--f-num);font-size:.78rem;color:var(--muted);margin-right:6px}
+.box{border-radius:8px;padding:10px 12px;font-size:.85rem;display:flex;flex-direction:column;gap:4px}
+.box.warn{background:var(--warn-soft)} .box.info{background:var(--info-soft)} .box.ok{background:var(--ok-soft)}
+.box b{font-size:.9rem}
+.box ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:2px}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.num{border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:2px}
+.num .t{font-size:.76rem;color:var(--muted)}
+.num .v{font-family:var(--f-num);font-size:1.15rem;font-weight:700}
+.num .s{font-size:.76rem;color:var(--muted)}
+.meals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.meals{grid-template-columns:minmax(0,1fr)}}
+.meal{background:var(--sunk);border-radius:8px;padding:9px 11px;font-size:.84rem;display:flex;flex-direction:column;gap:3px}
+.meal b{font-size:.88rem}
+.plate{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:.85rem}
+.plate svg{width:96px;height:96px;flex:none}
+.dlist{margin:0;padding-left:18px;font-size:.86rem;display:flex;flex-direction:column;gap:4px}
+#printArea{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  body.printing .wrap{display:none}
+  body.printing #printArea{display:block;font-family:var(--f-body);font-size:12pt;line-height:1.55;color:#000}
+  #printArea h1{font-size:16pt;margin:0 0 4pt} #printArea h2{font-size:13pt;margin:12pt 0 4pt;border-bottom:1px solid #000}
+  #printArea .num,#printArea .meal,#printArea .box{border:1px solid #888;background:#fff}
+  #printArea .tools,#printArea .seg{display:none}
+}
 .calc.A2,.calc.warn{color:var(--warn)} .calc.A3,.calc.bad{color:var(--bad)} .calc.A1{color:var(--ok)}
 </style>
 </head>
@@ -162,7 +200,7 @@ table.hist tr.nowrow td{background:var(--accent-soft)}
 
 <div class="wrap">
   <header class="top">
-    <h1>降血糖藥健保導航<small>網頁版 v1.0 · 規定整理至 115/10/20 · Type 2 Diabetes Pharmacotherapy · NHI Navigator</small></h1>
+    <h1>降血糖藥健保導航<small>網頁版 v1.1 · 規定整理至 115/10/20 · Type 2 Diabetes Pharmacotherapy · NHI Navigator</small></h1>
     <div class="tools"><span class="sample" id="sampleTag">範例病人</span><button id="clearBtn" type="button">新病人</button><button id="sampleBtn" type="button">載入範例</button></div>
   </header>
 
@@ -245,7 +283,25 @@ table.hist tr.nowrow td{background:var(--accent-soft)}
       <div><a href="https://www.nhi.gov.tw/ch/cp-18237-96c34-3258-1.html" target="_blank" rel="noopener">5.1 修訂公告</a> · <a href="https://www.nhi.gov.tw/ch/dl-86110-c5b8d8d685c04fff8aa284e25af3be0e-1.pdf" target="_blank" rel="noopener">2.16 修訂對照表</a> · <a href="https://ws.nhi.gov.tw/001/Upload/292/relfile/chapterfile/5.1.pdf" target="_blank" rel="noopener">5.1 條文全文</a></div>
     </div></details>
   </section>
+
+  <section class="step" aria-labelledby="h5s" id="step5">
+    <h2 id="h5s"><span class="n">5</span>治療計畫、追蹤與衛教<small>Plan · Follow-up · Diet education</small></h2>
+    <div class="seg" id="tabSeg" role="tablist" style="max-width:520px">
+      <button type="button" data-tab="plan5" aria-pressed="true">開藥治療計畫</button>
+      <button type="button" data-tab="fu5" aria-pressed="false">追蹤建議</button>
+      <button type="button" data-tab="diet5" aria-pressed="false">飲食衛教</button>
+    </div>
+    <div id="plan5" class="tab"></div>
+    <div id="fu5" class="tab" hidden></div>
+    <div id="diet5" class="tab" hidden></div>
+    <div class="tools">
+      <button type="button" id="copy5">複製此頁內容</button>
+      <button type="button" id="print5" hidden>列印給病人</button>
+      <span class="copied" id="copied5" hidden></span>
+    </div>
+  </section>
 </div>
+<div id="printArea" aria-hidden="true"></div>
 
 <script>
 (function(){
@@ -741,11 +797,233 @@ function render(){
   const pl=plan(s,R).filter(p=>!/超過此 eGFR|請點選|檢查目前處方/.test(p.t)).map(p=>p.t.replace(/。$/,""));
   if(pl.length)n+=`\n評估要點：${pl.join("；")}`;
   $("note").textContent=n;
+  render5(s,R,rows);
 }
 function renderStatic(){
   $("intol").innerHTML=GROUPS.filter(g=>g[0]!=="met"||true).map(([g,zh])=>`<button type="button" class="tchip" data-intol="${g}" aria-pressed="false">${zh}</button>`).join("");
   renderCur(num("egfr")??90);render();
 }
+
+// ================= Step 5: plan, follow-up, diet =================
+const dt=n=>{const d=new Date();d.setDate(d.getDate()+n);return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;};
+const r50=x=>Math.round(x/50)*50, r5=x=>Math.round(x*2)/2;
+let TAB="plan5";
+
+function titrate(r,s,e){
+  const d=r.d,id=d.id,g=d.g,add=r.act==="add",m=d.ins?null:d.mx(e),cur=SEL[id],U=`${d.u}/${d.p}`;
+  if(r.act==="stop")return {h:`停用 ${d.n}`,tag:"stop",L:[r.basis]};
+  if(r.act==="down")return {h:`${d.n} 減量`,tag:"down",L:[`今天起改為 ${fmt(m)} ${U}（${r.basis}）`]};
+  const L=[],D=(n,t)=>L.push(`<span class="date">${dt(n)}</span>${t}`);
+  if(!add){
+    if(id==="metformin"&&typeof cur==="number"&&m>0&&cur<m&&!MET_TOL)L.push(`目前 ${cur} mg/日，可每 1–2 週加 500 mg 到 ${m} mg/日（健保第二線用藥的前提）`);
+    else if(d.ins)L.push("依自我血糖監測調整，見下方胰島素調整原則");
+    else L.push(`維持 ${cur!=null&&cur!=="contra"?fmt(cur)+" "+U:"目前劑量"}`);
+    return {h:`${d.n} 續用`,tag:"keep",L};
+  }
+  const st=d.ins?null:startDose(d,e);
+  switch(g){
+    case "met":D(0,`500 mg 每日一次，晚餐中或餐後服用`);D(10,`若無腸胃不適，改 500 mg 每日兩次（早晚餐後）`);if(m>1000){D(24,`1000 mg 早 ＋ 500 mg 晚`);D(38,`1000 mg 每日兩次（多數病人已足夠）`);if(m>2000)L.push(`之後最多 ${m} mg/日；腸胃不適就退回前一劑量，1–2 週後再試`);}else L.push(`此腎功能最多 ${m} mg/日`);L.push("在病歷記下達到最大耐受劑量的日期，3 個月後才能申報第二線藥物");break;
+    case "sglt2":D(0,`${fmt(st)} ${d.u} 每日早上一次，不需逐步加量`);if(id==="empagliflozin"&&e>=45)L.push("4–12 週後若血糖未達標、且不是依腎臟條文給付，可增至 25 mg");if(e<60)D(21,"驗肌酸酐：eGFR 初期下降 30% 以內屬預期，不需停藥");if(s.m_su||s.m_ins)L.push("併用磺醯脲類或胰島素：HbA1c <8% 者先把磺醯脲類減半或胰島素減 10–20%");break;
+    case "dpp4":D(0,id==="vildagliptin"?(e>=50?"50 mg 每日兩次":"50 mg 每日一次"):`${fmt(st)} ${d.u} 每日一次，固定劑量，不需加量`);break;
+    case "fdc":D(0,`${fmt(st)} mg 每日一粒，早上服用`);if(id==="glyxambi"&&e>=45)D(28,"血糖未達標可增至 25/5 mg");if(id==="steglujan"&&e>=45)D(28,"血糖未達標可增至 15/100 mg");L.push("開立當天停用原本的單方 SGLT-2 或 DPP-4");break;
+    case "glp1":{
+      const sch={semaglutide:[[0,"0.25 mg 每週一次（起始，非治療劑量）"],[28,"0.5 mg 每週一次"],[56,"若未達標：1 mg 每週一次"],[84,"仍未達標：2 mg 每週一次（最大）"]],
+        dulaglutide:[[0,"0.75 mg 每週一次"],[28,"1.5 mg 每週一次"],[56,"若未達標：3 mg 每週一次"],[84,"仍未達標：4.5 mg 每週一次（最大）"]],
+        liraglutide:[[0,"0.6 mg 每日一次"],[7,"1.2 mg 每日一次"],[21,"若未達標：1.8 mg 每日一次（最大）"]],
+        exenatide:[[0,"5 微克 每日兩次，早晚餐前 60 分鐘內"],[30,"10 微克 每日兩次（最大）"]],
+        tirzepatide:[[0,"2.5 mg 每週一次（起始）"],[28,"5 mg 每週一次"],[56,"若未達標：7.5 mg；之後每 4 週加 2.5 mg，最多 15 mg"]]}[id]||[];
+      sch.forEach(([n,t])=>D(n,t));L.push("噁心、嘔吐時延後 4 週再加量；每週固定同一天注射");if(id!=="tirzepatide")L.push("開立當天停用 DPP-4 與 SGLT-2（健保不得併用）");break;}
+    case "su":{const p={glipizide:["2.5 mg 早餐前 30 分鐘","每 1–2 週依空腹血糖加 2.5–5 mg"],gliclazide:["30 mg 早餐時","每 2–4 週加 30 mg"],glimepiride:["1 mg 早餐時","每 1–2 週加 1 mg（超過 4 mg 效果有限）"],glibenclamide:["2.5 mg 早餐時","每週加 2.5 mg（高齡、腎功能差避免）"]}[id];
+      D(0,p[0]);L.push(`${p[1]}，空腹血糖 >130 mg/dL 才加；最多 ${fmt(m)} mg/日`);L.push("教病人低血糖處理，不可空腹不吃飯");break;}
+    case "tzd":D(0,"15 mg 每日一次");D(56,"評估：療效 2–3 個月才完全出現，可增至 30 mg，最多 45 mg");L.push("觀察水腫與體重，心衰竭症狀立即停藥");break;
+    case "agi":D(0,"50 mg 每日一次，和第一口飯一起嚼碎吃");D(7,"50 mg 每日兩次");D(14,"50 mg 每日三次");if(m>=300)D(56,"血糖未達標且體重 >60 公斤：可增至 100 mg 每日三次");L.push("慢慢加量可減少脹氣");break;
+    case "glinide":D(0,id==="repaglinide"?(e<30?"每餐前 0.5 mg":"每餐前 0.5–1 mg"):"每餐前 120 mg"+(e<30?"（腎功能差可由 60 mg 起始）":""));L.push(id==="repaglinide"?"每週依餐後血糖加量，單次最多 4 mg":"最大 120 mg 每日三次");L.push("不吃飯那一餐就不吃藥");break;
+    case "ins":{const w=s.wt,lo=w?Math.max(6,Math.round(w*.1)):10,hi=w?Math.round(w*.2):10,start=e<30||s.elder?lo:Math.min(10,hi)||10;
+      if(id==="basal"){D(0,`${start} 單位 每日一次，固定時間（睡前或早上）`);L.push(`病人自行調整：每 ${e<30?"5–7":"3"} 天看空腹血糖平均值，>130 mg/dL 加 2 單位；80–130 維持；<80 減 2 單位；任何一次 <70 減 4 單位或 10%`);if(w)L.push(`超過 ${Math.round(w*.5)} 單位（每公斤 0.5 單位）仍未達標：考慮加 GLP-1 或餐前胰島素，不要只加基礎量`);}
+      else if(id==="premix")D(0,`每日總量 ${start} 單位，早餐前與晚餐前各半；依餐前血糖每 3–4 天調整 10%`);
+      else D(0,"由最大的一餐開始，餐前 4 單位或基礎量的 10%；依下一餐前或睡前血糖每 3 天調整 1–2 單位");
+      break;}
+  }
+  return {h:`新增 ${d.n}`,tag:"add",L};
+}
+
+function milestones(s,R,rows){
+  const live=rows.filter(r=>r.act!=="stop"),has=g=>live.some(r=>r.d.g===g),changed=rows.some(r=>r.act!=="keep"),e=R.e,a=R.a;
+  const titr=rows.some(r=>r.act==="add"&&["met","glp1","su","tzd","agi","glinide","ins"].includes(r.d.g));
+  const raasPlan=s.uacr!=null&&s.uacr>=30&&!s.raas;
+  const M=[];
+  M.push({w:"今天",n:0,L:[changed?`處方調整：${rows.filter(r=>r.act!=="keep").map(r=>`${ACT[r.act]} ${r.d.n}`).join("、")}`:"維持目前處方",
+    ...(raasPlan?["開始或調高 ACEI／ARB（白蛋白尿）"]:[]),...(s.mode==="new"?["收案糖尿病共同照護網；安排眼底與足部檢查"]:[])]});
+  if(titr||raasPlan||(rows.some(r=>r.act==="add"&&r.d.g==="sglt2")&&e<60))M.push({w:"2–4 週",n:21,L:[...(titr?["回診確認副作用、依計畫加量"]:[]),...((raasPlan||e<60)?["驗肌酸酐與血鉀"]:[]),...(has("ins")||has("su")?["檢視自我血糖紀錄，有無低血糖"]:[])]});
+  const q3=["驗 HbA1c"];
+  if(has("ins"))q3.push("空腹已達標但 HbA1c 仍高：查餐後血糖，考慮加 GLP-1 或餐前胰島素");
+  if(has("glp1"))q3.push("確認 GLP-1 已加到足量；HbA1c 下降 <0.5% 考慮換藥");
+  if(has("met")&&!has("sglt2")&&!has("dpp4")&&!has("fdc")&&!has("glp1")&&!has("ins"))q3.push("HbA1c 仍 >7.0% 且 metformin 已達最大耐受劑量 → 健保可申報 SGLT-2 或 DPP-4（二擇一）或 pioglitazone"+(e<60||s.uacr>=30?"；有腎臟病優先 SGLT-2":""));
+  else if((has("sglt2")||has("dpp4"))&&!has("fdc")&&!has("glp1"))q3.push("未達標：可先加磺醯脲類、acarbose 或 pioglitazone；換複方或 GLP-1 要等組合滿 6 個月");
+  q3.push("達標：維持處方，之後可改每 6 個月驗一次");
+  M.push({w:"3 個月",n:91,L:q3});
+  const q6=["驗 HbA1c"];
+  if((has("sglt2")||has("dpp4"))&&!has("fdc")&&!has("glp1")&&has("met"))q6.push("HbA1c >7.5% → 可改 SGLT-2＋DPP-4 複方；>8.5% → 可申報 GLP-1（同時停 SGLT-2／DPP-4）");
+  if(has("fdc")&&!has("glp1"))q6.push("HbA1c >8.5% → 可申報 GLP-1（停複方）或加基礎胰島素");
+  if(has("ins")&&!has("glp1"))q6.push("HbA1c >8.0% 且胰島素每日 <60 單位 → 可考慮 Soliqua");
+  if(changed)q6.push(`此組合滿 6 個月日期：${dt(182)}（請記在病歷，健保審查會看）`);
+  M.push({w:"6 個月",n:182,L:q6});
+  M.push({w:"12 個月",n:365,L:["年度評估：眼底、足部、血脂、尿液白蛋白、eGFR",...(has("met")?["維生素 B12（長期使用 metformin）"]:[]),"流感疫苗；評估肺炎鏈球菌疫苗"]});
+  return M;
+}
+
+function followups(s,R,rows){
+  const live=rows.filter(r=>r.act!=="stop"),has=g=>live.some(r=>r.d.g===g),e=R.e,changed=rows.some(r=>r.act!=="keep");
+  const atGoal=R.a!=null&&R.a<=s.target&&!changed, kd=kdigo(s.egfr,s.uacr);
+  const kn=kd?(e<30?4:KD[kd.k][2]):1, kmo=Math.round(12/kn);
+  const T=[];
+  T.push(["糖化血色素 HbA1c",atGoal?"每 6 個月":"每 3 個月",dt(atGoal?182:91),atGoal?"已達標且處方未變":`目標 <${s.target}%`]);
+  T.push(["腎功能 eGFR、尿液白蛋白 UACR",`每年 ${kn} 次`,dt(kd&&kd.partial?0:kmo*30),kd?(kd.partial?"本次未驗 UACR，下次回診補驗":`腎臟風險：${KD[kd.k][0]}`):"每年至少一次"]);
+  if((s.uacr!=null&&s.uacr>=30&&!s.raas)||rows.some(r=>r.act==="add"&&r.d.g==="sglt2"&&e<60))T.push(["肌酸酐、血鉀","開始或調藥後 2–4 週",dt(21),"ACEI／ARB 或 SGLT-2 開始後；肌酸酐上升 >30% 或血鉀 >5.5 需處理"]);
+  T.push(["血壓","每次回診","—","目標 <130/80 mmHg；鼓勵居家量測"]);
+  T.push(["體重、腰圍","每次回診","—",s.bmi&&s.bmi>=24?`BMI ${s.bmi}：目標先減 5–10%`:"維持"]);
+  T.push(["血脂（總膽固醇、低密度脂蛋白、三酸甘油酯）","每年","—",s.ascvd?"低密度脂蛋白目標 <70 mg/dL":"低密度脂蛋白目標 <100 mg/dL"]);
+  T.push(["散瞳眼底檢查","每年",s.mode==="new"?dt(30):"—",s.mode==="new"?"新診斷時就要做":"有視網膜病變依眼科建議"]);
+  T.push(["足部檢查（單股纖維、脈搏、皮膚）","每年；高風險每次回診",s.mode==="new"?dt(0):"—","教病人每天看腳"]);
+  if(has("met"))T.push(["維生素 B12","每年","—","長期使用 metformin，或有周邊神經病變、貧血"]);
+  if(has("tzd"))T.push(["肝功能、水腫、體重","開始後 3 個月，之後每年","—","pioglitazone"]);
+  if(has("ins")||has("su")||has("glinide"))T.push(["自我血糖監測","調藥期每天空腹；穩定後每週 2–3 天","—","空腹 80–130、飯後 2 小時 <180 mg/dL；記錄低血糖"]);
+  T.push(["糖尿病共同照護網","每 3 個月追蹤；每年年度評估","—","含衛教師或營養師衛教"]);
+  return T;
+}
+
+function warnBoxes(s,rows){
+  const live=rows.filter(r=>r.act!=="stop"),has=g=>live.some(r=>r.d.g===g),B=[];
+  const sick=[];if(has("met"))sick.push("metformin");if(has("sglt2")||has("fdc"))sick.push("SGLT-2 抑制劑");if(s.raas||(s.uacr>=30))sick.push("ACEI／ARB、利尿劑");if(has("su"))sick.push("磺醯脲類（吃不下時）");
+  if(sick.length)B.push(["warn","生病日原則（嘔吐、腹瀉、發燒吃不下時）",[`暫停：${sick.join("、")}，恢復進食 24–48 小時後再吃`,"多喝水，每 4 小時量一次血糖；胰島素不要自行全停，基礎量可減 10–20%",...(has("sglt2")||has("fdc")?["SGLT-2 抑制劑：手術或大檢查前 3 天停藥（ertugliflozin 4 天）"]:[]),...(has("met")?["metformin：打顯影劑當天與之後 48 小時停藥（eGFR <60 時）"]:[])]]);
+  if(has("su")||has("ins")||has("glinide"))B.push(["info","低血糖處理（血糖 <70 mg/dL，或發抖、冒冷汗、心悸）",["立刻吃 15 克糖：方糖 3–4 顆、果汁或含糖飲料 120–150 毫升（半杯）","15 分鐘後再量；仍 <70 再吃一次","好了之後吃點正餐或餅乾，避免再掉；隨身帶糖",...(s.elder?["高齡者低血糖容易跌倒，HbA1c 目標可放寬"]:[])]]);
+  const dw=[];
+  if(has("sglt2")||has("fdc"))dw.push("SGLT-2：每天清洗外陰部，有灼熱、分泌物要回診；噁心、嘔吐、腹痛、呼吸喘可能是酮酸中毒（血糖不一定高）","SGLT-2：不要做極低醣（生酮）飲食");
+  if(has("glp1"))dw.push("GLP-1：持續劇烈上腹痛延伸到背部要就醫（胰臟炎）；右上腹痛、發燒注意膽結石","GLP-1：嘔吐腹瀉時多補水，避免腎功能惡化");
+  if(has("tzd"))dw.push("Pioglitazone：腳腫、體重一週增加 2 公斤以上、喘要回診");
+  if(has("dpp4")||has("fdc"))dw.push("DPP-4：關節痛、皮膚起水泡（類天疱瘡）要告知醫師");
+  if(dw.length)B.push(["info","用藥注意事項",dw]);
+  return B;
+}
+
+function diet(s,R,rows){
+  const live=rows.filter(r=>r.act!=="stop"),has=g=>live.some(r=>r.d.g===g),e=R.e,ht=num("ht"),wt=s.wt;
+  if(!ht&&!wt)return null;
+  const h=(ht||165)/100,ibw=22*h*h,bmi=s.bmi;
+  let kk=bmi==null?[25,30]:bmi>=24?[20,25]:bmi>=18.5?[25,30]:[30,35];
+  const mid=(kk[0]+kk[1])/2-(s.elder?2.5:0);
+  let kcal=r50(ibw*mid);const floor=SEX==="M"?1500:1200;if(kcal<floor)kcal=floor;
+  const carbG=Math.round(kcal*.45/4);
+  const fruit=2,milk=e<30?1:1.5;
+  const grain=Math.max(4,Math.round((carbG-fruit*15-milk*12)/15));
+  const ckd0=s.egfr!=null&&(e<60||(s.uacr!=null&&s.uacr>=30));const protG=Math.round(ibw*(ckd0?0.8:1.0));
+  const meat=Math.max(3,Math.round((protG-grain*2-milk*8)/7));
+  const split=[Math.round(grain*.3),Math.round(grain*.35)];split.push(grain-split[0]-split[1]);
+  const bowl=n=>{const b=n/4;return b<=0.3?"1/4 碗":b<=0.55?"半碗":b<=0.8?"3/4 碗":b<=1.1?"1 碗":b<=1.35?"1 又 1/4 碗":"1 碗半"};
+  const loss=bmi!=null&&bmi>=24&&wt?[r5(wt*.95),r5(wt*.9)]:null;
+  const ckd=s.egfr!=null&&(e<60||(s.uacr!=null&&s.uacr>=30));
+  const tips=[
+    "吃飯順序：先吃青菜，再吃魚肉蛋豆，最後吃飯或麵，飯後血糖比較平穩",
+    "手搖飲、汽水、果汁都選無糖；全糖手搖飲一杯約等於 10 顆方糖",
+    "地瓜、芋頭、南瓜、玉米、馬鈴薯、紅豆、綠豆、蓮子都是澱粉，要算在飯的份量裡，不是蔬菜",
+    "白粥、米粉、糯米（粽子、湯圓、油飯）血糖上升快，盡量少吃；改吃糙米、五穀飯",
+    "水果一次一份（約一個拳頭大），兩餐之間吃；不要一次吃很多或喝果汁",
+    "外食便當：飯先撥掉一部分，多夾青菜，炸的去皮、勾芡和湯汁少吃",
+    "喝酒：男性每天不超過 2 杯、女性 1 杯（一杯約 1 罐啤酒或半杯紅酒），且不要空腹喝"+(has("su")||has("ins")?"；用磺醯脲類或胰島素的人喝酒容易低血糖":"")];
+  const kidney=ckd?[
+    "鹽：每天鈉 2,000 毫克以下（鹽約 1 茶匙），少吃醃漬、加工食品、泡麵、火鍋湯底；醬料沾少量",
+    `蛋白質：每天約 ${protG} 克（每公斤 0.8 克），不要吃高蛋白減重餐或大量蛋白粉`,
+    "絕對不要吃楊桃或楊桃汁（腎功能不好的人會中毒）",
+    "不要自行服用止痛藥（非類固醇消炎止痛藥）、來路不明的中草藥或偏方",
+    ...(e<30?["鉀：蔬菜先用滾水燙過再炒，菜湯、肉湯、精力湯、低鈉鹽不要用","磷：少吃加工肉品、可樂、內臟、乳酪；牛奶每天 1 杯以內"]:[])]:[];
+  const med=[];
+  if(has("met"))med.push("Metformin：吃飯中或飯後馬上吃，可減少腸胃不適");
+  if(has("agi"))med.push("Acarbose：和第一口飯一起嚼碎吃；低血糖時要吃葡萄糖（不是方糖或飯）");
+  if(has("glinide"))med.push("Repaglinide：飯前吃，不吃飯就不吃藥");
+  if(has("su"))med.push("磺醯脲類：三餐定時，不可跳餐，運動前身上帶糖");
+  if(has("ins"))med.push("胰島素：三餐澱粉份量每天盡量固定，方便調整劑量");
+  if(has("glp1"))med.push("GLP-1：少量多餐、吃慢一點，覺得飽就停；少吃油炸與高脂，噁心會比較少");
+  if(has("sglt2")||has("fdc"))med.push("SGLT-2：每天多喝水 1,500–2,000 毫升（醫師限水者除外），不要做生酮飲食");
+  return {kcal,carbG,grain,fruit,milk,meat,protG,split,bowl,loss,ibw:Math.round(ibw),tips,kidney,med,ckd,ex:has("su")||has("ins")};
+}
+
+function plateSVG(){
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>
+  <path d="M50 50 L50 5 A45 45 0 0 0 50 95 Z" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1"/>
+  <path d="M50 50 L50 5 A45 45 0 0 1 95 50 Z" fill="var(--info-soft)" stroke="var(--info)" stroke-width="1"/>
+  <path d="M50 50 L95 50 A45 45 0 0 1 50 95 Z" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1"/>
+  <text x="27" y="53" font-size="9" text-anchor="middle" fill="var(--ok)">蔬菜</text><text x="70" y="33" font-size="8" text-anchor="middle" fill="var(--info)">蛋白質</text><text x="70" y="72" font-size="8" text-anchor="middle" fill="var(--warn)">澱粉</text></svg>`;
+}
+
+function render5(s,R,rows){
+  const e=R.e;
+  // --- plan
+  let p="";
+  if(!rows.length)p+=`<div class="empty">尚未有處方。請在步驟 2 點選目前用藥，或在步驟 3 點選要開立的藥。</div>`;
+  else{
+    p+=`<p class="sub">各藥起始與加量時程</p>`;
+    rows.forEach(r=>{const t=titrate(r,s,e);p+=`<div class="rx"><h4><span class="act ${t.tag}">${ACT[t.tag]||"續用"}</span>${r.d.n} <span style="font-weight:400;color:var(--muted);font-size:.8rem">${r.d.b}</span></h4><ol>${t.L.map(x=>`<li>${x}</li>`).join("")}</ol></div>`;});
+  }
+  p+=`<p class="sub">治療里程碑</p><ol class="tl">${milestones(s,R,rows).map(m=>`<li><div class="when">${m.w}<small>${dt(m.n)}</small></div><ul>${m.L.map(x=>`<li>${x}</li>`).join("")}</ul></li>`).join("")}</ol>`;
+  p+=`<div class="box warn"><b>任何時候</b><ul><li>HbA1c ≥10%，或出現多吃、多喝、多尿、體重明顯減輕 → 及早加基礎胰島素</li><li>反覆低血糖 → 先減磺醯脲類或胰島素</li></ul></div>`;
+  $("plan5").innerHTML=p;
+  // --- follow-up
+  const T=followups(s,R,rows);
+  let f=`<div class="tbl"><table><thead><tr><th>項目</th><th>頻率</th><th>下次</th><th>說明</th></tr></thead><tbody>${T.map(x=>`<tr><td class="drug">${x[0]}</td><td>${x[1]}</td><td class="dose">${x[2]}</td><td>${x[3]}</td></tr>`).join("")}</tbody></table></div>`;
+  f+=warnBoxes(s,rows).map(([c,h,L])=>`<div class="box ${c}"><b>${h}</b><ul>${L.map(x=>`<li>${x}</li>`).join("")}</ul></div>`).join("");
+  const refer=[];if(s.egfr!=null&&e<30)refer.push("eGFR <30");if(s.uacr!=null&&s.uacr>=300)refer.push("UACR ≥300 mg/g");if(s.tr&&s.tr.rapid)refer.push("eGFR 快速下降");
+  if(refer.length)f+=`<div class="box warn"><b>轉介腎臟科</b><ul><li>符合：${refer.join("、")}</li></ul></div>`;
+  $("fu5").innerHTML=f;
+  // --- diet
+  const D=diet(s,R,rows);
+  let g="";
+  if(!D)g=`<div class="empty">請在步驟 1 填身高與體重，會算出這位病人每天的熱量與每餐飯量。</div>`;
+  else{
+    g+=`<div class="nums">
+      <div class="num"><span class="t">每日熱量</span><span class="v">${D.kcal} 大卡</span><span class="s">理想體重 ${D.ibw} 公斤${D.loss?"，含減重":""}</span></div>
+      <div class="num"><span class="t">澱粉（全穀雜糧）</span><span class="v">${D.grain} 份／日</span><span class="s">1 份 = 白飯 1/4 碗</span></div>
+      <div class="num"><span class="t">水果</span><span class="v">${D.fruit} 份／日</span><span class="s">1 份 ≈ 一個拳頭大</span></div>
+      <div class="num"><span class="t">豆魚蛋肉</span><span class="v">${D.meat} 份／日</span><span class="s">1 份 = 蛋 1 顆或肉 3 指大小</span></div>
+      <div class="num"><span class="t">乳品</span><span class="v">${D.milk} 杯／日</span><span class="s">低脂鮮奶 240 毫升</span></div>
+      <div class="num"><span class="t">蔬菜</span><span class="v">3–5 份／日</span><span class="s">1 份 = 煮熟半碗</span></div></div>`;
+    if(D.loss)g+=`<div class="box ok"><b>體重目標</b><ul><li>6 個月內先減 5–10%：從 ${s.wt} 公斤到 ${D.loss[0]}–${D.loss[1]} 公斤</li><li>每週減 0.5 公斤左右最適合</li></ul></div>`;
+    g+=`<p class="sub">每餐建議</p><div class="meals">${["早餐","午餐","晚餐"].map((m,i)=>`<div class="meal"><b>${m}</b><span>飯 ${D.bowl(D.split[i])}（${D.split[i]} 份澱粉）</span><span>${i===0?"蛋或無糖豆漿":"魚、肉、豆腐 1–2 份"}</span><span>${i===0?"蔬菜或低脂奶":"蔬菜 1 碗以上"}</span></div>`).join("")}</div>`;
+    g+=`<div class="plate">${plateSVG()}<div>每餐盤子：<b>一半</b>放青菜，<b>四分之一</b>放魚肉蛋豆，<b>四分之一</b>放飯麵。<br>稀飯或熟麵條的份量約是白飯的兩倍（半碗 = 1 份）。</div></div>`;
+    g+=`<p class="sub">飲食原則</p><ul class="dlist">${D.tips.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+    if(D.kidney.length)g+=`<div class="box warn"><b>腎臟保護飲食</b><ul>${D.kidney.map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+    if(D.med.length)g+=`<div class="box info"><b>和藥物有關的飲食</b><ul>${D.med.map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+    g+=`<div class="box ok"><b>運動</b><ul><li>每週至少 150 分鐘中等強度運動（快走、騎腳踏車、游泳），不要連續兩天沒動</li><li>每週 2–3 次肌力訓練（深蹲、彈力帶）</li><li>飯後散步 10–15 分鐘可降低飯後血糖</li>${D.ex?"<li>運動前量血糖，<100 mg/dL 先吃點東西；身上帶糖</li>":""}</ul></div>`;
+  }
+  $("diet5").innerHTML=g;
+  document.querySelectorAll("[data-tab]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tab===TAB));
+  ["plan5","fu5","diet5"].forEach(id=>$(id).hidden=id!==TAB);
+  $("print5").hidden=!(window.self===window.top);
+}
+$("tabSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-tab]");if(!b)return;TAB=b.dataset.tab;["plan5","fu5","diet5"].forEach(id=>$(id).hidden=id!==TAB);document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===TAB));});
+function tabText(){
+  const el=$(TAB),out=[];
+  const title={plan5:"開藥治療計畫",fu5:"追蹤建議",diet5:"糖尿病飲食衛教"}[TAB];
+  out.push(`【${title}】${dt(0)}`);
+  el.querySelectorAll(".num").forEach(n=>out.push(`${n.querySelector(".t").textContent}：${n.querySelector(".v").textContent}（${n.querySelector(".s").textContent}）`));
+  el.querySelectorAll(".sub, .rx h4, .rx li, .tl > li, tr, .meal, .plate > div, .dlist li, .box b, .box li").forEach(n=>{
+    if(n.matches(".tl > li"))out.push(`■ ${n.querySelector(".when").innerText.replace(/\n/g," ")}：${[...n.querySelectorAll("li")].map(x=>x.textContent).join("；")}`);
+    else if(n.closest(".tl"))return;
+    else if(n.matches("tr"))out.push([...n.children].map(c=>c.textContent).join("｜"));
+    else if(n.matches(".sub,.box b,.rx h4"))out.push(`\n${n.textContent}`);
+    else if(n.matches(".meal"))out.push([...n.children].map(c=>c.textContent).join("，"));
+    else out.push(`・${n.textContent}`);
+  });
+  return out.join("\n").replace(/\n{3,}/g,"\n\n");
+}
+$("copy5").addEventListener("click",()=>{
+  const t=tabText(),m=$("copied5");const done=msg=>{m.textContent=msg;m.hidden=false;setTimeout(()=>m.hidden=true,2200)};
+  try{navigator.clipboard.writeText(t).then(()=>done("已複製，可貼到 LINE 或病歷"),()=>done("無法複製，請改用長按選取"))}catch(e){done("無法複製，請改用長按選取")}
+});
+$("print5").addEventListener("click",()=>{
+  const title={plan5:"開藥治療計畫",fu5:"追蹤建議",diet5:"糖尿病飲食衛教單"}[TAB];
+  $("printArea").innerHTML=`<h1>${title}</h1><div>${SEX==="M"?"先生":SEX==="F"?"女士":""}　日期：${dt(0)}　晨禾診所</div><h2>${title}</h2>`+$(TAB).innerHTML;
+  document.body.classList.add("printing");window.print();setTimeout(()=>document.body.classList.remove("printing"),500);
+});
 
 // ---- History table and trends ----
 function renderHist(){
@@ -773,7 +1051,7 @@ function renderTrend(s){
 // ---- Events ----
 const touched=()=>{isSample=false};
 $("modeSeg").addEventListener("click",ev=>{const b=ev.target.closest("[data-mode]");if(!b||b.dataset.mode===MODE)return;
-  if(b.dataset.mode==="new"){STASH={SEL,PICK,DUR,MET_TOL,INS_U};SEL={};PICK={};DUR=0;MET_TOL=false;INS_U=null;}
+  if(b.dataset.mode==="new"){STASH={SEL,PICK,DUR,MET_TOL,INS_U};SEL={};PICK={metformin:1};DUR=0;MET_TOL=false;INS_U=null;}
   else if(STASH){({SEL,PICK,DUR,MET_TOL,INS_U}=STASH);STASH=null;}
   MODE=b.dataset.mode;touched();renderCur(num("egfr")??90);render();});
 $("histBody").addEventListener("input",ev=>{const el=ev.target,i=el.dataset.h;if(i==null)return;const k=el.dataset.k;

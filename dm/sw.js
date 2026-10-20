@@ -1,5 +1,5 @@
 // 離線快取：第一次開啟後，沒有網路也能使用。更新內容時請把版本號加 1。
-const CACHE = "dm-nhi-v1";
+const CACHE = "dm-nhi-v2";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
