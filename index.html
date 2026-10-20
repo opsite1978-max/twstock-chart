@@ -162,6 +162,7 @@
   <div class="plabel" id="lbl-qsz"></div>
   <div class="plabel" id="lbl-shz"></div>
   <div class="plabel" id="lbl-ivx"></div>
+  <div class="plabel" id="lbl-flow"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -181,6 +182,7 @@
         <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
         <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
         <label class="chk"><input type="checkbox" data-ind="ivx">隱含波動率（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="flow">資金流殘差（台指期）</label>
       </div>
     </div>
 
@@ -447,6 +449,18 @@
           <button class="small" data-reset="ivx">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>資金流殘差（只適用台指期）</summary>
+        <div class="stack">
+          <div class="hint">台指選擇權逐筆主動成交的 Delta 淨流量，扣掉價格本身漲跌帶動的部分，標準化成 −100～+100；資料由網站每晚計算，不用 FinMind 額度，不是即時。低＝從超賣區（≤ −60）往上穿回 −60，強低＝期間曾跌破 −70；預＝剛跌進超賣區（比低早約 1 根，比較不確定）；背＝價格破低、資金流沒破。完整統計在「資金流看盤」頁。</div>
+          <div class="kv"><span>主線</span><select data-k="flow.k" data-redraw="flow"><option value="FR">資金流殘差</option><option value="F">淨流量力道</option></select></div>
+          <label class="chk"><input type="checkbox" data-k="flow.fast" data-redraw="flow">顯示快線（轉折較早）</label>
+          <label class="chk"><input type="checkbox" data-k="flow.mainSig" data-redraw="flow">K 線圖上標出「低」「強低」</label>
+          <label class="chk"><input type="checkbox" data-k="flow.early" data-redraw="flow">標出提前訊號「預」「背」</label>
+          <div class="kv"><span>主線／快線／低點</span><span class="pair"><input type="color" data-k="flow.cLine" data-redraw="flow"><input type="color" data-k="flow.cFast" data-redraw="flow"><input type="color" data-k="flow.cSig" data-redraw="flow"></span></div>
+          <button class="small" data-reset="flow">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -613,9 +627,10 @@ const DEFAULTS = {
         cRetail:'#26c281', cTrend:'#ef5350', cMain:'#ffd54f', cXc:'#e040fb', cDl:'#00e5ff', cBig:'#ff9800', cEsc:'#ff80ab', wRetail:1, wLine:2 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
+  flow:{ k:'FR', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -640,10 +655,11 @@ if ((S.v || 0) < 13 && S.qsz && typeof S.qsz.mainTurn !== 'string') delete S.qsz
 ['showMA','showMACD','_migrated','macdFast','macdSlow','macdSig','period'].forEach(k => delete S[k]);
 if ((S.v || 0) < 14) S.ind = Object.assign({}, S.ind, { shz:true });
 if ((S.v || 0) < 15) S.ind = Object.assign({}, S.ind, { ivx:true });
-S.v = 15;
+if ((S.v || 0) < 16) S.ind = Object.assign({}, S.ind, { flow:true });
+S.v = 16;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1172,7 +1188,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1590,6 +1606,7 @@ function refreshMarkers(){
   if (paneOf.qsz !== undefined && IND.qsz.vals && S.qsz.mainSig) list = list.concat(IND.qsz.mainMarkers());
   if (paneOf.shz !== undefined && IND.shz.vals) list = list.concat(IND.shz.mainMarkers());
   if (paneOf.ivx !== undefined && IND.ivx.vals && S.ivx.mainSig) list = list.concat(IND.ivx.mainMarkers());
+  if (paneOf.flow !== undefined && IND.flow.vals && (S.flow.mainSig || S.flow.early)) list = list.concat(IND.flow.mainMarkers().filter(m => m.text === '預' || m.text === '背' ? S.flow.early : S.flow.mainSig));
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2471,7 +2488,7 @@ async function load(){
 
     candle.setData(bars.map(({time,open,high,low,close}) => ({ time, open, high, low, close })));
     drawMain();
-    if (S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) buildIndicators();
+    if ((S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) || (S.ind.flow && (paneOf.flow !== undefined) !== IND.flow.avail())) buildIndicators();
     drawIndicators();
     layoutPanes();
 
@@ -2842,6 +2859,148 @@ function ivxCalc(vals, P){
   return { v:vals, hi, lo, mid, bot, fw, bt:{ bot:bt(i => bot[i]), all:bt(i => hi[i] != null) } };
 }
 window.__ind = Object.assign(window.__ind || {}, { ivxCalc });
+/* ───────────── 資金流殘差（只適用台指期；資料由網站每晚計算，不用 FinMind 額度） ─────────────
+   台指選擇權逐筆主動成交的 Delta 淨流量，扣掉價格本身漲跌帶動的部分，標準化成 −100～+100（算法和「資金流看盤」頁相同）
+   低／強低＝主線從超賣區（≤ −60）往上穿回 −60（曾跌破 −70 為強低）；預＝主線剛跌進超賣區；背＝價格破 24 根低點、資金流沒破 */
+const FLW = { base:null, pend:null, cache:new Map() };
+function flwLoad(){
+  if (FLW.base) return FLW.base;
+  if (!FLW.pend) FLW.pend = (async () => {
+    const v = Math.floor(Date.now() / 600000);
+    const idx = await fetch('data/force/index.json?v=' + v).then(r => r.json());
+    const months = await Promise.all((idx.months || []).map(m => fetch('data/force/m5/' + m + '.json?v=' + v).then(r => r.ok ? r.json() : null).catch(() => null)));
+    const out = [];
+    for (const j of months){ if (!j) continue;
+      for (const s of j.sessions) for (const r of s.bars){ const o = { td:s.td, s:s.s }; j.cols.forEach((c, i) => o[c] = r[i]); out.push(o); } }
+    out.sort((a, b) => a.t - b.t);
+    while (out.length){ const b = out[out.length - 1]; if (!b.v && !b.net && !b.gross && b.o === b.h && b.h === b.l && b.l === b.c) out.pop(); else break; }
+    FLW.base = out; FLW.cache.clear(); drawInd('flow');
+  })().catch(() => { FLW.pend = null; });
+  return null;
+}
+// 時段起點：日盤 08:45、夜盤 15:00（和看盤頁分 K 的切法相同）
+function flwS0(b){ const day = Math.floor(b.t / 86400) * 86400, m = (b.t - day) / 60; return b.s === 'D' ? day + 525 * 60 : m >= 900 ? day + 900 * 60 : day - 86400 + 900 * 60; }
+function flwAgg(base, tf){
+  const out = []; let cur = null;
+  for (const b of base){
+    let key, t, k;
+    if (tf === 'D'){ key = b.td; t = b.td; k = 0; }
+    else { const s0 = flwS0(b); k = Math.floor((b.t - s0) / (tf * 60)); t = s0 + k * tf * 60; key = b.s + t; }
+    if (!cur || cur.key !== key){ cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, s:tf === 'D' ? 'X' : b.s, k }; out.push(cur); }
+    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c; cur.net += b.net || 0;
+  }
+  return out;
+}
+const flwMed = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function flwSlotZ(bars, vals){
+  const slots = new Map(), z = [];
+  bars.forEach((b, i) => {
+    const key = b.s + ':' + b.k, x = vals[i]; let h = slots.get(key); if (!h){ h = []; slots.set(key, h); }
+    let zz = null;
+    if (x != null && h.length >= 8){ const m = flwMed(h), mad = flwMed(h.map(v => Math.abs(v - m))) * 1.4826;
+      if (mad > 0) zz = (x - m) / mad; else { const sd = Math.sqrt(h.reduce((t, v) => t + (v - m) ** 2, 0) / h.length); zz = sd > 0 ? (x - m) / sd : 0; }
+      zz = Math.max(-8, Math.min(8, zz)); }
+    z.push(zz);
+    if (x != null){ h.push(x); if (h.length > 30) h.shift(); }
+  });
+  return z;
+}
+function flwCal(z, span, qmin, qmax){
+  const a = 2 / (span + 1), hist = [], out = [], K = Math.atanh(0.6); let ema = null, qv = null;
+  z.forEach((x, i) => {
+    let f = null;
+    if (x != null){
+      ema = ema == null ? x : ema + a * (x - ema);
+      hist.push(Math.abs(ema)); if (hist.length > qmax) hist.shift();
+      if (hist.length >= qmin && (qv == null || i % 25 === 0)){ const s = hist.slice().sort((p, r) => p - r); qv = s[Math.min(s.length - 1, Math.floor(s.length * 0.9))] || 1e-9; }
+      if (qv) f = 100 * Math.tanh(K * ema / qv);
+    }
+    out.push(f);
+  });
+  return out;
+}
+function flwSeries(tf){
+  if (FLW.cache.has(tf)) return FLW.cache.get(tf);
+  const bars = flwAgg(FLW.base, tf);
+  const zN = flwSlotZ(bars, bars.map(b => b.net)), zR = flwSlotZ(bars, bars.map(b => b.o ? (b.c - b.o) / b.o : 0));
+  const resid = [], xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < bars.length; i++){
+    let r = null;
+    if (zN[i] != null && zR[i] != null){
+      const m = xs.length;
+      if (m >= 100 && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
+      xs.push(zR[i]); ys.push(zN[i]); sx += zR[i]; sy += zN[i]; sxx += zR[i] ** 2; sxy += zR[i] * zN[i];
+      if (xs.length > 500){ const p = xs.shift(), q = ys.shift(); sx -= p; sy -= q; sxx -= p * p; sxy -= p * q; }
+    }
+    resid.push(r);
+  }
+  const qmin = tf === 'D' ? 30 : 120, qmax = tf === 'D' ? 150 : 1500;
+  const R = { bars, FR:flwCal(resid, 5, qmin, qmax), F:flwCal(zN, 5, qmin, qmax), FRf:flwCal(resid, 2, qmin, qmax), Ff:flwCal(zN, 2, qmin, qmax), map:new Map(bars.map((b, i) => [b.t, i])) };
+  FLW.cache.set(tf, R);
+  return R;
+}
+function flwSignals(bars, S){
+  const low = new Map(), ear = new Map(); let lastDiv = -99;
+  for (let i = 1; i < bars.length; i++){
+    if (S[i] == null || S[i - 1] == null) continue;
+    if (S[i - 1] <= -60 && S[i] > -60){ let j = i - 1, mn = S[j]; while (j >= 0 && S[j] != null && S[j] <= -60){ mn = Math.min(mn, S[j]); j--; } low.set(i, mn <= -70 ? 2 : 1); }
+    if (S[i - 1] > -60 && S[i] <= -60) ear.set(i, 'warn');
+    if (i >= 25 && S[i] <= -30 && i - lastDiv > 6){ let lo = i - 24; for (let k = i - 24; k < i; k++) if (bars[k].l < bars[lo].l) lo = k;
+      if (bars[i].l < bars[lo].l && S[lo] != null && S[i] > S[lo] + 15){ ear.set(i, 'div'); lastDiv = i; } }
+  }
+  return { low, ear };
+}
+Object.assign(IND, {
+  flow: {
+    s:{}, vals:null,
+    avail(){ return !!(currentSym && currentSym.kind === 'fut') && !['W', 'M'].includes(S.tf); },
+    create(p){
+      const { LineSeries, BaselineSeries, LineStyle } = LC(), P = S.flow;
+      const fixed = () => ({ priceRange:{ minValue:-100, maxValue:100 } });
+      this.s.fast = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
+      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:-60 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1, autoscaleInfoProvider:fixed,
+        topFillColor1:'rgba(0,0,0,0)', topFillColor2:'rgba(0,0,0,0)', bottomFillColor1:'rgba(38,166,154,0.10)', bottomFillColor2:'rgba(38,166,154,0.40)' }, p);
+      this.refs = [[60, 0], [0, 0], [-60, 0], [-70, LineStyle.Dashed]].map(([v, st]) => this.s.main.createPriceLine({ price:v, lineWidth:v === 0 ? 1 : 2, lineStyle:st, axisLabelVisible:v !== 0, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    draw(){
+      const P = S.flow, base = flwLoad();
+      if (!base){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
+      const R = flwSeries(S.tf === 'D' ? 'D' : +S.tf), main = R[P.k], fast = R[P.k + 'f'], sg = flwSignals(R.bars, main);
+      const day = !(TF[S.tf] || {}).intraday, v = [], f = [], low = [], ear = [];
+      bars.forEach((b, i) => { const j = R.map.get(day ? b.date : b.time);
+        v.push(j == null ? null : main[j]); f.push(j == null ? null : fast[j]); low.push(j == null ? 0 : sg.low.get(j) || 0); ear.push(j == null ? null : sg.ear.get(j) || null); });
+      this.vals = { v, f, low, ear };
+      const up = S.col.up, dn = S.col.down;
+      this.s.main.setData(toLine(v)); this.s.main.applyOptions({ topLineColor:P.cLine, bottomLineColor:dn });
+      this.s.fast.setData(P.fast ? toLine(f) : []); this.s.fast.applyOptions({ color:hexA(P.cFast, .8) });
+      [[up], [hexA(S.col.text, .35)], [dn], [dn]].forEach(([c], k) => this.refs[k].applyOptions({ color:c }));
+      const mk = [];
+      bars.forEach((b, i) => {
+        if (low[i]) mk.push({ time:b.time, position:'belowBar', shape:'circle', color:P.cSig, size:low[i] === 2 ? 1.2 : 0.8 });
+        if (ear[i] && P.early) mk.push({ time:b.time, position:ear[i] === 'warn' ? 'belowBar' : 'aboveBar', shape:ear[i] === 'warn' ? 'circle' : 'arrowUp', color:P.cFast, text:ear[i] === 'warn' ? '預' : '背', size:0.7 });
+      });
+      this.mk.setMarkers(mk);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.flow, out = []; if (!v || !v.low) return out;
+      v.low.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cSig, text:t === 2 ? '強低' : '低' }); });
+      if (P.early) v.ear.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'circle', color:P.cFast, text:t === 'warn' ? '預' : '背', size:0.6 }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.flow, name = P.k === 'FR' ? '資金流殘差' : '淨流量力道';
+      if (!v) return '';
+      if (v.wait) return `${name}　<span class="muted">讀取中…</span>`;
+      const x = v.v[i], q = v.f[i];
+      const zone = x == null ? '' : x <= -70 ? '　<span style="color:' + S.col.down + '">低於悲觀線</span>' : x <= -60 ? '　<span style="color:' + S.col.down + '">超賣區</span>' : x >= 60 ? '　<span style="color:' + S.col.up + '">超買區</span>' : '';
+      const tag = v.low[i] ? `　<span class="tag" style="background:${P.cSig};color:#000">${v.low[i] === 2 ? '強低' : '低'}</span>` : v.ear[i] ? `　<span class="tag" style="background:${P.cFast};color:#fff">${v.ear[i] === 'warn' ? '預警' : '底背離'}</span>` : '';
+      return `${name} <b style="color:${P.cLine}">${x == null ? '—' : fmt(x, 1)}</b>${P.fast ? `　<span style="color:${P.cFast}">快線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${zone}${tag}`;
+    },
+  },
+});
+
 Object.assign(IND, {
   ivx: {
     s:{}, vals:null, refs:[],
@@ -2892,7 +3051,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -2909,6 +3068,7 @@ const RESETS = {
   qsz:   ['qsz'],
   shz:   ['shz'],
   ivx:   ['ivx'],
+  flow:  ['flow'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],

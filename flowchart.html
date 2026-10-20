@@ -14,12 +14,12 @@
   :root{
     --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1f2636;
     --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
-    --up:#ef5350; --down:#26a69a; --flow:#4c8dff; --gold:#ffca28; --bb:#8f9bb3; --sig:#ffb020;
+    --up:#ef5350; --down:#26a69a; --flow:#4c8dff; --gold:#ffca28; --bb:#8f9bb3; --sig:#ffb020; --early:#b98cff;
     color-scheme:dark;
   }
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#eef0f4;
-    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --flow:#2563eb; --gold:#b98900; --bb:#7a869e; --sig:#e08a00;
+    --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981; --flow:#2563eb; --gold:#b98900; --bb:#7a869e; --sig:#e08a00; --early:#7c4dff;
     color-scheme:light;
   }
   *{box-sizing:border-box}
@@ -75,11 +75,13 @@
   <div class="seg"><button id="zIn">＋</button><button id="zOut">－</button><button id="zEnd">最新</button></div>
 </div>
 <div id="status" class="msg">讀取中…</div>
-<div id="wrap"><div id="chart"></div><div class="legend" id="lg"></div><div class="legend2" id="lg2"></div></div>
+<div id="wrap"><div id="chart"></div><div class="legend" id="lg"></div><div class="legend2" id="lg2"></div><div class="legend2" id="lg3"></div></div>
 <main>
   <div class="cards" id="cards"></div>
   <h2>資金流低點訊號：這個週期的歷史表現<span class="muted" id="statNote"></span></h2>
   <div class="tblx" id="tblStat"></div>
+  <h2>提前訊號：和低點訊號比早多少<span class="muted">真正低點＝訊號前後各 12 根的最低點；「早」＝訊號出現在低點之前</span></h2>
+  <div class="tblx" id="tblEarly"></div>
   <h2>最近的低點訊號</h2>
   <div class="tblx" id="tblSig"></div>
   <p class="note" id="note"></p>
@@ -336,7 +338,8 @@ function flowLines(bars, tf, short){
     resid.push(r);
   }
   const daily = tf === 'D', qmin = daily ? 30 : short ? 40 : 120, qmax = daily ? 150 : 1500;
-  return { F:calibrate(zN, 5, 0.9, qmin, qmax), FR:calibrate(resid, 5, 0.9, qmin, qmax) };
+  // 快線：同一條資金流，平滑只用 2 根，轉折比主線早一點
+  return { F:calibrate(zN, 5, 0.9, qmin, qmax), FR:calibrate(resid, 5, 0.9, qmin, qmax), Ff:calibrate(zN, 2, 0.9, qmin, qmax), FRf:calibrate(resid, 2, 0.9, qmin, qmax) };
 }
 
 /* ───────── 資金流低點：從超賣區（≤ −60）往上穿回 −60 ───────── */
@@ -351,6 +354,28 @@ function lowSignals(bars, S){
     sig.push({ i, strong:mn <= -70, mn, lowI, low:bars[lowI].l, lag:i - lowI });
   }
   return sig;
+}
+// 提前訊號：預警＝主線剛跌進超賣區（≤ −60）；底背離＝價格破前 24 根低點、資金流卻比那時候高 15 以上
+function earlySignals(bars, S){
+  const out = []; let lastDiv = -99;
+  for (let i = 1; i < bars.length; i++){
+    if (S[i] == null || S[i - 1] == null) continue;
+    if (S[i - 1] > -60 && S[i] <= -60) out.push({ i, kind:'warn' });
+    if (i >= 25 && S[i] <= -30 && i - lastDiv > 6){
+      let lo = i - 24; for (let k = i - 24; k < i; k++) if (bars[k].l < bars[lo].l) lo = k;
+      if (bars[i].l < bars[lo].l && S[lo] != null && S[i] > S[lo] + 15){ out.push({ i, kind:'div' }); lastDiv = i; }
+    }
+  }
+  return out;
+}
+// 對照用：訊號前後各 12 根裡的最低點當「真正低點」（負數＝訊號出現在低點之前）
+function vsTrueLow(bars, list){
+  const pct = SYM.kind !== 'tx', n = bars.length, m = holdBars(ST.tf === 'D' ? 'D' : +ST.tf);
+  const rows = list.map(x => { const i = x.i; let lo = Math.max(0, i - 12); for (let k = lo; k <= Math.min(n - 1, i + 12); k++) if (bars[k].l < bars[lo].l) lo = k;
+    const r = i + m < n ? (pct ? (bars[i + m].c / bars[i + 1].o - 1) * 100 : bars[i + m].c - bars[i + 1].o) : null;
+    return { lag:i - lo, dist:pct ? (bars[i].c / bars[lo].l - 1) * 100 : bars[i].c - bars[lo].l, r, done:i + 12 < n }; });
+  const done = rows.filter(x => x.done), rs = rows.map(x => x.r).filter(v => v != null);
+  return { n:list.length, lag:avg(done.map(x => x.lag)), dist:avg(done.map(x => x.dist)), mean:avg(rs), up:rs.length ? rs.filter(v => v > 0).length / rs.length * 100 : null };
 }
 function holdBars(tf){ return tf === 'D' ? 1 : tf <= 15 ? Math.max(1, 60 / tf) : Math.max(1, 240 / tf); }
 function stats(bars, sig){
@@ -405,12 +430,17 @@ function buildChart(){
     SER.f.createPriceLine({ price:p, color:c, lineWidth:p === 0 || Math.abs(p) === 20 ? 1 : 2, lineStyle:st, axisLabelVisible:!!t, title:'' }));
   SER.mkC = L.createSeriesMarkers(SER.c, []);
   SER.mkF = L.createSeriesMarkers(SER.f, []);
+  SER.h = CHART.addSeries(L.HistogramSeries, { priceLineVisible:false, lastValueVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 }, base:0 }, 2);
+  SER.q = CHART.addSeries(L.LineSeries, { color:css('--early'), lineWidth:2, priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 },
+    autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }) }, 2);
+  [[60, css('--up'), 0], [0, css('--muted'), 0], [-60, css('--down'), 0]].forEach(([p, c, st]) => SER.q.createPriceLine({ price:p, color:c, lineWidth:1, lineStyle:st, axisLabelVisible:p !== 0, title:'' }));
+  SER.mkQ = L.createSeriesMarkers(SER.q, []);
   CHART.subscribeCrosshairMove(p => legend(p && p.time !== undefined ? VIEW.idx.get(p.time) : undefined));
   setPaneHeights();
   window.addEventListener('resize', () => { $('#chart').style.height = chartHeight() + 'px'; setTimeout(setPaneHeights, 50); });
 }
-function setPaneHeights(){ const ps = CHART.panes(), H = chartHeight(); if (ps.length > 1){ ps[0].setHeight(Math.round(H * 0.6)); ps[1].setHeight(Math.round(H * 0.4) - 30); } positionLegend2(); }
-function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const h = ps[0].getHeight(); $('#lg2').style.top = (h + 6) + 'px'; } }
+function setPaneHeights(){ const ps = CHART.panes(), H = chartHeight(); if (ps.length > 2){ ps[0].setHeight(Math.round(H * 0.5)); ps[1].setHeight(Math.round(H * 0.27)); ps[2].setHeight(Math.round(H * 0.23) - 30); } positionLegend2(); }
+function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const h = ps[0].getHeight(); $('#lg2').style.top = (h + 6) + 'px'; if (ps.length > 2) $('#lg3').style.top = (h + ps[1].getHeight() + 6) + 'px'; } }
 
 function legend(i){
   if (!VIEW) return; const n = VIEW.bars.length; if (i == null || i < 0 || i >= n) i = n - 1;
@@ -420,6 +450,8 @@ function legend(i){
   const v = VIEW.S[i], s = VIEW.sigAt.get(i);
   $('#lg2').innerHTML = VIEW.info === 'nodaily' ? '<span class="muted">個股、個股期貨的日 K 資金流需要太多逐筆資料，請切到 1 分～4 小時看資金流</span>' : `<b style="color:${css('--flow')}">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'} ${v == null ? '資料不足' : sgn(v, 1)}</b>${v != null && v <= -60 ? '　<span class="dn">超賣區</span>' : v >= 60 ? '　<span class="up">超買區</span>' : ''}`
     + (s ? `　<b style="color:${css('--sig')}">${s.strong ? '強低點' : '低點'}</b>` : '');
+  const q = VIEW.Q[i], e = VIEW.earAt.get(i);
+  $('#lg3').innerHTML = VIEW.info === 'nodaily' ? '' : `<b style="color:${css('--early')}">提前：快線 ${q == null ? '–' : sgn(q, 1)}</b>　<span class="muted">柱＝快線 − 主線</span>` + (e ? `　<b style="color:${css('--early')}">${e.kind === 'warn' ? '預警（剛跌進超賣）' : '底背離'}</b>` : '');
 }
 
 async function render(){
@@ -428,28 +460,37 @@ async function render(){
   $('#status').hidden = false; $('#status').textContent = '計算中…';
   const tf = ST.tf === 'D' ? 'D' : +ST.tf;
   $('#symName').textContent = SYM.kind === 'tx' ? '台指期（資金流＝台指選擇權逐筆 Delta）' : SYM.kind === 'stock' ? `${SYM.id} ${SYM.name}（資金流＝主動買賣）` : `${SYM.id} ${SYM.name}（${SYM.under}，資金流＝價格跳動推估主動買賣）`;
-  let bars, S, info = '';
+  let bars, S, Q, info = '';
   if (SYM.kind === 'tx'){
     const base = tf === 1 ? await loadBase1() : await loadBase5();
-    bars = aggregate(base, tf); S = flowLines(bars, tf)[ST.k];
+    bars = aggregate(base, tf); const FL = flowLines(bars, tf); S = FL[ST.k]; Q = FL[ST.k + 'f'];
   } else if (tf === 'D'){
-    bars = await dailyPrice(SYM); S = bars.map(() => null); info = 'nodaily';
+    bars = await dailyPrice(SYM); S = bars.map(() => null); Q = S; info = 'nodaily';
   } else {
     const r = await loadTicks(SYM, ST.tf);
-    bars = aggregate(r.bars, tf); S = flowLines(bars, tf, true)[ST.k]; info = `逐筆 ${r.days} 天・這次用了 ${r.req} 次 FinMind 查詢`;
+    bars = aggregate(r.bars, tf); const FL = flowLines(bars, tf, true); S = FL[ST.k]; Q = FL[ST.k + 'f']; info = `逐筆 ${r.days} 天・這次用了 ${r.req} 次 FinMind 查詢`;
   }
   if (!bars.length) throw new Error('沒有資料（逐筆成交通常收盤後 15:30 才有當天的）');
   const bb = bollinger(bars);
   const sig = lowSignals(bars, S), sigAt = new Map(sig.map(x => [x.i, x]));
-  VIEW = { bars, S, bb, sig, sigAt, info, idx:new Map(bars.map((b, i) => [b.t, i])) };
+  const ear = earlySignals(bars, S), earAt = new Map(ear.map(x => [x.i, x]));
+  VIEW = { bars, S, Q, bb, sig, sigAt, ear, earAt, info, idx:new Map(bars.map((b, i) => [b.t, i])) };
   const ln = arr => bars.map((b, i) => arr[i] == null ? { time:b.t } : { time:b.t, value:arr[i] });
   const pd = SYM.kind === 'tx' ? 0 : 2; SER.c.applyOptions({ priceFormat:{ type:'price', precision:pd, minMove:pd ? 0.01 : 1 } });
   SER.c.setData(bars.map(b => ({ time:b.t, open:b.o, high:b.h, low:b.l, close:b.c })));
   SER.bu.setData(ln(bb.u)); SER.bm.setData(ln(bb.m)); SER.bl.setData(ln(bb.l));
   SER.f.setData(ln(S));
   const col = css('--sig');
-  SER.mkC.setMarkers(sig.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'arrowUp', color:col, text:x.strong ? '強低' : '低', size:x.strong ? 1.6 : 1 })));
   SER.mkF.setMarkers(sig.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'circle', color:col, size:x.strong ? 1.2 : 0.8 })));
+  SER.q.setData(ln(Q));
+  SER.h.setData(bars.map((b, i) => Q[i] == null || S[i] == null ? { time:b.t } : { time:b.t, value:Q[i] - S[i], color:Q[i] >= S[i] ? 'rgba(239,83,80,0.45)' : 'rgba(38,166,154,0.45)' }));
+  const ec = css('--early');
+  SER.mkQ.setMarkers(ear.map(x => ({ time:bars[x.i].t, position:x.kind === 'warn' ? 'belowBar' : 'aboveBar', shape:x.kind === 'warn' ? 'circle' : 'arrowUp', color:ec, text:x.kind === 'warn' ? '預' : '背', size:0.9 })));
+  // K 線圖：低點（橘）＋提前訊號（紫）
+  const mk = sig.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'arrowUp', color:col, text:x.strong ? '強低' : '低', size:x.strong ? 1.6 : 1 }))
+    .concat(ear.map(x => ({ time:bars[x.i].t, position:'belowBar', shape:'circle', color:ec, text:x.kind === 'warn' ? '預' : '背', size:0.7 })))
+    .sort((a, b) => a.time - b.time);
+  SER.mkC.setMarkers(mk);
   const n = bars.length, show = Math.min(n, window.innerWidth < 700 ? 120 : 220);
   CHART.timeScale().setVisibleLogicalRange({ from:n - show, to:n + 3 });
   legend(n - 1); setPaneHeights();
@@ -469,6 +510,12 @@ function renderStats(){
   $('#tblStat').innerHTML = `<table><tr><th>訊號</th><th>次數</th><th>之後${hold}平均（${unit}）</th><th>上漲比例</th><th>之後 12 根沒再破低</th><th>比真正低點晚</th><th>離真正低點</th></tr>`
     + row('全部低點', R.all) + row('強低點（曾跌破 −70）', R.strong) + row('一般低點', R.normal)
     + `<tr class="muted"><td>隨便哪一根（基準）</td><td>${R.base.n}</td><td>${pv(R.base.mean)}</td><td>${R.base.up == null ? '–' : R.base.up.toFixed(0) + '%'}</td><td>${R.base.held == null ? '–' : R.base.held.toFixed(0) + '%'}</td><td></td><td></td></tr></table>`;
+  const eRow = (name, list) => { const x = vsTrueLow(bars, list); return `<tr><td>${name}</td><td>${x.n}</td><td>${x.lag == null ? '–' : (x.lag > 0 ? '晚 ' : '早 ') + Math.abs(x.lag).toFixed(1) + ' 根'}</td><td>${x.dist == null ? '–' : pct ? fmt(x.dist, 2) + '%' : fmt(x.dist) + ' 點'}</td><td class="${cls(x.mean)}">${pv(x.mean)}</td><td>${x.up == null ? '–' : x.up.toFixed(0) + '%'}</td></tr>`; };
+  $('#tblEarly').innerHTML = `<table><tr><th>訊號</th><th>次數</th><th>相對真正低點</th><th>離真正低點</th><th>之後${hold}平均</th><th>上漲比例</th></tr>`
+    + eRow('<span style="color:' + css('--early') + '">預警：剛跌進超賣區</span>', VIEW.ear.filter(x => x.kind === 'warn'))
+    + eRow('<span style="color:' + css('--early') + '">底背離：價破低、資金流沒破</span>', VIEW.ear.filter(x => x.kind === 'div'))
+    + eRow('<span style="color:' + css('--sig') + '">低點：穿回 −60（對照）</span>', sig)
+    + `<tr class="muted"><td>隨便哪一根（基準）</td><td></td><td></td><td></td><td>${pv(R.base.mean)}</td><td>${R.base.up == null ? '–' : R.base.up.toFixed(0) + '%'}</td></tr></table>`;
   $('#statNote').textContent = `${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name}・${tfName}・${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'}・下一根開盤進場${VIEW.info && VIEW.info !== 'nodaily' ? '・' + VIEW.info : ''}`;
   const rows = sig.slice(-12).reverse().map(x => { const i = x.i, m = R.m, r = i + m < n ? (pct ? (bars[i + m].c / bars[i + 1].o - 1) * 100 : bars[i + m].c - bars[i + 1].o) : null;
     let held = null; if (i + 12 < n){ let mn = Infinity; for (let k = i + 1; k <= i + 12; k++) mn = Math.min(mn, bars[k].l); held = mn > x.low; }
@@ -477,6 +524,7 @@ function renderStats(){
   else if (!sig.length && ST.tf === 'D') rows0 = '<tr><td colspan="8" class="muted">日 K 資料只有約 190 根，資金流線還沒有跌進超賣區後再回升的紀錄；請用 60 分或 4 小時看低點</td></tr>';
   $('#tblSig').innerHTML = `<table><tr><th>訊號時間</th><th>強度</th><th>收盤</th><th>這段真正低點</th><th>晚了</th><th>這段最低力道</th><th>之後${hold}</th><th>12 根內</th></tr>${rows || rows0}</table>`;
   $('#note').innerHTML = `<b>低點訊號</b>＝${ST.k === 'FR' ? '資金流殘差（藍線）' : '淨流量力道'}先跌進超賣區（≤ −60，綠色區），再往上穿回 −60 的那一根（K 棒收盤才確認，畫過的不會消失）；這段期間曾跌破悲觀線 −70 的標成「強低點」。它一定比真正的最低點晚幾根出現，表格裡的「比真正低點晚」「離真正低點」就是平均晚多少、高多少。`
+    + `<br><b>第二副圖（提前）</b>＝同一條資金流的快線（只平滑 2 根，轉得比主線早），柱子＝快線 − 主線，紅柱代表回升力道開始比主線強。紫色「預」＝主線剛跌進超賣區，通常比低點訊號早 1 根左右、價格也更接近最低點，但之後可能還會再跌；紫色「背」＝價格創 24 根新低、資金流卻沒有創新低（底背離），次數很少。台指期研究：60 分「預警」之後 4 小時平均 +56 點（基準 +14），但前後半段差很多、不穩定；4 小時「預警」+129 點、64% 上漲。提前就代表比較不確定，建議等橘色「低」確認再加碼。`
     + (SYM.kind === 'tx' ? `<br><b>資金流殘差</b>＝選擇權主動成交的 Delta 淨流量，扣掉「價格本身漲跌帶動」的部分，剩下的才是資金真正的偏向；價格還在跌、但殘差已經不再往下時，比較可能是真的底。`
     + `<br>研究結果（2026 年 1～10 月）：60 分、4 小時的低點訊號之後上漲比例和平均漲幅明顯高於基準，5 分略好，15 分沒有優勢；歷史還短，請搭配布林通道下緣、K 棒型態一起看。資料每天收盤後與夜盤結束後自動更新，不即時，不佔 FinMind 查詢次數。K 線用台指期近月，布林通道 20 根、2 倍標準差。`
     : `<br><b>這檔的資金流</b>＝逐筆成交的主動買量 − 主動賣量（${SYM.kind === 'stock' ? '股票用交易所標記的外盤、內盤' : '個股期貨沒有內外盤標記，用價格跳動推估：比上一筆高＝主動買'}），一樣扣掉價格本身漲跌帶動的部分，算法和台指期相同。`
