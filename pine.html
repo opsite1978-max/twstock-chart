@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TradingView 版指標</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{ --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --ok:#26a69a; color-scheme:dark; }
+  :root[data-theme="light"]{ --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --text:#1f2430; --muted:#667085; --ok:#089981; color-scheme:light; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.6}
+  header{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+  .spacer{flex:1}
+  button,a.btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;height:34px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;height:44px;font-size:16px;padding:0 18px}
+  main{max-width:900px;margin:0 auto;padding:12px 12px 40px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+  .box h2{font-size:16px;margin:0 0 6px}
+  .muted{color:var(--muted)} .ok{color:var(--ok);font-weight:700}
+  ol{margin:6px 0 0;padding-left:22px} li{margin:4px 0}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:340px;overflow:auto;font-size:11.5px;line-height:1.5;white-space:pre;margin:10px 0 0}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>TradingView 版指標</h1>
+  <span class="spacer"></span>
+  <button onclick="location.href='iv.html'">隱含波動率</button>
+  <button onclick="location.href='index.html'">看盤</button>
+</header>
+<main>
+  <div class="box">
+    <h2>台指隱含波動率反看・找底</h2>
+    <p class="muted" id="info">讀取中…</p>
+    <div class="row"><button class="primary" id="copy">複製程式碼</button><a class="btn" id="dl" href="data/pine/iv_txo.pine" download="台指隱含波動率反看找底.pine">下載檔案</a><span id="msg"></span></div>
+    <ol>
+      <li>按「複製程式碼」。</li>
+      <li>TradingView 打開台指期（代號 <code>TAIFEX:TXF1!</code>），下方點「Pine 編輯器」。</li>
+      <li>把編輯器裡原本的內容全部刪掉，貼上，按「儲存」，再按「加到圖表」。</li>
+      <li>以後要看新資料：回到這頁重新複製、貼上覆蓋、儲存即可（網站每天收盤後自動更新）。</li>
+    </ol>
+    <p class="muted" style="margin:10px 0 0">數字和網站看盤頁的隱含波動率副圖相同：日 K、週 K、月 K 用網站每天收盤後算的台指選擇權隱含波動率；1 分到 4 小時 K 用期交所台指 VIX（只有日盤 08:45–13:45 有值，夜盤留空白；最近 40 個交易日是每 5 分鐘，更早的是每 15 分鐘）。TradingView 讀不到網站，所以資料是直接寫在程式碼裡，只到複製當下為止。</p>
+    <pre id="code">讀取中…</pre>
+  </div>
+</main>
+<script>
+'use strict';
+try { const S = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); if (S.themeName === 'light') document.documentElement.dataset.theme = 'light'; } catch(e){}
+const $ = s => document.querySelector(s);
+let CODE = '';
+(async () => {
+  try {
+    const [c, m] = await Promise.all([
+      fetch('data/pine/iv_txo.pine?t=' + Date.now(), { cache:'no-store' }).then(r => { if (!r.ok) throw new Error('找不到程式碼'); return r.text(); }),
+      fetch('data/pine/iv_txo.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    CODE = c; $('#code').textContent = c;
+    $('#info').innerHTML = m ? `資料：日 K 到 <b>${m.dayLast}</b>、分 K 到 <b>${m.minLast}</b>（產生於 ${m.updated}，共 ${m.days} 個交易日日 K、${m.minDays} 個交易日分 K）` : '資料日期讀不到，但程式碼可以用。';
+  } catch(e){ $('#info').textContent = '讀取失敗：' + e.message; }
+})();
+$('#copy').onclick = async () => {
+  if (!CODE) return;
+  try { await navigator.clipboard.writeText(CODE); }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = CODE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  $('#msg').innerHTML = '<span class="ok">已複製</span>';
+  setTimeout(() => { $('#msg').textContent = ''; }, 3000);
+};
+</script>
+</body>
+</html>

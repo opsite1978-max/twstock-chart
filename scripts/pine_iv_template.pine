@@ -1,0 +1,154 @@
+//@version=6
+// 台指隱含波動率反看・找底（網站資料版）
+// 資料由網站每天自動寫進程式碼：日 K 到 {{DAYLAST}}、分 K（台指 VIX）到 {{MINLAST}}，產生時間 {{UPDATED}}
+// 要看最新資料，請到網站「TradingView 版」頁面重新複製一次程式碼。
+// 計算方式和網站看盤頁的隱含波動率副圖相同：上下界＝最近 N 個有數值的平均 ± 倍數 × 標準差；「底」＝先衝出上界、再回到上界以內。
+indicator("台指隱含波動率反看・找底", shorttitle = "台指IV", overlay = false, precision = 2, max_labels_count = 500)
+
+{{DATA}}
+
+// ───── 設定（預設值和網站相同） ─────
+string SRC30   = "30 天恆定（類似台指 VIX）"
+string SRCNEAR = "最近合約價平"
+srcD    = input.string(SRC30, "日 K 算法", options = [SRC30, SRCNEAR])
+bandLen = input.int(20, "上下界：平均幾根", minval = 5, maxval = 120)
+mult    = input.float(2.0, "上下界：幾倍標準差", minval = 0.5, maxval = 4.0, step = 0.1)
+inv     = input.bool(true, "上下顛倒（波動率衝高變成低點，對齊 K 線底部）")
+fwd     = input.int(5, "勝率統計看幾根後", minval = 1, maxval = 60)
+mainSig = input.bool(true, "K 線圖上也標出「底」")
+showTbl = input.bool(true, "顯示統計表")
+cIv     = input.color(#b8bcc8, "波動率線")
+cHi     = input.color(#22c55e, "上界")
+cLo     = input.color(#e04848, "下界")
+cBot    = input.color(#ffb020, "底")
+
+// ───── 讀入資料（只在第一根 K 棒做一次） ─────
+var map<int, float> d30   = map.new<int, float>()
+var map<int, float> dNear = map.new<int, float>()
+var array<int>   mEnd  = array.new_int()
+var array<int>   mStep = array.new_int()
+var array<float> mVal  = array.new_float()
+if barstate.isfirst
+    for ch in DAYS
+        for rec in str.split(ch, ";")
+            if str.length(rec) > 0
+                p = str.split(rec, "=")
+                int key = int(str.tonumber(array.get(p, 0)))
+                float a = str.tonumber(array.get(p, 1))
+                float b = array.size(p) > 2 ? str.tonumber(array.get(p, 2)) : na
+                if not na(a)
+                    map.put(d30, key, a / 100.0)
+                if not na(b)
+                    map.put(dNear, key, b / 100.0)
+    for ch in MINS
+        for rec in str.split(ch, ";")
+            if str.length(rec) > 0
+                p = str.split(rec, "|")
+                int d = int(str.tonumber(array.get(p, 0)))
+                int stp = int(str.tonumber(array.get(p, 1)))
+                int yy = 2000 + math.floor(d / 10000)
+                int mo = math.floor(d / 100) % 100
+                int dd = d % 100
+                int t0 = timestamp("Asia/Taipei", yy, mo, dd, 8, 45)
+                if array.size(p) > 2
+                    vs = str.split(array.get(p, 2), ",")
+                    for [i, s] in vs
+                        if str.length(s) > 0
+                            array.push(mEnd, t0 + (i + 1) * stp * 60000)
+                            array.push(mStep, stp * 60000)
+                            array.push(mVal, str.tonumber(s) / 100.0)
+
+// ───── 這根 K 棒的波動率 ─────
+dayKey() =>
+    (year(time_tradingday, "UTC") % 100) * 10000 + month(time_tradingday, "UTC") * 100 + dayofmonth(time_tradingday, "UTC")
+dayIv(bool near) =>
+    map.get(near ? dNear : d30, dayKey())
+
+bool useNear = srcD == SRCNEAR
+// 週線、月線：取那一週（月）最後一個交易日的數值
+float vWM = request.security(syminfo.tickerid, "1D", dayIv(useNear))
+
+// 分 K：台指 VIX，只取這根 K 棒收盤前已經有的數值（只有日盤有值，夜盤留空白）
+var int   ptr   = 0
+var float lastV = na
+var int   lastE = 0
+var int   lastS = 0
+if timeframe.isintraday
+    while ptr < array.size(mEnd) and array.get(mEnd, ptr) <= time_close
+        lastV := array.get(mVal, ptr)
+        lastE := array.get(mEnd, ptr)
+        lastS := array.get(mStep, ptr)
+        ptr += 1
+int tfMs = timeframe.in_seconds() * 1000
+float vIntra = lastE > 0 and time_close - lastE < math.max(tfMs, lastS) ? lastV : na
+
+float v = timeframe.isintraday ? vIntra : timeframe.isdaily ? dayIv(useNear) : vWM
+
+// ───── 動態上下界（只用有數值的 K 棒）與「底」 ─────
+var array<float> win = array.new_float()
+float hi  = na
+float lo  = na
+float mid = na
+if not na(v)
+    array.push(win, v)
+    if array.size(win) > bandLen
+        array.shift(win)
+    if array.size(win) == bandLen
+        mid := array.avg(win)
+        float sdv = array.stdev(win)
+        hi := mid + mult * sdv
+        lo := mid - mult * sdv
+
+var float pv  = na
+var float phi = na
+bool bottom = false
+if not na(v)
+    bottom := barstate.isconfirmed and not na(hi) and not na(phi) and pv > phi and v <= hi
+    pv  := v
+    phi := hi
+
+// ───── 畫圖（上下顛倒時把數值變負號畫；統計表顯示正常數字） ─────
+float k = inv ? -1.0 : 1.0
+plot(k * hi,  "上界", color = cHi, linewidth = 2, style = plot.style_circles)
+plot(k * lo,  "下界", color = cLo, linewidth = 2, style = plot.style_circles)
+plot(k * mid, "中線", color = color.new(color.gray, 55), linewidth = 1, style = plot.style_linebr)
+plot(k * v,   "隱含波動率", color = cIv, linewidth = 2, style = plot.style_linebr)
+plotshape(bottom ? k * v : na, title = "底", style = shape.circle, location = location.absolute, color = cBot, text = "底", textcolor = cBot, size = size.tiny)
+plotshape(mainSig and bottom, title = "底（K 線圖）", style = shape.arrowup, location = location.belowbar, color = cBot, text = "底", textcolor = cBot, size = size.small, force_overlay = true)
+alertcondition(bottom, "隱含波動率「底」", "隱含波動率先衝出上界、再回到上界以內：可能是恐慌底部")
+
+// ───── 勝率統計：底出現後幾根，台指期漲了沒（只用已經發生的資料） ─────
+var int   nB = 0
+var int   wB = 0
+var float sB = 0.0
+var int   nA = 0
+var int   wA = 0
+var float sA = 0.0
+if bottom[fwd]
+    float r = (close / close[fwd] - 1.0) * 100.0
+    nB += 1
+    wB += r > 0 ? 1 : 0
+    sB += r
+if not na(hi[fwd])
+    float r2 = (close / close[fwd] - 1.0) * 100.0
+    nA += 1
+    wA += r2 > 0 ? 1 : 0
+    sA += r2
+
+// ───── 統計表 ─────
+var table t = table.new(position.top_right, 2, 6, bgcolor = color.new(color.black, 25), border_width = 1)
+if showTbl and barstate.islast
+    string nm = timeframe.isintraday ? "台指VIX" : "隱含波動率"
+    float pos = not na(v) and hi > lo ? (v - lo) / (hi - lo) * 100.0 : na
+    table.cell(t, 0, 0, nm, text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 0, na(v) ? "這根沒有數值" : str.tostring(v, "#.##"), text_color = cIv, text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 0, 1, "上界／下界", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 1, na(hi) ? "—" : str.tostring(hi, "#.##") + "／" + str.tostring(lo, "#.##"), text_color = color.white, text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 0, 2, "位置", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 2, na(pos) ? "—" : str.tostring(pos, "#") + "%" + (inv ? "（上下顛倒）" : ""), text_color = color.white, text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 0, 3, str.tostring(fwd) + " 根後・底", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 3, nB > 0 ? str.tostring(nB) + " 次 漲 " + str.tostring(wB * 100.0 / nB, "#") + "%（" + str.tostring(sB / nB, "+0.00;-0.00") + "%）" : "還沒有", text_color = cBot, text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 0, 4, str.tostring(fwd) + " 根後・全部", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 4, nA > 0 ? "漲 " + str.tostring(wA * 100.0 / nA, "#") + "%（" + str.tostring(sA / nA, "+0.00;-0.00") + "%）" : "—", text_color = color.white, text_size = size.small, text_halign = text.align_left)
+    table.cell(t, 0, 5, "資料到", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 5, timeframe.isintraday ? "{{MINLAST}}（分 K 只有日盤）" : "{{DAYLAST}}", text_color = color.gray, text_size = size.small, text_halign = text.align_left)

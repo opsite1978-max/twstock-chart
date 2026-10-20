@@ -24,9 +24,11 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           REQ_BUDGET: '45'
         run: python3 scripts/iv_scrape.py update
+      - name: 產生 TradingView 版程式碼（不連 FinMind）
+        run: python3 scripts/pine_iv.py
       - name: 存回專案
         run: |
-          git add data/txo/iv.json data/txo/_lastrun_iv.txt
+          git add data/txo/iv.json data/txo/_lastrun_iv.txt data/pine
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="txo-bot" -c user.email="txo-bot@users.noreply.github.com" commit -qm "隱含波動率歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0

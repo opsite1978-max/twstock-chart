@@ -21,9 +21,11 @@ jobs:
         run: python3 scripts/force_research.py test
       - name: 研究與驗證（只讀已存資料，沒有 FinMind 憑證）
         run: python3 scripts/force_research.py
+      - name: 產生 TradingView 版程式碼（不連 FinMind）
+        run: python3 scripts/pine_iv.py
       - name: 存回專案
         run: |
-          git add data/force/research.json
+          git add data/force/research.json data/pine
           if git diff --cached --quiet; then echo "沒有變化"; exit 0; fi
           git -c user.name="force-bot" -c user.email="force-bot@users.noreply.github.com" commit -qm "多空力道研究結果更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
