@@ -157,6 +157,7 @@
     <label class="chk" id="nightWrap" style="display:none"><input type="checkbox" id="night">夜盤</label>
     <label class="chk" title="盤中每分鐘抓即時報價更新最後一根 K 棒（每分鐘用 1 個 FinMind 額度，分頁沒在看時不抓）；收盤後正式資料公布會自動換上"><input type="checkbox" id="auto">自動</label>
     <span style="flex:1"></span>
+    <button id="ovBtn" title="今日總覽：台指期、選擇權撐壓、法人、資金流、族群、籌碼焦點一頁看完" onclick="location.href='overview.html'">總覽</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
     <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
     <button id="txoBtn" title="台指選擇權籌碼：各結算日 Gamma 曝險、看漲牆、看跌牆、最大痛點" onclick="location.href='txo.html'">選擇權</button>
