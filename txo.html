@@ -684,7 +684,7 @@ function render(){
   const EM = eMove ? { hi:Q + eMove, lo:Q - eMove, mv:eMove, iv:eE.atmIv, days:eDays, exp:eE.exp } : null;
   const card = (k, val, sub, sw) => `<div class="card"><div class="k">${sw ? `<i style="background:${sw}"></i>` : ''}${k}</div><div class="v">${val}</div><div class="s">${sub || ''}</div></div>`;
   const pcr = st.oiC ? st.oiP / st.oiC : null, vpcr = st.volC ? st.volP / st.volC : null;
-  const futSub = fut && fut.live ? `即時 ${esc(fut.live.t.slice(11, 19))}｜今日 開 ${fmtInt(fut.live.o)} 高 ${fmtInt(fut.live.h)} 低 ${fmtInt(fut.live.l)}` +
+  const futSub = fut && fut.live ? `即時 ${esc(fut.live.t.slice(11, 19))}｜${(h => h >= 15 || h < 5)(+fut.live.t.slice(11, 13)) ? '夜盤' : '今日'} 開 ${fmtInt(fut.live.o)} 高 ${fmtInt(fut.live.h)} 低 ${fmtInt(fut.live.l)}` +
       (DATA.liveIdx ? `<br>選擇權推算加權指數約 ${fmtInt(DATA.liveIdx)}（週選、月選結算看加權指數）` : '') :
     !fut ? '取不到台指期，暫用遠期價' :
     fut.night != null ? `日盤收 ${fmtInt(fut.dayClose)}，夜盤 ${signInt(fut.night - fut.dayClose)} 點（${fut.nightContract.slice(4)}月）` : `日盤收盤（${fut.contract.slice(4)}月），夜盤還沒有資料`;
@@ -1237,7 +1237,7 @@ function heatInSession(){ const d = new Date(Date.now() + 8 * 3600e3), wd = d.ge
 async function heatTick(){
   if (!DATA || !CTX || document.hidden || !heatInSession()) return;
   try {
-    const fr = await snap('taiwan_futures_snapshot', 'TX'), f = fr.filter(r => /^TXF[A-L]\d$/.test(r.futures_id) && r.close > 0).sort((a, b) => b.total_volume - a.total_volume)[0];
+    const fr = await snap('taiwan_futures_snapshot', 'TX'), f = pickFut(fr, 'TXF');
     if (f){ const now = new Date(Date.now() + 8 * 3600e3), t = Math.floor(now.getTime() / 1000 / 300) * 300;
       if (!HEAT.live.length || HEAT.live[HEAT.live.length - 1].time !== t) HEAT.live.push({ time:t, close:+f.close }); else HEAT.live[HEAT.live.length - 1].close = +f.close;
       HEAT.now = { price:+f.close, at:Date.now() }; }
@@ -2360,6 +2360,13 @@ function liveProduct(code){
   const prod = !m[3] ? 'TXO' : m[3] === 'W' ? 'TX' + n : 'TX' + ('UVXYZ'[n - 1] || '');
   return { prod, cl:MC[mo - 1] + (y % 10), pl:MP[mo - 1] + (y % 10) };
 }
+// 挑台指期即時報價：只看最近 10 分鐘內有成交的合約，再取成交量最大的（結算日下午過期合約的量還很大，不能讓它蓋過夜盤的下一個月）
+function pickFut(rows, code){
+  const re = new RegExp('^' + code + '[A-L]\\d$'), tm = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+  const c = rows.filter(r => re.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tm));
+  return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
 async function snap(path, id){
   const tok = (SET.token || '').trim();
   const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + new URLSearchParams({ data_id:id, token:tok }), { cache:'no-store' });
@@ -2377,7 +2384,7 @@ async function liveTick(){
     if (!alive(e)){ const nx = DATA.exps.find(alive); if (nx){ e = nx; CUR = nx.code; renderChips(); } }
     const lp = liveProduct(e.code); if (!lp) throw new Error('這個合約沒有即時報價代號');
     const [fr, orows] = await Promise.all([snap('taiwan_futures_snapshot', 'TX'), snap('taiwan_options_snapshot', lp.prod)]);
-    const f = fr.filter(r => /^TXF[A-L]\d$/.test(r.futures_id) && r.close > 0).sort((a, b) => b.total_volume - a.total_volume)[0];
+    const f = pickFut(fr, 'TXF');
     if (!f) throw new Error('取不到台指期即時價');
     const byK = new Map(e.S.map(s => [s.K, s]));
     let n = 0;

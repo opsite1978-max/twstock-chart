@@ -847,6 +847,13 @@ function renderQ(){
 const MC = 'ABCDEFGHIJKL', MP = 'MNOPQRSTUVWX';
 function liveProduct(code){ const m = /^(\d{4})(\d{2})(?:([WF])(\d))?$/.exec(code); if (!m) return null; const y = +m[1], mo = +m[2], n = +m[4];
   const prod = !m[3] ? 'TXO' : m[3] === 'W' ? 'TX' + n : 'TX' + ('UVXYZ'[n - 1] || ''); return { prod, cl:MC[mo - 1] + (y % 10), pl:MP[mo - 1] + (y % 10) }; }
+// 挑台指期即時報價：只看最近 10 分鐘內有成交的合約，再取成交量最大的（結算日下午過期合約的量還很大，不能讓它蓋過夜盤的下一個月）
+function pickFut(rows, code){
+  const re = new RegExp('^' + code + '[A-L]\\d$'), tm = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+  const c = rows.filter(r => re.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tm));
+  return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
 async function snap(path, id){ const tok = (SET.token || '').trim();
   const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + new URLSearchParams({ data_id:id, token:tok }), { cache:'no-store' });
   const j = await r.json().catch(() => null); if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('即時報價 ' + r.status)); return j.data || []; }
@@ -864,7 +871,7 @@ async function liveTick(){
     if (!ex.length) throw new Error('沒有可用的結算日資料');
     const prods = new Map(); for (const e of ex){ const lp = liveProduct(e.code); if (!lp) continue; if (!prods.has(lp.prod)) prods.set(lp.prod, []); prods.get(lp.prod).push({ e, lp }); }
     const [fr, ...ors] = await Promise.all([snap('taiwan_futures_snapshot', 'TX')].concat([...prods.keys()].map(p => snap('taiwan_options_snapshot', p).catch(() => []))));
-    const f = fr.filter(r => /^TXF[A-L]\d$/.test(r.futures_id) && r.close > 0).sort((a, b) => b.total_volume - a.total_volume)[0];
+    const f = pickFut(fr, 'TXF');
     if (!f) throw new Error('取不到台指期即時價');
     const px = +f.close, tm = Math.floor(now / 60) * 60;
     // 這一分鐘的 K 棒

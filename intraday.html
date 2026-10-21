@@ -203,6 +203,13 @@ async function load(){
     if (date === twToday() && inSession(S)){ poll(); ST.timer = setInterval(() => { if (!document.hidden) poll(); }, 10000); }
   } catch(e){ setStatus(e.message || String(e), true); }
 }
+// 挑台指期即時報價：只看最近 10 分鐘內有成交的合約，再取成交量最大的（結算日下午過期合約的量還很大，不能讓它蓋過夜盤的下一個月）
+function pickFut(rows, code){
+  const re = new RegExp('^' + code + '[A-L]\\d$'), tm = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+  const c = rows.filter(r => re.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tm));
+  return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
 function inSession(S){ const t = twNow().toISOString().slice(11,16); return S.mode === 'stock' ? t >= '09:00' && t <= '13:35' : t >= '08:45' && t <= '13:50'; }
 
 // 盤中：每 10 秒抓即時報價，累積成一分鐘的點
@@ -213,7 +220,7 @@ async function poll(){
     if (S.mode === 'stock'){ q = (await fm('taiwan_stock_tick_snapshot', { data_id:S.id }))[0]; }
     else {
       const rows = await fm('taiwan_futures_snapshot', { data_id:S.code });
-      q = rows.filter(r => new RegExp('^' + S.code + '[A-L]\\d$').test(r.futures_id) && r.close > 0).sort((a,b) => b.total_volume - a.total_volume)[0];
+      q = pickFut(rows, S.code);
     }
     if (!q || !(q.close > 0)) return;
     const t = String(q.date).slice(11,16);
