@@ -182,7 +182,7 @@
         <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
         <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
         <label class="chk"><input type="checkbox" data-ind="ivx">隱含波動率（台指期）</label>
-        <label class="chk"><input type="checkbox" data-ind="flow">資金流殘差（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="flow">資金流（台指期）</label>
       </div>
     </div>
 
@@ -450,10 +450,10 @@
         </div>
       </details>
       <details>
-        <summary>資金流殘差（只適用台指期）</summary>
+        <summary>資金流（只適用台指期）</summary>
         <div class="stack">
           <div class="hint">台指選擇權逐筆主動成交的 Delta 淨流量，扣掉價格本身漲跌帶動的部分，標準化成 −100～+100；資料由網站每晚計算，不用 FinMind 額度，不是即時。低＝從超賣區（≤ −60）往上穿回 −60，強低＝期間曾跌破 −70；預＝剛跌進超賣區（比低早約 1 根，比較不確定）；背＝價格破低、資金流沒破。完整統計在「資金流看盤」頁。</div>
-          <div class="kv"><span>主線</span><select data-k="flow.k" data-redraw="flow"><option value="FR">資金流殘差</option><option value="F">淨流量力道</option></select></div>
+          <div class="kv"><span>主線</span><select data-k="flow.k" data-redraw="flow"><option value="F">淨流量力道</option><option value="FR">資金流殘差</option></select></div>
           <label class="chk"><input type="checkbox" data-k="flow.fast" data-redraw="flow">顯示快線（轉折較早）</label>
           <label class="chk"><input type="checkbox" data-k="flow.mainSig" data-redraw="flow">K 線圖上標出「低」「強低」</label>
           <label class="chk"><input type="checkbox" data-k="flow.early" data-redraw="flow">標出提前訊號「預」「背」</label>
@@ -627,7 +627,7 @@ const DEFAULTS = {
         cRetail:'#26c281', cTrend:'#ef5350', cMain:'#ffd54f', cXc:'#e040fb', cDl:'#00e5ff', cBig:'#ff9800', cEsc:'#ff80ab', wRetail:1, wLine:2 },
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
-  flow:{ k:'FR', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
+  flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true }, chartH:100, mainRatio:50,
@@ -656,7 +656,8 @@ if ((S.v || 0) < 13 && S.qsz && typeof S.qsz.mainTurn !== 'string') delete S.qsz
 if ((S.v || 0) < 14) S.ind = Object.assign({}, S.ind, { shz:true });
 if ((S.v || 0) < 15) S.ind = Object.assign({}, S.ind, { ivx:true });
 if ((S.v || 0) < 16) S.ind = Object.assign({}, S.ind, { flow:true });
-S.v = 16;
+if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨流量力道
+S.v = 17;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
