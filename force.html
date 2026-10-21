@@ -860,11 +860,18 @@ async function snap(path, id){ const tok = (SET.token || '').trim();
 const ncdf = x => { const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; };
 function inSession(t){ const d = new Date(t * 1000), wd = d.getUTCDay(), m = d.getUTCHours() * 60 + d.getUTCMinutes();
   if (wd >= 1 && wd <= 5 && m >= 525 && m <= 825) return 'D'; if (wd >= 1 && wd <= 5 && m >= 900) return 'N'; if (wd >= 2 && wd <= 6 && m <= 300) return 'N'; return null; }
+// 網站每晚算好新的一天就自動換上（只讀網站檔案，不用 FinMind 額度），每 30 分鐘檢查一次
+const ND = { last:Date.now() };
+async function forceNewData(){
+  if (Date.now() - ND.last < 30 * 60e3) return; ND.last = Date.now();
+  try { const j = await getJSON('data/force/index.json?t=' + Date.now());
+    if (IDX && j.updated !== IDX.updated){ await loadAll(); buildInstBias(); await rebuild(); setStatus(''); if ($('#dMap').open) renderMap(); } } catch(e){}
+}
 async function liveTick(){
   if (!ST.live || LIVE.busy) return;
-  if (Date.now() - LIVE.started > 30 * 60e3){ setLive(false); LIVE.msg = '即時更新已開 30 分鐘，自動關閉以節省 FinMind 查詢次數；需要再按「開啟即時」'; $('#noteMain').innerHTML = noteMain(); return; }
+  forceNewData();
   const now = twNow(), s = inSession(now);
-  if (!s){ LIVE.msg = '現在不是交易時段，即時更新暫停'; $('#noteMain').innerHTML = noteMain(); return; }
+  if (!s){ LIVE.msg = '自動更新中：現在不是交易時段，開盤後（日盤 08:45、夜盤 15:00）自動開始'; $('#noteMain').innerHTML = noteMain(); return; }
   LIVE.busy = true;
   try {
     const ex = (STRK && STRK.exps || []).filter(e => Date.UTC(+e.exp.slice(0, 4), +e.exp.slice(5, 7) - 1, +e.exp.slice(8, 10), 13, 30) / 1000 > now).slice(0, 2);
@@ -900,7 +907,7 @@ async function liveTick(){
       if (call) bar[side > 0 ? 'cb' : 'cs'] += dv; else bar[side > 0 ? 'pb' : 'ps'] += dv; n++;
     } });
     bar.k = Math.floor((bar.t - bar.s0) / 60);
-    LIVE.msg = `即時 ${hm(now)} 更新（每 2 分鐘、最近 2 個結算日，30 分鐘後自動關閉）・本次 ${n} 檔有新成交・從開啟即時起累積 ${LIVE.bars.length} 分鐘（開啟前的盤中資料要等收盤後才會補上）`;
+    LIVE.msg = `即時 ${hm(now)} 更新（每 2 分鐘、最近 2 個結算日；分頁沒在看時暫停）・本次 ${n} 檔有新成交・從開啟即時起累積 ${LIVE.bars.length} 分鐘（開啟前的盤中資料要等收盤後才會補上）`;
     await rebuild();
   } catch(err){ LIVE.msg = '即時更新失敗：' + err.message; $('#noteMain').innerHTML = noteMain(); }
   finally { LIVE.busy = false; }
@@ -914,7 +921,7 @@ function setLive(on){
     LIVE.started = Date.now(); liveTick(); LIVE.timer = setInterval(() => { if (!document.hidden) liveTick(); }, 120000);
   } else { LIVE.msg = ''; $('#noteMain').innerHTML = noteMain(); }
 }
-$('#liveBtn').onclick = () => setLive(!ST.live);
+$('#liveBtn').onclick = () => { setLive(!ST.live); store.set('force.live', ST.live ? '1' : '0'); };
 
 /* ───────── 整體 ───────── */
 function noteMain(){
@@ -951,6 +958,7 @@ if (window.innerWidth > 900){ $('#dMap').open = true; }
     $('#app').hidden = false; setStatus('');
     await rebuild();
     if ($('#dMap').open) renderMap();
+    if (store.get('force.live', '1') !== '0') setLive(true);               // 預設自動更新；按「停止即時」會記住
   } catch(e){ console.error(e); setStatus('讀取失敗：' + e.message, true); }
 })();
 </script>

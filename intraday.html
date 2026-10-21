@@ -175,7 +175,7 @@ let KIND = store.get('jb.kind') || 'stock';
 function setStatus(t, err){ const s = $('#status'); s.hidden = !t; s.textContent = t || ''; s.className = 'msg' + (err ? ' err' : ''); }
 
 async function load(){
-  clearInterval(ST.timer);
+  clearInterval(ST.timer); ST.timer = null; JB.lastLoad = Date.now();
   if (!(SET.token || '').trim()){ setStatus('請先到看盤頁的「設定」填入 FinMind 憑證（贊助會員）。', true); return; }
   try {
     setStatus('讀取中…'); await loadNames();
@@ -200,7 +200,7 @@ async function load(){
     Object.assign(ST, { S, today, prev, date, prevClose: prev.length ? prev[prev.length - 1].c : null, live:null, lastVol:null });
     setStatus(''); $('#app').hidden = false;
     draw();
-    if (date === twToday() && inSession(S)){ poll(); ST.timer = setInterval(() => { if (!document.hidden) poll(); }, 10000); }
+    if (date === twToday() && inSession(S)){ poll(); ST.timer = setInterval(() => { if (!document.hidden && inSession(S)) poll(); }, 10000); }
   } catch(e){ setStatus(e.message || String(e), true); }
 }
 // 挑台指期即時報價：只看最近 10 分鐘內有成交的合約，再取成交量最大的（結算日下午過期合約的量還很大，不能讓它蓋過夜盤的下一個月）
@@ -210,6 +210,14 @@ function pickFut(rows, code){
   const newest = Math.max(...c.map(tm));
   return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
 }
+// 自動更新：開盤時自動切到今天並開始即時；收盤後正式一分K公布了自動換上（每 15～20 分鐘最多試一次）
+const JB = { lastLoad:0 };
+setInterval(() => {
+  if (document.hidden || !ST.S) return;
+  const tw = twNow(), wd = tw.getUTCDay(), hm = tw.toISOString().slice(11, 16), ses = wd >= 1 && wd <= 5 && inSession(ST.S);
+  if (ses && (ST.date !== twToday() || !ST.timer) && Date.now() - JB.lastLoad > 15 * 60e3){ load(); return; }
+  if (!ses && ST.date === twToday() && ST.today.some(b => b.live) && hm >= '14:40' && Date.now() - JB.lastLoad > 20 * 60e3) load();
+}, 60000);
 function inSession(S){ const t = twNow().toISOString().slice(11,16); return S.mode === 'stock' ? t >= '09:00' && t <= '13:35' : t >= '08:45' && t <= '13:50'; }
 
 // 盤中：每 10 秒抓即時報價，累積成一分鐘的點

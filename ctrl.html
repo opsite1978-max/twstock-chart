@@ -672,5 +672,6 @@ document.querySelectorAll('#oscSeg button').forEach(b => b.onclick = () => { OSC
 let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D && D.A) { drawMain(); drawOF(); drawDist(); drawSpread(); drawOsc(); drawLT(); drawW(); } }, 200); });
 load();
 </script>
+<script src="autoreload.js"></script>
 </body>
 </html>

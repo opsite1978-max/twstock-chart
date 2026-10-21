@@ -1006,5 +1006,6 @@ $('#sym').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
 let rT = null; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D){ drawCharts(); drawFlow(); renderQA(); drawFutCharts(); drawGexCharts(); renderSignal(); } }, 200); });
 { const s = new URLSearchParams(location.search).get('s'); $('#sym').value = s || store.get('fs.sym') || ''; if ($('#sym').value) load(); }
 </script>
+<script src="autoreload.js"></script>
 </body>
 </html>

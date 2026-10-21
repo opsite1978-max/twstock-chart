@@ -2374,8 +2374,25 @@ async function snap(path, id){
   if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('即時報價 ' + r.status));
   return j.data || [];
 }
+// 盤中時段：日盤 08:45–13:45、夜盤 15:00–隔天 05:00
+function txoInSession(){ const tw = new Date(Date.now() + 8 * 3600e3), wd = tw.getUTCDay(), m = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  return (wd >= 1 && wd <= 5 && (m >= 525 && m <= 830 || m >= 900)) || (wd >= 2 && wd <= 6 && m <= 300); }
+// 新一天的選擇權籌碼公布了（通常傍晚）就自動換過去；只在看最新一天時才換，每 20 分鐘檢查一次（1 個額度）
+const ND = { last:0 };
+async function txoNewDay(){
+  const sel = $('#dateSel');
+  if (!DATA || Date.now() - ND.last < 20 * 60e3 || !sel.options.length || sel.value !== sel.options[0].value) return;
+  const tw = new Date(Date.now() + 8 * 3600e3);
+  let want = tw.getUTCHours() >= 15 ? twToday() : shiftDay(twToday(), -1);
+  while ([0, 6].includes(new Date(want + 'T00:00:00Z').getUTCDay())) want = shiftDay(want, -1);
+  if (want <= DATA.date) return;
+  ND.last = Date.now();
+  if (await optionDay(want, true).catch(() => null)){ qCache.clear(); await start(); }
+}
 async function liveTick(){
   if (!LIVE.on || LIVE.busy || !DATA) return;
+  txoNewDay();
+  if (!txoInSession()){ $('#liveLine').textContent = '自動更新中：現在不是交易時段，開盤後（日盤 08:45、夜盤 15:00）自動開始；新的籌碼公布後也會自動換上'; return; }
   LIVE.busy = true;
   try {
     // 已經結算（結算日 13:30 之後）的合約自動改用下一個結算日
@@ -2420,7 +2437,7 @@ function setLive(on){
   if (on){ liveTick(); LIVE.timer = setInterval(() => { if (!document.hidden) liveTick(); }, 60000); }
   else $('#liveLine').textContent = '';
 }
-$('#liveBtn').onclick = () => setLive(!LIVE.on);
+$('#liveBtn').onclick = () => { setLive(!LIVE.on); store.set('txo.live', LIVE.on ? '1' : '0'); };
 document.querySelectorAll('#lvSeg button').forEach(b => b.onclick = () => { LV.tf = b.dataset.tf; store.set('txo.lvTf', LV.tf); drawLevels(); });
 document.querySelectorAll('#lowSeg button').forEach(b => b.onclick = () => { LOWTF = b.dataset.tf; store.set('txo.lowTf', LOWTF); LZ.n = lzDef(); LZ.end = 0; renderLow(); });
 bindLowZoom($('#svgLow'));
@@ -2473,11 +2490,13 @@ async function start(){
     sel.value = date;
     await loadDate(date);
     loadHistory(); loadLottery(); loadChips();
+    if (LIVE.on) liveTick();
     try { localStorage.removeItem('txo.flow'); } catch(e){}
   } catch(e){
     if (/憑證|token|Token/.test(e.message || '')) askToken(e.message); else setStatus(e.message || String(e), true);
   }
 }
+if (store.get('txo.live') !== '0') setLive(true);                    // 預設自動更新；按「停止即時更新」會記住
 start();
 </script>
 </body>

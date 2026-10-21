@@ -541,6 +541,36 @@ document.querySelectorAll('#lnSeg button').forEach(b => b.onclick = () => { ST.k
 const zoom = f => { const ts = CHART.timeScale(), r = ts.getVisibleLogicalRange(); if (!r) return; const mid = r.to - 3, w = (r.to - r.from) * f; ts.setVisibleLogicalRange({ from:mid - w + 3, to:mid + 3 }); };
 $('#zIn').onclick = () => zoom(1 / 1.5); $('#zOut').onclick = () => zoom(1.5);
 $('#zEnd').onclick = () => { const n = VIEW.bars.length, show = Math.min(n, window.innerWidth < 700 ? 120 : 220); CHART.timeScale().setVisibleLogicalRange({ from:n - show, to:n + 3 }); };
+/* ───────── 自動更新：有新資料就重畫（分頁沒在看時不檢查） ─────────
+   台指期：網站每天算好的資料一更新就換上（不用 FinMind 額度）；
+   股票、個股期貨：盤中與收盤後每 5 分鐘重抓今天的逐筆（每次 1 個額度，逐筆資料公布後才會有今天的資金流） */
+const AU = { last:0, busy:false, msg:'' };
+function auTw(){ const d = new Date(Date.now() + 8 * 3600e3); return { wd:d.getUTCDay(), m:d.getUTCHours() * 60 + d.getUTCMinutes() }; }
+async function auRerender(){
+  const ts = CHART.timeScale(), r = ts.getVisibleLogicalRange(), n0 = VIEW && VIEW.bars ? VIEW.bars.length : 0;
+  await render();
+  const n1 = VIEW && VIEW.bars ? VIEW.bars.length : 0;
+  if (r && n0) ts.setVisibleLogicalRange(r.to >= n0 - 1.5 ? { from:r.from + n1 - n0, to:r.to + n1 - n0 } : r);
+}
+async function auCheck(){
+  if (AU.busy || document.hidden || !SYM) return;
+  const { wd, m } = auTw(), hhmm = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  AU.busy = true;
+  try {
+    if (SYM.kind === 'tx'){
+      const j = await (await fetch('data/force/index.json?t=' + Date.now(), { cache:'no-store' })).json();
+      if (IDX && j.updated !== IDX.updated){ BASE5 = null; BASE1 = null; await auRerender(); AU.msg = '已換上新資料 ' + hhmm; }
+      else AU.msg = '自動更新：已是最新（' + hhmm + ' 檢查）';
+    } else if (ST.tf !== 'D' && wd >= 1 && wd <= 5 && m >= 540 && m <= 1080){       // 平日 09:00～18:00
+      const today = twToday(), ck = SYM.kind + ':' + SYM.id + ':' + today;
+      TCACHE.delete(ck); await auRerender(); AU.msg = '自動更新 ' + hhmm;
+    } else AU.msg = '自動更新：盤中與收盤後（平日 09:00～18:00）每 5 分鐘重抓今天的逐筆';
+  } catch(e){ AU.msg = '自動更新失敗：' + (e.message || e); }
+  finally { AU.busy = false; $('#upd').textContent = '資料 ' + ((IDX && IDX.updated) || '') + '・' + AU.msg; }
+}
+setInterval(() => { if (SYM && SYM.kind === 'tx' ? Date.now() - AU.last >= 10 * 60e3 : Date.now() - AU.last >= 5 * 60e3){ AU.last = Date.now(); auCheck(); } }, 30e3);
+AU.last = Date.now();
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - AU.last >= 5 * 60e3){ AU.last = Date.now(); auCheck(); } });
 function err(e){ console.error(e); $('#status').hidden = false; $('#status').className = 'msg'; $('#status').textContent = '讀取失敗：' + (e.message || e); }
 (function start(){
   if (!window.LightweightCharts){ setTimeout(start, 200); return; }

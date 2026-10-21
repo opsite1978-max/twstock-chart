@@ -155,6 +155,7 @@
     <select id="period" title="顯示期間"></select>
     <label class="chk" id="adjWrap" title="除權息還原"><input type="checkbox" id="adj">還原</label>
     <label class="chk" id="nightWrap" style="display:none"><input type="checkbox" id="night">夜盤</label>
+    <label class="chk" title="盤中每分鐘抓即時報價更新最後一根 K 棒（每分鐘用 1 個 FinMind 額度，分頁沒在看時不抓）；收盤後正式資料公布會自動換上"><input type="checkbox" id="auto">自動</label>
     <span style="flex:1"></span>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
     <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
@@ -627,7 +628,7 @@ const CHROME = {
   light: { panel:'#f4f5f8', panel2:'#ffffff', line:'#d8dce4', text:'#1f2430', muted:'#667085', scheme:'light' },
 };
 const DEFAULTS = {
-  token:'', mfiLen:13, kLen:13, dLen:5, upCol:'#ef5350', dnCol:'#26a69a', showRef:true, obLevel:40, osLevel:-40,
+  token:'', auto:true, mfiLen:13, kLen:13, dLen:5, upCol:'#ef5350', dnCol:'#26a69a', showRef:true, obLevel:40, osLevel:-40,
   aroonLen:14, cmoLen:9, cmoSig:10,
   arCol:{ ga:'#26a69a', fa:'#b2dfdb', gb:'#ffcdd2', fb:'#ef5350', cmo:'#00bcd4', sig:'#ff9800' },
   vpo:{ smiK:14, smiD:3, volZ:60, biasLen:55, momLen:14, zLen:60, wSmi:30, wVol:20, wBias:20, wEpd:30,
@@ -2346,11 +2347,11 @@ function aggregate(daily, tf){
   for (const b of daily){
     const k = tf === 'W' ? mondayOf(b.date) : b.date.slice(0,7);
     if (k !== curKey){
-      cur = { date:b.date, open:b.open, high:b.high, low:b.low, close:b.close, volume:b.volume, contract:b.contract };
+      cur = { date:b.date, open:b.open, high:b.high, low:b.low, close:b.close, volume:b.volume, contract:b.contract, lastDate:b.date };
       out.push(cur); curKey = k;
     } else {
       cur.high = Math.max(cur.high, b.high); cur.low = Math.min(cur.low, b.low);
-      cur.close = b.close; cur.volume += b.volume; cur.contract = b.contract;
+      cur.close = b.close; cur.volume += b.volume; cur.contract = b.contract; cur.lastDate = b.date;
     }
   }
   return out;
@@ -2542,6 +2543,7 @@ async function load(){
     if (sym.kind === 'stock' && S.adj && !conf.intraday) notes.push('還原股價');
     if (sym.kind === 'fut') notes.push(S.night ? '含夜盤' : '僅日盤');
     setStatus('資料至 ' + last.label + (notes.length ? '（' + notes.join('，') + '）' : ''));
+    auAfterLoad(sym, tf);
   } catch(e){
     if (seq !== loadSeq) return;
     if (conf.intraday && e.finmindMsg)
@@ -2550,6 +2552,176 @@ async function load(){
   } finally {
     if (seq === loadSeq){ loading = false; $('loadBtn').disabled = false; }
   }
+}
+
+/* ───────────── 盤中自動更新 ─────────────
+   FinMind 的分K、日K 要收盤後才公布，所以盤中改用「即時報價」每分鐘抓一次（一次只用 1 個額度，分頁沒在看時不抓）：
+   每分鐘的價格存在這台裝置上，接在歷史 K 棒後面畫出今天的 K 棒；收盤後正式資料公布了，自動重新載入換成正式的 K 棒。
+   今天的分 K 從開啟頁面那一刻開始累積（之前的部分要等收盤後正式資料）。 */
+const AUTO = { timer:null, busy:false, base:null, symKey:'', tf:null, t:null, tries:{}, lastTry:0, err:'' };
+const AU_SESS = { S:{ D:[540, 810] }, F:{ D:[525, 825], N:[900, 1740] } };
+function auNow(){ const d = new Date(Date.now() + 8 * 3600e3); return { date:d.toISOString().slice(0, 10), m:d.getUTCHours() * 60 + d.getUTCMinutes(), dow:d.getUTCDay() }; }
+// 現在的交易時段（不在盤中回 null）；夜盤 15:00～隔天 05:00 算同一段，日期記開盤那天
+function auSession(sym){
+  const { date, m, dow } = auNow(), wk = dow >= 1 && dow <= 5;
+  if (sym.kind !== 'fut') return wk && m >= 540 && m <= 812 ? { k:'D', sDate:date, a:540, e:810, m } : null;
+  if (wk && m >= 525 && m <= 827) return { k:'D', sDate:date, a:525, e:825, m };
+  if (!S.night) return null;
+  if (wk && m >= 900) return { k:'N', sDate:date, a:900, e:1740, m };
+  if (dow >= 2 && dow <= 6 && m < 302) return { k:'N', sDate:shiftDay(date, -1), a:900, e:1740, m:m + 1440 };
+  return null;
+}
+const auNextWd = d => { let x = shiftDay(d, 1); while ([0, 6].includes(new Date(x + 'T00:00:00Z').getUTCDay())) x = shiftDay(x, 1); return x; };
+const auPfx = sym => 'au:' + (sym.kind === 'fut' ? 'F' : 'S') + ':' + sym.id + ':';
+function auGet(key){ try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch(e){ return null; } }
+function auPut(key, v){ try { localStorage.setItem(key, JSON.stringify(v)); } catch(e){} }
+function auClean(){
+  try { const old = shiftDay(twToday(), -4);
+    for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('au:') && k.slice(-10) < old) localStorage.removeItem(k); } } catch(e){}
+}
+// 這個商品存著的盤中資料（依時段先後）
+function auSessions(sym){
+  const p = auPfx(sym), out = [];
+  try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (!k || !k.startsWith(p)) continue;
+    const [kk, sDate] = k.slice(p.length).split(':'), st = auGet(k); if (st && st.m) out.push({ k:kk, sDate, st }); } } catch(e){}
+  return out.filter(s => s.k === 'D' || S.night).sort((x, y) => (x.sDate + (x.k === 'D' ? 0 : 1)).localeCompare(y.sDate + (y.k === 'D' ? 0 : 1)));
+}
+async function auSnap(path, id){
+  const tok = (S.token || '').trim();
+  const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + new URLSearchParams({ data_id:id, token:tok }), { cache:'no-store' });
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 額度用完');
+  if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('即時報價 ' + r.status));
+  return j.data || [];
+}
+// 台指期：只看最近 10 分鐘內有成交的月合約，再取成交量最大的（結算日下午過期合約的量還很大）
+function auPickFut(rows){
+  const tm = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+  const c = rows.filter(r => /^[A-Z0-9]{3}[A-L]\d$/.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tm));
+  return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
+async function auPoll(force){
+  if (!S.auto || AUTO.busy || loading || !currentSym || !AUTO.base || (document.hidden && !force)) return;
+  const sym = currentSym, ses = auSession(sym);
+  if (auNeedResync(sym, ses)) return auResync();
+  if (!ses) return;
+  AUTO.busy = true;
+  try {
+    const q = sym.kind === 'fut' ? auPickFut(await auSnap('taiwan_futures_snapshot', sym.id)) : (await auSnap('taiwan_stock_tick_snapshot', sym.id))[0];
+    if (sym !== currentSym) return;
+    const t0 = Date.UTC(...ses.sDate.split('-').map((v, i) => i === 1 ? v - 1 : +v), 0, ses.a) - 8 * 3600e3;
+    const tq = q ? Date.parse(String(q.date).slice(0, 19).replace(' ', 'T') + '+08:00') : 0;
+    if (!q || !(q.close > 0) || tq < t0){ AUTO.err = ''; auStatus(); return; }           // 休市或還沒成交
+    const key = auPfx(sym) + ses.k + ':' + ses.sDate, st = auGet(key) || { m:{} };
+    const mm = Math.min(Math.max(ses.m, ses.a), ses.e - 1), px = +q.close, tv = +q.total_volume || 0;
+    const dv = st.tv == null ? 0 : tv >= st.tv ? tv - st.tv : tv;
+    const r = st.m[mm] || (st.m[mm] = [px, px, px, px, 0]);
+    r[1] = Math.max(r[1], px); r[2] = Math.min(r[2], px); r[3] = px; r[4] += dv;
+    if (st.hi != null && q.high > st.hi) r[1] = Math.max(r[1], q.high);                    // 兩次抓價之間創的新高、新低
+    if (st.lo != null && q.low > 0 && q.low < st.lo) r[2] = Math.min(r[2], q.low);
+    Object.assign(st, { tv, hi:q.high, lo:q.low, sum:{ o:+q.open || px, h:+q.high || px, l:+q.low || px, c:px, v:tv } });
+    auPut(key, st);
+    AUTO.t = String(q.date).slice(11, 19); AUTO.err = '';
+    auApply();
+  } catch(e){ AUTO.err = e.message; auStatus(); }
+  finally { AUTO.busy = false; }
+}
+// 盤中資料 → 目前週期的 K 棒
+function auLiveBars(sym, tf){
+  const c = TF[tf], fut = sym.kind === 'fut', out = [];
+  if (c.intraday){
+    for (const { k, sDate, st } of auSessions(sym)){
+      const [a, e] = AU_SESS[fut ? 'F' : 'S'][k], [yy, mo, dd] = sDate.split('-').map(Number);
+      let cur = null, curB = null;
+      for (const m of Object.keys(st.m).map(Number).sort((x, y) => x - y)){
+        const [o, h, l, cl, v] = st.m[m], b = a + Math.floor((Math.min(Math.max(m, a), e - 1) - a) / c.P) * c.P;
+        if (b !== curB){ const time = Date.UTC(yy, mo - 1, dd, 0, b) / 1000, iso = new Date(time * 1000).toISOString();
+          cur = { date:iso.slice(0, 10), time, label:slash(iso.slice(0, 10)) + ' ' + iso.slice(11, 16), open:o, high:h, low:l, close:cl, volume:v, live:true }; out.push(cur); curB = b; }
+        else { cur.high = Math.max(cur.high, h); cur.low = Math.min(cur.low, l); cur.close = cl; cur.volume += v; }
+      }
+    }
+    return out;
+  }
+  const byTD = new Map();                                    // 日K：夜盤算下一個交易日
+  for (const { k, sDate, st } of auSessions(sym)){ const s = st.sum; if (!s) continue;
+    const td = k === 'D' ? sDate : auNextWd(sDate), b = byTD.get(td);
+    if (!b) byTD.set(td, { date:td, time:td, label:slash(td), open:s.o, high:s.h, low:s.l, close:s.c, volume:s.v, live:true });
+    else { b.high = Math.max(b.high, s.h); b.low = Math.min(b.low, s.l); b.close = s.c; b.volume += s.v; } }
+  return [...byTD.values()].sort((x, y) => x.date.localeCompare(y.date));
+}
+function auMerge(base, live, tf){
+  const out = base.slice(), key = x => tf === 'W' ? mondayOf(x) : x.slice(0, 7);
+  for (const d of live){
+    const L = out[out.length - 1];
+    if (TF[tf].intraday){ if (!L || d.time > L.time) out.push(d); continue; }
+    if (tf === 'D'){ if (!L || d.date > L.date) out.push(d); continue; }
+    if (L && (L.lastDate || L.date) >= d.date) continue;                                    // 正式資料已經有這天
+    if (L && key(L.date) === key(d.date))
+      out[out.length - 1] = Object.assign({}, L, { high:Math.max(L.high, d.high), low:Math.min(L.low, d.low), close:d.close, volume:L.volume + d.volume, live:true, lastDate:d.date });
+    else out.push(Object.assign({}, d, { label:tf === 'M' ? slash(d.date).slice(0, 7) : slash(d.date) + ' 當週', lastDate:d.date }));
+  }
+  return out;
+}
+function auApply(){
+  if (!chart || !AUTO.base || !currentSym) return;
+  const nb = auMerge(AUTO.base, auLiveBars(currentSym, S.tf), S.tf);
+  const ts = chart.timeScale(), r = ts.getVisibleLogicalRange(), atEnd = r && r.to >= bars.length - 1.5, added = nb.length - bars.length;
+  bars = nb; idxByTime = new Map(bars.map((b, i) => [b.time, i]));
+  candle.setData(bars.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  drawMain(); drawIndicators();
+  if (r) ts.setVisibleLogicalRange(atEnd && added > 0 ? { from:r.from + added, to:r.to + added } : r);
+  auHeader(); auStatus();
+}
+function auHeader(){
+  const last = bars[bars.length - 1], prev = bars[bars.length - 2]; if (!last) return;
+  if (prev){ const c = last.close - prev.close, cls = c > 0 ? 'u' : c < 0 ? 'd' : '';
+    $('last').innerHTML = `<span class="${cls}">${fmt(last.close)} ${c > 0 ? '▲' : c < 0 ? '▼' : ''}${fmt(Math.abs(c))} (${fmt(c / prev.close * 100)}%)</span>`; }
+  else $('last').textContent = fmt(last.close);
+}
+function auStatus(){
+  const last = bars[bars.length - 1], sym = currentSym; if (!last || !sym) return;
+  const notes = [];
+  if (sym.kind === 'stock' && S.adj && !TF[S.tf].intraday) notes.push('還原股價');
+  if (sym.kind === 'fut') notes.push(S.night ? '含夜盤' : '僅日盤');
+  if (S.auto){ const ses = auSession(sym);
+    notes.push(AUTO.err ? '自動更新失敗：' + AUTO.err : ses ? (last.live ? '盤中自動更新 ' + (AUTO.t || '') : '盤中自動更新中') : last.live ? '盤中資料，收盤後自動換成正式資料' : '自動更新：開盤後啟動'); }
+  setStatus('資料至 ' + last.label + (notes.length ? '（' + notes.join('，') + '）' : ''), !!AUTO.err);
+}
+// 收盤後正式資料公布了就重新載入：已結束的時段還沒進正式資料、結束超過 2 小時、每 20 分鐘試一次、每段最多 8 次
+function auNeedResync(sym, ses){
+  if (Date.now() - AUTO.lastTry < 20 * 60e3) return false;
+  const fut = sym.kind === 'fut', base = AUTO.base, intra = TF[S.tf].intraday, nowE = Date.now() + 8 * 3600e3;
+  for (const { k, sDate } of auSessions(sym)){
+    if (ses && ses.k === k && ses.sDate === sDate) continue;
+    const [a, e] = AU_SESS[fut ? 'F' : 'S'][k], t0 = Date.parse(sDate + 'T00:00:00Z') / 1000;
+    if (nowE / 1000 < t0 + e * 60 + 7200) continue;
+    const have = intra ? base.some(b => b.time >= t0 + a * 60 && b.time < t0 + e * 60) : base.some(b => (b.lastDate || b.date) >= (k === 'D' ? sDate : auNextWd(sDate)));
+    const id = sym.id + k + sDate + S.tf;
+    if (!have && (AUTO.tries[id] || 0) < 8){ AUTO.tries[id] = (AUTO.tries[id] || 0) + 1; return true; }
+  }
+  return false;
+}
+async function auResync(){
+  AUTO.lastTry = Date.now();
+  const old = shiftDay(twToday(), -3);
+  for (const k of [...kMem.keys()]) if (k.slice(-10) >= old) kMem.delete(k);
+  qCache.clear();
+  const r = chart && chart.timeScale().getVisibleLogicalRange(), n0 = bars.length, atEnd = r && r.to >= n0 - 1.5;
+  await load();
+  if (r && atEnd && chart){ const pad = r.to - (n0 - 1), w = r.to - r.from; chart.timeScale().setVisibleLogicalRange({ from:bars.length - 1 + pad - w, to:bars.length - 1 + pad }); }
+}
+window.__auto = { get bars(){ return bars; }, AUTO, auPoll, auLiveBars };   // 檢查用
+// load() 讀完歷史後呼叫：記下正式資料，接上這台裝置存的盤中資料
+function auAfterLoad(sym, tf){
+  AUTO.base = bars.slice(); AUTO.symKey = auPfx(sym); AUTO.tf = tf; AUTO.lastTry = Date.now();
+  auApply();
+  if (!AUTO.timer){
+    auClean();
+    AUTO.timer = setInterval(() => auPoll(), 60e3);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) auPoll(); });
+  }
+  setTimeout(() => auPoll(true), 500);
 }
 
 /* ───────────── 介面繫結 ───────────── */
@@ -3214,6 +3386,7 @@ $('sym').addEventListener('change', () => { if (parseSym($('sym').value) && /\s/
 $('sym').addEventListener('input', () => updateKindUI(parseSym($('sym').value)));
 $('period').onchange = () => { S.periods = Object.assign({}, S.periods, { [S.tf]: $('period').value }); save(); if (bars.length) load(); };
 $('adj').onchange = () => { S.adj = $('adj').checked; save(); if (bars.length) load(); };
+$('auto').onchange = () => { S.auto = $('auto').checked; save(); if (S.auto){ AUTO.lastTry = 0; auPoll(true); } else auStatus(); };
 $('night').onchange = () => { S.night = $('night').checked; save(); if (bars.length) load(); };
 document.querySelectorAll('#tfSeg button').forEach(btn => btn.onclick = () => {
   if (S.tf === btn.dataset.tf) return;
@@ -3225,7 +3398,7 @@ applyTheme();
 layoutPanes();
 if (!TF[S.tf]) S.tf = 'D';
 buildPeriodOptions();
-$('adj').checked = !!S.adj; $('night').checked = !!S.night;
+$('adj').checked = !!S.adj; $('night').checked = !!S.night; $('auto').checked = S.auto !== false;
 { const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
 if (S.lastSym) $('sym').value = S.lastSym;
 updateKindUI(parseSym(S.lastSym));

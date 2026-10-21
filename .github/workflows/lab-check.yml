@@ -6,31 +6,42 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
       - env:
-          TOK: ${{ secrets.FINMIND_TOKEN }}
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: |
-          mkdir -p out && cd out
-          python3 - <<'PY'
-          import json, os, urllib.request, urllib.parse
-          tok = os.environ['TOK']; out = []
-          def get(path, q):
-              q = dict(q, token=tok)
-              try:
-                  with urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q), timeout=90) as r: return json.load(r)
-              except Exception as e: return {'err': str(e).replace(tok, '***')}
-          for ds, did in (('TaiwanFuturesKBar', 'TX'), ('TaiwanStockKBar', '2330'), ('TaiwanFuturesTick', 'TX'), ('TaiwanStockPriceTick', '2330'), ('TaiwanFuturesDaily', 'TX'), ('TaiwanStockPrice', '2330')):
-              j = get('data', {'dataset': ds, 'data_id': did, 'start_date': '2026-10-21'}); d = j.get('data') or []
-              out.append('%s n %d msg %s last %s' % (ds, len(d), j.get('msg'), json.dumps(d[-2:], ensure_ascii=False)[:500]))
-          j = get('taiwan_stock_tick_snapshot', {'data_id': '2330'}); d = j.get('data') or []
-          out.append('STK SNAP %s %s' % (j.get('msg'), json.dumps(d[:1], ensure_ascii=False)[:700]))
-          j = get('taiwan_futures_snapshot', {'data_id': 'CDF'}); d = j.get('data') or []
-          out.append('CDF SNAP %s %s' % (j.get('msg'), json.dumps([{k: r.get(k) for k in ('futures_id', 'date', 'close', 'total_volume')} for r in d], ensure_ascii=False)[:700]))
-          with urllib.request.urlopen('https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': tok}), timeout=30) as r: u = json.load(r)
-          out.append('QUOTA %s / %s' % (u.get('user_count'), u.get('api_request_limit_hour')))
-          open('log.txt', 'w').write('\n'.join(out).replace(tok, '***'))
-          PY
-          git init -q && git checkout -q -b probe-out && git add -A
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium > ../out/install.txt 2>&1 || true
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***'), fs = require('fs'), log = [];
+          const L = x => { log.push(scrub(x)); fs.writeFileSync('../out/log.txt', log.join('\n')); };
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ viewport:{ width:1280, height:900 }, serviceWorkers:'block' });
+            await ctx.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; s.night = true; s.tf = '5'; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch(e){} }, tok);
+            const pg = await ctx.newPage(); pg.setDefaultTimeout(20000);
+            pg.on('pageerror', e => L('pageerror: ' + e.message));
+            await pg.goto('https://opsite1978-max.github.io/twstock-chart/index.html?t=' + Date.now());
+            await pg.waitForTimeout(3000);
+            await pg.fill('#sym', 'TX'); await pg.click('#tfSeg button[data-tf="5"]').catch(() => {}); await pg.click('#loadBtn'); await pg.waitForTimeout(25000);
+            const st = () => pg.evaluate(() => { const B = __auto.bars, l = B[B.length - 1]; return JSON.stringify({ n:B.length, base:__auto.AUTO.base.length, last:[l.label, l.open, l.high, l.low, l.close, l.volume, !!l.live], status:document.getElementById('status').textContent, head:document.getElementById('last').textContent }); });
+            L('IDX1 ' + await st());
+            await pg.waitForTimeout(70000);
+            L('IDX2 ' + await st());
+            await pg.screenshot({ path:'../out/idx.png' });
+            const p2 = await ctx.newPage(); await p2.goto('https://opsite1978-max.github.io/twstock-chart/txo.html?t=' + Date.now()); await p2.waitForTimeout(40000);
+            L('TXO ' + await p2.evaluate(() => document.getElementById('liveLine').textContent + ' | btn ' + document.getElementById('liveBtn').textContent + ' | ' + (document.querySelector('.card .v, .card b') || {}).textContent));
+            const p3 = await ctx.newPage(); await p3.goto('https://opsite1978-max.github.io/twstock-chart/force.html?t=' + Date.now()); await p3.waitForTimeout(30000);
+            L('FORCE ' + await p3.evaluate(() => document.getElementById('noteMain').textContent.slice(0, 160) + ' | btn ' + document.getElementById('liveBtn').textContent));
+            await b.close();
+          })().catch(e => L('ERR ' + (e.stack || e)));
+          JS
+          timeout 540 node c.js || true
+      - if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
           git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
