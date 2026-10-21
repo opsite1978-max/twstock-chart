@@ -1,6 +1,34 @@
-10-22 01:03:17 本小時 FinMind 已用 0 ／上限 6000
-10-22 01:03:19 targets 225 todo 2 this run max 60
-10-22 01:03:36 file 2026-10-21 bars 601 dup 2.0 cls 0.995 fb 0.001 last 13:44:59 complete False 17s req 7
-10-22 01:03:36 no ticks 2026-10-22
-10-22 01:03:38 strikes: no option daily yet 2026-10-22
-10-22 01:03:39 strikes written 2026-10-21
+10-22 06:12:40 本小時 FinMind 已用 237 ／上限 6000
+10-22 06:12:41 price fixed 2026-05-09 changed minutes 0 req 2
+10-22 06:12:42 price fixed 2026-05-08 changed minutes 0 req 3
+10-22 06:12:43 price fixed 2026-05-07 changed minutes 0 req 4
+10-22 06:12:44 price fixed 2026-05-06 changed minutes 0 req 5
+10-22 06:12:45 price fixed 2026-05-05 changed minutes 0 req 6
+10-22 06:12:46 price fixed 2026-05-04 changed minutes 0 req 7
+10-22 06:12:47 price fixed 2026-04-30 changed minutes 0 req 8
+10-22 06:12:48 price fixed 2026-04-29 changed minutes 0 req 9
+10-22 06:12:49 price fixed 2026-04-28 changed minutes 0 req 10
+10-22 06:12:50 price fixed 2026-04-27 changed minutes 0 req 11
+10-22 06:12:51 price fixed 2026-04-25 changed minutes 0 req 12
+10-22 06:12:52 price fixed 2026-04-24 changed minutes 0 req 13
+10-22 06:12:53 price fixed 2026-04-23 changed minutes 0 req 14
+10-22 06:12:54 price fixed 2026-04-22 changed minutes 0 req 15
+10-22 06:12:55 price fixed 2026-04-21 changed minutes 0 req 16
+10-22 06:12:56 price fixed 2026-04-20 changed minutes 0 req 17
+10-22 06:12:56 price fixed 2026-04-18 changed minutes 0 req 18
+10-22 06:12:57 price fixed 2026-04-17 changed minutes 0 req 19
+10-22 06:12:58 price fixed 2026-04-16 changed minutes 0 req 20
+10-22 06:13:00 price fixed 2026-04-15 changed minutes 285 req 21
+10-22 06:13:01 price fixed 2026-04-14 changed minutes 0 req 22
+10-22 06:13:02 price fixed 2026-04-13 changed minutes 0 req 23
+10-22 06:13:02 price fixed 2026-04-11 changed minutes 0 req 24
+10-22 06:13:03 price fixed 2026-04-10 changed minutes 0 req 25
+10-22 06:13:04 price fixed 2026-04-09 changed minutes 0 req 26
+10-22 06:13:05 price fixed 2026-04-08 changed minutes 0 req 27
+10-22 06:13:06 price fixed 2026-04-07 changed minutes 0 req 28
+10-22 06:13:07 price fixed 2026-04-02 changed minutes 0 req 29
+10-22 06:13:08 price fixed 2026-04-01 changed minutes 0 req 30
+10-22 06:13:09 price fixed 2026-03-31 changed minutes 0 req 31
+10-22 06:13:10 price fixed 2026-03-30 changed minutes 0 req 32
+10-22 06:13:10 STOP 本次查詢次數用完
+10-22 06:13:12 fixprice done 31 requests 32
