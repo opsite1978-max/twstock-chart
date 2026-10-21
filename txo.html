@@ -2351,7 +2351,7 @@ function drawLevels(){
   $('#lvNote').textContent = `水平線依上方選的 ${sel} 計算；預期高低區間是用隱含波動率推算到結算時約 68% 機率的範圍。最大買權未平倉常被當成壓力、最大賣權未平倉常被當成支撐；超出畫面的價位在上下邊緣用箭頭標示。`;
 }
 /* ───────── 即時更新：FinMind 即時報價（台指期＋選擇權），每分鐘重算 Gamma ───────── */
-const LIVE = { on:false, timer:null, busy:false };
+const LIVE = { on:false, timer:null, busy:false, offData:null, offSet:new Set() };
 const MC = 'ABCDEFGHIJKL', MP = 'MNOPQRSTUVWX';
 // 合約代號 → 即時報價的商品代號：月選 TXO、週三 TX1/TX2/TX4/TX5、週五 TXU/TXV/TXX/TXY/TXZ；後面接月份字母（買權 A–L、賣權 M–X）與年份尾數
 function liveProduct(code){
@@ -2392,7 +2392,14 @@ async function txoNewDay(){
 async function liveTick(){
   if (!LIVE.on || LIVE.busy || !DATA) return;
   txoNewDay();
-  if (!txoInSession()){ $('#liveLine').textContent = '自動更新中：現在不是交易時段，開盤後（日盤 08:45、夜盤 15:00）自動開始；新的籌碼公布後也會自動換上'; return; }
+  // 收盤後：每個結算日補抓一次最後成交價（不然看到的是前一個交易日的結算價，或分頁在背景時停住的價格），之後就不再抓
+  const off = !txoInSession();
+  if (off){
+    if (LIVE.offData !== DATA){ LIVE.offData = DATA; LIVE.offSet = new Set(); }
+    const k = CUR || 'near';
+    if (LIVE.offSet.has(k)) return;
+    LIVE.offSet.add(k);
+  }
   LIVE.busy = true;
   try {
     // 已經結算（結算日 13:30 之後）的合約自動改用下一個結算日
@@ -2425,8 +2432,10 @@ async function liveTick(){
     DATA.fut = Object.assign({}, DATA.fut || {}, { price:f.close, live:{ t:f.date, o:f.open, h:f.high, l:f.low, c:f.close } });
     DATA.liveIdx = F; DATA.base = twToday();
     render();
-    $('#liveLine').textContent = `即時 ${f.date.slice(11, 19)} 更新・每分鐘自動重算（未平倉仍是前一交易日收盤的資料）`;
+    $('#liveLine').textContent = off ? `收盤後最新成交價（台指期最後成交 ${f.date.slice(5, 19)}）・開盤後（日盤 08:45、夜盤 15:00）自動恢復每分鐘更新・新的籌碼公布後也會自動換上`
+      : `即時 ${f.date.slice(11, 19)} 更新・每分鐘自動重算（未平倉仍是前一交易日收盤的資料）`;
   } catch(err){
+    if (off) LIVE.offSet.delete(CUR || 'near');
     $('#liveLine').textContent = '即時更新失敗：' + err.message;
   } finally { LIVE.busy = false; }
 }
@@ -2435,6 +2444,7 @@ function setLive(on){
   $('#liveBtn').textContent = on ? '停止即時更新' : '開啟即時更新';
   $('#liveBtn').style.background = on ? css('--accent') : ''; $('#liveBtn').style.color = on ? '#fff' : '';
   if (on){ liveTick(); LIVE.timer = setInterval(() => { if (!document.hidden) liveTick(); }, 60000); }
+  if (on && !LIVE.vis){ LIVE.vis = true; document.addEventListener('visibilitychange', () => { if (!document.hidden && LIVE.on) liveTick(); }); }   // 切回分頁馬上更新
   else $('#liveLine').textContent = '';
 }
 $('#liveBtn').onclick = () => { setLive(!LIVE.on); store.set('txo.live', LIVE.on ? '1' : '0'); };
