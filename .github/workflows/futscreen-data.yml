@@ -41,6 +41,7 @@ jobs:
           git add data/futscreen
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="futscreen-bot" -c user.email="futscreen-bot@users.noreply.github.com" commit -qm "股期選股燈號更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git stash -u -q || true   # 其他沒要存的暫存檔先收起來，不然無法 pull --rebase
           ok=0
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi

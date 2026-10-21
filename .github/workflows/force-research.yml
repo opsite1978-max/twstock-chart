@@ -28,6 +28,7 @@ jobs:
           git add data/force/research.json data/pine
           if git diff --cached --quiet; then echo "沒有變化"; exit 0; fi
           git -c user.name="force-bot" -c user.email="force-bot@users.noreply.github.com" commit -qm "多空力道研究結果更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git stash -u -q || true   # 其他沒要存的暫存檔先收起來，不然無法 pull --rebase
           ok=0
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
