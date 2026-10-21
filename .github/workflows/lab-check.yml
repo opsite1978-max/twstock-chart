@@ -1,0 +1,36 @@
+name: 實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          TOK: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out && cd out
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.parse
+          tok = os.environ['TOK']; out = []
+          def get(path, q):
+              q = dict(q, token=tok)
+              try:
+                  with urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q), timeout=90) as r: return json.load(r)
+              except Exception as e: return {'err': str(e).replace(tok, '***')}
+          for ds, did in (('TaiwanFuturesKBar', 'TX'), ('TaiwanStockKBar', '2330'), ('TaiwanFuturesTick', 'TX'), ('TaiwanStockPriceTick', '2330'), ('TaiwanFuturesDaily', 'TX'), ('TaiwanStockPrice', '2330')):
+              j = get('data', {'dataset': ds, 'data_id': did, 'start_date': '2026-10-21'}); d = j.get('data') or []
+              out.append('%s n %d msg %s last %s' % (ds, len(d), j.get('msg'), json.dumps(d[-2:], ensure_ascii=False)[:500]))
+          j = get('taiwan_stock_tick_snapshot', {'data_id': '2330'}); d = j.get('data') or []
+          out.append('STK SNAP %s %s' % (j.get('msg'), json.dumps(d[:1], ensure_ascii=False)[:700]))
+          j = get('taiwan_futures_snapshot', {'data_id': 'CDF'}); d = j.get('data') or []
+          out.append('CDF SNAP %s %s' % (j.get('msg'), json.dumps([{k: r.get(k) for k in ('futures_id', 'date', 'close', 'total_volume')} for r in d], ensure_ascii=False)[:700]))
+          with urllib.request.urlopen('https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': tok}), timeout=30) as r: u = json.load(r)
+          out.append('QUOTA %s / %s' % (u.get('user_count'), u.get('api_request_limit_hour')))
+          open('log.txt', 'w').write('\n'.join(out).replace(tok, '***'))
+          PY
+          git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
