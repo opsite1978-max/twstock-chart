@@ -35,14 +35,17 @@ jobs:
         run: python3 scripts/txo_lottery.py update
       - name: 存回專案
         run: |
-          git add data/txo
-          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="txo-bot" -c user.email="txo-bot@users.noreply.github.com" commit -qm "台指選擇權 Gamma 曝險歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
-          git stash -u -q || true   # 其他沒要存的暫存檔先收起來，不然無法 pull --rebase
+          # 只存這個流程改到的檔案：先抄出來、對齊最新的 main、再放回去提交（不會和其他流程的提交衝突）
+          files=$(git status --porcelain --untracked-files=all data/txo | awk '{print $NF}')
+          if [ -z "$files" ]; then echo "沒有新資料"; exit 0; fi
+          echo "$files"
+          mkdir -p /tmp/keep && for f in $files; do mkdir -p "/tmp/keep/$(dirname "$f")"; cp "$f" "/tmp/keep/$f"; done
           ok=0
           for i in 1 2 3 4 5; do
-            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then ok=1; break; fi
-            git rebase --abort 2>/dev/null || true
+            git fetch -q origin main && git reset -q --hard origin/main && cp -r /tmp/keep/. . && git add $files
+            if git diff --cached --quiet; then ok=1; break; fi
+            git -c user.name="txo-bot" -c user.email="txo-bot@users.noreply.github.com" commit -qm "台指選擇權 Gamma 曝險歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            if git push -q origin HEAD:main; then ok=1; break; fi
             sleep $((RANDOM % 10 + 5))
           done
           [ "$ok" = 1 ]
