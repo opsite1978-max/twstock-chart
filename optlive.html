@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest.webmanifest">
+<title>選擇權即時力道</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1f2636;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --gold:#ffca28;
+    --up:#ef5350; --down:#26a69a; --upbg:rgba(239,83,80,.14); --dnbg:rgba(38,166,154,.15);
+    --bc:#ef5350; --sc:#26a69a; --bp:#26a69a; --sp:#ef5350;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+    padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:16px;margin:0;font-weight:700;white-space:nowrap}
+  .spacer{flex:1}
+  .btn,select,input{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:7px;height:30px;padding:0 9px;font-size:13px}
+  .btn{display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap}
+  .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  input[type=number]{width:74px}
+  .bar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px}
+  .muted{color:var(--muted)} .up{color:var(--up)} .dn{color:var(--down)} .gold{color:var(--gold)}
+  main{max-width:1240px;margin:0 auto;padding:12px 14px 60px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  .kpi .lb{font-size:12px;color:var(--muted)} .kpi .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.3} .kpi .s{font-size:12px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;margin-top:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+  .card h3{margin:0 0 8px;font-size:14px;font-weight:700;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .card h3 .muted{font-size:12px;font-weight:400}
+  .tag{display:inline-block;min-width:30px;text-align:center;padding:0 6px;border-radius:5px;font-size:12px;font-weight:700;line-height:20px;border:1px solid}
+  .tag.BC,.tag.SP{color:var(--up);border-color:var(--up);background:var(--upbg)}
+  .tag.SC,.tag.BP{color:var(--down);border-color:var(--down);background:var(--dnbg)}
+  .row4{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-variant-numeric:tabular-nums}
+  .meter{height:10px;border-radius:5px;background:var(--panel2);overflow:hidden}
+  .meter i{display:block;height:100%}
+  .net{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;font-variant-numeric:tabular-nums}
+  .net b{font-size:18px}
+  .tug{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:6px 0 2px;background:var(--panel2)}
+  .tug i{display:block;height:100%}
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+  th,td{padding:4px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500;font-size:12px} td:first-child,th:first-child{text-align:left}
+  .chart{height:230px;margin-top:6px}
+  .log{max-height:380px;overflow:auto;font-size:13px;font-variant-numeric:tabular-nums}
+  .log div{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+  .note{font-size:12px;color:var(--muted);line-height:1.75;margin-top:8px}
+  .msg{padding:10px 12px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin-top:10px;line-height:1.7}
+  @media (max-width:560px){ main{padding:10px 10px 50px} .grid{grid-template-columns:1fr} .kpi .v{font-size:19px} .cols2{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ 選擇權即時力道</h1>
+  <span class="muted" id="hdr"></span>
+  <span class="spacer"></span>
+  <a class="btn" href="txo.html">選擇權</a><a class="btn" href="force.html">多空力道</a><a class="btn" href="overview.html">總覽</a>
+</header>
+<div class="bar">
+  <button class="btn on" id="liveBtn">即時更新中</button>
+  <label>每 <select id="ivSel"><option value="15">15</option><option value="20">20</option><option value="30">30</option><option value="60">60</option></select> 秒</label>
+  <label>爆量門檻 <input type="number" id="thIn" min="10" step="10"> 口</label>
+  <span class="muted" id="expInfo"></span>
+  <span class="spacer"></span>
+  <span class="muted" id="quota"></span>
+</div>
+<main>
+  <div id="msg" class="msg" hidden></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid">
+    <div class="card"><h3>主動力道統計 <span class="muted" id="sessName"></span></h3><div id="force"></div></div>
+    <div class="card"><h3>期貨即時力道 <span class="muted">主動買 − 主動賣（口）</span></h3><div id="fut"></div></div>
+    <div class="card" style="grid-column:1/-1"><h3>主力集中 <span class="muted">這個時段單次湧入 ≥ 門檻的累計口數</span></h3><div class="cols2" id="conc"></div></div>
+    <div class="card"><h3>淨力道走勢 <span class="muted">（BC＋SP）−（BP＋SC）累計，左軸台指期</span></h3><div class="chart" id="ch1"></div></div>
+    <div class="card"><h3>期貨力道走勢 <span class="muted">大台＋小台×¼＋微台×1/20（大台口數），左軸台指期</span></h3><div class="chart" id="ch2"></div></div>
+    <div class="card"><h3>爆量紀錄 <span class="muted">最新在上</span></h3><div class="log" id="log"></div></div>
+    <div class="card"><h3>上一個時段（收盤後正式逐筆） <span class="muted" id="offName"></span></h3><div id="off"></div></div>
+  </div>
+  <p class="note">
+    <b>怎麼算</b>：每 20 秒（可調）抓一次台指選擇權最近 2 個結算日、大台、小台、微台的即時報價，比較兩次之間每一檔增加的成交量。方向看最後一筆是外盤還是內盤（成交在賣價＝主動買、在買價＝主動賣）：
+    買權主動買＝BC、買權主動賣＝SC、賣權主動買＝BP、賣權主動賣＝SP。淨力道＝（BC＋SP）−（BP＋SC），正＝偏多、負＝偏空；Delta 淨力道再乘上每檔的 Delta 換成大台口數，深價內、深價外的權重不同。
+    同一檔 20 秒內湧入 ≥ 門檻口數記為一次「爆量」，主力集中列出累計最多的履約價。<br>
+    <b>限制</b>：FinMind 給的是每隔一段時間的總帳，不是每一筆成交：兩次之間如果多空都有，會整批算成最後一筆的方向；也分不出是一張大單還是很多小單。資料從打開這頁起累積（存在這台裝置，重新整理不會不見），分頁在背景或非交易時段不抓。
+    每次抓 5 個即時報價（約每小時 900 次），本小時用超過 4,000 次自動放慢到每分鐘、超過 5,000 次暫停。<br>
+    「上一個時段」用網站每天算好的正式逐筆資料（每筆用價格跳動推估方向），和即時推估方法不同，數字不能直接比。本頁只是資料整理，不是投資建議。
+  </p>
+</main>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 0) => x == null || !isFinite(x) ? '–' : (+x).toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const sgn = (x, d = 0) => x == null || !isFinite(x) ? '–' : (x > 0 ? '+' : x < 0 ? '−' : '') + fmt(Math.abs(x), d);
+const cls = x => x > 0 ? 'up' : x < 0 ? 'dn' : '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const store = { get:(k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }, set:(k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
+let SET = {}; try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+const TOK = (SET.token || '').trim();
+const twNow = () => new Date(Date.now() + 8 * 3600e3);
+const dayT = (d, m) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 1000 + m * 60;
+const shiftDay = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const hms = t => new Date(t * 1000).toISOString().slice(11, 19);
+const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
+async function getJSON(p){ const r = await fetch(p + '?v=' + Math.floor(Date.now() / 600000)); if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }
+
+/* ───────── 設定 ───────── */
+const CFG = { iv:+store.get('ol.iv', '20'), th:+store.get('ol.th', '100'), on:store.get('ol.on', '1') !== '0' };
+$('#ivSel').value = String(CFG.iv); $('#thIn').value = CFG.th;
+$('#ivSel').onchange = () => { CFG.iv = +$('#ivSel').value; store.set('ol.iv', CFG.iv); schedule(); };
+$('#thIn').onchange = () => { CFG.th = Math.max(10, +$('#thIn').value || 100); store.set('ol.th', CFG.th); render(); };
+$('#liveBtn').onclick = () => { CFG.on = !CFG.on; store.set('ol.on', CFG.on ? '1' : '0'); setBtn(); if (CFG.on) tick(); };
+function setBtn(){ $('#liveBtn').classList.toggle('on', CFG.on); $('#liveBtn').textContent = CFG.on ? '即時更新中' : '已暫停（按一下開始）'; }
+setBtn();
+
+/* ───────── 時段 ───────── */
+function session(){
+  const tw = twNow(), wd = tw.getUTCDay(), m = tw.getUTCHours() * 60 + tw.getUTCMinutes(), d = tw.toISOString().slice(0, 10);
+  if (wd >= 1 && wd <= 5 && m >= 525 && m <= 826) return { s:'D', x:d, name:md(d) + ' 日盤' };
+  if (wd >= 1 && wd <= 5 && m >= 900) return { s:'N', x:d, name:md(d) + ' 夜盤' };
+  if (wd >= 2 && wd <= 6 && m <= 301) return { s:'N', x:shiftDay(d, -1), name:md(shiftDay(d, -1)) + ' 夜盤' };
+  return null;
+}
+// 最近一個時段（收盤後也顯示剛結束的那段）
+function lastSession(){
+  const s = session(); if (s) return s;
+  const tw = twNow(), wd = tw.getUTCDay(), m = tw.getUTCHours() * 60 + tw.getUTCMinutes(), d = tw.toISOString().slice(0, 10);
+  if (wd >= 1 && wd <= 5 && m > 826 && m < 900) return { s:'D', x:d, name:md(d) + ' 日盤', closed:true };
+  let x = m < 525 ? shiftDay(d, -1) : d; while ([0, 6].includes(new Date(x + 'T00:00:00Z').getUTCDay())) x = shiftDay(x, -1);
+  return { s:'N', x, name:md(x) + ' 夜盤', closed:true };
+}
+const KEY = s => 'ol:' + s.s + ':' + s.x;
+function load(s){ try { return JSON.parse(localStorage.getItem(KEY(s)) || 'null'); } catch(e){ return null; } }
+function save(s, st){ try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e){ /* 空間不夠就砍舊紀錄再存 */ st.log = st.log.slice(0, 100); st.series = st.series.filter((p, i) => i % 2 === 0); try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e2){} } }
+function cleanOld(){ try { const old = shiftDay(twNow().toISOString().slice(0, 10), -3); for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('ol:') && k.slice(-10) < old) localStorage.removeItem(k); } } catch(e){} }
+const blank = () => ({ prev:{}, fprev:{}, tot:{ BC:0, SC:0, BP:0, SP:0, dBC:0, dSC:0, dBP:0, dSP:0 }, fut:{ TX:0, MTX:0, TMF:0 }, strikes:{}, log:[], series:[], last:0, px:null, px0:null });
+
+/* ───────── 即時報價 ───────── */
+const MC = 'ABCDEFGHIJKL', MP = 'MNOPQRSTUVWX';
+function product(code){ const m = /^(\d{4})(\d{2})(?:([WF])(\d))?$/.exec(code); if (!m) return null; const y = +m[1], mo = +m[2], n = +m[4];
+  return { prod:!m[3] ? 'TXO' : m[3] === 'W' ? 'TX' + n : 'TX' + ('UVXYZ'[n - 1] || ''), cl:MC[mo - 1] + (y % 10), pl:MP[mo - 1] + (y % 10) }; }
+const NREQ = { t:Math.floor(Date.now() / 3600e3), n:0 };
+async function snap(path, id){
+  const h = Math.floor(Date.now() / 3600e3); if (h !== NREQ.t){ NREQ.t = h; NREQ.n = 0; } NREQ.n++;
+  const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + new URLSearchParams({ data_id:id, token:TOK }), { cache:'no-store' });
+  const j = await r.json().catch(() => null);
+  if (r.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 額度用完');
+  if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('即時報價 ' + r.status));
+  return j.data || [];
+}
+const tmOf = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+function pickFut(rows){
+  const c = rows.filter(r => /^[A-Z0-9]{3}[A-L]\d$/.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tmOf));
+  return c.filter(r => newest - tmOf(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
+// 方向：最後一筆外盤＝主動買、內盤＝主動賣；沒有就看成交價靠賣價或買價；再沒有就看價格比上次高或低
+function sideOf(r, prevPx){
+  const tt = +r.TickType; if (tt === 1) return 1; if (tt === 2) return -1;
+  const c = +r.close, b = +r.buy_price, a = +r.sell_price;
+  if (a > 0 && c >= a) return 1; if (b > 0 && c <= b) return -1;
+  if (prevPx != null && c > prevPx) return 1; if (prevPx != null && c < prevPx) return -1;
+  return 0;
+}
+function ncdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+
+/* ───────── 網站資料：各結算日未平倉、隱含波動率 ───────── */
+let STRK = null, STRK_AT = 0;
+async function strikes(){ if (!STRK || Date.now() - STRK_AT > 3600e3){ STRK = await getJSON('data/force/strikes.json'); STRK_AT = Date.now(); } return STRK; }
+function aliveExps(S){ const now = Math.floor(Date.now() / 1000) + 8 * 3600; return S.exps.filter(e => dayT(e.exp, 810) > now).slice(0, 2); }
+
+/* ───────── 額度保護 ───────── */
+const Q = { used:null, lim:6000, at:0, slow:false, stop:false, src:'' };
+async function checkQuota(){
+  if (Date.now() - Q.at < 10 * 60e3) return; Q.at = Date.now();
+  try {
+    let r = await fetch('https://api.web.finmindtrade.com/v2/user_info?' + new URLSearchParams({ token:TOK }), { cache:'no-store' });
+    const j = await r.json(); if (j.user_count == null) throw new Error('no count');
+    Q.used = +j.user_count; Q.lim = +(j.api_request_limit_hour || j.api_request_limit || 6000); Q.src = '帳號';
+  } catch(e){ Q.used = null; Q.src = '本頁'; }
+  const u = Q.used != null ? Q.used : NREQ.n;
+  Q.stop = u >= 5000; Q.slow = !Q.stop && u >= 4000;
+}
+function quotaText(){ const u = Q.used != null ? Q.used : NREQ.n;
+  return (Q.src === '本頁' ? '本頁本小時已用 ' : '本小時已用 ') + fmt(u) + '／' + fmt(Q.lim) + (Q.stop ? '（超過 5,000，暫停）' : Q.slow ? '（超過 4,000，放慢到每分鐘）' : ''); }
+
+/* ───────── 抓一次 ───────── */
+let BUSY = false, ERR = '', LAST_T = '';
+async function tick(force){
+  if (!CFG.on || BUSY || (document.hidden && !force)) return;
+  const ses = session();
+  if (!TOK){ ERR = '需要 FinMind 憑證：請到看盤頁「⚙ 設定」填入'; render(); return; }
+  if (!ses){ ERR = ''; render(); return; }
+  const wasSlow = Q.slow; await checkQuota(); if (wasSlow !== Q.slow) schedule();
+  if (Q.stop){ render(); return; }
+  BUSY = true;
+  try {
+    const S = await strikes(), ex = aliveExps(S);
+    const prods = new Map(); for (const e of ex){ const lp = product(e.code); if (!lp) continue; if (!prods.has(lp.prod)) prods.set(lp.prod, []); prods.get(lp.prod).push({ e, lp }); }
+    const [ftx, fmtx, ftmf, ...ors] = await Promise.all([snap('taiwan_futures_snapshot', 'TX'), snap('taiwan_futures_snapshot', 'MTX'), snap('taiwan_futures_snapshot', 'TMF')]
+      .concat([...prods.keys()].map(p => snap('taiwan_options_snapshot', p).catch(() => []))));
+    const F = { TX:pickFut(ftx), MTX:pickFut(fmtx), TMF:pickFut(ftmf) };
+    if (!F.TX) throw new Error('取不到台指期即時價');
+    const nowS = Math.floor(Date.now() / 1000) + 8 * 3600;
+    if (tmOf(F.TX) / 1000 + 8 * 3600 < dayT(ses.x, ses.s === 'D' ? 525 : 900)){ ERR = ''; LAST_T = ''; return; }   // 這個時段還沒成交（休市）
+    const st = load(ses) || blank();
+    const fresh = Date.now() - st.last < Math.max(3, CFG.iv * 4 / 60) * 60e3;               // 太久沒抓：這次只當基準
+    const px = +F.TX.close; if (st.px0 == null) st.px0 = px;
+    // 期貨
+    for (const k of ['TX', 'MTX', 'TMF']){ const f = F[k]; if (!f) continue;
+      const p = st.fprev[k], tv = +f.total_volume || 0, side = sideOf(f, p && p.c);
+      if (fresh && p && tv > p.tv) st.fut[k] += side * (tv - p.tv);
+      st.fprev[k] = { tv, c:+f.close }; }
+    // 選擇權
+    let nNew = 0;
+    const T0 = Math.floor(Date.now() / 1000) + 8 * 3600;
+    [...prods.values()].forEach((list, pi) => { for (const r of ors[pi] || []){
+      const m = /^[A-Z0-9]{3}(\d+)([A-X])(\d)$/.exec(r.options_id); if (!m) continue;
+      const suf = m[2] + m[3], it = list.find(q => q.lp.cl === suf || q.lp.pl === suf); if (!it) continue;
+      const call = it.lp.cl === suf, K = +m[1], id = r.options_id, tv = +r.total_volume || 0, p = st.prev[id];
+      st.prev[id] = { tv, c:+r.close };
+      if (!fresh || !p || tv <= p.tv) continue;
+      const dv = tv - p.tv, side = sideOf(r, p.c); if (!side) continue;
+      const typ = call ? (side > 0 ? 'BC' : 'SC') : (side > 0 ? 'BP' : 'SP');
+      const row = it.e.rows.find(x => x[0] === K), iv = (row && row[10] ? row[10] : it.e.iv) / 100;
+      const T = Math.max(600, dayT(it.e.exp, 810) - T0) / (365 * 86400), Fw = it.e.F * px / (S.fut || it.e.F), sd = iv * Math.sqrt(T), d1 = (Math.log(Fw / K) + sd * sd / 2) / sd;
+      const dl = Math.abs(call ? ncdf(d1) : ncdf(d1) - 1);
+      st.tot[typ] += dv; st.tot['d' + typ] += dv * dl * 0.25;
+      const sk = K + (call ? 'C' : 'P'), z = st.strikes[sk] || (st.strikes[sk] = { K, call, BC:0, SC:0, BP:0, SP:0, burst:0, nb:0, bt:{} });
+      z[typ] += dv;
+      if (dv >= CFG.th){ z.burst += dv; z.nb++; z.bt[typ] = (z.bt[typ] || 0) + dv;
+        st.log.unshift({ t:nowS, K, typ, dv, c:+r.close, e:it.e.code }); if (st.log.length > 300) st.log.length = 300; }
+      nNew++;
+    } });
+    const T = st.tot, net = T.BC + T.SP - T.BP - T.SC, netD = T.dBC + T.dSP - T.dBP - T.dSC;
+    const futEq = st.fut.TX + st.fut.MTX * 0.25 + st.fut.TMF * 0.05;
+    st.series.push({ t:nowS, px, net, netD:Math.round(netD * 10) / 10, fut:Math.round(futEq * 10) / 10 });
+    if (st.series.length > 2500) st.series.splice(0, st.series.length - 2500);
+    st.px = px; st.last = Date.now(); st.exps = ex.map(e => e.code); st.F = F;
+    save(ses, st);
+    LAST_T = String(F.TX.date).slice(11, 19); ERR = '';
+  } catch(e){ ERR = e.message || String(e); }
+  finally { BUSY = false; render(); }
+}
+let TIMER = null;
+function schedule(){ clearInterval(TIMER); TIMER = setInterval(() => tick(), (Q.slow ? 60 : CFG.iv) * 1000); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+
+/* ───────── 畫面 ───────── */
+let CH = null;
+function charts(){
+  if (CH || !window.LightweightCharts) return CH;
+  const L = LightweightCharts, mk = el => L.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
+    grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line') }, leftPriceScale:{ visible:true, borderColor:css('--line') },
+    timeScale:{ borderColor:css('--line'), timeVisible:true, secondsVisible:false }, localization:{ locale:'zh-TW' }, crosshair:{ mode:L.CrosshairMode.Normal } });
+  const c1 = mk($('#ch1')), c2 = mk($('#ch2'));
+  const pxs = c => c.addSeries(L.LineSeries, { priceScaleId:'left', color:css('--muted'), lineWidth:1, priceLineVisible:false, lastValueVisible:true, priceFormat:{ type:'price', precision:0, minMove:1 } });
+  CH = { c1, c2, p1:pxs(c1), p2:pxs(c2),
+    n1:c1.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, topLineColor:css('--up'), topFillColor1:'rgba(239,83,80,.25)', topFillColor2:'rgba(239,83,80,.02)', bottomLineColor:css('--down'), bottomFillColor1:'rgba(38,166,154,.02)', bottomFillColor2:'rgba(38,166,154,.25)', priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }),
+    n2:c2.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, topLineColor:css('--up'), topFillColor1:'rgba(239,83,80,.25)', topFillColor2:'rgba(239,83,80,.02)', bottomLineColor:css('--down'), bottomFillColor1:'rgba(38,166,154,.02)', bottomFillColor2:'rgba(38,166,154,.25)', priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }) };
+  return CH;
+}
+function bar4(T, d){
+  const k = d ? 'd' : '', v = t => T[k + t], mx = Math.max(1, ...['BC', 'SC', 'BP', 'SP'].map(v));
+  return ['BC', 'SC', 'BP', 'SP'].map(t => `<span class="tag ${t}">${t}</span><div class="meter"><i style="width:${(v(t) / mx * 100).toFixed(1)}%;background:var(--${t.toLowerCase()})"></i></div><b>${fmt(v(t), d ? 1 : 0)}</b>`).join('');
+}
+function render(){
+  const ses = lastSession(), st = load(ses) || blank(), live = session();
+  $('#hdr').textContent = LAST_T ? '更新 ' + LAST_T : '';
+  $('#quota').textContent = TOK ? quotaText() : '';
+  $('#sessName').textContent = ses.name + (ses.closed ? '（已收盤）' : '');
+  $('#expInfo').textContent = st.exps ? '選擇權：' + st.exps.map(c => md(c.slice(0, 4) + '-' + c.slice(4, 6) + '-01').split('/')[0] + '月' + (c.slice(6) ? (c[6] === 'W' ? '週三' : '週五') + c[7] : '月選')).join('、') : '';
+  const msg = ERR ? '⚠️ ' + ERR : !live ? '現在不是交易時段（日盤 08:45–13:45、夜盤 15:00–05:00），開盤後自動開始；下面是' + ses.name + '從打開頁面起累積的資料。' : !st.series.length ? '即時更新已開始，第一次抓價只當基準，下一次（' + CFG.iv + ' 秒後）開始累積。' : '';
+  $('#msg').hidden = !msg; $('#msg').textContent = msg;
+  // 上方數字
+  const S = STRK, e0 = S && aliveExps(S)[0], sum = (e, i) => e ? e.rows.reduce((t, r) => t + r[i], 0) : null;
+  const coi = sum(e0, 1), poi = sum(e0, 2), T = st.tot, net = T.BC + T.SP - T.BP - T.SC, netD = T.dBC + T.dSP - T.dBP - T.dSC;
+  const px = st.px, chg = px != null && S ? px - S.fut : null;
+  $('#kpis').innerHTML = [
+    ['台指期', fmt(px), chg != null ? `<span class="${cls(chg)}">${sgn(chg)}（比 ${md(S.d)} 收盤）</span>` : ''],
+    ['淨力道（口）', `<span class="${cls(net)}">${sgn(net)}</span>`, `Delta 加權 <span class="${cls(netD)}">${sgn(netD, 1)}</span> 大台口`],
+    ['買權未平倉', `<span class="up">${fmt(coi)}</span>`, e0 ? md(e0.exp) + ' 結算・' + md(S.d) + ' 收盤' : ''],
+    ['賣權未平倉', `<span class="dn">${fmt(poi)}</span>`, e0 ? md(e0.exp) + ' 結算' : ''],
+    ['未平倉 賣權／買權', coi ? (poi / coi).toFixed(2) : '–', '大於 1＝賣權較多'],
+  ].map(([a, b, c]) => `<div class="kpi"><div class="lb">${a}</div><div class="v">${b}</div><div class="s">${c}</div></div>`).join('');
+  // 主動力道
+  const bull = T.BC + T.SP, bear = T.BP + T.SC, tot = bull + bear || 1;
+  $('#force').innerHTML = `<div class="row4">${bar4(T)}</div>
+    <div class="net"><span>買權淨 BC − SC</span><b class="${cls(T.BC - T.SC)}">${sgn(T.BC - T.SC)}</b></div>
+    <div class="net"><span>賣權淨 BP − SP</span><b class="${cls(-(T.BP - T.SP))}">${sgn(T.BP - T.SP)}</b></div>
+    <div class="tug"><i style="width:${(bull / tot * 100).toFixed(1)}%;background:var(--up)"></i><i style="width:${(bear / tot * 100).toFixed(1)}%;background:var(--down)"></i></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px" class="muted"><span>偏多 BC＋SP ${fmt(bull)}</span><span>偏空 BP＋SC ${fmt(bear)}</span></div>
+    <div class="net"><span>淨力道</span><b class="${cls(net)}">${sgn(net)} 口</b></div>
+    <div class="net"><span>Delta 淨力道</span><b class="${cls(netD)}">${sgn(netD, 1)} 大台口</b></div>`;
+  // 期貨
+  const fq = st.fut.TX + st.fut.MTX * 0.25 + st.fut.TMF * 0.05;
+  $('#fut').innerHTML = [['大台', 'TX', 1], ['小台', 'MTX', 0.25], ['微台', 'TMF', 0.05]].map(([n, k]) => `<div class="net"><span>${n}</span><b class="${cls(st.fut[k])}">${sgn(st.fut[k])} 口</b></div>`).join('')
+    + `<div class="net" style="border-top:1px solid var(--line);padding-top:8px"><span>合計（大台口數）</span><b class="${cls(fq)}">${sgn(fq, 1)}</b></div>
+       <div class="note">微台、小台多半是散戶，大台多半是法人和大戶，三個方向不一致時特別值得注意。</div>`;
+  // 主力集中
+  const Z = Object.values(st.strikes).filter(z => z.burst > 0);
+  const side = call => { const L = Z.filter(z => z.call === call).sort((a, b) => b.burst - a.burst).slice(0, 8);
+    if (!L.length) return `<div><div class="muted" style="margin-bottom:4px">${call ? '買權' : '賣權'}</div><div class="muted">還沒有單次 ≥ ${CFG.th} 口的爆量</div></div>`;
+    const oi = K => { const r = e0 && e0.rows.find(x => x[0] === K); return r ? (call ? [r[1], r[3]] : [r[2], r[4]]) : null; };
+    return `<div><div class="muted" style="margin-bottom:4px">${call ? '買權（Call）' : '賣權（Put）'}</div><table><tr><th>履約價</th><th>主要</th><th>爆量</th><th>次數</th><th>未平倉（昨）</th></tr>` + L.map(z => {
+      const top = Object.entries(z.bt).sort((a, b) => b[1] - a[1])[0][0], o = oi(z.K);
+      return `<tr><td><b class="${call ? 'up' : 'dn'}">${fmt(z.K)}</b></td><td><span class="tag ${top}">${top}</span></td><td>${fmt(z.burst)}</td><td>${z.nb}</td><td>${o ? fmt(o[0]) + ' <span class="muted">' + sgn(o[1]) + '</span>' : '–'}</td></tr>`; }).join('') + '</table></div>'; };
+  $('#conc').innerHTML = side(true) + side(false);
+  // 爆量紀錄
+  $('#log').innerHTML = st.log.length ? st.log.slice(0, 120).map(x => `<div><span class="muted">${hms(x.t)}</span><b>${fmt(x.K)}</b><span class="tag ${x.typ}">${x.typ}</span><b class="${x.typ === 'BC' || x.typ === 'SP' ? 'up' : 'dn'}">+${fmt(x.dv)}</b><span class="muted">@${x.c}</span></div>`).join('') : `<div class="muted">還沒有單次 ≥ ${CFG.th} 口的爆量</div>`;
+  // 圖
+  const C = charts();
+  if (C){ const pts = st.series;
+    C.p1.setData(pts.map(p => ({ time:p.t, value:p.px }))); C.n1.setData(pts.map(p => ({ time:p.t, value:p.net })));
+    C.p2.setData(pts.map(p => ({ time:p.t, value:p.px }))); C.n2.setData(pts.map(p => ({ time:p.t, value:p.fut }))); }
+}
+
+/* ───────── 上一個時段（網站正式逐筆資料） ───────── */
+async function renderOff(){
+  try {
+    const idx = await getJSON('data/force/index.json'), mo = idx.months[idx.months.length - 1], j = await getJSON('data/force/m5/' + mo + '.json');
+    const s = j.sessions[j.sessions.length - 1], ci = k => j.cols.indexOf(k);
+    const t = { BC:0, SC:0, BP:0, SP:0, net:0 }; for (const r of s.bars){ t.BC += r[ci('cb')]; t.SC += r[ci('cs')]; t.BP += r[ci('pb')]; t.SP += r[ci('ps')]; t.net += r[ci('net')]; }
+    $('#offName').textContent = md(s.td) + (s.s === 'D' ? ' 日盤' : ' 夜盤（屬於 ' + md(s.td) + '）');
+    const net = t.BC + t.SP - t.BP - t.SC;
+    $('#off').innerHTML = `<div class="row4">${bar4(t)}</div><div class="net"><span>淨力道</span><b class="${cls(net)}">${sgn(net)} 口</b></div><div class="net"><span>Delta 淨力道</span><b class="${cls(t.net)}">${sgn(t.net, 1)} 大台口</b></div>`
+      + `<div class="note">全部成交（不分大小），方向用價格跳動推估。資料 ${esc(idx.updated || '')}。</div>`;
+  } catch(e){ $('#off').innerHTML = '<div class="muted">讀取失敗</div>'; }
+}
+
+/* ───────── 啟動 ───────── */
+(async () => {
+  cleanOld();
+  try { await strikes(); } catch(e){}
+  render(); renderOff();
+  schedule(); tick(true);
+})();
+</script>
+<script src="autoreload.js"></script>
+</body>
+</html>
