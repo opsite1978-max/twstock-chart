@@ -737,7 +737,7 @@ function flLiveBase(step, base){
   const keys = []; try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith('fl.live:')) keys.push(k); } } catch(e){}
   keys.sort((a, b) => a.slice(-10).localeCompare(b.slice(-10)) || (a.includes(':D:') ? -1 : 1));
   for (const k of keys){
-    const [, , s, x] = k.split(':'), st = flGet(k); if (!st || !st.bars) continue;
+    const [, s, x] = k.split(':'), st = flGet(k); if (!st || !st.bars) continue;
     const td = s === 'D' ? x : nextTD(x), s0 = dayT(x, s === 'D' ? 525 : 900);
     let cur = null;
     for (const b of st.bars){
