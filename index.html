@@ -165,6 +165,7 @@
   <div class="plabel" id="lbl-shz"></div>
   <div class="plabel" id="lbl-ivx"></div>
   <div class="plabel" id="lbl-flow"></div>
+  <div class="plabel" id="lbl-retail"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
 </div></div>
 
@@ -185,6 +186,7 @@
         <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
         <label class="chk"><input type="checkbox" data-ind="ivx">隱含波動率（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="flow">資金流（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="retail">散戶指標（台指期）</label>
       </div>
     </div>
 
@@ -463,6 +465,17 @@
           <button class="small" data-reset="flow">恢復預設</button>
         </div>
       </details>
+      <details>
+        <summary>散戶指標（只適用台指期）</summary>
+        <div class="stack">
+          <div class="hint">散戶＝小單：小台、微台一筆 2 口以下的成交，加上台指選擇權一筆 2 口以下的成交（乘 Delta），用價格跳動推估主動買賣，換成大台口數，和過去同一時間比較後標準化成 −100～+100。正＝散戶比平常更積極買（追多），負＝更積極賣（殺低）。資料由網站每天計算，不用 FinMind 額度，不是即時。</div>
+          <div class="kv"><span>算法</span><select data-k="retail.k" data-redraw="retail"><option value="B">散戶殘差（扣掉價格漲跌的部分）</option><option value="A">散戶淨買</option><option value="C">散戶減大單</option></select></div>
+          <div class="kv"><span>上下界（±）</span><input type="number" data-k="retail.hi" data-redraw="retail" min="20" max="95" step="5"></div>
+          <label class="chk"><input type="checkbox" data-k="retail.mainSig" data-redraw="retail">K 線圖上標出「散追」「散殺」（從上下界回來）</label>
+          <div class="kv"><span>追多／殺低顏色</span><span class="pair"><input type="color" data-k="retail.cUp" data-redraw="retail"><input type="color" data-k="retail.cDn" data-redraw="retail"></span></div>
+          <button class="small" data-reset="retail">恢復預設</button>
+        </div>
+      </details>
     </div>
 
     <div class="sec">
@@ -630,9 +643,10 @@ const DEFAULTS = {
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
+  retail:{ k:'B', hi:60, mainSig:false, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:false }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -662,7 +676,7 @@ if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨�
 S.v = 17;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -1191,7 +1205,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow'];
+const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1610,6 +1624,7 @@ function refreshMarkers(){
   if (paneOf.shz !== undefined && IND.shz.vals) list = list.concat(IND.shz.mainMarkers());
   if (paneOf.ivx !== undefined && IND.ivx.vals && S.ivx.mainSig) list = list.concat(IND.ivx.mainMarkers());
   if (paneOf.flow !== undefined && IND.flow.vals && (S.flow.mainSig || S.flow.early)) list = list.concat(IND.flow.mainMarkers().filter(m => m.text === '預' || m.text === '背' ? S.flow.early : S.flow.mainSig));
+  if (paneOf.retail !== undefined && IND.retail.vals && S.retail.mainSig) list = list.concat(IND.retail.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2491,7 +2506,7 @@ async function load(){
 
     candle.setData(bars.map(({time,open,high,low,close}) => ({ time, open, high, low, close })));
     drawMain();
-    if ((S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) || (S.ind.flow && (paneOf.flow !== undefined) !== IND.flow.avail())) buildIndicators();
+    if ((S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) || (S.ind.flow && (paneOf.flow !== undefined) !== IND.flow.avail()) || (S.ind.retail && (paneOf.retail !== undefined) !== IND.retail.avail())) buildIndicators();
     drawIndicators();
     layoutPanes();
 
@@ -3048,7 +3063,7 @@ function flwLoad(){
       for (const s of j.sessions) for (const r of s.bars){ const o = { td:s.td, s:s.s }; j.cols.forEach((c, i) => o[c] = r[i]); out.push(o); } }
     out.sort((a, b) => a.t - b.t);
     while (out.length){ const b = out[out.length - 1]; if (!b.v && !b.net && !b.gross && b.o === b.h && b.h === b.l && b.l === b.c) out.pop(); else break; }
-    FLW.base = out; FLW.cache.clear(); drawInd('flow');
+    FLW.base = out; FLW.cache.clear(); drawInd('flow'); drawInd('retail');
   })().catch(() => { FLW.pend = null; });
   return null;
 }
@@ -3226,7 +3241,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -3244,12 +3259,114 @@ const RESETS = {
   shz:   ['shz'],
   ivx:   ['ivx'],
   flow:  ['flow'],
+  retail: ['retail'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
   bb3:   ['bb3'],
   ribbon:['ribbon'],
 };
+
+/* ───────────── 散戶指標（只適用台指期；資料由網站每天計算，不用 FinMind 額度） ─────────────
+   散戶＝小單：小台、微台一筆 ≤ 2 口的成交，加上台指選擇權一筆 ≤ 2 口的成交（乘 Delta），用價格跳動推估主動買賣，換成大台口數。
+   和過去同一時間比較後標準化成 −100～+100：正＝散戶比平常更積極買進（追多），負＝散戶比平常更積極賣出（殺低）。
+   算法：散戶淨買／散戶殘差（扣掉價格漲跌帶動的部分）／散戶減大單。 */
+const RTL = { map:null, pend:null, cache:new Map() };
+function rtlLoad(){
+  if (RTL.map) return RTL.map;
+  if (!RTL.pend) RTL.pend = (async () => {
+    const v = Math.floor(Date.now() / 600000);
+    const idx = await fetch('data/retail/index.json?v=' + v).then(r => r.json());
+    const months = await Promise.all((idx.months || []).map(m => fetch('data/retail/m5/' + m + '.json?v=' + v).then(r => r.ok ? r.json() : null).catch(() => null)));
+    const map = new Map();
+    for (const j of months){ if (!j) continue; for (const s of j.sessions) for (const r of s.bars) map.set(r[0], r); }
+    RTL.map = map; RTL.upd = idx.updated; RTL.cache.clear(); drawInd('retail');
+  })().catch(() => { RTL.pend = null; });
+  return null;
+}
+function rtlSeries(tf){
+  const ck = tf + ':' + (FLW.base ? FLW.base.length : 0) + ':' + RTL.map.size;
+  if (RTL.cache.has(ck)) return RTL.cache.get(ck);
+  const out = []; let cur = null;
+  for (const b of FLW.base){
+    let key, t, k;
+    if (tf === 'D'){ key = b.td; t = b.td; k = 0; }
+    else { const s0 = flwS0(b); k = Math.floor((b.t - s0) / (tf * 60)); t = s0 + k * tf * 60; key = b.s + t; }
+    if (!cur || cur.key !== key){ cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, s:tf === 'D' ? 'X' : b.s, k, S:0, L:0, ok:false }; out.push(cur); }
+    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c;
+    const r = RTL.map.get(b.t); if (r){ cur.S += r[1] + r[4]; cur.L += r[2] + r[5]; cur.ok = true; }
+  }
+  const S = out.map(b => b.ok ? b.S : null), L = out.map(b => b.ok ? b.L : null), ret = out.map(b => b.ok && b.o ? (b.c - b.o) / b.o : null);
+  const zS = flwSlotZ(out, S), zL = flwSlotZ(out, L), zR = flwSlotZ(out, ret);
+  const resid = [], xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  const minn = tf === 'D' ? 30 : 100;
+  for (let i = 0; i < out.length; i++){ let r = null;
+    if (zS[i] != null && zR[i] != null){ const m = xs.length;
+      if (m >= minn && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zS[i] - bt * zR[i]; }
+      xs.push(zR[i]); ys.push(zS[i]); sx += zR[i]; sy += zS[i]; sxx += zR[i] ** 2; sxy += zR[i] * zS[i];
+      if (xs.length > 500){ const p = xs.shift(), q = ys.shift(); sx -= p; sy -= q; sxx -= p * p; sxy -= p * q; } }
+    resid.push(r); }
+  const div = zS.map((a, i) => a == null || zL[i] == null ? null : a - zL[i]);
+  const qmin = tf === 'D' ? 30 : 120, qmax = tf === 'D' ? 150 : 1500;
+  const R = { bars:out, map:new Map(out.map((b, i) => [b.t, i])),
+    A:flwCal(zS, 5, qmin, qmax), B:flwCal(resid, 5, qmin, qmax), C:flwCal(div, 5, qmin, qmax) };
+  RTL.cache.set(ck, R);
+  return R;
+}
+// 訊號：從極端區回來（≥ 上界後跌回＝散戶追多退潮；≤ 下界後穿回＝散戶殺低結束）
+function rtlSignals(V, hi, lo){
+  const top = new Map(), bot = new Map();
+  for (let i = 1; i < V.length; i++){ if (V[i] == null || V[i - 1] == null) continue;
+    if (V[i - 1] >= hi && V[i] < hi) top.set(i, 1);
+    if (V[i - 1] <= lo && V[i] > lo) bot.set(i, 1); }
+  return { top, bot };
+}
+Object.assign(IND, {
+  retail: {
+    s:{}, vals:null,
+    avail(){ return !!(currentSym && currentSym.kind === 'fut') && !['W', 'M'].includes(S.tf); },
+    create(p){
+      const { BaselineSeries, LineStyle } = LC();
+      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1,
+        autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }),
+        topFillColor1:'rgba(239,83,80,0.28)', topFillColor2:'rgba(239,83,80,0.02)', bottomFillColor1:'rgba(38,166,154,0.02)', bottomFillColor2:'rgba(38,166,154,0.28)' }, p);
+      this.refs = [[1, 0], [0.5, 2], [0, 0], [-0.5, 2], [-1, 0]].map(([k, st]) => this.s.main.createPriceLine({ price:0, lineWidth:k === 0 ? 1 : Math.abs(k) === 1 ? 2 : 1, lineStyle:st, axisLabelVisible:Math.abs(k) === 1, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    draw(){
+      const P = S.retail, base = flwLoad(), m = rtlLoad();
+      if (!base || !m){ this.vals = { wait:true }; this.s.main.setData([]); this.mk.setMarkers([]); refreshMarkers(); return; }
+      const R = rtlSeries(S.tf === 'D' ? 'D' : +S.tf), V = R[P.k], sg = rtlSignals(V, +P.hi, -P.hi);
+      const day = !(TF[S.tf] || {}).intraday, v = [], top = [], bot = [];
+      bars.forEach(b => { const j = R.map.get(day ? b.date : b.time);
+        v.push(j == null ? null : V[j]); top.push(j != null && sg.top.has(j)); bot.push(j != null && sg.bot.has(j)); });
+      this.vals = { v, top, bot };
+      this.s.main.setData(toLine(v));
+      this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
+      [+P.hi, +P.hi / 2, 0, -P.hi / 2, -P.hi].forEach((y, k) => this.refs[k].applyOptions({ price:y, color:k < 2 ? P.cUp : k > 2 ? P.cDn : hexA(S.col.text, .35) }));
+      const mk = [];
+      bars.forEach((b, i) => { if (top[i]) mk.push({ time:b.time, position:'aboveBar', shape:'arrowDown', color:P.cUp, size:0.8 });
+        if (bot[i]) mk.push({ time:b.time, position:'belowBar', shape:'arrowUp', color:P.cDn, size:0.8 }); });
+      this.mk.setMarkers(mk);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.retail, out = []; if (!v || !v.top) return out;
+      v.top.forEach((t, i) => { if (t) out.push({ i, position:'aboveBar', shape:'arrowDown', color:P.cUp, text:'散追' }); });
+      v.bot.forEach((t, i) => { if (t) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cDn, text:'散殺' }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.retail, name = { A:'散戶淨買', B:'散戶殘差', C:'散戶減大單' }[P.k] || '散戶指標';
+      if (!v) return '';
+      if (v.wait) return `散戶指標　<span class="muted">讀取中…</span>`;
+      const x = v.v[i];
+      const zone = x == null ? '' : x >= P.hi ? `　<span style="color:${P.cUp}">散戶追多（極端）</span>` : x <= -P.hi ? `　<span style="color:${P.cDn}">散戶殺低（極端）</span>` : '';
+      const tag = v.top[i] ? `　<span class="tag" style="background:${P.cUp};color:#fff">追多退潮</span>` : v.bot[i] ? `　<span class="tag" style="background:${P.cDn};color:#fff">殺低結束</span>` : '';
+      return `${name} <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${zone}${tag}`;
+    },
+  },
+});
 
 function fillSettingsUI(){
   $('token').value = S.token || '';
