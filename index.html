@@ -130,7 +130,7 @@
     <label class="chk" title="盤中每分鐘抓即時報價更新最後一根 K 棒（每分鐘用 1 個 FinMind 額度，分頁沒在看時不抓）；收盤後正式資料公布會自動換上"><input type="checkbox" id="auto">自動更新</label>
   <button class="primary" id="loadBtn">載入</button>
   <button id="setBtn" title="指標、顏色、版面與憑證">⚙ 設定</button>
-  <button id="clrBtn" title="台指清晰看盤：K 線＋撐壓線，只放回測有用的三個指標（資金流殘差、散戶指標、散戶凹單）和訊號總表" onclick="location.href='clear.html'">清晰看盤</button>
+  <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋終極力道震盪指標，畫面只留這兩個" onclick="location.href='clear.html'">清晰看盤</button>
     <button id="ovBtn" title="今日總覽：台指期、選擇權撐壓、法人、資金流、族群、籌碼焦點一頁看完" onclick="location.href='overview.html'">總覽</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
   <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
@@ -165,6 +165,7 @@
   <div class="plabel" id="lbl-qsz"></div>
   <div class="plabel" id="lbl-shz"></div>
   <div class="plabel" id="lbl-ivx"></div>
+  <div class="plabel" id="lbl-ult"></div>
   <div class="plabel" id="lbl-flow"></div>
   <div class="plabel" id="lbl-retail"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「載入」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
@@ -186,6 +187,7 @@
         <label class="chk"><input type="checkbox" data-ind="qsz">四色動能柱＋尋底</label>
         <label class="chk"><input type="checkbox" data-ind="shz">散戶線／主力線（超級散主線）</label>
         <label class="chk"><input type="checkbox" data-ind="ivx">隱含波動率（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="ult">終極力道（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="flow">資金流（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="retail">散戶指標（台指期）</label>
       </div>
@@ -455,6 +457,16 @@
         </div>
       </details>
       <details>
+        <summary>終極力道（只適用台指期）</summary>
+        <div class="stack">
+          <div class="hint">和「多空力道」頁同一套算法（TXO FORCE ULTIMATE）：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去同時段比較後校準成 −100～+100。≥ +60 強多、≤ −60 強空、−70 悲觀線，±20 以內方向不明；虛線是訊號線。GO 多＝先前極端偏空或恐慌、力道回升 30 以上、連兩根上升站上訊號線、收盤突破前一根高點（GO 空反過來）。資料網站每天早晚計算，不用 FinMind 額度。</div>
+          <label class="chk"><input type="checkbox" data-k="ult.sig" data-redraw="ult">顯示訊號線</label>
+          <label class="chk"><input type="checkbox" data-k="ult.go" data-redraw="ult">標出 GO 多／GO 空（K 線圖和副圖）</label>
+          <div class="kv"><span>偏多／偏空／訊號線</span><span class="pair"><input type="color" data-k="ult.cUp" data-redraw="ult"><input type="color" data-k="ult.cDn" data-redraw="ult"><input type="color" data-k="ult.cSig" data-redraw="ult"></span></div>
+          <button class="small" data-reset="ult">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>資金流（只適用台指期）</summary>
         <div class="stack">
           <div class="hint">台指選擇權逐筆主動成交的 Delta 淨流量，扣掉價格本身漲跌帶動的部分，標準化成 −100～+100；資料由網站每晚計算，不用 FinMind 額度，不是即時。低＝從超賣區（≤ −60）往上穿回 −60，強低＝期間曾跌破 −70；預＝剛跌進超賣區（比低早約 1 根，比較不確定）；背＝價格破低、資金流沒破。完整統計在「資金流看盤」頁。</div>
@@ -645,10 +657,11 @@ const DEFAULTS = {
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
+  ult:{ sig:true, go:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28' },
   retail:{ k:'C', hi:60, hiD:30, mainSig:true, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -676,15 +689,21 @@ if ((S.v || 0) < 15) S.ind = Object.assign({}, S.ind, { ivx:true });
 if ((S.v || 0) < 16) S.ind = Object.assign({}, S.ind, { flow:true });
 if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨流量力道
 if ((S.v || 0) < 18) S.ind = Object.assign({}, S.ind, { retail:true });
-S.v = 18;
+if ((S.v || 0) < 19) S.ind = Object.assign({}, S.ind, { ult:true });
+S.v = 19;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
 S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
-const save = () => store.set('twchart.settings', JSON.stringify(S));
+// 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋布林通道＋終極力道；設定另外存，不影響一般看盤
+const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
+if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
+  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'ult'])); S.ovl = {}; S.ma.forEach(m => m.on = false); S.bb.on = true;
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; if (cp.periods) S.periods = cp.periods; S.night = cp.night !== false; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
+const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, mainRatio:S.mainRatio })) : store.set('twchart.settings', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -1208,7 +1227,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail'];
+const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1628,6 +1647,7 @@ function refreshMarkers(){
   if (paneOf.ivx !== undefined && IND.ivx.vals && S.ivx.mainSig) list = list.concat(IND.ivx.mainMarkers());
   if (paneOf.flow !== undefined && IND.flow.vals && (S.flow.mainSig || S.flow.early)) list = list.concat(IND.flow.mainMarkers().filter(m => m.text === '預' || m.text === '背' ? S.flow.early : S.flow.mainSig));
   if (paneOf.retail !== undefined && IND.retail.vals && S.retail.mainSig) list = list.concat(IND.retail.mainMarkers());
+  if (paneOf.ult !== undefined && IND.ult.vals) list = list.concat(IND.ult.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -2509,7 +2529,7 @@ async function load(){
 
     candle.setData(bars.map(({time,open,high,low,close}) => ({ time, open, high, low, close })));
     drawMain();
-    if ((S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) || (S.ind.flow && (paneOf.flow !== undefined) !== IND.flow.avail()) || (S.ind.retail && (paneOf.retail !== undefined) !== IND.retail.avail())) buildIndicators();
+    if ((S.ind.ivx && (paneOf.ivx !== undefined) !== IND.ivx.avail()) || (S.ind.flow && (paneOf.flow !== undefined) !== IND.flow.avail()) || (S.ind.retail && (paneOf.retail !== undefined) !== IND.retail.avail()) || (S.ind.ult && (paneOf.ult !== undefined) !== IND.ult.avail())) buildIndicators();
     drawIndicators();
     layoutPanes();
 
@@ -3066,7 +3086,7 @@ function flwLoad(){
       for (const s of j.sessions) for (const r of s.bars){ const o = { td:s.td, s:s.s }; j.cols.forEach((c, i) => o[c] = r[i]); out.push(o); } }
     out.sort((a, b) => a.t - b.t);
     while (out.length){ const b = out[out.length - 1]; if (!b.v && !b.net && !b.gross && b.o === b.h && b.h === b.l && b.l === b.c) out.pop(); else break; }
-    FLW.base = out; FLW.cache.clear(); drawInd('flow'); drawInd('retail');
+    FLW.base = out; FLW.cache.clear(); drawInd('flow'); drawInd('retail'); drawInd('ult');
   })().catch(() => { FLW.pend = null; });
   return null;
 }
@@ -3244,7 +3264,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -3263,6 +3283,7 @@ const RESETS = {
   ivx:   ['ivx'],
   flow:  ['flow'],
   retail: ['retail'],
+  ult: ['ult'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
@@ -3367,6 +3388,130 @@ Object.assign(IND, {
       const H = this.H || P.hi, zone = x == null ? '' : x >= H ? `　<span style="color:${P.cUp}">散戶追多（極端）</span>` : x <= -H ? `　<span style="color:${P.cDn}">散戶殺低（極端）</span>` : '';
       const tag = v.top[i] ? `　<span class="tag" style="background:${P.cUp};color:#fff">追多退潮</span>` : v.bot[i] ? `　<span class="tag" style="background:${P.cDn};color:#fff">殺低結束</span>` : '';
       return `${name} <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${zone}${tag}`;
+    },
+  },
+});
+
+/* ───────────── 終極力道（TXO FORCE ULTIMATE；和「多空力道」頁同一套算法，只適用台指期） ─────────────
+   主線 F：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去 30 個同時段比（穩健 z 分數），指數平均 5 根後依過去分布校準成 −100～+100。
+   訊號線：主線的指數平均（約 9 根）。≥ +60 強多、≤ −60 強空、−70 悲觀線；±20 以內方向不明。
+   GO：先前極端偏空（≤ −60）或恐慌 → 力道回升 30 以上、連兩根上升且站上訊號線 → 收盤突破前一根高點（空方反過來）。
+   恐慌指數：跌幅、波動率指數上升、賣權主動買占比、已實現波動、負向力道，各自和過去比的百分位平均（≥ 80＝恐慌擴張）。 */
+const ULT = { cache:new Map() };
+const ultMed = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const ultAvg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
+function ultAgg(tf){
+  const out = []; let cur = null;
+  for (const b of FLW.base){
+    let key, t, k;
+    if (tf === 'D'){ key = b.td; t = b.td; k = 0; }
+    else { const s0 = flwS0(b); k = Math.floor((b.t - s0) / (tf * 60)); t = s0 + k * tf * 60; key = b.s + t; }
+    if (!cur || cur.key !== key){ cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, cb:0, cs:0, pb:0, ps:0, unk:0, vix:null, td:b.td, s:tf === 'D' ? 'X' : b.s, k }; out.push(cur); }
+    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c; cur.net += b.net || 0;
+    for (const f of ['cb', 'cs', 'pb', 'ps', 'unk']) cur[f] += b[f] || 0;
+    if (b.vix != null) cur.vix = b.vix;
+  }
+  return out;
+}
+function ultPct(sorted, x){ let lo = 0, hi = sorted.length; while (lo < hi){ const m = (lo + hi) >> 1; if (sorted[m] < x) lo = m + 1; else hi = m; } return sorted.length ? lo / sorted.length * 100 : null; }
+function ultSeries(tf){
+  const ck = tf + ':' + FLW.base.length;
+  if (ULT.cache.has(ck)) return ULT.cache.get(ck);
+  const bars = ultAgg(tf), a = 2 / 6, aS = 0.2, K6 = Math.atanh(0.6);
+  const W = tf === 'D' ? 60 : 30, MINH = tf === 'D' ? 15 : 8, QN = tf === 'D' ? 150 : 1500, QMIN = tf === 'D' ? 30 : 120, L = tf === 'D' ? 10 : 24, COOL = tf === 'D' ? 3 : 12;
+  const slots = new Map(), absHist = [], comp = { drop:[], vix:[], put:[], rv:[] }; let qv = null, compS = null, ema = null, sig = null;
+  const res = [];
+  for (let i = 0; i < bars.length; i++){
+    const b = bars[i], slot = b.s + ':' + b.k, h = slots.get(slot) || [];
+    let z = null;
+    if (h.length >= MINH){ const m = ultMed(h), mad = ultMed(h.map(v => Math.abs(v - m))) * 1.4826;
+      if (mad > 0) z = (b.net - m) / mad; else { const sd = Math.sqrt(ultAvg(h.map(v => (v - m) ** 2))); z = sd > 0 ? (b.net - m) / sd : 0; }
+      z = Math.max(-8, Math.min(8, z)); }
+    h.push(b.net); if (h.length > W) h.shift(); slots.set(slot, h);
+    let F = null;
+    if (z != null){ ema = ema == null ? z : ema + a * (z - ema);
+      absHist.push(Math.abs(ema)); if (absHist.length > QN) absHist.shift();
+      if (absHist.length >= QMIN && (qv == null || i % 25 === 0)){ const s = absHist.slice().sort((x, y) => x - y); qv = s[Math.min(s.length - 1, Math.floor(s.length * 0.9))] || 1e-9; }
+      if (qv) F = 100 * Math.tanh(K6 * ema / qv); }
+    if (F != null) sig = sig == null ? F : sig + aS * (F - sig);
+    const j6 = i - 6;
+    const drop = j6 >= 0 && bars[j6].c ? -(b.c - bars[j6].c) / bars[j6].c : null;
+    const dvix = j6 >= 0 && b.vix != null && bars[j6].vix != null ? b.vix - bars[j6].vix : null;
+    const tot = b.cb + b.cs + b.pb + b.ps, put = tot > 0 ? b.pb / tot : null;
+    let rv = null; if (i >= 12){ const r = []; for (let k = i - 11; k <= i; k++) if (bars[k - 1].c) r.push(Math.log(bars[k].c / bars[k - 1].c)); const m = ultAvg(r); rv = Math.sqrt(ultAvg(r.map(x => (x - m) ** 2))); }
+    if (!compS || i % 25 === 0) compS = Object.fromEntries(Object.entries(comp).map(([k, v]) => [k, v.length >= 100 ? v.slice(-2000).sort((x, y) => x - y) : null]));
+    const parts = []; const pushP = (k, x) => { if (x != null && compS[k]) parts.push(ultPct(compS[k], x)); };
+    pushP('drop', drop); pushP('vix', dvix); pushP('put', put); pushP('rv', rv);
+    if (F != null) parts.push((100 - F) / 2);
+    const panic = parts.length >= 3 ? ultAvg(parts) : null;
+    for (const [k, x] of [['drop', drop], ['vix', dvix], ['put', put], ['rv', rv]]) if (x != null){ comp[k].push(x); if (comp[k].length > 4000) comp[k].shift(); }
+    res.push({ F, sig, panic, cls:tot + b.unk > 0 ? tot / (tot + b.unk) : null });
+  }
+  for (let i = 0; i < bars.length; i++){ const r = res[i], b = bars[i]; let state = null;
+    if (r.F != null){ state = r.F >= 20 ? 'BULL' : r.F <= -20 ? 'BEAR' : 'NEUTRAL';
+      if (i >= L){ let minF = Infinity, maxF = -Infinity, minL = Infinity, maxH = -Infinity;
+        for (let k = i - L; k < i; k++){ const f = res[k].F; if (f != null){ minF = Math.min(minF, f); maxF = Math.max(maxF, f); } minL = Math.min(minL, bars[k].l); maxH = Math.max(maxH, bars[k].h); }
+        if (b.l <= minL && minF <= -40 && r.F > minF + 20) state = 'EXH_UP';
+        if (b.h >= maxH && maxF >= 40 && r.F < maxF - 20) state = 'EXH_DN'; }
+      if (r.panic != null && r.panic >= 80) state = 'PANIC'; }
+    r.state = state; }
+  const go = new Map(); let lastL = -1e9, lastS = -1e9;
+  for (let i = Math.max(L, 3); i < bars.length; i++){
+    const r = res[i], b = bars[i], p1 = res[i - 1], p2 = res[i - 2];
+    if (r.F == null || p1.F == null || p2.F == null || r.sig == null) continue;
+    if (tf !== 'D' && b.k < 2) continue;
+    if (r.cls != null && r.cls < 0.9) continue;
+    let minF = Infinity, maxF = -Infinity, panicSeen = false;
+    for (let k = i - L; k < i; k++){ const f = res[k].F; if (f == null) continue; minF = Math.min(minF, f); maxF = Math.max(maxF, f); if (res[k].state === 'PANIC') panicSeen = true; }
+    if ((minF <= -60 || panicSeen) && r.F - minF >= 30 && r.F > r.sig && r.F > p1.F && p1.F > p2.F && b.c > bars[i - 1].h && i - lastL >= COOL){ go.set(i, 1); lastL = i; }
+    if (maxF >= 60 && maxF - r.F >= 30 && r.F < r.sig && r.F < p1.F && p1.F < p2.F && b.c < bars[i - 1].l && i - lastS >= COOL){ go.set(i, -1); lastS = i; }
+  }
+  const R = { bars, res, go, map:new Map(bars.map((b, i) => [b.t, i])) };
+  ULT.cache.clear(); ULT.cache.set(ck, R);
+  return R;
+}
+const ULT_STATE = { BULL:['多方優勢', 'up'], BEAR:['空方優勢', 'dn'], NEUTRAL:['方向不明', ''], PANIC:['恐慌擴張', 'dn'], EXH_UP:['空方衰竭（看多背離）', 'up'], EXH_DN:['多方衰竭（看空背離）', 'dn'] };
+Object.assign(IND, {
+  ult: {
+    s:{}, vals:null,
+    avail(){ return !!(currentSym && currentSym.kind === 'fut') && !['W', 'M'].includes(S.tf); },
+    create(p){
+      const { LineSeries, BaselineSeries, LineStyle } = LC(), fixed = () => ({ priceRange:{ minValue:-100, maxValue:100 } });
+      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1, autoscaleInfoProvider:fixed,
+        topFillColor1:'rgba(239,83,80,0.28)', topFillColor2:'rgba(239,83,80,0.03)', bottomFillColor1:'rgba(38,166,154,0.03)', bottomFillColor2:'rgba(38,166,154,0.30)' }, p);
+      this.s.sig = chart.addSeries(LineSeries, { lineWidth:1, lineStyle:LineStyle.Dashed, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
+      this.refs = [[60, 0], [20, 2], [0, 0], [-20, 2], [-60, 0], [-70, 2]].map(([v, st]) => this.s.main.createPriceLine({ price:v, lineWidth:Math.abs(v) >= 60 ? 2 : 1, lineStyle:st, axisLabelVisible:Math.abs(v) >= 60, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    draw(){
+      const P = S.ult, base = flwLoad();
+      if (!base){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
+      const R = ultSeries(S.tf === 'D' ? 'D' : +S.tf), day = !(TF[S.tf] || {}).intraday;
+      const v = [], sg = [], st = [], pn = [], go = [];
+      bars.forEach(b => { const j = R.map.get(day ? b.date : b.time), r = j == null ? null : R.res[j];
+        v.push(r ? r.F : null); sg.push(r ? r.sig : null); st.push(r ? r.state : null); pn.push(r ? r.panic : null); go.push(j == null ? 0 : R.go.get(j) || 0); });
+      this.vals = { v, sg, st, pn, go };
+      this.s.main.setData(toLine(v)); this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
+      this.s.sig.setData(P.sig ? toLine(sg) : []); this.s.sig.applyOptions({ color:P.cSig });
+      [P.cUp, hexA(S.col.text, .3), hexA(S.col.text, .35), hexA(S.col.text, .3), P.cDn, P.cDn].forEach((c, k) => this.refs[k].applyOptions({ color:c }));
+      const mk = [];
+      if (P.go) bars.forEach((b, i) => { if (go[i]) mk.push({ time:b.time, position:go[i] > 0 ? 'belowBar' : 'aboveBar', shape:go[i] > 0 ? 'arrowUp' : 'arrowDown', color:go[i] > 0 ? P.cUp : P.cDn, size:1 }); });
+      this.mk.setMarkers(mk);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.ult, out = []; if (!v || !v.go || !P.go) return out;
+      v.go.forEach((g, i) => { if (g) out.push({ i, position:g > 0 ? 'belowBar' : 'aboveBar', shape:g > 0 ? 'arrowUp' : 'arrowDown', color:g > 0 ? P.cUp : P.cDn, text:g > 0 ? 'GO多' : 'GO空', size:1.3 }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.ult; if (!v) return '';
+      if (v.wait) return `終極力道　<span class="muted">讀取中…</span>`;
+      const x = v.v[i], q = v.sg[i], s = ULT_STATE[v.st[i]], p = v.pn[i];
+      const zone = x == null ? '' : x >= 60 ? `　<span style="color:${P.cUp}">強多</span>` : x <= -70 ? `　<span style="color:${P.cDn}">低於悲觀線</span>` : x <= -60 ? `　<span style="color:${P.cDn}">強空</span>` : '';
+      return `終極力道 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${P.sig ? `　<span style="color:${P.cSig}">訊號線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${zone}`
+        + (s ? `　<span class="tag" style="background:${s[1] === 'up' ? P.cUp : s[1] === 'dn' ? P.cDn : hexA(S.col.text, .25)};color:#fff">${s[0]}</span>` : '')
+        + (p != null ? `　<span class="muted">恐慌 ${fmt(p, 0)}</span>` : '') + (v.go[i] ? `　<b style="color:${v.go[i] > 0 ? P.cUp : P.cDn}">${v.go[i] > 0 ? 'GO 多' : 'GO 空'}</b>` : '');
     },
   },
 });
@@ -3486,7 +3631,13 @@ layoutPanes();
 if (!TF[S.tf]) S.tf = 'D';
 buildPeriodOptions();
 $('adj').checked = !!S.adj; $('night').checked = !!S.night; $('auto').checked = S.auto !== false;
-{ const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
+if (!CLEAN){ const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
+if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定 TX
+  document.title = '台指清晰看盤';
+  const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#adjWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
+  const sy = $('sym'); sy.value = 'TX'; sy.readOnly = true;
+  const full = document.createElement('button'); full.textContent = '完整看盤'; full.title = '回到一般看盤（所有指標、股票）'; full.onclick = () => location.href = location.pathname; $('ovBtn').before(full);
+}
 if (S.lastSym) $('sym').value = S.lastSym;
 updateKindUI(parseSym(S.lastSym));
 applyList([]);
