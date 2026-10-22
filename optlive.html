@@ -82,16 +82,16 @@
     <div class="card"><h3>期貨即時力道 <span class="muted">主動買 − 主動賣（口）</span></h3><div id="fut"></div></div>
     <div class="card" style="grid-column:1/-1"><h3>主力集中 <span class="muted">這個時段單次湧入 ≥ 門檻的累計口數</span></h3><div class="cols2" id="conc"></div></div>
     <div class="card"><h3>淨力道走勢 <span class="muted">（BC＋SP）−（BP＋SC）累計，左軸台指期</span></h3><div class="chart" id="ch1"></div></div>
-    <div class="card"><h3>期貨力道走勢 <span class="muted">大台＋小台×¼＋微台×1/20（大台口數），左軸台指期</span></h3><div class="chart" id="ch2"></div></div>
+    <div class="card"><h3>期貨力道走勢 <span class="muted">大台＋微台×1/20（大台口數），左軸台指期</span></h3><div class="chart" id="ch2"></div></div>
     <div class="card"><h3>爆量紀錄 <span class="muted">最新在上</span></h3><div class="log" id="log"></div></div>
     <div class="card"><h3>上一個時段（收盤後正式逐筆） <span class="muted" id="offName"></span></h3><div id="off"></div></div>
   </div>
   <p class="note">
-    <b>怎麼算</b>：每 20 秒（可調）抓一次台指選擇權最近 2 個結算日、大台、小台、微台的即時報價，比較兩次之間每一檔增加的成交量。方向看最後一筆是外盤還是內盤（成交在賣價＝主動買、在買價＝主動賣）：
+    <b>怎麼算</b>：每 20 秒（可調）抓一次台指選擇權最近 2 個結算日、大台、微台的即時報價（FinMind 沒有小台即時報價），比較兩次之間每一檔增加的成交量。方向看最後一筆是外盤還是內盤（成交在賣價＝主動買、在買價＝主動賣）：
     買權主動買＝BC、買權主動賣＝SC、賣權主動買＝BP、賣權主動賣＝SP。淨力道＝（BC＋SP）−（BP＋SC），正＝偏多、負＝偏空；Delta 淨力道再乘上每檔的 Delta 換成大台口數，深價內、深價外的權重不同。
     同一檔 20 秒內湧入 ≥ 門檻口數記為一次「爆量」，主力集中列出累計最多的履約價。<br>
     <b>限制</b>：FinMind 給的是每隔一段時間的總帳，不是每一筆成交：兩次之間如果多空都有，會整批算成最後一筆的方向；也分不出是一張大單還是很多小單。資料從打開這頁起累積（存在這台裝置，重新整理不會不見），分頁在背景或非交易時段不抓。
-    每次抓 5 個即時報價（約每小時 900 次），本小時用超過 4,000 次自動放慢到每分鐘、超過 5,000 次暫停。<br>
+    每次抓 4 個即時報價（每 20 秒約每小時 720 次），本小時用超過 4,000 次自動放慢到每分鐘、超過 5,000 次暫停。<br>
     「上一個時段」用網站每天算好的正式逐筆資料（每筆用價格跳動推估方向），和即時推估方法不同，數字不能直接比。本頁只是資料整理，不是投資建議。
   </p>
 </main>
@@ -142,7 +142,7 @@ const KEY = s => 'ol:' + s.s + ':' + s.x;
 function load(s){ try { return JSON.parse(localStorage.getItem(KEY(s)) || 'null'); } catch(e){ return null; } }
 function save(s, st){ try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e){ /* 空間不夠就砍舊紀錄再存 */ st.log = st.log.slice(0, 100); st.series = st.series.filter((p, i) => i % 2 === 0); try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e2){} } }
 function cleanOld(){ try { const old = shiftDay(twNow().toISOString().slice(0, 10), -3); for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('ol:') && k.slice(-10) < old) localStorage.removeItem(k); } } catch(e){} }
-const blank = () => ({ prev:{}, fprev:{}, tot:{ BC:0, SC:0, BP:0, SP:0, dBC:0, dSC:0, dBP:0, dSP:0 }, fut:{ TX:0, MTX:0, TMF:0 }, strikes:{}, log:[], series:[], last:0, px:null, px0:null });
+const blank = () => ({ prev:{}, fprev:{}, tot:{ BC:0, SC:0, BP:0, SP:0, dBC:0, dSC:0, dBP:0, dSP:0 }, fut:{ TX:0, TMF:0 }, strikes:{}, log:[], series:[], last:0, px:null, px0:null });
 
 /* ───────── 即時報價 ───────── */
 const MC = 'ABCDEFGHIJKL', MP = 'MNOPQRSTUVWX';
@@ -206,9 +206,9 @@ async function tick(force){
   try {
     const S = await strikes(), ex = aliveExps(S);
     const prods = new Map(); for (const e of ex){ const lp = product(e.code); if (!lp) continue; if (!prods.has(lp.prod)) prods.set(lp.prod, []); prods.get(lp.prod).push({ e, lp }); }
-    const [ftx, fmtx, ftmf, ...ors] = await Promise.all([snap('taiwan_futures_snapshot', 'TX'), snap('taiwan_futures_snapshot', 'MTX'), snap('taiwan_futures_snapshot', 'TMF')]
+    const [ftx, ftmf, ...ors] = await Promise.all([snap('taiwan_futures_snapshot', 'TX'), snap('taiwan_futures_snapshot', 'TMF')]
       .concat([...prods.keys()].map(p => snap('taiwan_options_snapshot', p).catch(() => []))));
-    const F = { TX:pickFut(ftx), MTX:pickFut(fmtx), TMF:pickFut(ftmf) };
+    const F = { TX:pickFut(ftx), TMF:pickFut(ftmf) };   // FinMind 即時報價只有大台、微台（沒有小台）
     if (!F.TX) throw new Error('取不到台指期即時價');
     const nowS = Math.floor(Date.now() / 1000) + 8 * 3600;
     if (tmOf(F.TX) / 1000 + 8 * 3600 < dayT(ses.x, ses.s === 'D' ? 525 : 900)){ ERR = ''; LAST_T = ''; return; }   // 這個時段還沒成交（休市）
@@ -216,7 +216,7 @@ async function tick(force){
     const fresh = Date.now() - st.last < Math.max(3, CFG.iv * 4 / 60) * 60e3;               // 太久沒抓：這次只當基準
     const px = +F.TX.close; if (st.px0 == null) st.px0 = px;
     // 期貨
-    for (const k of ['TX', 'MTX', 'TMF']){ const f = F[k]; if (!f) continue;
+    for (const k of ['TX', 'TMF']){ const f = F[k]; if (!f) continue;
       const p = st.fprev[k], tv = +f.total_volume || 0, side = sideOf(f, p && p.c);
       if (fresh && p && tv > p.tv) st.fut[k] += side * (tv - p.tv);
       st.fprev[k] = { tv, c:+f.close }; }
@@ -242,7 +242,7 @@ async function tick(force){
       nNew++;
     } });
     const T = st.tot, net = T.BC + T.SP - T.BP - T.SC, netD = T.dBC + T.dSP - T.dBP - T.dSC;
-    const futEq = st.fut.TX + st.fut.MTX * 0.25 + st.fut.TMF * 0.05;
+    const futEq = st.fut.TX + st.fut.TMF * 0.05;
     st.series.push({ t:nowS, px, net, netD:Math.round(netD * 10) / 10, fut:Math.round(futEq * 10) / 10 });
     if (st.series.length > 2500) st.series.splice(0, st.series.length - 2500);
     st.px = px; st.last = Date.now(); st.exps = ex.map(e => e.code); st.F = F;
@@ -302,10 +302,10 @@ function render(){
     <div class="net"><span>淨力道</span><b class="${cls(net)}">${sgn(net)} 口</b></div>
     <div class="net"><span>Delta 淨力道</span><b class="${cls(netD)}">${sgn(netD, 1)} 大台口</b></div>`;
   // 期貨
-  const fq = st.fut.TX + st.fut.MTX * 0.25 + st.fut.TMF * 0.05;
-  $('#fut').innerHTML = [['大台', 'TX', 1], ['小台', 'MTX', 0.25], ['微台', 'TMF', 0.05]].map(([n, k]) => `<div class="net"><span>${n}</span><b class="${cls(st.fut[k])}">${sgn(st.fut[k])} 口</b></div>`).join('')
+  const fq = st.fut.TX + st.fut.TMF * 0.05;
+  $('#fut').innerHTML = [['大台', 'TX'], ['微台', 'TMF']].map(([n, k]) => `<div class="net"><span>${n}</span><b class="${cls(st.fut[k])}">${sgn(st.fut[k])} 口</b></div>`).join('') + '<div class="net"><span>小台</span><span class="muted">FinMind 即時報價沒有提供</span></div>'
     + `<div class="net" style="border-top:1px solid var(--line);padding-top:8px"><span>合計（大台口數）</span><b class="${cls(fq)}">${sgn(fq, 1)}</b></div>
-       <div class="note">微台、小台多半是散戶，大台多半是法人和大戶，三個方向不一致時特別值得注意。</div>`;
+       <div class="note">微台多半是散戶，大台多半是法人和大戶，兩邊方向相反時特別值得注意。</div>`;
   // 主力集中
   const Z = Object.values(st.strikes).filter(z => z.burst > 0);
   const side = call => { const L = Z.filter(z => z.call === call).sort((a, b) => b.burst - a.burst).slice(0, 8);
