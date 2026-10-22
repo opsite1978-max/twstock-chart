@@ -1,0 +1,39 @@
+name: 散戶指標資料
+on:
+  schedule:
+    - cron: '10 0 * * 1-6'    # 台灣時間 08:10（多空力道資料 07:25 算完之後）
+    - cron: '10 13 * * 1-5'   # 台灣時間 21:10
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: retail-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 小單（散戶）逐筆 → 每分鐘
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          REQ_BUDGET: '700'
+          MAX_MINUTES: '100'
+        run: python3 scripts/retail_data.py
+      - name: 存回專案
+        run: |
+          files=$(git status --porcelain --untracked-files=all data/retail | awk '{print $NF}')
+          if [ -z "$files" ]; then echo "沒有新資料"; exit 0; fi
+          mkdir -p /tmp/keep && for f in $files; do mkdir -p "/tmp/keep/$(dirname "$f")"; cp "$f" "/tmp/keep/$f"; done
+          ok=0
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main && cp -r /tmp/keep/. . && git add $files
+            if git diff --cached --quiet; then ok=1; break; fi
+            git -c user.name="retail-bot" -c user.email="retail-bot@users.noreply.github.com" commit -qm "散戶指標資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            if git push -q origin HEAD:main; then ok=1; break; fi
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ]
