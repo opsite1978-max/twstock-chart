@@ -468,9 +468,10 @@
       <details>
         <summary>散戶指標（只適用台指期）</summary>
         <div class="stack">
-          <div class="hint">散戶＝小單：小台、微台一筆 2 口以下的成交，加上台指選擇權一筆 2 口以下的成交（乘 Delta），用價格跳動推估主動買賣，換成大台口數，和過去同一時間比較後標準化成 −100～+100。正＝散戶比平常更積極買（追多），負＝更積極賣（殺低）。資料由網站每天計算，不用 FinMind 額度，不是即時。</div>
-          <div class="kv"><span>算法</span><select data-k="retail.k" data-redraw="retail"><option value="B">散戶殘差（扣掉價格漲跌的部分）</option><option value="A">散戶淨買</option><option value="C">散戶減大單</option></select></div>
-          <div class="kv"><span>上下界（±）</span><input type="number" data-k="retail.hi" data-redraw="retail" min="20" max="95" step="5"></div>
+          <div class="hint">散戶＝小單：小台、微台一筆 2 口以下的成交，加上台指選擇權一筆 2 口以下的成交（乘 Delta），用價格跳動推估主動買賣，換成大台口數，和過去同一時間比較後標準化成 −100～+100。正＝散戶比平常更積極買（追多），負＝更積極賣（殺低）。資料由網站每天計算，不用 FinMind 額度，不是即時。回測（2026/3～10）：4 小時、日 K 有反指標效果——散戶比大單更積極賣（下界以下）之後偏漲、更積極買（上界以上）之後偏弱；60 分以下幾乎沒有參考價值。</div>
+          <div class="kv"><span>算法</span><select data-k="retail.k" data-redraw="retail"><option value="C">散戶減大單（回測最好，預設）</option><option value="B">散戶殘差（扣掉價格漲跌的部分）</option><option value="A">散戶淨買</option></select></div>
+          <div class="kv"><span>上下界（±，分 K）</span><input type="number" data-k="retail.hi" data-redraw="retail" min="20" max="95" step="5"></div>
+          <div class="kv"><span>上下界（±，日 K）</span><input type="number" data-k="retail.hiD" data-redraw="retail" min="10" max="95" step="5"></div>
           <label class="chk"><input type="checkbox" data-k="retail.mainSig" data-redraw="retail">K 線圖上標出「散追」「散殺」（從上下界回來）</label>
           <div class="kv"><span>追多／殺低顏色</span><span class="pair"><input type="color" data-k="retail.cUp" data-redraw="retail"><input type="color" data-k="retail.cDn" data-redraw="retail"></span></div>
           <button class="small" data-reset="retail">恢復預設</button>
@@ -643,10 +644,10 @@ const DEFAULTS = {
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
-  retail:{ k:'B', hi:60, mainSig:false, cUp:'#ef5350', cDn:'#26a69a' },
+  retail:{ k:'C', hi:60, hiD:30, mainSig:true, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:false }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -673,7 +674,8 @@ if ((S.v || 0) < 14) S.ind = Object.assign({}, S.ind, { shz:true });
 if ((S.v || 0) < 15) S.ind = Object.assign({}, S.ind, { ivx:true });
 if ((S.v || 0) < 16) S.ind = Object.assign({}, S.ind, { flow:true });
 if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨流量力道
-S.v = 17;
+if ((S.v || 0) < 18) S.ind = Object.assign({}, S.ind, { retail:true });
+S.v = 18;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
@@ -2693,7 +2695,7 @@ async function auResync(){
   await load();
   if (r && atEnd && chart){ const pad = r.to - (n0 - 1), w = r.to - r.from; chart.timeScale().setVisibleLogicalRange({ from:bars.length - 1 + pad - w, to:bars.length - 1 + pad }); }
 }
-window.__auto = { get bars(){ return bars; }, AUTO, auPoll, auLiveBars };   // 檢查用
+window.__auto = { get bars(){ return bars; }, get IND(){ return IND; }, AUTO, auPoll, auLiveBars };   // 檢查用
 // load() 讀完歷史後呼叫：記下正式資料，接上這台裝置存的盤中資料
 function auAfterLoad(sym, tf){
   AUTO.base = bars.slice(); AUTO.symKey = auPfx(sym); AUTO.tf = tf; AUTO.lastTry = Date.now();
@@ -3307,9 +3309,9 @@ function rtlSeries(tf){
       if (xs.length > 500){ const p = xs.shift(), q = ys.shift(); sx -= p; sy -= q; sxx -= p * p; sxy -= p * q; } }
     resid.push(r); }
   const div = zS.map((a, i) => a == null || zL[i] == null ? null : a - zL[i]);
-  const qmin = tf === 'D' ? 30 : 120, qmax = tf === 'D' ? 150 : 1500;
+  const qmin = tf === 'D' ? 30 : 120, qmax = tf === 'D' ? 150 : 1500, sp = tf === 'D' ? 3 : 5;
   const R = { bars:out, map:new Map(out.map((b, i) => [b.t, i])),
-    A:flwCal(zS, 5, qmin, qmax), B:flwCal(resid, 5, qmin, qmax), C:flwCal(div, 5, qmin, qmax) };
+    A:flwCal(zS, sp, qmin, qmax), B:flwCal(resid, sp, qmin, qmax), C:flwCal(div, sp, qmin, qmax) };
   RTL.cache.set(ck, R);
   return R;
 }
@@ -3336,14 +3338,14 @@ Object.assign(IND, {
     draw(){
       const P = S.retail, base = flwLoad(), m = rtlLoad();
       if (!base || !m){ this.vals = { wait:true }; this.s.main.setData([]); this.mk.setMarkers([]); refreshMarkers(); return; }
-      const R = rtlSeries(S.tf === 'D' ? 'D' : +S.tf), V = R[P.k], sg = rtlSignals(V, +P.hi, -P.hi);
+      const R = rtlSeries(S.tf === 'D' ? 'D' : +S.tf), V = R[P.k], H = S.tf === 'D' ? +P.hiD : +P.hi, sg = rtlSignals(V, H, -H); this.H = H;
       const day = !(TF[S.tf] || {}).intraday, v = [], top = [], bot = [];
       bars.forEach(b => { const j = R.map.get(day ? b.date : b.time);
         v.push(j == null ? null : V[j]); top.push(j != null && sg.top.has(j)); bot.push(j != null && sg.bot.has(j)); });
       this.vals = { v, top, bot };
       this.s.main.setData(toLine(v));
       this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
-      [+P.hi, +P.hi / 2, 0, -P.hi / 2, -P.hi].forEach((y, k) => this.refs[k].applyOptions({ price:y, color:k < 2 ? P.cUp : k > 2 ? P.cDn : hexA(S.col.text, .35) }));
+      [H, H / 2, 0, -H / 2, -H].forEach((y, k) => this.refs[k].applyOptions({ price:y, color:k < 2 ? P.cUp : k > 2 ? P.cDn : hexA(S.col.text, .35) }));
       const mk = [];
       bars.forEach((b, i) => { if (top[i]) mk.push({ time:b.time, position:'aboveBar', shape:'arrowDown', color:P.cUp, size:0.8 });
         if (bot[i]) mk.push({ time:b.time, position:'belowBar', shape:'arrowUp', color:P.cDn, size:0.8 }); });
@@ -3361,7 +3363,7 @@ Object.assign(IND, {
       if (!v) return '';
       if (v.wait) return `散戶指標　<span class="muted">讀取中…</span>`;
       const x = v.v[i];
-      const zone = x == null ? '' : x >= P.hi ? `　<span style="color:${P.cUp}">散戶追多（極端）</span>` : x <= -P.hi ? `　<span style="color:${P.cDn}">散戶殺低（極端）</span>` : '';
+      const H = this.H || P.hi, zone = x == null ? '' : x >= H ? `　<span style="color:${P.cUp}">散戶追多（極端）</span>` : x <= -H ? `　<span style="color:${P.cDn}">散戶殺低（極端）</span>` : '';
       const tag = v.top[i] ? `　<span class="tag" style="background:${P.cUp};color:#fff">追多退潮</span>` : v.bot[i] ? `　<span class="tag" style="background:${P.cDn};color:#fff">殺低結束</span>` : '';
       return `${name} <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${zone}${tag}`;
     },
