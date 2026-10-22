@@ -1,10 +1,4 @@
-10-22 15:47:21 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
-10-22 15:47:26 result shard 0 done requests 1 ok 0 none 1 files 1 in 4 s
-10-22 15:47:22 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
-10-22 15:47:30 result shard 1 done requests 2 ok 0 none 2 files 1 in 7 s
-10-22 15:47:22 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-22 15:47:24 result shard 2 done requests 1 ok 0 none 1 files 1 in 1 s
-10-22 15:47:22 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
-10-22 15:47:27 result shard 3 done requests 2 ok 0 none 2 files 1 in 5 s
-10-22 15:47:23 shard 6 / 8 stocks 266 months 2023-10 ~ 2026-09
-10-22 15:47:34 result shard 6 done requests 2 ok 2 none 0 files 1 in 11 s
+10-22 21:57:21 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
+10-22 21:57:26 result shard 0 done requests 1 ok 1 none 0 files 1 in 5 s
+10-22 21:57:20 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
+10-22 21:57:24 result shard 3 done requests 1 ok 1 none 0 files 1 in 3 s
