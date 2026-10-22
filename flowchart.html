@@ -292,7 +292,7 @@ function aggregate(base, tf){
       out.push(cur);
     }
     cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c;
-    cur.net += b.net || 0; cur.gross += b.gross || 0; cur.v += b.v || 0;
+    cur.net += b.net || 0; cur.gross += b.gross || 0; cur.v += b.v || 0; if (b.live) cur.live = true;
   }
   return out;
 }
@@ -534,7 +534,7 @@ function positionLegend2(){ const ps = CHART.panes(); if (ps.length > 1){ const 
 function legend(i){
   if (!VIEW) return; const n = VIEW.bars.length; if (i == null || i < 0 || i >= n) i = n - 1;
   const b = VIEW.bars[i], p = i > 0 ? VIEW.bars[i - 1].c : null, ch = p ? b.c - p : null, bb = VIEW.bb, D = SYM.kind === 'tx' ? 0 : 2;
-  $('#lg').innerHTML = `<b>${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name} ${ST.tf === 'D' ? '日' : ST.tf + ' 分'}</b>　${tlabel(b.t, ST.tf)}${ST.tf !== 'D' && SYM.kind !== 'stock' ? (b.s === 'N' ? ' 夜盤' : ' 日盤') : ''}<br>開 ${fmt(b.o, D)} 高 ${fmt(b.h, D)} 低 ${fmt(b.l, D)} 收 <b class="${cls(ch)}">${fmt(b.c, D)}</b> <span class="${cls(ch)}">${sgn(ch, D)}</span><br>`
+  $('#lg').innerHTML = `<b>${SYM.kind === 'tx' ? '台指期' : SYM.id + ' ' + SYM.name} ${ST.tf === 'D' ? '日' : ST.tf + ' 分'}</b>　${tlabel(b.t, ST.tf)}${ST.tf !== 'D' && SYM.kind !== 'stock' ? (b.s === 'N' ? ' 夜盤' : ' 日盤') : ''}${b.live ? ' <span style="color:var(--gold)">即時推估</span>' : ''}<br>開 ${fmt(b.o, D)} 高 ${fmt(b.h, D)} 低 ${fmt(b.l, D)} 收 <b class="${cls(ch)}">${fmt(b.c, D)}</b> <span class="${cls(ch)}">${sgn(ch, D)}</span><br>`
     + `<span style="color:${css('--bb')}">布林上 ${fmt(bb.u[i], D)}</span>　<span style="color:${css('--gold')}">中 ${fmt(bb.m[i], D)}</span>　<span style="color:${css('--bb')}">下 ${fmt(bb.l[i], D)}</span>`;
   const v = VIEW.S[i], s = VIEW.sigAt.get(i);
   $('#lg2').innerHTML = VIEW.info === 'nodaily' ? '<span class="muted">個股、個股期貨的日 K 資金流需要太多逐筆資料，請切到 1 分～4 小時看資金流</span>' : `<b style="color:${css('--flow')}">${ST.k === 'FR' ? '資金流殘差' : '淨流量力道'} ${v == null ? '資料不足' : sgn(v, 1)}</b>${v != null && v <= -60 ? '　<span class="dn">超賣區</span>' : v >= 60 ? '　<span class="up">超買區</span>' : ''}`
@@ -556,7 +556,8 @@ async function render(){
   $('#symName').textContent = SYM.kind === 'tx' ? '台指期（資金流＝台指選擇權逐筆 Delta）' : SYM.kind === 'stock' ? `${SYM.id} ${SYM.name}（資金流＝主動買賣）` : `${SYM.id} ${SYM.name}（${SYM.under}，資金流＝價格跳動推估主動買賣）`;
   let bars, S, Q, info = '';
   if (SYM.kind === 'tx'){
-    const base = tf === 1 ? await loadBase1() : await loadBase5();
+    const base0 = tf === 1 ? await loadBase1() : await loadBase5();
+    const base = base0.concat(flLiveBase(tf === 1 ? 60 : 300, base0));   // 接上盤中即時推估
     bars = aggregate(base, tf); const FL = flowLines(bars, tf); S = FL[ST.k]; Q = FL[ST.k + 'f'];
   } else if (tf === 'D'){
     bars = await dailyPrice(SYM); S = bars.map(() => null); Q = S; info = 'nodaily';
@@ -653,6 +654,102 @@ document.querySelectorAll('#lnSeg button').forEach(b => b.onclick = () => { ST.k
 const zoom = f => { const ts = CHART.timeScale(), r = ts.getVisibleLogicalRange(); if (!r) return; const mid = r.to - 3, w = (r.to - r.from) * f; ts.setVisibleLogicalRange({ from:mid - w + 3, to:mid + 3 }); };
 $('#zIn').onclick = () => zoom(1 / 1.5); $('#zOut').onclick = () => zoom(1.5);
 $('#zEnd').onclick = () => { const n = VIEW.bars.length, show = Math.min(n, window.innerWidth < 700 ? 120 : 220); CHART.timeScale().setVisibleLogicalRange({ from:n - show, to:n + 3 }); };
+/* ───────── 台指期盤中即時（資金流＋K 棒） ─────────
+   網站的逐筆資金流每天早晚才算一次（期交所逐筆資料收盤後才公布），所以盤中改用即時報價推估：
+   每分鐘抓台指期和最近 2 個結算日的選擇權即時報價（3 個 FinMind 額度），用成交量增加的部分、成交價靠買價或賣價判斷主動買賣，乘上 Delta 算淨流量，和多空力道頁的即時模式同一套。
+   推估值存在這台裝置，重新整理不會不見；開啟頁面之前的盤中資料要等網站晚上算好才會補上。 */
+const FLV = { busy:false, strk:null, t:'', err:'', n:0 };
+const FL_MC = 'ABCDEFGHIJKL', FL_MP = 'MNOPQRSTUVWX';
+function flProduct(code){ const m = /^(\d{4})(\d{2})(?:([WF])(\d))?$/.exec(code); if (!m) return null; const y = +m[1], mo = +m[2], n = +m[4];
+  return { prod:!m[3] ? 'TXO' : m[3] === 'W' ? 'TX' + n : 'TX' + ('UVXYZ'[n - 1] || ''), cl:FL_MC[mo - 1] + (y % 10), pl:FL_MP[mo - 1] + (y % 10) }; }
+function flNcdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+function flPickFut(rows){
+  const tm = r => Date.parse(String(r.date).slice(0, 19).replace(' ', 'T') + '+08:00') || 0;
+  const c = rows.filter(r => /^TXF[A-L]\d$/.test(r.futures_id) && r.close > 0); if (!c.length) return null;
+  const newest = Math.max(...c.map(tm));
+  return c.filter(r => newest - tm(r) < 10 * 60e3).sort((a, b) => b.total_volume - a.total_volume)[0];
+}
+const flShift = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+// 現在的時段：日盤 08:45–13:45、夜盤 15:00–隔天 05:00（x＝開盤那天）
+function flSession(){
+  const tw = new Date(Date.now() + 8 * 3600e3), wd = tw.getUTCDay(), m = tw.getUTCHours() * 60 + tw.getUTCMinutes(), d = tw.toISOString().slice(0, 10);
+  if (wd >= 1 && wd <= 5 && m >= 525 && m <= 826) return { s:'D', x:d, a:525 };
+  if (wd >= 1 && wd <= 5 && m >= 900) return { s:'N', x:d, a:900 };
+  if (wd >= 2 && wd <= 6 && m <= 301) return { s:'N', x:flShift(d, -1), a:900 };
+  return null;
+}
+const flKey = (s, x) => 'fl.live:' + s + ':' + x;
+function flGet(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } }
+function flPut(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function flClean(){ try { const old = flShift(twToday(), -4); for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('fl.live:') && k.slice(-10) < old) localStorage.removeItem(k); } } catch(e){} }
+async function flSnap(path, id){
+  const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + new URLSearchParams({ data_id:id, token:(SET.token || '').trim() }), { cache:'no-store' });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('即時報價 ' + r.status));
+  return j.data || [];
+}
+async function flPoll(){
+  if (FLV.busy || document.hidden || !SYM || SYM.kind !== 'tx' || !(SET.token || '').trim()) return false;
+  const ses = flSession(); if (!ses) return false;
+  FLV.busy = true;
+  try {
+    if (!FLV.strk || Date.now() - FLV.strkAt > 3600e3){ FLV.strk = await getJSON('data/force/strikes.json'); FLV.strkAt = Date.now(); }
+    const S = FLV.strk, nowS = Math.floor(Date.now() / 1000) + 8 * 3600;
+    const ex = (S.exps || []).filter(e => dayT(e.exp, 810) > nowS).slice(0, 2);
+    const prods = new Map(); for (const e of ex){ const lp = flProduct(e.code); if (!lp) continue; if (!prods.has(lp.prod)) prods.set(lp.prod, []); prods.get(lp.prod).push({ e, lp }); }
+    const [fr, ...ors] = await Promise.all([flSnap('taiwan_futures_snapshot', 'TX')].concat([...prods.keys()].map(p => flSnap('taiwan_options_snapshot', p).catch(() => []))));
+    const f = flPickFut(fr); if (!f) throw new Error('取不到台指期即時價');
+    const ft = Date.parse(String(f.date).slice(0, 19).replace(' ', 'T') + '+08:00') / 1000 + 8 * 3600;
+    if (ft < dayT(ses.x, ses.a)){ FLV.err = ''; FLV.t = ''; return false; }                 // 這個時段還沒有成交（休市日）
+    const key = flKey(ses.s, ses.x), st = flGet(key) || { bars:[], pv:{}, fut:null, last:0 };
+    const fresh = Date.now() - st.last < 3 * 60e3;                                         // 上次抓價超過 3 分鐘：這次只當基準，不把中間累積的量算進同一分鐘
+    const px = +f.close, tm = Math.floor(Math.min(nowS, dayT(ses.x, ses.s === 'D' ? 824 : 1739)) / 60) * 60;
+    let bar = st.bars[st.bars.length - 1];
+    if (!bar || bar.t !== tm){ bar = { t:tm, o:px, h:px, l:px, c:px, net:0, gross:0, cb:0, cs:0, pb:0, ps:0, unk:0, v:0 }; st.bars.push(bar); }
+    bar.h = Math.max(bar.h, px); bar.l = Math.min(bar.l, px); bar.c = px;
+    const fv = +f.total_volume || 0; if (fresh && st.fut != null && fv >= st.fut) bar.v += fv - st.fut; st.fut = fv;
+    let n = 0;
+    [...prods.values()].forEach((list, pi) => { for (const r of ors[pi] || []){
+      const m = /^[A-Z0-9]{3}(\d+)([A-X])(\d)$/.exec(r.options_id); if (!m) continue;
+      const suf = m[2] + m[3], it = list.find(q => q.lp.cl === suf || q.lp.pl === suf); if (!it) continue;
+      const call = it.lp.cl === suf, K = +m[1], tv = +r.total_volume || 0, pv = st.pv[r.options_id]; st.pv[r.options_id] = tv;
+      if (!fresh || pv == null || tv <= pv) continue;
+      const dv = tv - pv, c = +r.close, bp = +r.buy_price, sp = +r.sell_price;
+      let side = 0; if (bp > 0 && sp > 0){ if (c >= sp) side = 1; else if (c <= bp) side = -1; else side = Math.sign(c - (bp + sp) / 2); }
+      if (!side){ bar.unk += dv; continue; }
+      const row = it.e.rows.find(x => x[0] === K), iv = row && row[10] ? row[10] / 100 : it.e.iv / 100;
+      const T = Math.max(600, dayT(it.e.exp, 810) - nowS) / (365 * 86400);
+      const F = it.e.F * px / (S.fut || it.e.F), sd = iv * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd;
+      const dl = call ? flNcdf(d1) : flNcdf(d1) - 1;
+      bar.net += side * dl * dv * 0.25; bar.gross += Math.abs(dl) * dv * 0.25;
+      if (call) bar[side > 0 ? 'cb' : 'cs'] += dv; else bar[side > 0 ? 'pb' : 'ps'] += dv; n++;
+    } });
+    st.last = Date.now(); flPut(key, st);
+    FLV.t = String(f.date).slice(11, 19); FLV.n = n; FLV.err = '';
+    return true;
+  } catch(e){ FLV.err = e.message || String(e); return false; }
+  finally { FLV.busy = false; }
+}
+// 存著的即時分鐘資料 → 和網站資料一樣的格式（step＝60 或 300 秒），只接在網站資料最後一根之後
+function flLiveBase(step, base){
+  const lastT = base.length ? base[base.length - 1].t : 0, out = [];
+  const keys = []; try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith('fl.live:')) keys.push(k); } } catch(e){}
+  keys.sort((a, b) => a.slice(-10).localeCompare(b.slice(-10)) || (a.includes(':D:') ? -1 : 1));
+  for (const k of keys){
+    const [, , s, x] = k.split(':'), st = flGet(k); if (!st || !st.bars) continue;
+    const td = s === 'D' ? x : nextTD(x), s0 = dayT(x, s === 'D' ? 525 : 900);
+    let cur = null;
+    for (const b of st.bars){
+      const t = s0 + Math.floor((b.t - s0) / step) * step; if (t <= lastT) continue;
+      if (!cur || cur.t !== t){ cur = { t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, gross:0, cb:0, cs:0, pb:0, ps:0, unk:0, v:0, td, s, s0, step, live:true }; out.push(cur); }
+      cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c;
+      for (const f of ['net', 'gross', 'cb', 'cs', 'pb', 'ps', 'unk', 'v']) cur[f] += b[f] || 0;
+    }
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
 /* ───────── 自動更新：有新資料就重畫（分頁沒在看時不檢查） ─────────
    台指期：網站每天算好的資料一更新就換上（不用 FinMind 額度）；
    股票、個股期貨：盤中與收盤後每 5 分鐘重抓今天的逐筆（每次 1 個額度，逐筆資料公布後才會有今天的資金流） */
@@ -683,10 +780,18 @@ async function auCheck(){
 setInterval(() => { if (SYM && SYM.kind === 'tx' ? Date.now() - AU.last >= 10 * 60e3 : Date.now() - AU.last >= 5 * 60e3){ AU.last = Date.now(); auCheck(); } }, 30e3);
 AU.last = Date.now();
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - AU.last >= 5 * 60e3){ AU.last = Date.now(); auCheck(); } });
+// 台指期盤中：每分鐘抓即時報價推估資金流、接上 K 棒
+function flStatus(){ if (!SYM || SYM.kind !== 'tx') return; const ses = flSession(), hasTok = !!(SET.token || '').trim();
+  $('#upd').textContent = '資料 ' + ((IDX && IDX.updated) || '') + '・' + (!hasTok ? '盤中即時需要 FinMind 憑證（看盤頁⚙設定）' : FLV.err ? '即時更新失敗：' + FLV.err : ses ? (FLV.t ? '即時 ' + FLV.t + '（每分鐘推估）' : '即時更新中') : '盤中（08:45、15:00 開盤後）每分鐘即時更新'); }
+async function flTick(){ if (!SYM || SYM.kind !== 'tx' || document.hidden || !VIEW) return; if (await flPoll()) await auRerender(); flStatus(); }
+flClean();
+setInterval(flTick, 60e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flTick(); });
+setTimeout(flTick, 4000);
 function err(e){ console.error(e); $('#status').hidden = false; $('#status').className = 'msg'; $('#status').textContent = '讀取失敗：' + (e.message || e); }
 (function start(){
   if (!window.LightweightCharts){ setTimeout(start, 200); return; }
-  try { buildChart(); $('#sym').value = SYM.kind === 'tx' ? 'TX 台指期' : SYM.id + ' ' + SYM.name; loadLists(); render().catch(err); } catch(e){ err(e); }
+  try { buildChart(); $('#sym').value = SYM.kind === 'tx' ? 'TX 台指期' : SYM.id + ' ' + SYM.name; loadLists(); render().then(() => flTick()).catch(err); } catch(e){ err(e); }
 })();
 </script>
 </body>
