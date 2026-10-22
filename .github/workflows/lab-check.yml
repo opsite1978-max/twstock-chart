@@ -19,7 +19,7 @@ jobs:
           tok = os.environ['TOK']; out = []
           def get(path, q):
               with urllib.request.urlopen('https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(dict(q, token=tok)), timeout=60) as r: return json.load(r)
-          for fid in ('MTX', 'TMF'):
+          for fid in ('MXF', 'MTX', 'TXF'):
               j = get('taiwan_futures_snapshot', {'data_id': fid}); d = j.get('data') or []
               out.append(fid + ' n %d keys %s' % (len(d), sorted(d[0].keys()) if d else None))
               out.append('  ' + json.dumps([{k: r.get(k) for k in ('futures_id', 'date', 'close', 'total_volume', 'TickType')} for r in d], ensure_ascii=False)[:600])
