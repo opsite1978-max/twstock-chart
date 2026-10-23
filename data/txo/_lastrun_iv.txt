@@ -1,3 +1,2 @@
-10-22 22:03:28 trading days 279 have 280 todo 1
-10-22 22:03:30 chunk 2026-10-16 2026-10-22 rows 29644 done 1
-10-22 22:03:32 finished, computed 1 left 0
+10-23 21:46:30 trading days 278 have 281 todo 0
+10-23 21:46:30 finished, computed 0 left 0
