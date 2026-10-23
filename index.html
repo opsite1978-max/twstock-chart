@@ -3660,6 +3660,7 @@ Object.assign(IND, {
         autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }),
         topFillColor1:'rgba(239,83,80,0.40)', topFillColor2:'rgba(239,83,80,0.08)', bottomFillColor1:'rgba(38,166,154,0.08)', bottomFillColor2:'rgba(38,166,154,0.40)' }, p);
       this.refs = [30, 0, -60].map(v => this.s.main.createPriceLine({ price:v, lineWidth:v ? 2 : 1, lineStyle:v ? 0 : 2, axisLabelVisible:!!v, title:'' }));
+      this.refs.push(this.s.main.createPriceLine({ price:-25, lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'' }));   // −25 參考虛線
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
     draw(){
@@ -3680,7 +3681,7 @@ Object.assign(IND, {
       this.vals = { v, info };
       this.s.main.setData(toLine(v.map(x => x == null ? null : Math.round(x * 10) / 10)));
       this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
-      this.refs[0].applyOptions({ price:H, color:P.cUp }); this.refs[1].applyOptions({ color:hexA(S.col.text, .35) }); this.refs[2].applyOptions({ price:Lo, color:P.cDn });
+      this.refs[0].applyOptions({ price:H, color:P.cUp }); this.refs[1].applyOptions({ color:hexA(S.col.text, .35) }); this.refs[2].applyOptions({ price:Lo, color:P.cDn }); this.refs[3].applyOptions({ color:hexA(P.cDn, .8) });
       this.mk.setMarkers(mk);
     },
     label(i){
