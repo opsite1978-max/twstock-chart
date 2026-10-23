@@ -713,7 +713,7 @@ const DEFAULTS = {
           useVol:true, reqVol:false, volFactor:1.1, smooth:10, cost:20, range:60, reg:7, mem:15, pct:250, trend:60,
           cMidUp:'#2daed9', cMidDn:'#6178b2', cDeepUp:'#00e676', cDeepDn:'#1e8f5e', cHiUp:'#ff5252', cHiDn:'#ff9800',
           deepCol:'#26a69a', upCol:'#ef5350', guideW:2, lw:2, turnCol:'#00e676', showGuide:true, mainSig:true },
-  qsz:{ ma1:5, ma2:10, ma3:20, ma4:30, lag:15, sigLen:8, showBottom:true, fromHi:35, turnMax:1.8, showDi:true, difPct:5, upPct:7,
+  qsz:{ ma1:5, ma2:10, ma3:20, ma4:30, lag:15, sigLen:8, showBottom:true, fromHi:35, turnMax:1.8, showDi:false, difPct:5, upPct:7,
         cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true,
         showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1,
         showTurn:true, turnMin:3, turnZone:'zero', mainTurn:'strong', cTurnUp:'#00e676', cTurnDn:'#ff1744', fwd:10,
@@ -766,10 +766,11 @@ if ((S.v || 0) < 21) S.ind = Object.assign({}, S.ind, { ult:false });   // 終�
 if ((S.v || 0) < 22) S.ind = Object.assign({}, S.ind, { panic:true });   // 新增散戶恐慌副圖
 if ((S.v || 0) < 23 && S.cost && S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7';   // 主力底線改淺藍，和散戶成本的紫色分開
 if ((S.v || 0) < 24) S.ind = Object.assign({}, S.ind, { bbot:true });   // 看盤預設開布林大底
-S.v = 24;
+S.v = 25;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+if ((S._v25 || 0) < 1){ S.qsz.showDi = false; S._v25 = 1; }   // 四色動能柱的黃色「底／追」標籤預設拿掉（設定裡還能打開）
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
