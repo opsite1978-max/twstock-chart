@@ -149,6 +149,16 @@ for r in lt:
     LT[r['date']]['all' if ct == 'all' else 'week' if ct == 'week' else 'near'] = dict(r, ct=ct)
 FI = {r['date']: (r['long_open_interest_balance_volume'] or 0) - (r['short_open_interest_balance_volume'] or 0) for r in inst if r.get('institutional_investors') == '外資'}
 
+def pct_price(lots, p):
+    """部位價位分布由低往高累積到 p 比例的價位（取價格區間中間）"""
+    tot = sum(lots.values())
+    if tot <= 0: return None
+    acc = 0.0
+    for k in sorted(lots):
+        acc += lots[k]
+        if acc >= p * tot: return k + BIN / 2
+    return None
+
 BL, BS, BF = Book(), Book(), Book(); fsign = 0
 days = []
 for d in TD:
@@ -174,6 +184,13 @@ for d in TD:
         oi = {c: float(pos[d][c].get('open_interest') or 0) for c in live[:2]}; tot = sum(oi.values()) or 1
         BF.set(d, {c: abs(net) * oi[c] / tot for c in live[:2]})
         cf, _ = BF.cost(); row.update({'fi': net, 'cFI': cf and round(cf)})
+    # 主力底線：前十大多單（外資淨多時再加外資多單）全部持倉價位，由低往高累積到一定比例的價位
+    if 'qLN' in row:
+        lb = BL.lots(); la = lb.copy()
+        if fsign > 0: la.update(BF.lots())
+        for pp in (10, 20, 30):
+            v = pct_price(lb, pp / 100); row[f'fl{pp}'] = v and round(v)
+            v = pct_price(la, pp / 100); row[f'fa{pp}'] = v and round(v)
     days.append(row)
 
 # 只輸出熱身期之後（約兩個半月，前面的部位起算前就存在，成本不準）
@@ -193,7 +210,7 @@ def evaluate(key, shift=1.0):
     return {'n': n, 'hold': round(h / n * 100, 1) if n else None, 'sup': [sup, supn], 'res': [res, resn]}
 cl = [r['c'] for r in out_days]
 for i, r in enumerate(out_days): r['_ma20'] = st.mean(cl[max(0, i - 19):i + 1])
-stats = {k: {'line': evaluate(k), 'up1.5%': evaluate(k, 1.015), 'dn1.5%': evaluate(k, 0.985)} for k in ('cL', 'cS', 'cLN', 'cSN', 'cFI', '_ma20')}
+stats = {k: {'line': evaluate(k), 'up1.5%': evaluate(k, 1.015), 'dn1.5%': evaluate(k, 0.985)} for k in ('cL', 'cS', 'cLN', 'cSN', 'cFI', '_ma20', 'fl10', 'fl20', 'fl30', 'fa10', 'fa20', 'fa30')}
 for r in out_days: r.pop('_ma20', None)
 for k, v in stats.items(): print('backtest', k, v)
 
