@@ -481,7 +481,7 @@
       <details>
         <summary>布林大底（所有商品）</summary>
         <div class="stack">
-          <div class="hint">大底能量 0～100＝價格跌到 60 根布林通道下軌外多深 × 20 根布林通道寬度在過去約 3 年的百分位（通道越張開越恐慌）。50 以上＝大底區。W 底＝布林 W 底加能量背離：第一隻腳能量 ≥ 50，之後跌回附近（不高於第一隻腳 2%）但能量變小，再收盤突破前 3 根高點。回測加權指數日線 2005～2026（15 個跌幅 ≥ 15% 的大底）：W 底 21 年 20 次、抓到 8 個大底，之後 60 天平均 +4.1%（75% 上漲，平常 +2.8%）；大底區本身 15 個大底都會出現，但也常繼續跌，當警報用。日內週期沒有回測過。</div>
+          <div class="hint">大底能量 0～100＝價格跌到 60 根布林通道下軌外多深 × 20 根布林通道寬度在過去約 3 年的百分位（通道越張開越恐慌）。50 以上＝大底區，80 是上限線（極端恐慌：2008、2020/3、2022/10、2024/8、2025/4 都到過，但穿過 80 之後平均還會再跌 8%，是最兇的時候，不是買點）。W 底＝布林 W 底加能量背離：第一隻腳能量 ≥ 50，之後跌回附近（不高於第一隻腳 2%）但能量變小，再收盤突破前 3 根高點。回測加權指數日線 2005～2026（15 個跌幅 ≥ 15% 的大底）：W 底 21 年 20 次、抓到 8 個大底，之後 60 天平均 +4.1%（75% 上漲，平常 +2.8%）；大底區本身 15 個大底都會出現，但也常繼續跌，當警報用。日內週期沒有回測過。</div>
           <label class="chk"><input type="checkbox" data-k="bbot.mainSig" data-redraw="bbot">K 線圖上標出「W底」</label>
           <label class="chk"><input type="checkbox" data-k="bbot.zone" data-redraw="bbot">副圖標出進入大底區</label>
           <div class="kv"><span>能量／W 底</span><span class="pair"><input type="color" data-k="bbot.cE" data-redraw="bbot"><input type="color" data-k="bbot.cW" data-redraw="bbot"></span></div>
@@ -732,7 +732,7 @@ const DEFAULTS = {
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, big:false, bbot:false, trap:false, panic:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, big:false, bbot:true, trap:false, panic:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -765,7 +765,8 @@ if ((S.v || 0) < 20) S.ovl = Object.assign({}, S.ovl, { cost:true });
 if ((S.v || 0) < 21) S.ind = Object.assign({}, S.ind, { ult:false });   // 終極力道改成預設不開（設定裡還能打開）
 if ((S.v || 0) < 22) S.ind = Object.assign({}, S.ind, { panic:true });   // 新增散戶恐慌副圖
 if ((S.v || 0) < 23 && S.cost && S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7';   // 主力底線改淺藍，和散戶成本的紫色分開
-S.v = 23;
+if ((S.v || 0) < 24) S.ind = Object.assign({}, S.ind, { bbot:true });   // 看盤預設開布林大底
+S.v = 24;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
@@ -3705,7 +3706,7 @@ Object.assign(IND, {
       this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2, lineType:2, priceLineVisible:false, lastValueVisible:true, priceFormat:{ type:'price', precision:0, minMove:1 },
         autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }),
         topFillColor1:'rgba(255,202,40,0.45)', topFillColor2:'rgba(255,202,40,0.10)', bottomFillColor1:'rgba(120,130,150,0.12)', bottomFillColor2:'rgba(120,130,150,0.02)' }, p);
-      this.refs = [50].map(v => this.s.main.createPriceLine({ price:v, lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'' }));
+      this.refs = [50, 80].map(v => this.s.main.createPriceLine({ price:v, lineWidth:v === 80 ? 2 : 1, lineStyle:v === 80 ? 0 : 2, axisLabelVisible:true, title:'' }));   // 50＝大底區、80＝上限（極端恐慌）
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
     draw(){
@@ -3713,7 +3714,7 @@ Object.assign(IND, {
       this.vals = R;
       this.s.main.setData(toLine(R.S.map(x => x == null ? null : Math.round(x * 10) / 10)));
       this.s.main.applyOptions({ topLineColor:P.cE, bottomLineColor:hexA(S.col.text, .55) });
-      this.refs[0].applyOptions({ color:P.cE });
+      this.refs[0].applyOptions({ color:P.cE }); this.refs[1].applyOptions({ color:P.cW });
       const mk = []; bars.forEach((b, i) => { if (P.zone && R.zone[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cE, size:0.7 });
         if (R.W[i]) mk.push({ time:b.time, position:'aboveBar', shape:'arrowUp', color:P.cW, text:'W底', size:1 }); });
       this.mk.setMarkers(mk);
@@ -3727,7 +3728,7 @@ Object.assign(IND, {
     label(i){
       const v = this.vals, P = S.bbot; if (!v) return '';
       const x = v.S[i];
-      const zone = x == null ? '　<span class="muted">資料不足（至少 160 根）</span>' : x >= 50 ? `　<span style="color:${P.cE}">大底區（跌得深、通道大開）</span>` : x >= 30 ? '　<span class="muted">偏低、波動放大</span>' : '';
+      const zone = x == null ? '　<span class="muted">資料不足（至少 160 根）</span>' : x >= 80 ? `　<span style="color:${P.cW}">超過上限 80（極端恐慌）</span>` : x >= 50 ? `　<span style="color:${P.cE}">大底區（跌得深、通道大開）</span>` : x >= 30 ? '　<span class="muted">偏低、波動放大</span>' : '';
       const tag = v.W[i] ? `　<span class="tag" style="background:${P.cW};color:#000">W 底</span>` : v.zone[i] ? `　<span class="tag" style="background:${P.cE};color:#000">進入大底區</span>` : '';
       return `布林大底 <b style="color:${x != null && x >= 50 ? P.cE : 'inherit'}">${x == null ? '—' : fmt(x, 0)}</b>${zone}${tag}`;
     },
