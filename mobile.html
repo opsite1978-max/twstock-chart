@@ -195,6 +195,7 @@
   <div class="plabel" id="lbl-ult"></div>
   <div class="plabel" id="lbl-flow"></div>
   <div class="plabel" id="lbl-retail"></div>
+  <div class="plabel" id="lbl-omega"></div>
   <div class="plabel" id="lbl-big"></div>
   <div class="plabel" id="lbl-bbot"></div>
   <div class="plabel" id="lbl-trap"></div>
@@ -221,6 +222,7 @@
         <label class="chk"><input type="checkbox" data-ind="ult">終極力道（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="flow">資金流（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="retail">散戶指標（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="omega">ABYSS Ω TITAN 大局趨勢</label>
         <label class="chk"><input type="checkbox" data-ind="big">大趨勢（籌碼，台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="bbot">布林大底</label>
         <label class="chk"><input type="checkbox" data-ind="trap">主力套牢（台指期）</label>
@@ -508,6 +510,18 @@
         </div>
       </details>
       <details>
+        <summary>ABYSS Ω TITAN 大局趨勢</summary>
+        <div class="stack">
+          <div class="hint">照你提供的 TradingView 指標改寫：對數價格的 34／144／400 根指數平均（中長期趨勢、超長期位置、超長期斜率），除以波動後用 200 根中位數標準化、加權、非線性壓縮成 −100～+100，再依趨勢明確程度自適應平滑。綠＝多頭大局、紅＝空頭大局、黃＝過渡；狀態切換時標 Ω（20 根內不重複）。色帶：+70 以上極度樂觀、+35 樂觀、−35 悲觀、−70 以下極度悲觀。資料不足 200 根時中位數先用現有根數算（至少 50 根）。這個指標我還沒回測。</div>
+          <label class="chk"><input type="checkbox" data-k="omega.zones" data-redraw="omega">顯示情緒色帶</label>
+          <label class="chk"><input type="checkbox" data-k="omega.sig" data-redraw="omega">標出 Ω 大局轉折</label>
+          <label class="chk"><input type="checkbox" data-k="omega.reqAnchor" data-redraw="omega">轉折要求超長期趨勢配合</label>
+          <div class="kv"><span>主線粗細</span><select data-k="omega.lineW" data-int data-redraw="omega"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+          <div class="kv"><span>多頭／空頭／過渡</span><span class="pair"><input type="color" data-k="omega.cBull" data-redraw="omega"><input type="color" data-k="omega.cBear" data-redraw="omega"><input type="color" data-k="omega.cNeu" data-redraw="omega"></span></div>
+          <button class="small" data-reset="omega">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>布林大底（所有商品）</summary>
         <div class="stack">
           <div class="hint">大底能量 0～100＝價格跌到 60 根布林通道下軌外多深 × 20 根布林通道寬度在過去約 3 年的百分位（通道越張開越恐慌）。50 以上＝大底區，80 是上限線（極端恐慌：2008、2020/3、2022/10、2024/8、2025/4 都到過，但穿過 80 之後平均還會再跌 8%，是最兇的時候，不是買點）。W 底＝布林 W 底加能量背離：第一隻腳能量 ≥ 50，之後跌回附近（不高於第一隻腳 2%）但能量變小，再收盤突破前 3 根高點。回測加權指數日線 2005～2026（15 個跌幅 ≥ 15% 的大底）：W 底 21 年 20 次、抓到 8 個大底，之後 60 天平均 +4.1%（75% 上漲，平常 +2.8%）；大底區本身 15 個大底都會出現，但也常繼續跌，當警報用。日內週期沒有回測過。</div>
@@ -758,10 +772,12 @@ const DEFAULTS = {
   trap:{ lo:'-1', mk:true, cUp:'#ef5350', cDn:'#26a69a', cMk:'#ff8a65' },
   big:{ hi:30, lo:-60, mk:true, cUp:'#ef5350', cDn:'#26a69a' },
   bbot:{ mainSig:true, zone:true, cE:'#ffca28', cW:'#ff9800' },
+  omega:{ fastLen:34, slowLen:144, anchorLen:400, atrLen:100, normLen:200, slopeLen:21, wTrend:0.45, wAnchor:0.35, wSlope:0.20, gain:1.15, clip:4, erLen:34, smFast:6, smSlow:28, twoPole:true,
+          opt:35, xOpt:70, pes:-35, xPes:-70, zones:true, confirm:3, hyst:12, minSlope:1, cooldown:20, reqAnchor:true, sig:true, lineW:3, cBull:'#20DFA5', cBear:'#FF657B', cNeu:'#E9B44C' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, big:false, bbot:true, trap:false, panic:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, omega:false, big:false, bbot:true, trap:false, panic:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -805,7 +821,7 @@ if ((S.v || 0) < 24) S.ind = Object.assign({}, S.ind, { bbot:true });   // 看�
 S.v = 25;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot','omega'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if ((S._v25 || 0) < 1){ S.qsz.showDi = false; S._v25 = 1; }   // 四色動能柱的黃色「底／追」標籤預設拿掉（設定裡還能打開）
 if ((S._v26 || 0) < 1){ S.qsz.style = 'line'; if (+S.ribbon.alpha <= 15) S.ribbon.alpha = 75; S._v26 = 1; }   // 四色動能改曲線、彩帶調淡讓 K 棒清楚
 if (!THEMES[S.themeName]) S.themeName = 'dark';
@@ -815,12 +831,12 @@ S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 // 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋主力成本（前十大多單）、散戶成本、主力底線三條線，副圖大趨勢、布林大底（都能開關）；設定另外存，不影響一般看盤
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
-  const pn = Object.assign({ big:true, bbot:true }, cp.panes || {}); S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, !!pn[k]])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
-  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); if (cp.bbot) Object.assign(S.bbot, cp.bbot); S.cost.w = 1; }   // 成本線用細線
+  const pn = Object.assign({ big:true, bbot:true }, cp.panes || {}, cp.omegaSeen ? {} : { omega:true }); S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, !!pn[k]])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); if (cp.bbot) Object.assign(S.bbot, cp.bbot); if (cp.omega) Object.assign(S.omega, cp.omega); S.cost.w = 1; }   // 成本線用細線
 // 清晰看盤：主圖高度看副圖數量（0 個 100%、1 個 70%、2 個 58%）
-function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 70, 58, 50][['big', 'bbot'].filter(k => S.ind[k]).length]; }
+function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 70, 58, 50][['omega', 'big', 'bbot'].filter(k => S.ind[k]).length]; }
 cleanRatio();
-const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, panes:{ big:!!S.ind.big, bbot:!!S.ind.bbot }, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
+const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, omega:S.omega, omegaSeen:1, panes:{ omega:!!S.ind.omega, big:!!S.ind.big, bbot:!!S.ind.bbot }, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -1344,7 +1360,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'big', 'bbot', 'trap', 'panic'];
+const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'omega', 'big', 'bbot', 'trap', 'panic'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -3512,7 +3528,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'), bbot: () => drawInd('bbot'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'), bbot: () => drawInd('bbot'), omega: () => drawInd('omega'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), cost: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -3536,6 +3552,7 @@ const RESETS = {
   trap: ['trap'],
   big: ['big'],
   bbot: ['bbot'],
+  omega: ['omega'],
   cost: ['cost'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
@@ -3706,6 +3723,96 @@ Object.assign(IND, {
       const how = m == null ? '' : m < 0 ? `　<span class="muted">散戶平均套 ${fmt(-m, 1)} 次追繳</span>` : `　<span class="muted">散戶成本下方 ${fmt(m, 1)} 次追繳</span>`;
       const tag = (v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">散戶恐慌</span>` : '') + (v.run[i] >= v.N ? `　<span class="tag" style="background:#9e9e9e;color:#000">鈍化 ${v.run[i]} 根</span><span class="muted">　散戶一直套著，訊號照樣有效但可能還會再跌</span>` : '');
       return `散戶恐慌 <b style="color:${x != null && x >= 50 ? P.cP : 'inherit'}">${x == null ? '—' : fmt(x, 0)}</b>${zone}${how}${tag}`;
+    },
+  },
+});
+
+/* ───────────── ABYSS Ω TITAN v2 大局趨勢（照使用者提供的 TradingView 指標改寫，所有商品、所有週期） ─────────────
+   對數價格的 34／144／400 根指數平均：中長期趨勢（34−144）、超長期位置（144−400）、超長期斜率（400 的 21 根變化），
+   都除以波動（100 根真實波幅 ÷ 價格），再用 200 根中位數與中位數絕對偏差標準化（±4 截斷），依 0.45／0.35／0.20 加權，
+   非線性壓縮成 −100～+100，再用效率比率（趨勢明確快、盤整慢）做自適應雙極點平滑。
+   狀態：Ω > +12 且 3 根斜率 > 1、超長期向上，連續 3 根＝多頭（綠）；反之＝空頭（紅）；之前＝過渡（黃）。切換時標 Ω，20 根內不重複。
+   和 TradingView 的差別：資料不足 200 根時，中位數用現有的根數（至少 50 根）先算，之後就和原版一樣。 */
+class ZoneFill {   // 整個副圖寬度的水平色帶
+  constructor(){ this.items = []; const me = this; this._v = { zOrder:() => 'bottom', renderer:() => ({ draw(t){
+    if (!me.series || !me.items.length) return;
+    t.useMediaCoordinateSpace(({ context:ctx, mediaSize }) => { for (const z of me.items){
+      const y1 = me.series.priceToCoordinate(z.up), y2 = me.series.priceToCoordinate(z.lo); if (y1 == null || y2 == null) continue;
+      ctx.fillStyle = z.color; ctx.fillRect(0, Math.min(y1, y2), mediaSize.width, Math.abs(y2 - y1)); } });
+  } }) }; }
+  attached({ series, requestUpdate }){ this.series = series; this.req = requestUpdate; }
+  detached(){ this.series = this.req = null; }
+  setItems(a){ this.items = a || []; if (this.req) this.req(); }
+  updateAllViews(){} paneViews(){ return [this._v]; }
+}
+function omegaCalc(B, P){
+  const n = B.length, c = B.map(b => b.close), h = B.map(b => b.high), l = B.map(b => b.low), nul = () => new Array(n).fill(null);
+  const ema = (src, len) => { const a = 2 / (len + 1), o = nul(); let e = null; for (let i = 0; i < n; i++){ const x = src[i]; if (x == null){ continue; } e = e == null ? x : a * x + (1 - a) * e; o[i] = e; } return o; };
+  const lp = c.map(x => Math.log(Math.max(x, 1e-6))), eF = ema(lp, P.fastLen), eS = ema(lp, P.slowLen), eA = ema(lp, P.anchorLen);
+  const tr = c.map((x, i) => i ? Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])) : h[i] - l[i]);
+  const atr = nul(); { let s = 0, r = null; for (let i = 0; i < n; i++){ if (i < P.atrLen){ s += tr[i]; if (i === P.atrLen - 1) r = s / P.atrLen; } else r = (r * (P.atrLen - 1) + tr[i]) / P.atrLen; if (r != null) atr[i] = r; } }
+  const vol = c.map((x, i) => atr[i] == null ? null : Math.max(atr[i] / Math.max(x, 1e-6), 1e-6));
+  const tR = c.map((_, i) => vol[i] == null ? null : (eF[i] - eS[i]) / vol[i]);
+  const aR = c.map((_, i) => vol[i] == null ? null : (eS[i] - eA[i]) / vol[i]);
+  const sR = c.map((_, i) => vol[i] == null || i < P.slopeLen ? null : (eA[i] - eA[i - P.slopeLen]) / vol[i]);
+  const med = (x, len) => { const o = nul(); for (let i = 0; i < n; i++){ const w = []; for (let k = Math.max(0, i - len + 1); k <= i; k++) if (x[k] != null) w.push(x[k]);
+      if (x[i] == null || w.length < Math.min(len, 50)) continue; w.sort((p, q) => p - q); const m = w.length >> 1; o[i] = w.length % 2 ? w[m] : (w[m - 1] + w[m]) / 2; } return o; };
+  const robust = x => { const m = med(x, P.normLen), dev = x.map((v, i) => v == null || m[i] == null ? null : Math.abs(v - m[i])), mad = med(dev, P.normLen);
+    return x.map((v, i) => v == null || m[i] == null || mad[i] == null ? null : Math.max(-P.clip, Math.min(P.clip, (v - m[i]) / Math.max(1.4826 * mad[i], 1e-6)))); };
+  const zT = robust(tR), zA = robust(aR), zS = robust(sR), wt = Math.max(P.wTrend + P.wAnchor + P.wSlope, 1e-4);
+  const tanh = x => { const v = Math.max(-20, Math.min(20, x)), e = Math.exp(-2 * v); return (1 - e) / (1 + e); };
+  const raw = c.map((_, i) => zT[i] == null || zA[i] == null || zS[i] == null ? null : (x => 100 * (0.65 * tanh(0.75 * x) + 0.35 * x / (1 + Math.abs(x))))((P.wTrend * zT[i] + P.wAnchor * zA[i] + P.wSlope * zS[i]) / wt * P.gain));
+  const aF = 2 / (P.smFast + 1), aS = 2 / (P.smSlow + 1), om = nul(); let p1 = null, p2 = null;
+  for (let i = 0; i < n; i++){
+    let er = 0; if (i >= P.erLen){ let path = 0; for (let k = i - P.erLen + 1; k <= i; k++) path += Math.abs(c[k] - c[k - 1]); er = path > 0 ? Math.min(1, Math.max(0, Math.abs(c[i] - c[i - P.erLen]) / path)) : 0; }
+    const a = Math.max(0.001, Math.min(1, aS + (aF - aS) * er));
+    p1 = raw[i] == null ? null : p1 == null ? raw[i] : p1 + a * (raw[i] - p1);
+    p2 = p1 == null ? null : p2 == null ? p1 : p2 + a * (p1 - p2);
+    const v = P.twoPole ? p2 : p1; om[i] = v == null ? null : Math.max(-100, Math.min(100, v));
+  }
+  const reg = new Array(n).fill(0), bull = new Array(n).fill(false), bear = new Array(n).fill(false);
+  let bc = 0, sc = 0, r = 0, last = null;
+  for (let i = 0; i < n; i++){
+    const sl = i >= 3 && om[i] != null && om[i - 3] != null ? om[i] - om[i - 3] : null;
+    let bC = om[i] != null && sl != null && om[i] > P.hyst && sl > P.minSlope, sC = om[i] != null && sl != null && om[i] < -P.hyst && sl < -P.minSlope;
+    if (P.reqAnchor){ bC = bC && eS[i] > eA[i]; sC = sC && eS[i] < eA[i]; }
+    bc = bC ? bc + 1 : 0; sc = sC ? sc + 1 : 0;
+    const ok = last == null || i - last > P.cooldown, conf = !(i === n - 1 && B[i].live);   // 還沒收完的那根不切換（和原版 barstate.isconfirmed 一樣）
+    if (conf && ok && bc >= P.confirm && r !== 1){ r = 1; last = i; bull[i] = true; }
+    else if (conf && ok && sc >= P.confirm && r !== -1){ r = -1; last = i; bear[i] = true; }
+    reg[i] = r;
+  }
+  return { om, reg, bull, bear };
+}
+Object.assign(IND, {
+  omega: {
+    s:{}, vals:null,
+    create(p){
+      const { LineSeries } = LC();
+      this.s.main = chart.addSeries(LineSeries, { lineWidth:3, lineType:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1,
+        autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }) }, p);
+      this.zones = new ZoneFill(); this.s.main.attachPrimitive(this.zones);
+      this.refs = [0].map(v => this.s.main.createPriceLine({ price:v, lineWidth:1, lineStyle:2, axisLabelVisible:false, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    draw(){
+      const P = S.omega, R = this.vals = omegaCalc(bars, P);
+      const col = r => r === 1 ? P.cBull : r === -1 ? P.cBear : P.cNeu;
+      this.s.main.setData(bars.map((b, i) => R.om[i] == null ? { time:b.time } : { time:b.time, value:Math.round(R.om[i] * 10) / 10, color:col(R.reg[i]) }));
+      this.s.main.applyOptions({ lineWidth:+P.lineW || 3, color:P.cNeu });
+      this.refs[0].applyOptions({ color:hexA(S.col.text, .45) });
+      this.zones.setItems(P.zones ? [[100, P.xOpt, 'rgba(140,40,69,0.22)'], [P.xOpt, P.opt, 'rgba(116,81,45,0.15)'], [P.opt, P.pes, 'rgba(38,50,69,0.10)'], [P.pes, P.xPes, 'rgba(23,106,122,0.15)'], [P.xPes, -100, 'rgba(34,74,144,0.22)']]
+        .map(([up, lo, color]) => ({ up:+up, lo:+lo, color })) : []);
+      const mk = []; if (P.sig) bars.forEach((b, i) => { if (R.bull[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.om[i], shape:'arrowUp', color:P.cBull, text:'Ω', size:1.2 });
+        if (R.bear[i]) mk.push({ time:b.time, position:'atPriceTop', price:R.om[i], shape:'arrowDown', color:P.cBear, text:'Ω', size:1.2 }); });
+      this.mk.setMarkers(mk);
+    },
+    label(i){
+      const v = this.vals, P = S.omega; if (!v) return '';
+      const x = v.om[i], r = v.reg[i], name = r === 1 ? ['多頭大局', P.cBull] : r === -1 ? ['空頭大局', P.cBear] : ['過渡', P.cNeu];
+      const zone = x == null ? '　<span class="muted">資料不足</span>' : x >= P.xOpt ? '　極度樂觀' : x >= P.opt ? '　樂觀' : x <= P.xPes ? '　極度悲觀' : x <= P.pes ? '　悲觀' : '';
+      const tag = v.bull[i] ? `　<span class="tag" style="background:${P.cBull};color:#000">Ω 多方大局轉折</span>` : v.bear[i] ? `　<span class="tag" style="background:${P.cBear};color:#000">Ω 空方大局轉折</span>` : '';
+      return `ABYSS Ω 大局 <b style="color:${name[1]}">${x == null ? '—' : fmt(x, 1)}</b>　<span style="color:${name[1]}">${name[0]}</span><span class="muted">${zone}</span>${tag}`;
     },
   },
 });
@@ -4117,7 +4224,7 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
   const costT = (k, v) => { S.cost[k] = v; save(); drawOverlays(); renderLegend(); };
   chip('主力成本', S.cost.cL, S.cost.top, v => costT('top', v)); chip('散戶成本', S.cost.cRc, S.cost.rc, v => costT('rc', v)); chip('主力底線', S.cost.cFl, S.cost.fl, v => costT('fl', v));
   const paneT = (k, v) => { S.ind = Object.assign({}, S.ind, { [k]: v }); cleanRatio(); save(); buildIndicators(); };
-  chip('大趨勢', 'var(--muted)', S.ind.big, v => paneT('big', v)); chip('布林大底', S.bbot.cE, S.ind.bbot, v => paneT('bbot', v));
+  chip('Ω 大局', S.omega.cBull, S.ind.omega, v => paneT('omega', v)); chip('大趨勢', 'var(--muted)', S.ind.big, v => paneT('big', v)); chip('布林大底', S.bbot.cE, S.ind.bbot, v => paneT('bbot', v));
   $('status').before(tg);
 }
 if (S.lastSym) $('sym').value = S.lastSym;
