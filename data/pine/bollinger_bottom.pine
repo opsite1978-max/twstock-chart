@@ -1,0 +1,107 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// 布林大底 Bollinger Major Bottom（與網站「布林大底」副圖同一套算法，所有週期都能用）
+//
+// 大底能量（0～100）＝ 跌多深 × 多恐慌
+//   跌多深：(60 根均線 − 收盤) ÷ 60 根標準差，0～3 個標準差換成 0～1（收在均線上方＝0）
+//   多恐慌：20 根布林通道寬度（上軌 − 下軌）÷ 中線，跟過去 750 根比排第幾百分位（通道越張開越恐慌）
+// 50 以上＝大底區（警報）；80＝上限（極端恐慌，穿過 80 之後平均還會再跌，不是買點）
+// W 底＝布林 W 底＋能量背離：
+//   過去 60 根內有一個能量 ≥ 50 的低點（第一隻腳），最近 10 根又跌回附近（不高於第一隻腳 2%），
+//   但能量 ≤ 第一隻腳的 0.9 倍（恐慌退了），然後收盤突破前 3 根最高點（20 根內只標一次）。
+// 回測（加權指數日線 2005～2026，15 個跌幅 ≥ 15% 的大底）：
+//   W 底 21 年 20 次、抓到 8 個大底，之後 60 天平均 +4.1%（75% 上漲，平常 +2.8%）；
+//   抓不到 V 型急跌急彈的底（2020/3、2024/8、2025/4）。日內週期沒有回測過，只當參考。
+//@version=6
+indicator("布林大底 Bollinger Major Bottom", shorttitle = "布林大底", overlay = false, max_bars_back = 1000, precision = 0)
+
+// ───── 參數 ─────
+win      = input.int(750, "通道寬度百分位回看根數 Lookback for bandwidth percentile", minval = 100)
+minWin   = input.int(100, "最少需要的根數 Minimum bars", minval = 20)
+zoneLv   = input.float(50, "大底區 Bottom zone")
+upLv     = input.float(80, "上限（極端恐慌）Upper limit")
+showW    = input.bool(true, "標出 W 底 Show W-bottom")
+showWMain = input.bool(true, "W 底也標在 K 線圖 Show W-bottom on price chart")
+showZone = input.bool(true, "標出進入大底區 Show zone entry")
+cE       = input.color(#ffca28, "能量顏色 Energy color")
+cW       = input.color(#ff9800, "W 底／上限顏色 W-bottom color")
+
+// ───── 布林通道 ─────
+basis20 = ta.sma(close, 20)
+dev20   = ta.stdev(close, 20)          // 母體標準差（與網站相同）
+bw      = basis20 != 0 ? 4 * dev20 / basis20 : na
+basis60 = ta.sma(close, 60)
+dev60   = ta.stdev(close, 60)
+depth   = na(dev60) ? na : dev60 > 0 ? math.max(0.0, math.min(3.0, (basis60 - close) / dev60)) / 3.0 : 0.0
+
+// ───── 通道寬度百分位（排序陣列，比當下小的比例；與網站相同）─────
+lowerBound(array<float> a, float v) =>
+    int lo = 0
+    int hi = array.size(a)
+    while lo < hi
+        int mid = int(math.floor((lo + hi) / 2))
+        if array.get(a, mid) < v
+            lo := mid + 1
+        else
+            hi := mid
+    lo
+
+var array<float> fifo = array.new_float()
+var array<float> srt  = array.new_float()
+float pct = na
+if not na(bw)
+    array.push(fifo, bw)
+    array.insert(srt, lowerBound(srt, bw), bw)
+    if array.size(fifo) > win
+        float old = array.shift(fifo)
+        array.remove(srt, lowerBound(srt, old))
+    int n = array.size(srt)
+    if n >= minWin
+        pct := float(lowerBound(srt, bw)) / n * 100
+
+E = na(pct) or na(depth) ? na : depth * pct
+
+// ───── W 底 ─────
+var int lastW = -100
+bool wSig = false
+if bar_index >= 70 and bar_index - lastW > 20
+    float hh0 = math.max(high[1], high[2], high[3])
+    float hh1 = math.max(high[2], high[3], high[4])
+    if close > hh0 and not (close[1] > hh1)
+        // 第二隻腳：最近 11 根最低（同樣低取較早的）
+        int o2 = 10
+        for o = 10 to 0
+            if low[o] < low[o2]
+                o2 := o
+        // 第一隻腳：再往前（60 根內、至少早 6 根）能量 ≥ 大底區的最低點
+        int o1 = -1
+        for o = 60 to o2 + 6
+            if not na(E[o]) and E[o] >= zoneLv and (o1 < 0 or low[o] < low[o1])
+                o1 := o
+        if o1 >= 0 and low[o2] <= low[o1] * 1.02
+            float e2 = 0.0
+            for o = o2 + 2 to o2
+                e2 := math.max(e2, nz(E[o]))
+            float e1 = 0.0
+            for o = o1 + 2 to math.max(0, o1 - 2)
+                e1 := math.max(e1, nz(E[o]))
+            if e2 <= e1 * 0.9
+                wSig := true
+                lastW := bar_index
+
+zoneIn = not na(E) and not na(E[1]) and E[1] < zoneLv and E >= zoneLv
+
+// ───── 畫圖 ─────
+pE   = plot(E, "大底能量 Energy", color = E >= zoneLv ? cE : color.new(color.gray, 20), linewidth = 2)
+pZ   = plot(zoneLv, "大底區", color = na, display = display.none)
+fill(pE, pZ, color = E >= zoneLv ? color.new(cE, 60) : color.new(color.gray, 88))
+hline(upLv, "上限 80", color = cW, linestyle = hline.style_solid, linewidth = 2)
+hline(zoneLv, "大底區 50", color = cE, linestyle = hline.style_dashed)
+hline(0, "0", color = color.new(color.gray, 60), linestyle = hline.style_dotted)
+
+plotshape(showZone and zoneIn, "進入大底區", shape.circle, location.top, cE, size = size.tiny)
+plotshape(showW and wSig, "W 底", shape.triangleup, location.bottom, cW, text = "W底", textcolor = cW, size = size.small)
+plotshape(showWMain and wSig, "W 底（K 線圖）", shape.triangleup, location.belowbar, cW, text = "W底", textcolor = cW, size = size.small, force_overlay = true)
+
+alertcondition(wSig, "布林大底 W 底", "布林大底：出現 W 底")
+alertcondition(zoneIn, "布林大底 進入大底區", "布林大底：能量進入大底區")
+alertcondition(ta.crossover(E, upLv), "布林大底 超過上限", "布林大底：能量超過上限（極端恐慌）")
