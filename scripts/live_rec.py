@@ -87,6 +87,7 @@ def exp_ts(exp):
 def push(data):
     os.makedirs('/tmp/live', exist_ok=True)
     json.dump(data, open(OUT, 'w'), separators=(',', ':'))
+    open('/tmp/live/log.txt', 'w').write('\n'.join(LOG[-200:]) + '\n')
     repo = os.environ.get('GITHUB_REPOSITORY'); tok = os.environ.get('GH_TOKEN')
     if not repo or not tok:
         return
@@ -154,8 +155,10 @@ def main():
                 except Exception as ex:
                     log('opt fail', pid, ex); ors[pid] = []
             f = pick_fut(fr)
-            if not f or tm_of(f) < datetime.datetime.fromisoformat(x).replace(tzinfo=TW).timestamp() + a * 60:
-                time.sleep(POLL); continue
+            start = datetime.datetime.fromisoformat(x).replace(tzinfo=TW).timestamp() + a * 60
+            if not f or tm_of(f) < start:
+                log('還沒有這個時段的成交', len(fr), f and f.get('futures_id'), f and f.get('date'))
+                raise RuntimeError('skip')
             px = float(f['close'])
             # 台灣時間當成 UTC 的秒（和網站其他資料一樣），取整到分鐘
             tmin = int(datetime.datetime(now.year, now.month, now.day, now.hour, now.minute, tzinfo=datetime.timezone.utc).timestamp())
@@ -206,11 +209,13 @@ def main():
                     b[5] += side * dl * dv * 0.25; b[6] += abs(dl) * dv * 0.25
             b[5] = round(b[5], 2); b[6] = round(b[6], 2)
         except Exception as ex:
-            log('poll fail', ex)
+            if str(ex) != 'skip':
+                log('poll fail', repr(ex)[:200])
         # 只留最近 4 個時段
         for k in sorted(sess)[:-4]:
             del sess[k]
         if time.time() - last_push > 240:
+            log('push', {k: len(v['bars']) for k, v in sess.items()})
             data = {'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M:%S'), 'cols': ['t', 'o', 'h', 'l', 'c', 'net', 'gross', 'v'],
                     'note': '台灣時間當成 UTC 的秒；net、gross＝選擇權主動成交 Delta 推估（大台口數），每分鐘抓一次即時報價', 'sessions': sess}
             push(data); last_push = time.time()
