@@ -130,7 +130,7 @@
     <label class="chk" title="盤中每分鐘抓即時報價更新最後一根 K 棒（每分鐘用 1 個 FinMind 額度，分頁沒在看時不抓）；收盤後正式資料公布會自動換上"><input type="checkbox" id="auto">自動更新</label>
   <button class="primary" id="loadBtn">載入</button>
   <button id="setBtn" title="指標、顏色、版面與憑證">⚙ 設定</button>
-  <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋終極力道震盪指標，畫面只留這兩個" onclick="location.href='clear.html'">清晰看盤</button>
+  <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋主力與散戶成本線，畫面只留這兩樣" onclick="location.href='clear.html'">清晰看盤</button>
     <button id="ovBtn" title="今日總覽：台指期、選擇權撐壓、法人、資金流、族群、籌碼焦點一頁看完" onclick="location.href='overview.html'">總覽</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
   <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
@@ -678,7 +678,7 @@ const DEFAULTS = {
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -708,7 +708,8 @@ if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨�
 if ((S.v || 0) < 18) S.ind = Object.assign({}, S.ind, { retail:true });
 if ((S.v || 0) < 19) S.ind = Object.assign({}, S.ind, { ult:true });
 if ((S.v || 0) < 20) S.ovl = Object.assign({}, S.ovl, { cost:true });
-S.v = 20;
+if ((S.v || 0) < 21) S.ind = Object.assign({}, S.ind, { ult:false });   // 終極力道改成預設不開（設定裡還能打開）
+S.v = 21;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
@@ -719,7 +720,7 @@ S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 // 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋布林通道＋終極力道；設定另外存，不影響一般看盤
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
-  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'ult'])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = true;
+  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, false])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
   S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
 const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, mainRatio:S.mainRatio })) : store.set('twchart.settings', JSON.stringify(S));
 
@@ -2217,7 +2218,7 @@ Object.assign(OVL, {
   cost: {
     s:{}, vals:null,
     create(){
-      const { LineSeries, LineStyle } = LC(), o = t => ({ lineWidth:1, lineStyle:LineStyle.Dashed, lineType:1, priceLineVisible:false, lastValueVisible:true, title:t, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } });
+      const { LineSeries, LineStyle } = LC(), o = t => ({ lineWidth:1, lineStyle:LineStyle.Solid, lineType:1, priceLineVisible:false, lastValueVisible:true, title:t, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } });
       this.s.rc = chart.addSeries(LineSeries, o('散戶成本'), 0); this.s.cL = chart.addSeries(LineSeries, o('前十大多單'), 0);
       this.s.cS = chart.addSeries(LineSeries, o('前十大空單'), 0); this.s.cFI = chart.addSeries(LineSeries, o('外資成本'), 0);
     },
@@ -2231,7 +2232,7 @@ Object.assign(OVL, {
         for (const f of ['rc', 'cL', 'cS', 'cFI', 'fi']) v[f].push(r ? r[f] : null); v.d.push(r ? r.d : null); });
       this.vals = v;
       [['rc', 'cRc', P.rc], ['cL', 'cL', P.top], ['cS', 'cS', P.top], ['cFI', 'cFI', P.fi]].forEach(([f, ck, on]) => {
-        this.s[f].setData(on ? toLine(v[f]) : []); this.s[f].applyOptions({ color:P[ck], lineWidth:+P.w, visible:!!on }); });
+        this.s[f].setData(on ? toLine(v[f].map(x => x == null ? null : Math.round(x))) : []); this.s[f].applyOptions({ color:P[ck], lineWidth:+P.w, visible:!!on }); });
     },
     markers(){ return []; },
     legend(i){
