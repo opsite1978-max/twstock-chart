@@ -1,0 +1,27 @@
+name: 台指期盤中錄影
+on:
+  schedule:
+    - cron: '30 0 * * 1-5'    # 台灣 08:30（日盤）
+    - cron: '50 0 * * 1-5'    # 台灣 08:50（備援：排程延遲時補開）
+    - cron: '40 6 * * 1-5'    # 台灣 14:40（夜盤）
+    - cron: '5 7 * * 1-5'     # 台灣 15:05（備援）
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: live-rec
+  cancel-in-progress: false
+jobs:
+  rec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: 'data/force/strikes.json
+            scripts' }
+      - name: 每分鐘錄台指期與選擇權即時報價
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/live_rec.py
