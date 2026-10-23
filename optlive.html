@@ -211,7 +211,9 @@ async function tick(force){
     const F = { TX:pickFut(ftx), TMF:pickFut(ftmf) };   // FinMind 即時報價只有大台、微台（沒有小台）
     if (!F.TX) throw new Error('取不到台指期即時價');
     const nowS = Math.floor(Date.now() / 1000) + 8 * 3600;
-    if (tmOf(F.TX) / 1000 + 8 * 3600 < dayT(ses.x, ses.s === 'D' ? 525 : 900)){ ERR = ''; LAST_T = ''; return; }   // 這個時段還沒成交（休市）
+    if (tmOf(F.TX) / 1000 + 8 * 3600 < dayT(ses.x, ses.s === 'D' ? 525 : 900)){   // 這個時段的報價還沒進來（休市，或 FinMind 即時報價延遲）
+      LAST_T = ''; ERR = Date.now() / 1000 + 8 * 3600 - dayT(ses.x, ses.s === 'D' ? 525 : 900) > 300
+        ? 'FinMind 即時報價還停在 ' + String(F.TX.date).slice(5, 16).replace('-', '/') + '，這個時段的報價還沒進來（FinMind 那邊延遲，或今天休市）；本頁會繼續自動等，進來後就開始累積。' : ''; return; }
     const st = load(ses) || blank();
     const fresh = Date.now() - st.last < Math.max(3, CFG.iv * 4 / 60) * 60e3;               // 太久沒抓：這次只當基準
     const px = +F.TX.close; if (st.px0 == null) st.px0 = px;
