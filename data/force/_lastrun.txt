@@ -1,3 +1,32 @@
-10-24 00:54:52 本小時 FinMind 已用 0 ／上限 6000
-10-24 00:54:54 targets 225 todo 0 this run max 60
-10-24 00:54:58 strikes written 2026-10-22
+10-24 05:55:52 本小時 FinMind 已用 0 ／上限 6000
+10-24 05:55:53 price fixed 2026-02-07 changed minutes 0 req 2
+10-24 05:55:54 price fixed 2026-02-06 changed minutes 0 req 3
+10-24 05:55:55 price fixed 2026-02-05 changed minutes 0 req 4
+10-24 05:55:56 price fixed 2026-02-04 changed minutes 0 req 5
+10-24 05:55:57 price fixed 2026-02-03 changed minutes 0 req 6
+10-24 05:55:57 price fixed 2026-02-02 changed minutes 0 req 7
+10-24 05:55:58 price fixed 2026-01-31 changed minutes 0 req 8
+10-24 05:55:59 price fixed 2026-01-30 changed minutes 0 req 9
+10-24 05:56:00 price fixed 2026-01-29 changed minutes 0 req 10
+10-24 05:56:01 price fixed 2026-01-28 changed minutes 0 req 11
+10-24 05:56:02 price fixed 2026-01-27 changed minutes 0 req 12
+10-24 05:56:02 price fixed 2026-01-26 changed minutes 0 req 13
+10-24 05:56:03 price fixed 2026-01-24 changed minutes 0 req 14
+10-24 05:56:04 price fixed 2026-01-23 changed minutes 0 req 15
+10-24 05:56:05 price fixed 2026-01-22 changed minutes 0 req 16
+10-24 05:56:05 price fixed 2026-01-21 changed minutes 285 req 17
+10-24 05:56:06 price fixed 2026-01-20 changed minutes 0 req 18
+10-24 05:56:07 price fixed 2026-01-19 changed minutes 0 req 19
+10-24 05:56:08 price fixed 2026-01-17 changed minutes 0 req 20
+10-24 05:56:08 price fixed 2026-01-16 changed minutes 0 req 21
+10-24 05:56:09 price fixed 2026-01-15 changed minutes 0 req 22
+10-24 05:56:10 price fixed 2026-01-14 changed minutes 0 req 23
+10-24 05:56:11 price fixed 2026-01-13 changed minutes 0 req 24
+10-24 05:56:12 price fixed 2026-01-12 changed minutes 0 req 25
+10-24 05:56:13 price fixed 2026-01-10 changed minutes 0 req 26
+10-24 05:56:13 price fixed 2026-01-09 changed minutes 0 req 27
+10-24 05:56:14 price fixed 2026-01-08 changed minutes 0 req 28
+10-24 05:56:15 price fixed 2026-01-07 changed minutes 0 req 29
+10-24 05:56:16 price fixed 2026-01-06 changed minutes 0 req 30
+10-24 05:56:17 price fixed 2026-01-05 changed minutes 0 req 31
+10-24 05:56:19 fixprice done 30 requests 31
