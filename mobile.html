@@ -487,10 +487,10 @@
       <details>
         <summary>終極力道（只適用台指期）</summary>
         <div class="stack">
-          <div class="hint">和「多空力道」頁同一套算法（TXO FORCE ULTIMATE）：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去同時段比較後校準成 −100～+100。≥ +60 強多、≤ −60 強空、−70 悲觀線，±20 以內方向不明；虛線是訊號線。GO 多＝先前極端偏空或恐慌、力道回升 30 以上、連兩根上升站上訊號線、收盤突破前一根高點（GO 空反過來）。資料網站每天早晚計算，不用 FinMind 額度。</div>
+          <div class="hint">抓底版：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去同時段比較、扣掉價格本身漲跌帶動的部分，用 8 根平均（比較不敏感）校準成 −100～+100。上界 +60、下界 −60、−70 悲觀線；虛線是訊號線。底＝從下界以下穿回 −60（曾跌破 −70＝強底），確認＝之後 3 根內收盤突破前一根高點。回測：60 分底之後 12 根平均 +0.61%（漲 69%，平常 +0.14%），4 小時底之後 6 根平均 +1.87%（8 次漲 7 次）。資料網站每天早晚計算，不用 FinMind 額度。</div>
           <label class="chk"><input type="checkbox" data-k="ult.sig" data-redraw="ult">顯示訊號線</label>
-          <label class="chk"><input type="checkbox" data-k="ult.go" data-redraw="ult">標出 GO 多／GO 空（K 線圖和副圖）</label>
-          <div class="kv"><span>偏多／偏空／訊號線</span><span class="pair"><input type="color" data-k="ult.cUp" data-redraw="ult"><input type="color" data-k="ult.cDn" data-redraw="ult"><input type="color" data-k="ult.cSig" data-redraw="ult"></span></div>
+          <label class="chk"><input type="checkbox" data-k="ult.go" data-redraw="ult">標出「底」「強底」「確認」（K 線圖和副圖）</label>
+          <div class="kv"><span>偏多／偏空／訊號線／底</span><span class="pair"><input type="color" data-k="ult.cUp" data-redraw="ult"><input type="color" data-k="ult.cDn" data-redraw="ult"><input type="color" data-k="ult.cSig" data-redraw="ult"><input type="color" data-k="ult.cBot" data-redraw="ult"></span></div>
           <button class="small" data-reset="ult">恢復預設</button>
         </div>
       </details>
@@ -697,7 +697,7 @@ const DEFAULTS = {
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
-  ult:{ sig:true, go:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28' },
+  ult:{ sig:true, go:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28', cBot:'#ffb020' },
   retail:{ k:'C', hi:60, hiD:30, mainSig:true, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
@@ -751,7 +751,7 @@ S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
   S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'ult'])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = true;
-  S.lastSym = 'TX'; S.tf = cp.tf || '60'; if (cp.periods) S.periods = cp.periods; S.night = cp.night !== false; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
 const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
@@ -3500,85 +3500,46 @@ Object.assign(IND, {
   },
 });
 
-/* ───────────── 終極力道（TXO FORCE ULTIMATE；和「多空力道」頁同一套算法，只適用台指期） ─────────────
-   主線 F：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去 30 個同時段比（穩健 z 分數），指數平均 5 根後依過去分布校準成 −100～+100。
-   訊號線：主線的指數平均（約 9 根）。≥ +60 強多、≤ −60 強空、−70 悲觀線；±20 以內方向不明。
-   GO：先前極端偏空（≤ −60）或恐慌 → 力道回升 30 以上、連兩根上升且站上訊號線 → 收盤突破前一根高點（空方反過來）。
-   恐慌指數：跌幅、波動率指數上升、賣權主動買占比、已實現波動、負向力道，各自和過去比的百分位平均（≥ 80＝恐慌擴張）。 */
+/* ───────────── 終極力道（抓底版，只適用台指期） ─────────────
+   台指選擇權逐筆主動成交 × Delta 的淨流量，和過去 30 個同時段比（穩健 z 分數），
+   再扣掉「價格本身漲跌帶動的部分」（滾動迴歸），用 8 根指數平均（比多空力道頁的 5 根穩）、依過去分布第 95 百分位校準成 −100～+100。
+   上界 +60（過熱）、下界 −60（超賣）、−70 悲觀線。
+   底＝從下界以下穿回 −60（期間跌破 −70＝強底）；確認＝底出現後 3 根內收盤突破前一根高點。
+   回測（2026/1～10）：60 分 底之後 12 根平均 +0.61%（漲 69%，平常 +0.14%）、確認後之後 12 根沒破低 74%；4 小時 底之後 6 根平均 +1.87%（8 次漲 7 次）。 */
 const ULT = { cache:new Map() };
 const ultMed = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const ultAvg = a => a.length ? a.reduce((t, v) => t + v, 0) / a.length : null;
-function ultAgg(tf){
-  const out = []; let cur = null;
-  for (const b of FLW.base){
-    let key, t, k;
-    if (tf === 'D'){ key = b.td; t = b.td; k = 0; }
-    else { const s0 = flwS0(b); k = Math.floor((b.t - s0) / (tf * 60)); t = s0 + k * tf * 60; key = b.s + t; }
-    if (!cur || cur.key !== key){ cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, cb:0, cs:0, pb:0, ps:0, unk:0, vix:null, td:b.td, s:tf === 'D' ? 'X' : b.s, k }; out.push(cur); }
-    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c; cur.net += b.net || 0;
-    for (const f of ['cb', 'cs', 'pb', 'ps', 'unk']) cur[f] += b[f] || 0;
-    if (b.vix != null) cur.vix = b.vix;
-  }
-  return out;
-}
-function ultPct(sorted, x){ let lo = 0, hi = sorted.length; while (lo < hi){ const m = (lo + hi) >> 1; if (sorted[m] < x) lo = m + 1; else hi = m; } return sorted.length ? lo / sorted.length * 100 : null; }
 function ultSeries(tf){
   const ck = tf + ':' + FLW.base.length;
   if (ULT.cache.has(ck)) return ULT.cache.get(ck);
-  const bars = ultAgg(tf), a = 2 / 6, aS = 0.2, K6 = Math.atanh(0.6);
-  const W = tf === 'D' ? 60 : 30, MINH = tf === 'D' ? 15 : 8, QN = tf === 'D' ? 150 : 1500, QMIN = tf === 'D' ? 30 : 120, L = tf === 'D' ? 10 : 24, COOL = tf === 'D' ? 3 : 12;
-  const slots = new Map(), absHist = [], comp = { drop:[], vix:[], put:[], rv:[] }; let qv = null, compS = null, ema = null, sig = null;
-  const res = [];
-  for (let i = 0; i < bars.length; i++){
-    const b = bars[i], slot = b.s + ':' + b.k, h = slots.get(slot) || [];
-    let z = null;
-    if (h.length >= MINH){ const m = ultMed(h), mad = ultMed(h.map(v => Math.abs(v - m))) * 1.4826;
-      if (mad > 0) z = (b.net - m) / mad; else { const sd = Math.sqrt(ultAvg(h.map(v => (v - m) ** 2))); z = sd > 0 ? (b.net - m) / sd : 0; }
-      z = Math.max(-8, Math.min(8, z)); }
-    h.push(b.net); if (h.length > W) h.shift(); slots.set(slot, h);
-    let F = null;
-    if (z != null){ ema = ema == null ? z : ema + a * (z - ema);
-      absHist.push(Math.abs(ema)); if (absHist.length > QN) absHist.shift();
-      if (absHist.length >= QMIN && (qv == null || i % 25 === 0)){ const s = absHist.slice().sort((x, y) => x - y); qv = s[Math.min(s.length - 1, Math.floor(s.length * 0.9))] || 1e-9; }
-      if (qv) F = 100 * Math.tanh(K6 * ema / qv); }
-    if (F != null) sig = sig == null ? F : sig + aS * (F - sig);
-    const j6 = i - 6;
-    const drop = j6 >= 0 && bars[j6].c ? -(b.c - bars[j6].c) / bars[j6].c : null;
-    const dvix = j6 >= 0 && b.vix != null && bars[j6].vix != null ? b.vix - bars[j6].vix : null;
-    const tot = b.cb + b.cs + b.pb + b.ps, put = tot > 0 ? b.pb / tot : null;
-    let rv = null; if (i >= 12){ const r = []; for (let k = i - 11; k <= i; k++) if (bars[k - 1].c) r.push(Math.log(bars[k].c / bars[k - 1].c)); const m = ultAvg(r); rv = Math.sqrt(ultAvg(r.map(x => (x - m) ** 2))); }
-    if (!compS || i % 25 === 0) compS = Object.fromEntries(Object.entries(comp).map(([k, v]) => [k, v.length >= 100 ? v.slice(-2000).sort((x, y) => x - y) : null]));
-    const parts = []; const pushP = (k, x) => { if (x != null && compS[k]) parts.push(ultPct(compS[k], x)); };
-    pushP('drop', drop); pushP('vix', dvix); pushP('put', put); pushP('rv', rv);
-    if (F != null) parts.push((100 - F) / 2);
-    const panic = parts.length >= 3 ? ultAvg(parts) : null;
-    for (const [k, x] of [['drop', drop], ['vix', dvix], ['put', put], ['rv', rv]]) if (x != null){ comp[k].push(x); if (comp[k].length > 4000) comp[k].shift(); }
-    res.push({ F, sig, panic, cls:tot + b.unk > 0 ? tot / (tot + b.unk) : null });
+  const bars = flwAgg(FLW.base, tf), D = tf === 'D';
+  const zN = flwSlotZ(bars, bars.map(b => b.net)), zR = flwSlotZ(bars, bars.map(b => b.o ? (b.c - b.o) / b.o : 0));
+  const resid = [], xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0; const minn = D ? 30 : 100;
+  for (let i = 0; i < bars.length; i++){ let r = null;
+    if (zN[i] != null && zR[i] != null){ const m = xs.length;
+      if (m >= minn && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
+      xs.push(zR[i]); ys.push(zN[i]); sx += zR[i]; sy += zN[i]; sxx += zR[i] ** 2; sxy += zR[i] * zN[i];
+      if (xs.length > 500){ const p = xs.shift(), q = ys.shift(); sx -= p; sy -= q; sxx -= p * p; sxy -= p * q; } }
+    resid.push(r); }
+  // 8 根指數平均、第 95 百分位校準（比較不敏感）
+  const a = 2 / 9, K6 = Math.atanh(0.6), QMIN = D ? 30 : 120, QN = D ? 150 : 1500, hist = [], F = []; let ema = null, qv = null;
+  resid.forEach((x, i) => { let f = null;
+    if (x != null){ ema = ema == null ? x : ema + a * (x - ema); hist.push(Math.abs(ema)); if (hist.length > QN) hist.shift();
+      if (hist.length >= QMIN && (qv == null || i % 25 === 0)){ const s = hist.slice().sort((p, q) => p - q); qv = s[Math.min(s.length - 1, Math.floor(s.length * 0.95))] || 1e-9; }
+      if (qv) f = 100 * Math.tanh(K6 * ema / qv); }
+    F.push(f); });
+  const sig = []; let sv = null; F.forEach(f => { if (f != null) sv = sv == null ? f : sv + 0.2 * (f - sv); sig.push(f == null ? null : sv); });
+  // 底：從 −60 以下穿回；確認：之後 3 根內收盤突破前一根高點
+  const bot = new Map(), conf = new Map(); let last = -99;
+  for (let i = 1; i < bars.length; i++){
+    if (F[i] == null || F[i - 1] == null || !(F[i - 1] <= -60 && F[i] > -60) || i - last <= 3) continue;
+    let j = i - 1, mn = F[j]; while (j >= 0 && F[j] != null && F[j] <= -60){ mn = Math.min(mn, F[j]); j--; }
+    bot.set(i, mn <= -70 ? 2 : 1); last = i;
+    for (let k = i; k < Math.min(bars.length, i + 4); k++) if (bars[k].c > bars[k - 1].h){ conf.set(k, 1); break; }
   }
-  for (let i = 0; i < bars.length; i++){ const r = res[i], b = bars[i]; let state = null;
-    if (r.F != null){ state = r.F >= 20 ? 'BULL' : r.F <= -20 ? 'BEAR' : 'NEUTRAL';
-      if (i >= L){ let minF = Infinity, maxF = -Infinity, minL = Infinity, maxH = -Infinity;
-        for (let k = i - L; k < i; k++){ const f = res[k].F; if (f != null){ minF = Math.min(minF, f); maxF = Math.max(maxF, f); } minL = Math.min(minL, bars[k].l); maxH = Math.max(maxH, bars[k].h); }
-        if (b.l <= minL && minF <= -40 && r.F > minF + 20) state = 'EXH_UP';
-        if (b.h >= maxH && maxF >= 40 && r.F < maxF - 20) state = 'EXH_DN'; }
-      if (r.panic != null && r.panic >= 80) state = 'PANIC'; }
-    r.state = state; }
-  const go = new Map(); let lastL = -1e9, lastS = -1e9;
-  for (let i = Math.max(L, 3); i < bars.length; i++){
-    const r = res[i], b = bars[i], p1 = res[i - 1], p2 = res[i - 2];
-    if (r.F == null || p1.F == null || p2.F == null || r.sig == null) continue;
-    if (tf !== 'D' && b.k < 2) continue;
-    if (r.cls != null && r.cls < 0.9) continue;
-    let minF = Infinity, maxF = -Infinity, panicSeen = false;
-    for (let k = i - L; k < i; k++){ const f = res[k].F; if (f == null) continue; minF = Math.min(minF, f); maxF = Math.max(maxF, f); if (res[k].state === 'PANIC') panicSeen = true; }
-    if ((minF <= -60 || panicSeen) && r.F - minF >= 30 && r.F > r.sig && r.F > p1.F && p1.F > p2.F && b.c > bars[i - 1].h && i - lastL >= COOL){ go.set(i, 1); lastL = i; }
-    if (maxF >= 60 && maxF - r.F >= 30 && r.F < r.sig && r.F < p1.F && p1.F < p2.F && b.c < bars[i - 1].l && i - lastS >= COOL){ go.set(i, -1); lastS = i; }
-  }
-  const R = { bars, res, go, map:new Map(bars.map((b, i) => [b.t, i])) };
+  const R = { bars, F, sig, bot, conf, map:new Map(bars.map((b, i) => [b.t, i])) };
   ULT.cache.clear(); ULT.cache.set(ck, R);
   return R;
 }
-const ULT_STATE = { BULL:['多方優勢', 'up'], BEAR:['空方優勢', 'dn'], NEUTRAL:['方向不明', ''], PANIC:['恐慌擴張', 'dn'], EXH_UP:['空方衰竭（看多背離）', 'up'], EXH_DN:['多方衰竭（看空背離）', 'dn'] };
 Object.assign(IND, {
   ult: {
     s:{}, vals:null,
@@ -3586,40 +3547,40 @@ Object.assign(IND, {
     create(p){
       const { LineSeries, BaselineSeries, LineStyle } = LC(), fixed = () => ({ priceRange:{ minValue:-100, maxValue:100 } });
       this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1, autoscaleInfoProvider:fixed,
-        topFillColor1:'rgba(239,83,80,0.28)', topFillColor2:'rgba(239,83,80,0.03)', bottomFillColor1:'rgba(38,166,154,0.03)', bottomFillColor2:'rgba(38,166,154,0.30)' }, p);
+        topFillColor1:'rgba(239,83,80,0.28)', topFillColor2:'rgba(239,83,80,0.03)', bottomFillColor1:'rgba(38,166,154,0.03)', bottomFillColor2:'rgba(38,166,154,0.32)' }, p);
       this.s.sig = chart.addSeries(LineSeries, { lineWidth:1, lineStyle:LineStyle.Dashed, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
-      this.refs = [[60, 0], [20, 2], [0, 0], [-20, 2], [-60, 0], [-70, 2]].map(([v, st]) => this.s.main.createPriceLine({ price:v, lineWidth:Math.abs(v) >= 60 ? 2 : 1, lineStyle:st, axisLabelVisible:Math.abs(v) >= 60, title:'' }));
+      this.refs = [[60, 0], [0, 2], [-60, 0], [-70, 2]].map(([v, st]) => this.s.main.createPriceLine({ price:v, lineWidth:Math.abs(v) >= 60 ? 2 : 1, lineStyle:st, axisLabelVisible:v !== 0, title:'' }));
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
     draw(){
       const P = S.ult, base = flwLoad();
       if (!base){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
       const R = ultSeries(S.tf === 'D' ? 'D' : +S.tf), day = !(TF[S.tf] || {}).intraday;
-      const v = [], sg = [], st = [], pn = [], go = [];
-      bars.forEach(b => { const j = R.map.get(day ? b.date : b.time), r = j == null ? null : R.res[j];
-        v.push(r ? r.F : null); sg.push(r ? r.sig : null); st.push(r ? r.state : null); pn.push(r ? r.panic : null); go.push(j == null ? 0 : R.go.get(j) || 0); });
-      this.vals = { v, sg, st, pn, go };
+      const v = [], sg = [], bot = [], conf = [];
+      bars.forEach(b => { const j = R.map.get(day ? b.date : b.time);
+        v.push(j == null ? null : R.F[j]); sg.push(j == null ? null : R.sig[j]); bot.push(j == null ? 0 : R.bot.get(j) || 0); conf.push(j != null && R.conf.has(j)); });
+      this.vals = { v, sg, bot, conf };
       this.s.main.setData(toLine(v)); this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
       this.s.sig.setData(P.sig ? toLine(sg) : []); this.s.sig.applyOptions({ color:P.cSig });
-      [P.cUp, hexA(S.col.text, .3), hexA(S.col.text, .35), hexA(S.col.text, .3), P.cDn, P.cDn].forEach((c, k) => this.refs[k].applyOptions({ color:c }));
+      [P.cUp, hexA(S.col.text, .35), P.cDn, P.cDn].forEach((c, k) => this.refs[k].applyOptions({ color:c }));
       const mk = [];
-      if (P.go) bars.forEach((b, i) => { if (go[i]) mk.push({ time:b.time, position:go[i] > 0 ? 'belowBar' : 'aboveBar', shape:go[i] > 0 ? 'arrowUp' : 'arrowDown', color:go[i] > 0 ? P.cUp : P.cDn, size:1 }); });
+      if (P.go) bars.forEach((b, i) => { if (bot[i]) mk.push({ time:b.time, position:'belowBar', shape:'circle', color:P.cBot, size:bot[i] === 2 ? 1.3 : 0.9 }); });
       this.mk.setMarkers(mk);
       refreshMarkers();
     },
     mainMarkers(){
-      const v = this.vals, P = S.ult, out = []; if (!v || !v.go || !P.go) return out;
-      v.go.forEach((g, i) => { if (g) out.push({ i, position:g > 0 ? 'belowBar' : 'aboveBar', shape:g > 0 ? 'arrowUp' : 'arrowDown', color:g > 0 ? P.cUp : P.cDn, text:g > 0 ? 'GO多' : 'GO空', size:1.3 }); });
+      const v = this.vals, P = S.ult, out = []; if (!v || !v.bot || !P.go) return out;
+      v.bot.forEach((g, i) => { if (g) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cBot, text:g === 2 ? '強底' : '底', size:g === 2 ? 1.6 : 1.1 }); });
+      v.conf.forEach((c, i) => { if (c) out.push({ i, position:'belowBar', shape:'circle', color:P.cUp, text:'確認', size:0.8 }); });
       return out;
     },
     label(i){
       const v = this.vals, P = S.ult; if (!v) return '';
       if (v.wait) return `終極力道　<span class="muted">讀取中…</span>`;
-      const x = v.v[i], q = v.sg[i], s = ULT_STATE[v.st[i]], p = v.pn[i];
-      const zone = x == null ? '' : x >= 60 ? `　<span style="color:${P.cUp}">強多</span>` : x <= -70 ? `　<span style="color:${P.cDn}">低於悲觀線</span>` : x <= -60 ? `　<span style="color:${P.cDn}">強空</span>` : '';
-      return `終極力道 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${P.sig ? `　<span style="color:${P.cSig}">訊號線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${zone}`
-        + (s ? `　<span class="tag" style="background:${s[1] === 'up' ? P.cUp : s[1] === 'dn' ? P.cDn : hexA(S.col.text, .25)};color:#fff">${s[0]}</span>` : '')
-        + (p != null ? `　<span class="muted">恐慌 ${fmt(p, 0)}</span>` : '') + (v.go[i] ? `　<b style="color:${v.go[i] > 0 ? P.cUp : P.cDn}">${v.go[i] > 0 ? 'GO 多' : 'GO 空'}</b>` : '');
+      const x = v.v[i], q = v.sg[i];
+      const zone = x == null ? '' : x >= 60 ? `　<span style="color:${P.cUp}">過熱（上界以上）</span>` : x <= -70 ? `　<span style="color:${P.cDn}">低於悲觀線</span>` : x <= -60 ? `　<span style="color:${P.cDn}">超賣（下界以下）</span>` : '';
+      const tag = v.bot[i] ? `　<span class="tag" style="background:${P.cBot};color:#000">${v.bot[i] === 2 ? '強底' : '底'}</span>` : v.conf[i] ? `　<span class="tag" style="background:${P.cUp};color:#fff">確認</span>` : '';
+      return `終極力道 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${P.sig ? `　<span style="color:${P.cSig}">訊號線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${zone}${tag}`;
     },
   },
 });
@@ -3742,7 +3703,7 @@ $('adj').checked = !!S.adj; $('night').checked = !!S.night; $('auto').checked = 
 if (!CLEAN){ const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
 if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定 TX
   document.title = '台指清晰看盤';
-  const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#adjWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
+  const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#adjWrap,#nightWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
   const sy = $('sym'); sy.value = 'TX'; sy.readOnly = true;
   const full = document.createElement('button'); full.textContent = '完整看盤'; full.title = '回到一般看盤（所有指標、股票）'; full.onclick = () => location.href = location.pathname; $('ovBtn').before(full);
 }
