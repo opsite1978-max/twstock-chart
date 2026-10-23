@@ -718,7 +718,7 @@ const DEFAULTS = {
   panic:{ hi:85, mk:true, cP:'#ff7043', cMk:'#ffb020' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
-  cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#e040fb', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
+  cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, panic:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
@@ -758,7 +758,8 @@ if ((S.v || 0) < 19) S.ind = Object.assign({}, S.ind, { ult:true });
 if ((S.v || 0) < 20) S.ovl = Object.assign({}, S.ovl, { cost:true });
 if ((S.v || 0) < 21) S.ind = Object.assign({}, S.ind, { ult:false });   // 終極力道改成預設不開（設定裡還能打開）
 if ((S.v || 0) < 22) S.ind = Object.assign({}, S.ind, { panic:true });   // 新增散戶恐慌副圖
-S.v = 22;
+if ((S.v || 0) < 23 && S.cost && S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7';   // 主力底線改淺藍，和散戶成本的紫色分開
+S.v = 23;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
@@ -766,11 +767,11 @@ if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
 S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
-// 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋主力／散戶成本線＋主力底線，副圖散戶恐慌；設定另外存，不影響一般看盤
+// 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋主力成本（前十大多單）、散戶成本、主力底線三條線，副圖散戶恐慌；設定另外存，不影響一般看盤
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
   S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'panic'])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
-  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (cp.panic) Object.assign(S.panic, cp.panic); S.mainRatio = 72; }   // 主圖佔 72%，下面是散戶恐慌
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; S.cost.top = true; if (cp.panic) Object.assign(S.panic, cp.panic); S.mainRatio = 72; }   // 主圖佔 72%，下面是散戶恐慌
 const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
@@ -1302,6 +1303,7 @@ let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
 let maVals = [[],[],[]], bbVals = null;
 let paneOf = {}, paneRO = null;
 const toLine = arr => bars.map((b,i) => arr[i] === null || arr[i] === undefined ? { time:b.time } : { time:b.time, value:arr[i] });
+const PD = CLEAN ? 0 : 2;   // 清晰看盤：台指期價格不顯示小數
 const fmt = (x, d=2) => x === null || x === undefined || isNaN(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
 
 /* ── 各副圖指標：建立（create）、計算繪製（draw）、左上角數值（label） ── */
@@ -1468,7 +1470,7 @@ function initChart(){
     timeScale: { rightOffset:4, minBarSpacing:1 },
     localization: { locale:'zh-TW', dateFormat:'yyyy/MM/dd' },
   });
-  candle = chart.addSeries(CandlestickSeries, { priceLineVisible:false }, 0);
+  candle = chart.addSeries(CandlestickSeries, Object.assign({ priceLineVisible:false }, CLEAN ? { priceFormat:{ type:'price', precision:0, minMove:1 } } : {}), 0);
   const lineOpt = () => ({ lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
   bbU = chart.addSeries(LineSeries, lineOpt(), 0);
   bbM = chart.addSeries(LineSeries, Object.assign(lineOpt(), { lineStyle:LineStyle.Dashed }), 0);
@@ -1565,9 +1567,9 @@ function renderLegend(i){
   const chg = p ? b.close - p.close : null, pct = p ? chg / p.close * 100 : null;
   let h = `<span><b>${b.label}</b></span>` +
     (b.contract ? `<span>合約 <b>${b.contract.slice(0,4)}/${b.contract.slice(4)}</b></span>` : '') +
-    `<span>開 <b class="${cls}">${fmt(b.open)}</b></span><span>高 <b class="${cls}">${fmt(b.high)}</b></span>` +
-    `<span>低 <b class="${cls}">${fmt(b.low)}</b></span><span>收 <b class="${cls}">${fmt(b.close)}</b></span>` +
-    (p ? `<span class="${cls}">${chg >= 0 ? '+' : ''}${fmt(chg)} (${pct >= 0 ? '+' : ''}${fmt(pct)}%)</span>` : '') +
+    `<span>開 <b class="${cls}">${fmt(b.open, PD)}</b></span><span>高 <b class="${cls}">${fmt(b.high, PD)}</b></span>` +
+    `<span>低 <b class="${cls}">${fmt(b.low, PD)}</b></span><span>收 <b class="${cls}">${fmt(b.close, PD)}</b></span>` +
+    (p ? `<span class="${cls}">${chg >= 0 ? '+' : ''}${fmt(chg, PD)} (${pct >= 0 ? '+' : ''}${fmt(pct)}%)</span>` : '') +
     `<span>量 <b>${fmt(b.volume,0)}</b> ${volUnit}</span>`;
   S.ma.forEach((m,k) => { if (m.on) h += `<span style="color:${m.col}">MA${m.len} ${fmt(maVals[k] ? maVals[k][i] : null)}</span>`; });
   if (S.bb.on && bbVals) h += `<span style="color:${S.bb.col}">布林(${S.bb.len},${S.bb.mult}) 上 ${fmt(bbVals.up[i])}　中 ${fmt(bbVals.mid[i])}　下 ${fmt(bbVals.lo[i])}</span>`;
@@ -2269,7 +2271,7 @@ Object.assign(OVL, {
     s:{}, vals:null,
     create(){
       const { LineSeries, LineStyle } = LC(), o = t => ({ lineWidth:1, lineStyle:LineStyle.Solid, lineType:1, priceLineVisible:false, lastValueVisible:true, title:t, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } });
-      this.s.rc = chart.addSeries(LineSeries, o('散戶成本'), 0); this.s.cL = chart.addSeries(LineSeries, o('前十大多單'), 0);
+      this.s.rc = chart.addSeries(LineSeries, o('散戶成本'), 0); this.s.cL = chart.addSeries(LineSeries, o(CLEAN ? '主力成本' : '前十大多單'), 0);
       this.s.cS = chart.addSeries(LineSeries, o('前十大空單'), 0); this.s.cFI = chart.addSeries(LineSeries, o('外資成本'), 0);
       this.s.fl = chart.addSeries(LineSeries, o('主力底線'), 0);
     },
@@ -2282,7 +2284,7 @@ Object.assign(OVL, {
         const r = k >= 0 ? rows[k] : null;
         for (const f of ['rc', 'cL', 'cS', 'cFI', 'fl', 'fi']) v[f].push(r ? r[f] : null); v.d.push(r ? r.d : null); });
       this.vals = v;
-      [['rc', 'cRc', P.rc], ['cL', 'cL', P.top], ['cS', 'cS', P.top], ['cFI', 'cFI', P.fi], ['fl', 'cFl', P.fl]].forEach(([f, ck, on]) => {
+      [['rc', 'cRc', P.rc], ['cL', 'cL', P.top], ['cS', 'cS', P.top && !CLEAN], ['cFI', 'cFI', P.fi && !CLEAN], ['fl', 'cFl', P.fl]].forEach(([f, ck, on]) => {
         this.s[f].setData(on ? toLine(v[f].map(x => x == null ? null : Math.round(x))) : []); this.s[f].applyOptions({ color:P[ck], lineWidth:f === 'fl' ? +P.w + 1 : +P.w, visible:!!on }); });
     },
     markers(){ return []; },
@@ -2290,7 +2292,8 @@ Object.assign(OVL, {
       const v = this.vals, P = S.cost; if (!v) return '';
       const fiT = v.fi[i] != null && v.fi[i] >= 0 ? '外資多單成本' : '外資空單成本', h = [];
       if (P.rc && v.rc[i] != null) h.push(`<span style="color:${P.cRc}">散戶成本 ${fmt(v.rc[i], 0)}</span>`);
-      if (P.top && v.cL[i] != null) h.push(`<span style="color:${P.cL}">前十大多單 ${fmt(v.cL[i], 0)}</span>`);
+      if (P.top && v.cL[i] != null) h.push(`<span style="color:${P.cL}">${CLEAN ? '主力成本' : '前十大多單'} ${fmt(v.cL[i], 0)}</span>`);
+      if (CLEAN){ if (P.fl && v.fl[i] != null) h.push(`<span style="color:${P.cFl}">主力底線 ${fmt(v.fl[i], 0)}</span>`); return h.join(''); }
       if (P.top && v.cS[i] != null) h.push(`<span style="color:${P.cS}">前十大空單 ${fmt(v.cS[i], 0)}</span>`);
       if (P.fi && v.cFI[i] != null) h.push(`<span style="color:${P.cFI}">${fiT} ${fmt(v.cFI[i], 0)}</span>`);
       if (P.fl && v.fl[i] != null) h.push(`<span style="color:${P.cFl}">主力底線 ${fmt(v.fl[i], 0)}</span>`);
@@ -3585,7 +3588,7 @@ Object.assign(IND, {
     avail(){ return !!(currentSym && currentSym.kind === 'fut'); },
     create(p){
       const { BaselineSeries } = LC();
-      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1,
+      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:{ type:'price', precision:0, minMove:1 },
         autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }),
         topFillColor1:'rgba(255,112,67,0.45)', topFillColor2:'rgba(255,112,67,0.10)', bottomFillColor1:'rgba(120,130,150,0.10)', bottomFillColor2:'rgba(120,130,150,0.02)' }, p);
       this.refs = [85, 50].map(v => this.s.main.createPriceLine({ price:v, lineWidth:v === 85 ? 2 : 1, lineStyle:v === 85 ? 0 : 2, axisLabelVisible:true, title:'' }));
