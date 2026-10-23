@@ -18,8 +18,6 @@ jobs:
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
-        with: { sparse-checkout: 'data/force/strikes.json
-            scripts' }
       - name: 每分鐘錄台指期與選擇權即時報價
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
