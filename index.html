@@ -463,7 +463,10 @@
           <div class="hint">抓底版：台指選擇權逐筆主動成交 × Delta 的淨流量，和過去同時段比較、扣掉價格本身漲跌帶動的部分，用 8 根平均（比較不敏感）校準成 −100～+100。上界 +60、下界 −60、−70 悲觀線；虛線是訊號線。底＝從下界以下穿回 −60（曾跌破 −70＝強底），確認＝之後 3 根內收盤突破前一根高點。回測：60 分底之後 12 根平均 +0.61%（漲 69%，平常 +0.14%），4 小時底之後 6 根平均 +1.87%（8 次漲 7 次）。資料網站每天早晚計算，不用 FinMind 額度。</div>
           <label class="chk"><input type="checkbox" data-k="ult.sig" data-redraw="ult">顯示訊號線</label>
           <label class="chk"><input type="checkbox" data-k="ult.go" data-redraw="ult">標出「底」「強底」「確認」（K 線圖和副圖）</label>
+          <label class="chk"><input type="checkbox" data-k="ult.orig" data-redraw="ult">原本力道（多空力道頁主線，不扣價格，5 根平均，紫線）</label>
+          <label class="chk"><input type="checkbox" data-k="ult.uo" data-redraw="ult">價格力道（終極指標 UO，跟著價格即時反應，點線；30＝−40、70＝+40）</label>
           <div class="kv"><span>偏多／偏空／訊號線／底</span><span class="pair"><input type="color" data-k="ult.cUp" data-redraw="ult"><input type="color" data-k="ult.cDn" data-redraw="ult"><input type="color" data-k="ult.cSig" data-redraw="ult"><input type="color" data-k="ult.cBot" data-redraw="ult"></span></div>
+          <div class="kv"><span>原本力道／價格力道</span><span class="pair"><input type="color" data-k="ult.cOrig" data-redraw="ult"><input type="color" data-k="ult.cUo" data-redraw="ult"></span></div>
           <button class="small" data-reset="ult">恢復預設</button>
         </div>
       </details>
@@ -670,7 +673,7 @@ const DEFAULTS = {
   ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
-  ult:{ sig:true, go:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28', cBot:'#ffb020' },
+  ult:{ sig:true, go:true, orig:true, uo:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28', cBot:'#ffb020', cOrig:'#b98cff', cUo:'#8fa3c7' },
   retail:{ k:'C', hi:60, hiD:30, mainSig:true, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
@@ -3550,9 +3553,21 @@ function ultSeries(tf){
     bot.set(i, mn <= -70 ? 2 : 1); last = i;
     for (let k = i; k < Math.min(bars.length, i + 4); k++) if (bars[k].c > bars[k - 1].h){ conf.set(k, 1); break; }
   }
-  const R = { bars, F, sig, bot, conf, map:new Map(bars.map((b, i) => [b.t, i])) };
+  const R = { bars, F, sig, bot, conf, map:new Map(bars.map((b, i) => [b.t, i])), O:flwCal(zN, 5, D ? 30 : 120, D ? 150 : 1500) };   // O＝原本的力道（多空力道頁主線）
   ULT.cache.clear(); ULT.cache.set(ck, R);
   return R;
+}
+// 價格力道：Larry Williams 終極指標（7／14／28 根買進力道÷真實區間加權），換算成 −100～+100（30 → −40、70 → +40）
+function ultUO(B){
+  const bp = [], tr = [], out = [];
+  B.forEach((b, i) => { const pc = i ? B[i - 1].close : b.open, lo = Math.min(b.low, pc), hi = Math.max(b.high, pc); bp.push(b.close - lo); tr.push(hi - lo); });
+  const sum = (a, i, n) => { let s = 0; for (let k = i - n + 1; k <= i; k++) s += a[k]; return s; };
+  for (let i = 0; i < B.length; i++){
+    if (i < 28){ out.push(null); continue; }
+    const r = [7, 14, 28].map(n => { const t = sum(tr, i, n); return t > 0 ? sum(bp, i, n) / t : 0.5; });
+    out.push((100 * (4 * r[0] + 2 * r[1] + r[2]) / 7 - 50) * 2);
+  }
+  return out;
 }
 Object.assign(IND, {
   ult: {
@@ -3563,6 +3578,8 @@ Object.assign(IND, {
       this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, priceLineVisible:false, lastValueVisible:true, priceFormat:F1, autoscaleInfoProvider:fixed,
         topFillColor1:'rgba(239,83,80,0.28)', topFillColor2:'rgba(239,83,80,0.03)', bottomFillColor1:'rgba(38,166,154,0.03)', bottomFillColor2:'rgba(38,166,154,0.32)' }, p);
       this.s.sig = chart.addSeries(LineSeries, { lineWidth:1, lineStyle:LineStyle.Dashed, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
+      this.s.orig = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
+      this.s.uo = chart.addSeries(LineSeries, { lineWidth:1, lineStyle:LineStyle.SparseDotted, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F1, autoscaleInfoProvider:fixed }, p);
       this.refs = [[60, 0], [0, 2], [-60, 0], [-70, 2]].map(([v, st]) => this.s.main.createPriceLine({ price:v, lineWidth:Math.abs(v) >= 60 ? 2 : 1, lineStyle:st, axisLabelVisible:v !== 0, title:'' }));
       this.mk = LC().createSeriesMarkers(this.s.main, []);
     },
@@ -3570,10 +3587,12 @@ Object.assign(IND, {
       const P = S.ult, base = flwLoad();
       if (!base){ this.vals = { wait:true }; Object.values(this.s).forEach(s => s.setData([])); this.mk.setMarkers([]); refreshMarkers(); return; }
       const R = ultSeries(S.tf === 'D' ? 'D' : +S.tf), day = !(TF[S.tf] || {}).intraday;
-      const v = [], sg = [], bot = [], conf = [];
+      const v = [], sg = [], bot = [], conf = [], og = [], uo = ultUO(bars);
       bars.forEach(b => { const j = R.map.get(day ? b.date : b.time);
-        v.push(j == null ? null : R.F[j]); sg.push(j == null ? null : R.sig[j]); bot.push(j == null ? 0 : R.bot.get(j) || 0); conf.push(j != null && R.conf.has(j)); });
-      this.vals = { v, sg, bot, conf };
+        v.push(j == null ? null : R.F[j]); sg.push(j == null ? null : R.sig[j]); og.push(j == null ? null : R.O[j]); bot.push(j == null ? 0 : R.bot.get(j) || 0); conf.push(j != null && R.conf.has(j)); });
+      this.vals = { v, sg, bot, conf, og, uo };
+      this.s.orig.setData(P.orig ? toLine(og) : []); this.s.orig.applyOptions({ color:P.cOrig });
+      this.s.uo.setData(P.uo ? toLine(uo) : []); this.s.uo.applyOptions({ color:P.cUo });
       this.s.main.setData(toLine(v)); this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
       this.s.sig.setData(P.sig ? toLine(sg) : []); this.s.sig.applyOptions({ color:P.cSig });
       [P.cUp, hexA(S.col.text, .35), P.cDn, P.cDn].forEach((c, k) => this.refs[k].applyOptions({ color:c }));
@@ -3594,7 +3613,8 @@ Object.assign(IND, {
       const x = v.v[i], q = v.sg[i];
       const zone = x == null ? '' : x >= 60 ? `　<span style="color:${P.cUp}">過熱（上界以上）</span>` : x <= -70 ? `　<span style="color:${P.cDn}">低於悲觀線</span>` : x <= -60 ? `　<span style="color:${P.cDn}">超賣（下界以下）</span>` : '';
       const tag = v.bot[i] ? `　<span class="tag" style="background:${P.cBot};color:#000">${v.bot[i] === 2 ? '強底' : '底'}</span>` : v.conf[i] ? `　<span class="tag" style="background:${P.cUp};color:#fff">確認</span>` : '';
-      return `終極力道 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${P.sig ? `　<span style="color:${P.cSig}">訊號線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${zone}${tag}`;
+      const og = v.og ? v.og[i] : null, uo = v.uo ? v.uo[i] : null;
+      return `終極力道 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 1)}</b>${P.sig ? `　<span style="color:${P.cSig}">訊號線 ${q == null ? '—' : fmt(q, 1)}</span>` : ''}${P.orig ? `　<span style="color:${P.cOrig}">原本力道 ${og == null ? '—' : fmt(og, 1)}</span>` : ''}${P.uo ? `　<span style="color:${P.cUo}">價格力道 ${uo == null ? '—' : fmt(uo, 1)}</span>` : ''}${zone}${tag}`;
     },
   },
 });
