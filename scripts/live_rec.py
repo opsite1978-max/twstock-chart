@@ -157,7 +157,8 @@ def main():
             f = pick_fut(fr)
             start = datetime.datetime.fromisoformat(x).replace(tzinfo=TW).timestamp() + a * 60
             if not f or tm_of(f) < start:
-                log('還沒有這個時段的成交', len(fr), f and f.get('futures_id'), f and f.get('date'))
+                log('還沒有這個時段的成交', len(fr), f and f.get('futures_id'), f and f.get('date'),
+                    [(r.get('futures_id'), str(r.get('date'))[5:19], r.get('close'), r.get('total_volume')) for r in fr][:9])
                 raise RuntimeError('skip')
             px = float(f['close'])
             # 台灣時間當成 UTC 的秒（和網站其他資料一樣），取整到分鐘

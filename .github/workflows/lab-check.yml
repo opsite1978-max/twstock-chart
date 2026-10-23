@@ -6,43 +6,40 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
       - env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: |
-          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium > ../out/install.txt 2>&1 || true
-          cat > c.js <<'JS'
-          const { chromium } = require('playwright');
-          const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***'), fs = require('fs'), log = [];
-          const L = x => { log.push(scrub(x)); fs.writeFileSync('../out/log.txt', log.join('\n')); };
-          (async () => {
-            const b = await chromium.launch();
-            const ctx = await b.newContext({ viewport:{ width:1280, height:1000 }, serviceWorkers:'block' });
-            await ctx.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); localStorage.setItem('ol.iv', '20'); localStorage.setItem('clear.prefs', JSON.stringify({ tf:'5' })); } catch(e){} }, tok);
-            const pg = await ctx.newPage(); pg.setDefaultTimeout(20000);
-            pg.on('pageerror', e => L('OL pageerror: ' + e.message));
-            await pg.goto('https://opsite1978-max.github.io/twstock-chart/optlive.html?t=' + Date.now());
-            await pg.waitForTimeout(150000);
-            const txt = id => pg.evaluate(i => (document.querySelector(i) || {}).textContent || 'NONE', id);
-            L('OL msg ' + (await txt('#msg')).slice(0, 200));
-            L('OL hdr ' + await txt('#hdr') + ' | quota ' + await txt('#quota') + ' | exp ' + await txt('#expInfo'));
-            L('OL kpis ' + (await txt('#kpis')).replace(/\s+/g, ' ').slice(0, 300));
-            L('OL force ' + (await txt('#force')).replace(/\s+/g, ' ').slice(0, 300));
-            L('OL fut ' + (await txt('#fut')).replace(/\s+/g, ' ').slice(0, 200));
-            L('OL conc ' + (await txt('#conc')).replace(/\s+/g, ' ').slice(0, 400));
-            L('OL log ' + (await txt('#log')).replace(/\s+/g, ' ').slice(0, 300));
-            await pg.screenshot({ path:'../out/optlive.png', fullPage:true });
-            const p2 = await ctx.newPage(); p2.on('pageerror', e => L('CLEAN pageerror: ' + e.message));
-            await p2.goto('https://opsite1978-max.github.io/twstock-chart/index.html?clean=1&t=' + Date.now()); await p2.waitForTimeout(40000);
-            L('CLEAN ' + await p2.evaluate(() => { const B = __auto.bars, l = B[B.length - 1]; return JSON.stringify({ n:B.length, live:B.filter(b => b.live).length, last:[l.label, l.open, l.close], status:document.getElementById('status').textContent, rec:!!(window.REC || null) }); }));
-            await p2.screenshot({ path:'../out/clean.png' });
-            await b.close();
-          })().catch(e => L('ERR ' + (e.stack || e)));
-          JS
-          timeout 400 node c.js || true
+          mkdir -p out && cat > p.py <<'PY'
+          import os, json, urllib.request, urllib.parse, datetime
+          T = os.environ['FINMIND_TOKEN']; L = []
+          def g(path, **q):
+              q['token'] = T
+              u = 'https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(q)
+              try:
+                  with urllib.request.urlopen(u, timeout=40) as r: j = json.loads(r.read())
+              except Exception as e: return {'err': repr(e)[:200]}
+              return j
+          L.append('now ' + str(datetime.datetime.utcnow()))
+          for did in ('TX', 'TMF', 'TXF'):
+              j = g('taiwan_futures_snapshot', data_id=did)
+              d = j.get('data') or []
+              L.append(f"FUT {did} status {j.get('status')} msg {str(j.get('msg'))[:80]} rows {len(d)} keys {list(d[0].keys()) if d else ''}")
+              for r in d[:12]: L.append('   ' + json.dumps({k: r.get(k) for k in ('futures_id', 'date', 'close', 'total_volume', 'high', 'low', 'TickType')}, ensure_ascii=False))
+          j = g('taiwan_futures_snapshot')
+          d = j.get('data') or []
+          L.append(f"FUT all rows {len(d)} newest {max((str(r.get('date')) for r in d), default='')}")
+          L.append('   ' + str(sorted({str(r.get('futures_id'))[:3] for r in d})[:60]))
+          for p in ('TXO', 'TX4', 'TXZ', 'TXU'):
+              j = g('taiwan_options_snapshot', data_id=p); d = j.get('data') or []
+              L.append(f"OPT {p} status {j.get('status')} rows {len(d)} newest {max((str(r.get('date')) for r in d), default='')} vol {sum(int(r.get('total_volume') or 0) for r in d)}")
+              if d: L.append('   ' + json.dumps(d[0], ensure_ascii=False)[:300])
+          j = g('data', dataset='TaiwanFuturesTick', data_id='TX', start_date=datetime.date.today().isoformat())
+          d = j.get('data') or []; L.append(f"TICK today rows {len(d)} last {d[-1] if d else ''}")
+          open('out/log.txt', 'w').write('\n'.join(L).replace(T, '***'))
+          PY
+          python3 p.py || true
       - if: always()
         run: |
           cd out && git init -q && git checkout -q -b probe-out && git add -A
