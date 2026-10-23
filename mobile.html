@@ -429,6 +429,8 @@
           <div class="kv"><span>四條均線週期</span><span class="pair"><input type="number" data-k="qsz.ma1" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma2" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma3" data-int data-redraw="qsz" min="2" max="250"><input type="number" data-k="qsz.ma4" data-int data-redraw="qsz" min="2" max="250"></span></div>
           <div class="kv"><span>動能比較幾根前</span><input type="number" data-k="qsz.lag" data-int data-redraw="qsz" min="1" max="120"></div>
           <div class="kv"><span>訊號線平均根數</span><input type="number" data-k="qsz.sigLen" data-int data-redraw="qsz" min="1" max="60"></div>
+          <div class="kv"><span>顯示方式</span><select data-k="qsz.style" data-redraw="qsz"><option value="line">精簡曲線（往上紫、往下綠，轉折換色）</option><option value="bar">動能柱</option></select></div>
+          <div class="kv"><span>曲線粗細</span><select data-k="qsz.curveW" data-int data-redraw="qsz"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
           <label class="chk"><input type="checkbox" data-k="qsz.showBand" data-redraw="qsz">顯示動態上下界（依這檔股票過去的動能自動調整）</label>
           <div class="kv"><span>上下界算法</span><select data-k="qsz.bandMode" data-redraw="qsz"><option value="pct">歷史百分位</option><option value="sd">平均 ± 標準差</option></select></div>
           <div class="kv"><span>回看根數</span><input type="number" data-k="qsz.bandLen" data-int data-redraw="qsz" min="20" max="1000"></div>
@@ -744,10 +746,10 @@ const DEFAULTS = {
         cRev:'#ee00ee', cHold:'#ef5350', cCash:'#26a69a', cWash:'#00eeff', cBot:'#ffffff', cDi:'#ffff66', mainSig:true,
         showBand:true, bandMode:'pct', bandLen:250, bandUp:90, bandLo:10, bandK:2, cUp:'#ff9800', cLo:'#4fc3f7', bandW:1,
         showTurn:true, turnMin:3, turnZone:'zero', mainTurn:'strong', cTurnUp:'#00e676', cTurnDn:'#ff1744', fwd:10,
-        showHold:false, showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1 },
+        showHold:false, showSlow:true, cHoldSlow:'#ffb199', cCashSlow:'#c6e377', showLine:true, lineW:1, style:'line', curveW:3 },
   shz:{ showRetail:true, showTM:true, showXc:true, showDl:true, volLen:20, volRatio:0.5, showBig:true, showEsc:true, fwd:10, mainSig:'key',
         cRetail:'#26c281', cTrend:'#ef5350', cMain:'#ffd54f', cXc:'#e040fb', cDl:'#00e5ff', cBig:'#ff9800', cEsc:'#ff80ab', wRetail:1, wLine:2 },
-  ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:15 },
+  ribbon:{ showRes:true, showSup:true, showTrend:true, showWAN:true, wanW:2, showKD:false, alpha:75 },
   bb3:{ emaLen:13, showEma:true, emaUp:'#00e676', emaDn:'#ff1744', emaW:2, len:20, show1:true, m1:2, c1:'#b0b8c8', w1:1, show2:true, m2:3, c2:'#ffb74d', w2:1 },
   flow:{ k:'F', fast:true, mainSig:true, early:true, cLine:'#4c8dff', cFast:'#b98cff', cSig:'#ffb020' },
   ult:{ sig:true, go:true, orig:true, uo:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28', cBot:'#ffb020', cOrig:'#b98cff', cUo:'#8fa3c7' },
@@ -805,6 +807,7 @@ S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
 ['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if ((S._v25 || 0) < 1){ S.qsz.showDi = false; S._v25 = 1; }   // 四色動能柱的黃色「底／追」標籤預設拿掉（設定裡還能打開）
+if ((S._v26 || 0) < 1){ S.qsz.style = 'line'; if (+S.ribbon.alpha <= 15) S.ribbon.alpha = 75; S._v26 = 1; }   // 四色動能改曲線、彩帶調淡讓 K 棒清楚
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -2443,7 +2446,7 @@ Object.assign(OVL, {
       this.bands.sup.setItems(P.showSup ? v.sup.map(x => x ? { up:x.up, lo:x.lo, color:hexA('#2339D8', a) } : null) : []);
       this.s.trendHost.setData(toLine(v.wana3));
       this.bands.trend.setItems(P.showTrend ? v.trend.map((t,i) => t && v.wana3[i] !== null && v.wana4[i] !== null
-        ? { up:Math.max(v.wana3[i], v.wana4[i]), lo:Math.min(v.wana3[i], v.wana4[i]), color:t > 0 ? '#FFB5FF' : hexA('#008800', .95) } : null) : []);
+        ? { up:Math.max(v.wana3[i], v.wana4[i]), lo:Math.min(v.wana3[i], v.wana4[i]), color:t > 0 ? hexA('#FFB5FF', .55) : hexA('#008800', .30) } : null) : []);
       this.s.wan.setData(bars.map((b,i) => v.wan3[i] === null ? { time:b.time } : { time:b.time, value:v.wan3[i], color:v.wan4[i] !== null && v.wan3[i] > v.wan4[i] ? '#FF00FF' : '#786C76' }));
       this.s.wan.applyOptions({ visible:!!P.showWAN, lineWidth:+P.wanW || 2 });
       this.s.kTurn.setData(toLine(v.kTurn)); this.s.dCross.setData(toLine(v.dCross)); this.s.kk80.setData(toLine(v.kk80));
@@ -3062,7 +3065,7 @@ Object.assign(IND, {
       this.s.up = chart.addSeries(LineSeries, ln('上界'), p);
       this.s.lo = chart.addSeries(LineSeries, ln('下界'), p);
       this.s.line = chart.addSeries(LineSeries, { lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:F2 }, p);
-      this.mk = LC().createSeriesMarkers(this.s.main, []);
+      this.mkB = LC().createSeriesMarkers(this.s.main, []); this.mkL = LC().createSeriesMarkers(this.s.line, []);
     },
     state(i){
       const v = this.vals; if (!v || v.mom[i] == null || i < 1 || v.mom[i-1] == null) return null;
@@ -3086,10 +3089,18 @@ Object.assign(IND, {
         if (P.showSlow && st.kind === 'cash' && v.slow[i] === 'dn') col = P.cCashSlow;          // 跌勢減速
         main.push({ time:b.time, open:g, close:x, high:Math.max(g, x), low:Math.min(g, x), color: st.kind === 'cash' ? CLEAR : col, borderColor:col });
       });
-      this.s.rev.setData(rev); this.s.main.setData(main);
-      const { LineStyle } = LC();
-      this.s.line.setData(P.showLine ? toLine(v.mom) : []);
-      this.s.line.applyOptions({ color:hexA(S.col.text, .75), lineWidth:+P.lineW });
+      const { LineStyle } = LC(), curve = P.style === 'line';
+      this.s.rev.setData(curve ? [] : rev); this.s.main.setData(curve ? [] : main);
+      if (curve){   // 精簡曲線：動能一條連續的線，往上紫、往下綠，只在轉折時換色
+        let col = hexA(S.col.text, .6);
+        this.s.line.setData(bars.map((b, i) => { const x = v.mom[i]; if (x == null) return { time:b.time };
+          const p = v.mom[i - 1]; if (p != null && x > p) col = P.cRev; else if (p != null && x < p) col = P.cCash;
+          return { time:b.time, value:x, color:col }; }));
+        this.s.line.applyOptions({ color:P.cRev, lineWidth:+P.curveW || 3, lineType:2, lastValueVisible:true });
+      } else {
+        this.s.line.setData(P.showLine ? toLine(v.mom) : []);
+        this.s.line.applyOptions({ color:hexA(S.col.text, .75), lineWidth:+P.lineW, lineType:0, lastValueVisible:false });
+      }
       this.s.up.setData(P.showBand ? toLine(v.up) : []); this.s.lo.setData(P.showBand ? toLine(v.lo) : []);
       this.s.up.applyOptions({ color:P.cUp, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
       this.s.lo.applyOptions({ color:P.cLo, lineWidth:+P.bandW, lineStyle:LineStyle.Dashed });
@@ -3103,7 +3114,8 @@ Object.assign(IND, {
         v.turnDn.forEach((t, i) => { if (t) m.push({ time:bars[i].time, position:'atPriceTop', price:v.mom[i-1], shape:'arrowDown', color:P.cTurnDn, text:t, size: t[0] === '強' ? 1.6 : 1 }); });
       }
       m.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
-      this.mk.setMarkers(m);
+      const useL = P.style === 'line' || P.showLine;   // 曲線模式時標記掛在曲線上
+      (useL ? this.mkL : this.mkB).setMarkers(m); (useL ? this.mkB : this.mkL).setMarkers([]);
       refreshMarkers();
     },
     mainMarkers(){
