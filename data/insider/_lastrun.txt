@@ -1,2 +1,2 @@
-10-24 02:31:50 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
-10-24 02:31:55 result shard 2 done requests 1 ok 1 none 0 files 1 in 4 s
+10-24 06:25:15 shard 5 / 8 stocks 272 months 2023-10 ~ 2026-09
+10-24 06:25:19 result shard 5 done requests 1 ok 1 none 0 files 1 in 3 s
