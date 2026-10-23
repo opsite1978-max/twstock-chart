@@ -477,7 +477,7 @@
       <details>
         <summary>主力套牢（只適用台指期）</summary>
         <div class="stack">
-          <div class="hint">價格離主力成本（前十大多單平均成本，主圖橘線）幾次追繳的距離（一次追繳約指數 1.75%）：0＝剛好在主力成本，−1＝主力多單平均套 1 次追繳。往下穿過下界時在 K 線圖標「主力套牢」。回測（2026/1～10，下界 −1）：4 小時之後 6 根平均 +1.24%（74% 上漲，平常 +0.24%）；日線之後 10 天 +4.3%（9 次漲 8 次，樣本少）；60 分效果弱。價格在主力成本上方時看不出頭部，只拿來抓底。不用 FinMind 額度。</div>
+          <div class="hint">價格離主力成本（前十大多單平均成本，主圖橘線）幾次追繳的距離（一次追繳約指數 1.75%）：0＝剛好在主力成本，−1＝主力多單平均套 1 次追繳。往下穿過下界時在 K 線圖標「主力套牢」。回測（2026/1～10，下界 −1）：4 小時之後 6 根平均 +1.24%（74% 上漲，平常 +0.24%）；日線之後 10 天 +4.3%（9 次漲 8 次，樣本少）；60 分效果弱。價格在主力成本上方時看不出頭部，只拿來抓底。鈍化＝連續停在下界以下太久（日內 6 根、日線以上 3 根），副圖標灰色「鈍化」：回測鈍化之後價格多半還在跌，先別接。不用 FinMind 額度。</div>
           <div class="kv"><span>下界</span><select data-k="trap.lo" data-redraw="trap"><option value="-0.5">−0.5</option><option value="-1">−1</option><option value="-1.5">−1.5</option></select></div>
           <label class="chk"><input type="checkbox" data-k="trap.mk" data-redraw="trap">K 線圖上標出「主力套牢」</label>
           <div class="kv"><span>上方／下方／標記</span><span class="pair"><input type="color" data-k="trap.cUp" data-redraw="trap"><input type="color" data-k="trap.cDn" data-redraw="trap"><input type="color" data-k="trap.cMk" data-redraw="trap"></span></div>
@@ -487,7 +487,7 @@
       <details>
         <summary>散戶恐慌（只適用台指期）</summary>
         <div class="stack">
-          <div class="hint">散戶（小台＋微台非法人）多單平均被套的深度：沒套牢＝0，套 1 次追繳的距離≈33、2 次≈67、3 次（凹單極限）＝100；散戶淨空時是 0。50 以上＝恐慌，上界（預設 85）以上＝極度恐慌，往上穿過上界時在 K 線圖標「散戶恐慌」。回測（2026/1～10）：60 分穿過 85 之後 12 根平均 +0.93%（漲 72%，平常 +0.14%），4 小時之後 6 根 +0.70%，日線之後 10 天 +6%（6 次全漲，樣本少）。部位每天 16:00 公布，盤中用前一天的成本配即時價格，所有週期都能看；不用 FinMind 額度。</div>
+          <div class="hint">散戶（小台＋微台非法人）多單平均被套的深度：沒套牢＝0，套 1 次追繳的距離≈33、2 次≈67、3 次（凹單極限）＝100；散戶淨空時是 0。50 以上＝恐慌，上界（預設 85）以上＝極度恐慌，往上穿過上界時在 K 線圖標「散戶恐慌」。回測（2026/1～10）：60 分穿過 85 之後 12 根平均 +0.93%（漲 72%，平常 +0.14%），4 小時之後 6 根 +0.70%，日線之後 10 天 +6%（6 次全漲，樣本少）。部位每天 16:00 公布，盤中用前一天的成本配即時價格，所有週期都能看；不用 FinMind 額度。鈍化＝連續停在上界以上太久（日內 6 根、日線以上 3 根），副圖標灰色「鈍化」：散戶恐慌鈍化不影響之後的表現，但進場後約三成還會再跌 1% 以上。</div>
           <div class="kv"><span>上界（極度恐慌）</span><select data-k="panic.hi" data-int data-redraw="panic"><option value="67">67（套 2 次追繳）</option><option value="75">75</option><option value="85">85</option><option value="100">100（凹單極限）</option></select></div>
           <label class="chk"><input type="checkbox" data-k="panic.mk" data-redraw="panic">K 線圖上標出「散戶恐慌」</label>
           <div class="kv"><span>恐慌區／標記</span><span class="pair"><input type="color" data-k="panic.cP" data-redraw="panic"><input type="color" data-k="panic.cMk" data-redraw="panic"></span></div>
@@ -3563,6 +3563,11 @@ Object.assign(IND, {
    回測（2026/1～10，往上穿過 85＝極度恐慌）：60 分之後 12 根平均 +0.93%（漲 72%，平常 +0.14%）；
    4 小時之後 6 根 +0.70%（72%）；日線之後 10 天 +6.05%（6 次全漲，樣本少）。越深越好，淺的（33 左右）沒有參考性。 */
 const PANIC_UNIT = 815 / 46600;
+// 鈍化：指標連續停在區域內太久（日內週期 6 根、日線以上 3 根）。回測：主力套牢鈍化後，價格多半還在跌（60 分、4 小時之後偏弱），先別接；
+// 散戶恐慌鈍化影響不大。進區後約三成還會再跌 1% 以上，平均再跌 1.3～1.8%。
+const dullN = () => (TF[S.tf] || {}).intraday ? 6 : 3;
+function dullRuns(v, inz){ const run = []; let r = 0; v.forEach(x => { r = x != null && inz(x) ? r + 1 : 0; run.push(r); }); return run; }
+
 Object.assign(IND, {
   panic: {
     s:{}, vals:null,
@@ -3588,11 +3593,13 @@ Object.assign(IND, {
       const H = +P.hi;
       for (let i = 1; i < v.length; i++) sig.push(v[i - 1] != null && v[i] != null && v[i - 1] < H && v[i] >= H);
       sig.unshift(false);
-      this.vals = { v, lim, sig };
+      const run = dullRuns(v, x => x >= H), N = dullN();
+      this.vals = { v, lim, sig, run, N };
       this.s.main.setData(toLine(v.map(x => x == null ? null : Math.round(x * 10) / 10)));
       this.s.main.applyOptions({ topLineColor:P.cP, bottomLineColor:hexA(S.col.text, .55) });
       this.refs[0].applyOptions({ price:H, color:P.cP }); this.refs[1].applyOptions({ color:hexA(S.col.text, .35) });
-      const mk = []; if (P.mk) bars.forEach((b, i) => { if (sig[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cMk, size:1 }); });
+      const mk = []; bars.forEach((b, i) => { if (P.mk && sig[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cMk, size:1 });
+        if (run[i] === N) mk.push({ time:b.time, position:'aboveBar', shape:'square', color:'#9e9e9e', text:'鈍化', size:0.7 }); });
       this.mk.setMarkers(mk);
       refreshMarkers();
     },
@@ -3607,7 +3614,7 @@ Object.assign(IND, {
       const x = v.v[i], m = v.lim[i];
       const zone = x == null ? '' : x >= +P.hi ? `　<span style="color:${P.cP}">極度恐慌（接近凹單極限）</span>` : x >= 50 ? `　<span style="color:${P.cP}">恐慌</span>` : x > 0 ? '　<span class="muted">散戶多單小套</span>' : '　<span class="muted">散戶沒套牢</span>';
       const how = m == null ? '' : m < 0 ? `　<span class="muted">散戶平均套 ${fmt(-m, 1)} 次追繳</span>` : `　<span class="muted">散戶成本下方 ${fmt(m, 1)} 次追繳</span>`;
-      const tag = v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">散戶恐慌</span>` : '';
+      const tag = (v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">散戶恐慌</span>` : '') + (v.run[i] >= v.N ? `　<span class="tag" style="background:#9e9e9e;color:#000">鈍化 ${v.run[i]} 根</span><span class="muted">　散戶一直套著，訊號照樣有效但可能還會再跌</span>` : '');
       return `散戶恐慌 <b style="color:${x != null && x >= 50 ? P.cP : 'inherit'}">${x == null ? '—' : fmt(x, 0)}</b>${zone}${how}${tag}`;
     },
   },
@@ -3640,11 +3647,13 @@ Object.assign(IND, {
         cost.push(r && r.cL ? r.cL : null); v.push(r && r.cL ? (b.close - r.cL) / (b.close * PANIC_UNIT) : null); });
       const L = +P.lo;
       for (let i = 1; i < v.length; i++) sig.push(v[i - 1] != null && v[i] != null && v[i - 1] > L && v[i] <= L);
-      this.vals = { v, cost, sig };
+      const run = dullRuns(v, x => x <= L), N = dullN();
+      this.vals = { v, cost, sig, run, N };
       this.s.main.setData(toLine(v.map(x => x == null ? null : Math.round(x * 100) / 100)));
       this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
       this.refs[0].applyOptions({ color:hexA(S.col.text, .35) }); this.refs[1].applyOptions({ price:L, color:P.cDn });
-      const mk = []; if (P.mk) bars.forEach((b, i) => { if (sig[i]) mk.push({ time:b.time, position:'belowBar', shape:'circle', color:P.cMk, size:1 }); });
+      const mk = []; bars.forEach((b, i) => { if (P.mk && sig[i]) mk.push({ time:b.time, position:'belowBar', shape:'circle', color:P.cMk, size:1 });
+        if (run[i] === N) mk.push({ time:b.time, position:'belowBar', shape:'square', color:'#9e9e9e', text:'鈍化', size:0.7 }); });
       this.mk.setMarkers(mk);
       refreshMarkers();
     },
@@ -3658,7 +3667,7 @@ Object.assign(IND, {
       if (v.wait) return `主力套牢　<span class="muted">讀取中…</span>`;
       const x = v.v[i];
       const zone = x == null ? '' : x <= +P.lo ? `　<span style="color:${P.cDn}">主力多單被套 ${fmt(-x, 1)} 次追繳（抓底區）</span>` : x < 0 ? `　<span class="muted">價格略低於主力成本</span>` : `　<span class="muted">價格在主力成本上方 ${fmt(x, 1)} 次追繳</span>`;
-      const tag = v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">主力套牢</span>` : '';
+      const tag = (v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">主力套牢</span>` : '') + (v.run[i] >= v.N ? `　<span class="tag" style="background:#9e9e9e;color:#000">鈍化 ${v.run[i]} 根</span><span style="color:${P.cDn}">　主力套太久沒反彈＝主力在認賠，先別接，等站回下界再說</span>` : '');
       return `主力套牢 <b style="color:${x != null && x < 0 ? P.cDn : P.cUp}">${x == null ? '—' : fmt(x, 2)}</b>${v.cost[i] ? `　<span class="muted">主力成本 ${fmt(v.cost[i], 0)}</span>` : ''}${zone}${tag}`;
     },
   },
