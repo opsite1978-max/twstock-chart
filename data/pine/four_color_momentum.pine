@@ -1,0 +1,245 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// 四色動能柱＋尋底 Four-Color Momentum（與網站「四色動能柱」副圖同一套算法，所有週期都能用）
+//
+// 動能：四條均線（預設 5／10／20／30）取平均，和 N 根前（預設 15）相比漲跌幾 %；訊號線＝動能的 8 根指數平均。
+// 柱子顏色：
+//   紫＝訊號線上揚（反轉，從 0 畫到動能）
+//   紅＝動能上升（持有，預設不畫）
+//   綠空心＝動能下降（持幣）
+//   青＝動能下降但訊號線仍上揚（洗盤）
+//   淡紅／淡綠＝還在漲／跌但力道變小（減速，常在轉折前出現）
+// 動態上下界：只用當根以前的動能，依這檔商品自己的波動自動調整（歷史百分位 90／10，或平均 ± 2 個標準差）。
+// 轉折：動能連續下降（上升）至少 3 根後第一次反向＝底轉（頭轉）；預設要在零軸下方（上方）；超過下界（上界）＝強底轉（強頭轉）。
+// 尋底（只在個股日 K）：急跌（兩根跌約 13.5% 或 13 根跌約 23%）、離 50 根內最高點那根的開盤跌超過 35%、近 5 日平均週轉率偏低。
+//   週轉率用 TradingView 的總股數（網站用集保股數），數字可能略有不同。
+// 底／追（預設關）：MACD 快線深度為負（占股價百分比）且當根大漲；快線在慢線下＝底、上＝追。
+//@version=6
+indicator("四色動能柱 Four-Color Momentum", shorttitle = "四色動能柱", overlay = false, max_bars_back = 1000, precision = 2)
+
+// ───── 參數 ─────
+grpM = "動能 Momentum"
+ma1    = input.int(5,  "均線 1", minval = 2, group = grpM, inline = "ma")
+ma2    = input.int(10, "2", minval = 2, group = grpM, inline = "ma")
+ma3    = input.int(20, "3", minval = 2, group = grpM, inline = "ma")
+ma4    = input.int(30, "4", minval = 2, group = grpM, inline = "ma")
+lag    = input.int(15, "動能比較幾根前 Lag", minval = 1, group = grpM)
+sigLen = input.int(8,  "訊號線平均根數 Signal length", minval = 1, group = grpM)
+showHold = input.bool(false, "顯示紅柱（持有）Show hold bars", group = grpM)
+showSlow = input.bool(true,  "減速變淡色 Fade on slowdown", group = grpM)
+showLine = input.bool(true,  "畫出動能曲線 Show momentum line", group = grpM)
+
+grpB = "動態上下界 Dynamic bands"
+showBand = input.bool(true, "顯示上下界 Show bands", group = grpB)
+bandMode = input.string("歷史百分位", "算法 Method", options = ["歷史百分位", "平均 ± 標準差"], group = grpB)
+bandLen  = input.int(250, "回看根數 Lookback", minval = 20, maxval = 1000, group = grpB)
+bandUp   = input.float(90, "百分位 上界 Upper %", minval = 50, maxval = 100, group = grpB, inline = "pct")
+bandLo   = input.float(10, "下界 Lower %", minval = 0, maxval = 50, group = grpB, inline = "pct")
+bandK    = input.float(2.0, "標準差倍數 SD multiple", minval = 0.5, maxval = 4, step = 0.1, group = grpB)
+
+grpT = "轉折 Turns"
+showTurn = input.bool(true, "標出底轉／頭轉 Show turns", group = grpT)
+turnMin  = input.int(3, "轉折前至少連續幾根 Min run", minval = 1, maxval = 20, group = grpT)
+turnZone = input.string("零軸下方的底／上方的頭", "轉折要發生在 Zone", options = ["零軸下方的底／上方的頭", "超過動態上下界才算", "不限位置"], group = grpT)
+mainTurn = input.string("只標強底轉／強頭轉", "K 線圖上標出轉折 On price chart", options = ["只標強底轉／強頭轉", "全部", "不標"], group = grpT)
+fwd      = input.int(10, "勝率統計看幾根後 Stats horizon", minval = 1, maxval = 60, group = grpT)
+showStats = input.bool(true, "右上角顯示狀態與勝率 Show status table", group = grpT)
+
+grpS = "尋底、底／追 Bottom finder"
+showBottom = input.bool(true, "顯示尋底（個股日 K）Show bottom finder", group = grpS)
+fromHiPct  = input.float(35, "離 50 根內高點跌幅超過（%）", minval = 5, maxval = 80, group = grpS)
+turnMax    = input.float(1.8, "近 5 日平均週轉率低於（%）", minval = 0.1, maxval = 20, step = 0.1, group = grpS)
+showDi     = input.bool(false, "顯示底／追 Show MACD bottom/chase", group = grpS)
+difPct     = input.float(5, "底／追：MACD 快線低於股價的（%）", minval = 0.5, maxval = 20, step = 0.5, group = grpS)
+upPct      = input.float(7, "底／追：當根漲幅超過（%）", minval = 1, maxval = 10, step = 0.5, group = grpS)
+mainSig    = input.bool(true, "K 線圖上也標出尋底、底／追", group = grpS)
+
+grpC = "顏色 Colors"
+cRev  = input.color(#ee00ee, "反轉", group = grpC, inline = "c1")
+cHold = input.color(#ef5350, "持有", group = grpC, inline = "c1")
+cCash = input.color(#26a69a, "持幣", group = grpC, inline = "c1")
+cWash = input.color(#00eeff, "洗盤", group = grpC, inline = "c1")
+cHoldSlow = input.color(#ffb199, "漲勢減速", group = grpC, inline = "c2")
+cCashSlow = input.color(#c6e377, "跌勢減速", group = grpC, inline = "c2")
+cUp  = input.color(#ff9800, "上界", group = grpC, inline = "c3")
+cLo  = input.color(#4fc3f7, "下界", group = grpC, inline = "c3")
+cTurnUp = input.color(#00e676, "底轉", group = grpC, inline = "c4")
+cTurnDn = input.color(#ff1744, "頭轉", group = grpC, inline = "c4")
+cBot = input.color(#ffffff, "尋底", group = grpC, inline = "c5")
+cDi  = input.color(#ffff66, "底／追", group = grpC, inline = "c5")
+
+// ───── 指數平均（第一個值當起點，與網站相同）─────
+emaSeed(float src, int len) =>
+    float a = 2.0 / (len + 1)
+    var float e = na
+    if not na(src)
+        e := na(e) ? src : a * src + (1 - a) * e
+    na(src) ? na : e
+
+// ───── 動能、訊號線 ─────
+avg = (ta.sma(close, ma1) + ta.sma(close, ma2) + ta.sma(close, ma3) + ta.sma(close, ma4)) / 4
+mom = na(avg) or na(avg[lag]) ? na : (avg - avg[lag]) / avg[lag] * 100
+sig = emaSeed(mom, sigLen)
+
+// ───── 動態上下界（只用當根以前的動能）─────
+lowerBound(array<float> a, float v) =>
+    int lo = 0
+    int hi = array.size(a)
+    while lo < hi
+        int mid = int(math.floor((lo + hi) / 2))
+        if array.get(a, mid) < v
+            lo := mid + 1
+        else
+            hi := mid
+    lo
+
+var array<float> fifo = array.new_float()
+var array<float> srt  = array.new_float()
+float bUp = na
+float bLo = na
+if not na(mom)
+    array.push(fifo, mom)
+    array.insert(srt, lowerBound(srt, mom), mom)
+// 視窗＝最近 bandLen 根（含沒有動能的根），只保留這些根裡的動能值
+var array<int> fifoBar = array.new_int()
+if not na(mom)
+    array.push(fifoBar, bar_index)
+while array.size(fifoBar) > 0 and array.get(fifoBar, 0) <= bar_index - bandLen
+    array.shift(fifoBar)
+    float old = array.shift(fifo)
+    array.remove(srt, lowerBound(srt, old))
+int nWin = array.size(srt)
+if nWin >= math.min(bandLen, 60)
+    if bandMode == "平均 ± 標準差"
+        float m = array.avg(fifo)
+        float s = array.stdev(fifo)        // 母體標準差
+        bUp := m + bandK * s
+        bLo := m - bandK * s
+    else
+        bUp := array.get(srt, int(math.min(nWin - 1, math.max(0, math.round(bandUp / 100 * (nWin - 1))))))
+        bLo := array.get(srt, int(math.min(nWin - 1, math.max(0, math.round(bandLo / 100 * (nWin - 1))))))
+
+// ───── 柱子狀態 ─────
+okState = not na(mom) and not na(mom[1])
+mUp = okState and mom > mom[1]
+mDn = okState and mom < mom[1]
+sUp = not na(sig[1]) and sig > sig[1]
+kind = not okState ? 0 : mDn and sUp ? 3 : mUp ? 1 : mDn ? 2 : 0        // 1 持有、2 持幣、3 洗盤
+d0 = mom - mom[1]
+d1 = mom[1] - mom[2]
+slowDn = d0 < 0 and d1 < 0 and d0 > d1
+slowUp = d0 > 0 and d1 > 0 and d0 < d1
+
+// 紫柱：0 到動能
+revOn = okState and sUp
+plotcandle(revOn ? 0 : na, revOn ? math.max(0, mom) : na, revOn ? math.min(0, mom) : na, revOn ? mom : na,
+     "反轉", color = cRev, wickcolor = na, bordercolor = cRev)
+// 主柱：訊號線到動能
+mainOn = kind != 0 and not na(sig) and not (kind == 1 and not showHold)
+color colK = kind == 1 ? (showSlow and slowUp ? cHoldSlow : cHold) : kind == 3 ? cWash : (showSlow and slowDn ? cCashSlow : cCash)
+plotcandle(mainOn ? sig : na, mainOn ? math.max(sig, mom) : na, mainOn ? math.min(sig, mom) : na, mainOn ? mom : na,
+     "持有／持幣／洗盤", color = kind == 2 ? color.new(colK, 100) : colK, wickcolor = na, bordercolor = colK)
+plot(showLine ? mom : na, "動能 Momentum", color = color.new(color.gray, 25), linewidth = 1)
+plot(showBand ? bUp : na, "上界", color = cUp, linewidth = 1, style = plot.style_linebr)
+plot(showBand ? bLo : na, "下界", color = cLo, linewidth = 1, style = plot.style_linebr)
+hline(0, "零軸", color = color.new(color.gray, 60), linestyle = hline.style_dotted)
+
+// ───── 轉折 ─────
+int run = 0
+bool tUp = false
+bool tDn = false
+bool strongUp = false
+bool strongDn = false
+if showTurn and not na(mom) and not na(mom[1]) and not na(mom[2]) and d0 * d1 < 0
+    float sg1 = math.sign(d1)
+    for k = 1 to 500
+        if na(mom[k]) or na(mom[k + 1]) or math.sign(mom[k] - mom[k + 1]) != sg1
+            break
+        run += 1
+    if run >= turnMin
+        float x = mom[1]
+        bool zUp = turnZone == "不限位置" ? true : turnZone == "超過動態上下界才算" ? (not na(bLo[1]) and x <= bLo[1]) : x <= 0
+        bool zDn = turnZone == "不限位置" ? true : turnZone == "超過動態上下界才算" ? (not na(bUp[1]) and x >= bUp[1]) : x >= 0
+        if d0 > 0 and zUp
+            tUp := true
+            strongUp := not na(bLo[1]) and x <= bLo[1]
+        if d0 < 0 and zDn
+            tDn := true
+            strongDn := not na(bUp[1]) and x >= bUp[1]
+
+plotshape(tUp and strongUp ? mom[1] : na, "強底轉", shape.triangleup, location.absolute, cTurnUp, text = "強底轉", textcolor = cTurnUp, size = size.small)
+plotshape(tUp and not strongUp ? mom[1] : na, "底轉", shape.triangleup, location.absolute, cTurnUp, text = "底轉", textcolor = cTurnUp, size = size.tiny)
+plotshape(tDn and strongDn ? mom[1] : na, "強頭轉", shape.triangledown, location.absolute, cTurnDn, text = "強頭轉", textcolor = cTurnDn, size = size.small)
+plotshape(tDn and not strongDn ? mom[1] : na, "頭轉", shape.triangledown, location.absolute, cTurnDn, text = "頭轉", textcolor = cTurnDn, size = size.tiny)
+mainAll = mainTurn == "全部"
+mainStrong = mainTurn != "不標"
+plotshape(mainStrong and tUp and (strongUp or mainAll), "K 線：底轉", shape.triangleup, location.belowbar, cTurnUp, text = "底轉", textcolor = cTurnUp, size = size.tiny, force_overlay = true)
+plotshape(mainStrong and tDn and (strongDn or mainAll), "K 線：頭轉", shape.triangledown, location.abovebar, cTurnDn, text = "頭轉", textcolor = cTurnDn, size = size.tiny, force_overlay = true)
+
+// ───── 尋底（個股日 K）─────
+shares = syminfo.shares_outstanding_total
+bottomOK = showBottom and timeframe.isdaily and timeframe.multiplier == 1 and syminfo.type == "stock" and not na(shares) and shares > 0
+bool bottom = false
+if bottomOK and bar_index >= 13
+    float hi = -1e20
+    int hb = 0
+    for k = math.min(49, bar_index) to 0
+        if high[k] >= hi
+            hi := high[k]
+            hb := k
+    float fromHi = (close - open[hb]) / open[hb] * 100
+    float t5 = math.sum(volume / shares * 100, 5) / 5
+    float flr = math.min(close[2] * 0.865, close[13] * 0.772)
+    bottom := (close - flr) / close < 0.03 and fromHi < -fromHiPct and t5 < turnMax
+plotshape(bottom, "尋底", shape.triangleup, location.top, cBot, text = "尋底", textcolor = cBot, size = size.tiny)
+plotshape(mainSig and bottom, "K 線：尋底", shape.triangleup, location.belowbar, cBot, text = "尋底", textcolor = cBot, size = size.tiny, force_overlay = true)
+
+// ───── 底／追（預設關）─────
+e12 = emaSeed(close, 12)
+e26 = emaSeed(close, 26)
+dif = e12 - e26
+dea = emaSeed(dif, 9)
+chg = (close - close[1]) / close[1] * 100
+diOn = showDi and bar_index >= 26 and dif / close * 100 < -difPct and chg > upPct
+plotshape(diOn and dif < dea, "底", shape.circle, location.bottom, cDi, text = "底", textcolor = cDi, size = size.tiny)
+plotshape(diOn and dif >= dea, "追", shape.circle, location.bottom, cDi, text = "追", textcolor = cDi, size = size.tiny)
+plotshape(mainSig and diOn and dif < dea, "K 線：底", shape.circle, location.belowbar, cDi, text = "底", textcolor = cDi, size = size.tiny, force_overlay = true)
+plotshape(mainSig and diOn and dif >= dea, "K 線：追", shape.circle, location.belowbar, cDi, text = "追", textcolor = cDi, size = size.tiny, force_overlay = true)
+
+// ───── 這段期間的勝率（只算已經走完 fwd 根的訊號）─────
+var int nUp = 0
+var int wUp = 0
+var float sUpR = 0.0
+var int nDn = 0
+var int wDn = 0
+var float sDnR = 0.0
+if bar_index >= fwd
+    if tUp[fwd]
+        float r = (close / close[fwd] - 1) * 100
+        nUp += 1
+        sUpR += r
+        wUp += r > 0 ? 1 : 0
+    if tDn[fwd]
+        float r2 = (close / close[fwd] - 1) * 100
+        nDn += 1
+        sDnR += r2
+        wDn += r2 < 0 ? 1 : 0
+
+var table tb = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 70), border_width = 0)
+if showStats and barstate.islast
+    string st = kind == 1 ? "持有" : kind == 2 ? "持幣" : kind == 3 ? "洗盤" : "—"
+    color stc = kind == 1 ? cHold : kind == 2 ? cCash : kind == 3 ? cWash : color.gray
+    string extra = (revOn ? " 反轉" : "") + (showBand and not na(bUp) and mom >= bUp ? " 過熱" : "") + (showBand and not na(bLo) and mom <= bLo ? " 過冷" : "")
+    table.cell(tb, 0, 0, "動能", text_color = color.silver, text_size = size.small)
+    table.cell(tb, 1, 0, str.tostring(mom, "#.##") + "%　訊號線 " + str.tostring(sig, "#.##") + "%", text_color = color.white, text_size = size.small)
+    table.cell(tb, 0, 1, "狀態", text_color = color.silver, text_size = size.small)
+    table.cell(tb, 1, 1, st + extra, text_color = stc, text_size = size.small)
+    table.cell(tb, 0, 2, "底轉", text_color = cTurnUp, text_size = size.small)
+    table.cell(tb, 1, 2, str.tostring(nUp) + " 次，" + str.tostring(fwd) + " 根後上漲 " + (nUp > 0 ? str.tostring(math.round(float(wUp) / nUp * 100)) : "0") + "%（平均 " + (nUp > 0 ? str.tostring(sUpR / nUp, "+#.#;-#.#") : "0") + "%）", text_color = color.white, text_size = size.small)
+    table.cell(tb, 0, 3, "頭轉", text_color = cTurnDn, text_size = size.small)
+    table.cell(tb, 1, 3, str.tostring(nDn) + " 次，" + str.tostring(fwd) + " 根後下跌 " + (nDn > 0 ? str.tostring(math.round(float(wDn) / nDn * 100)) : "0") + "%（平均 " + (nDn > 0 ? str.tostring(sDnR / nDn, "+#.#;-#.#") : "0") + "%）", text_color = color.white, text_size = size.small)
+
+alertcondition(tUp and strongUp, "強底轉", "四色動能柱：強底轉")
+alertcondition(tUp, "底轉", "四色動能柱：底轉")
+alertcondition(tDn and strongDn, "強頭轉", "四色動能柱：強頭轉")
+alertcondition(tDn, "頭轉", "四色動能柱：頭轉")
+alertcondition(bottom, "尋底", "四色動能柱：尋底")
