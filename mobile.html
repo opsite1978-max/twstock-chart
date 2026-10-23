@@ -235,6 +235,7 @@
         <label class="chk"><input type="checkbox" data-ovl="bias">Bias Finder 多空偏向帶（UAlgo）</label>
         <label class="chk"><input type="checkbox" data-ovl="ribbon">經典布林多空彩帶（壓力帶、支撐帶、WAN、多空彩帶）</label>
         <label class="chk"><input type="checkbox" data-ovl="bb3">布林 2／3 倍標準差 ＋ EMA 多空線</label>
+        <label class="chk"><input type="checkbox" data-ovl="cost">主力／散戶成本線（台指期）</label>
         <div class="line bb" id="bbRow" hidden><label class="chk"><input type="checkbox" class="on">布林</label><input type="number" class="len" min="2"><input type="number" class="mult" min="0.5" step="0.5"><select class="w"></select><input type="color" class="col"></div>
       </div>
     </div>
@@ -595,6 +596,18 @@
         </div>
       </details>
       <details>
+        <summary>主力／散戶成本線（台指期，主圖）</summary>
+        <div class="stack">
+          <div class="hint">前十大交易人多單、空單成本與外資成本（期交所每天公布的部位，用每天成交均價估計的建倉平均價，和「主力控盤」頁相同）；散戶平均成本＝小台＋微台非法人淨多單的攤平成本（和「散戶凹單」相同）。每天 16:00 前後公布，K 棒用當時已公布的最新一天。價格在成本上方＝那一方有賺，跌破成本容易出現停損。</div>
+          <label class="chk"><input type="checkbox" data-k="cost.rc" data-redraw="cost">散戶平均成本</label>
+          <label class="chk"><input type="checkbox" data-k="cost.top" data-redraw="cost">前十大交易人多單／空單成本</label>
+          <label class="chk"><input type="checkbox" data-k="cost.fi" data-redraw="cost">外資成本</label>
+          <div class="kv"><span>線寬</span><select class="w" data-k="cost.w" data-int data-redraw="cost"></select></div>
+          <div class="kv"><span>散戶／多單／空單／外資</span><span class="pair"><input type="color" data-k="cost.cRc" data-redraw="cost"><input type="color" data-k="cost.cL" data-redraw="cost"><input type="color" data-k="cost.cS" data-redraw="cost"><input type="color" data-k="cost.cFI" data-redraw="cost"></span></div>
+          <button class="small" data-reset="cost">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>布林 2／3 倍標準差 ＋ EMA 多空線（主圖）</summary>
         <div class="stack">
           <label class="chk"><input type="checkbox" data-k="bb3.showEma" data-redraw="bb3">顯示 EMA 多空線</label>
@@ -687,7 +700,8 @@ const DEFAULTS = {
   ult:{ sig:true, go:true, cUp:'#ef5350', cDn:'#26a69a', cSig:'#ffca28' },
   retail:{ k:'C', hi:60, hiD:30, mainSig:true, cUp:'#ef5350', cDn:'#26a69a' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
-  ovl:{ topg:true, bias:true, bb3:true, ribbon:true }, fontSize:12, lvlW:2,
+  ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
+  cost:{ rc:true, top:true, fi:true, w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
   ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
@@ -724,10 +738,11 @@ if ((S.v || 0) < 16) S.ind = Object.assign({}, S.ind, { flow:true });
 if ((S.v || 0) < 17 && S.flow) S.flow.k = 'F';   // 看盤副圖預設改用淨流量力道
 if ((S.v || 0) < 18) S.ind = Object.assign({}, S.ind, { retail:true });
 if ((S.v || 0) < 19) S.ind = Object.assign({}, S.ind, { ult:true });
-S.v = 19;
+if ((S.v || 0) < 20) S.ovl = Object.assign({}, S.ovl, { cost:true });
+S.v = 20;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
@@ -735,9 +750,9 @@ S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
 // 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋布林通道＋終極力道；設定另外存，不影響一般看盤
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
-  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'ult'])); S.ovl = {}; S.ma.forEach(m => m.on = false); S.bb.on = true;
-  S.lastSym = 'TX'; S.tf = cp.tf || '60'; if (cp.periods) S.periods = cp.periods; S.night = cp.night !== false; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
-const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
+  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'ult'])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = true;
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; if (cp.periods) S.periods = cp.periods; S.night = cp.night !== false; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (cp.mainRatio) S.mainRatio = cp.mainRatio; }
+const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -2206,6 +2221,64 @@ Object.assign(OVL, {
 });
 OVL_ORDER.push('bb3');
 
+/* ───────────── 主力／散戶成本線（只適用台指期；網站每天計算，不用 FinMind 額度） ─────────────
+   前十大交易人多單、空單成本、外資成本：期交所每天公布的部位，用每天成交均價估計的建倉平均價（和「主力控盤」頁相同）。
+   散戶平均成本：小台＋微台非法人淨部位，淨多增加的那天用當天成交均價攤平（和「散戶凹單」相同）。
+   每天 16:00 前後公布，所以每根 K 棒用「當時已經公布」的最新一天。 */
+const CST = { rows:null, pend:null };
+function cstLoad(){
+  if (CST.rows) return CST.rows;
+  if (!CST.pend) CST.pend = (async () => {
+    const v = Math.floor(Date.now() / 600000), g = p => fetch(p + '?v=' + v).then(r => r.json());
+    const [co, ch, hi] = await Promise.all([g('data/ctrl/cost.json'), g('data/txo/chips.json'), g('data/txo/history.json')]);
+    const H = new Map(hi.days.map(d => [d.d, d])), C = new Map(co.days.map(d => [d.d, d])), R = new Map();
+    let cost = null, pos = 0;
+    for (const r of ch.days){ const h = H.get(r.d); if (!h || r.mtxR == null || r.tmfR == null) continue;
+      const net = r.mtxR / 100 * r.mtxOI * 0.25 + r.tmfR / 100 * r.tmfOI * 0.05, c = C.get(r.d), vw = c && c.vwN ? c.vwN : (h.h + h.l + h.c) / 3;
+      if (cost == null || pos === 0 || (net > 0) !== (pos > 0)) cost = vw;
+      else if (Math.abs(net) > Math.abs(pos)) cost = (cost * Math.abs(pos) + vw * (Math.abs(net) - Math.abs(pos))) / Math.abs(net);
+      pos = net; R.set(r.d, { rc:cost, net }); }
+    const days = [...new Set([...C.keys(), ...R.keys()])].sort();
+    CST.rows = days.map(d => { const c = C.get(d) || {}, r = R.get(d) || {}; return { d, cL:c.cL || null, cS:c.cS || null, cFI:c.cFI || null, fi:c.fi, rc:r.rc || null, net:r.net }; });
+    drawOverlays();
+  })().catch(() => { CST.pend = null; });
+  return null;
+}
+Object.assign(OVL, {
+  cost: {
+    s:{}, vals:null,
+    create(){
+      const { LineSeries, LineStyle } = LC(), o = t => ({ lineWidth:1, lineStyle:LineStyle.Dashed, lineType:1, priceLineVisible:false, lastValueVisible:true, title:t, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } });
+      this.s.rc = chart.addSeries(LineSeries, o('散戶成本'), 0); this.s.cL = chart.addSeries(LineSeries, o('前十大多單'), 0);
+      this.s.cS = chart.addSeries(LineSeries, o('前十大空單'), 0); this.s.cFI = chart.addSeries(LineSeries, o('外資成本'), 0);
+    },
+    draw(){
+      const P = S.cost, rows = currentSym && currentSym.kind === 'fut' ? cstLoad() : null;
+      if (!rows){ Object.values(this.s).forEach(s => s.setData([])); this.vals = null; return; }
+      const day = !(TF[S.tf] || {}).intraday, v = { rc:[], cL:[], cS:[], cFI:[], fi:[], d:[] }; let k = -1;
+      bars.forEach(b => { const t = day ? Date.parse(b.date + 'T00:00:00Z') / 1000 : b.time;
+        while (k + 1 < rows.length && Date.parse(rows[k + 1].d + 'T16:00:00Z') / 1000 <= t) k++;
+        const r = k >= 0 ? rows[k] : null;
+        for (const f of ['rc', 'cL', 'cS', 'cFI', 'fi']) v[f].push(r ? r[f] : null); v.d.push(r ? r.d : null); });
+      this.vals = v;
+      [['rc', 'cRc', P.rc], ['cL', 'cL', P.top], ['cS', 'cS', P.top], ['cFI', 'cFI', P.fi]].forEach(([f, ck, on]) => {
+        this.s[f].setData(on ? toLine(v[f]) : []); this.s[f].applyOptions({ color:P[ck], lineWidth:+P.w, visible:!!on }); });
+    },
+    markers(){ return []; },
+    legend(i){
+      const v = this.vals, P = S.cost; if (!v) return '';
+      const fiT = v.fi[i] != null && v.fi[i] >= 0 ? '外資多單成本' : '外資空單成本', h = [];
+      if (P.rc && v.rc[i] != null) h.push(`<span style="color:${P.cRc}">散戶成本 ${fmt(v.rc[i], 0)}</span>`);
+      if (P.top && v.cL[i] != null) h.push(`<span style="color:${P.cL}">前十大多單 ${fmt(v.cL[i], 0)}</span>`);
+      if (P.top && v.cS[i] != null) h.push(`<span style="color:${P.cS}">前十大空單 ${fmt(v.cS[i], 0)}</span>`);
+      if (P.fi && v.cFI[i] != null) h.push(`<span style="color:${P.cFI}">${fiT} ${fmt(v.cFI[i], 0)}</span>`);
+      return h.join('');
+    },
+  },
+});
+OVL_ORDER.push('cost');
+
+
 /* ───────────── 經典布林多空彩帶（原版還原 v1，主圖） ─────────────
    壓力帶：布林 = 最高(最低價 14 根最低的 14 根最高…) → HHV(HHV(L,14),60)
      上緣 = EMA(EMA(布林,16) − 2×標準差(布林,16), 20)；下緣 = EMA(EMA(布林,14) + 2×標準差(布林,14), 5)
@@ -3299,7 +3372,7 @@ const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce(
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
   wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'),
-  topg: () => drawOverlays(), bias: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
+  topg: () => drawOverlays(), bias: () => drawOverlays(), cost: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
   all: () => { drawIndicators(); drawOverlays(); },
@@ -3318,6 +3391,7 @@ const RESETS = {
   flow:  ['flow'],
   retail: ['retail'],
   ult: ['ult'],
+  cost: ['cost'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
   bias:  ['bias'],
