@@ -172,6 +172,7 @@
   <div class="plabel" id="lbl-omega"></div>
   <div class="plabel" id="lbl-big"></div>
   <div class="plabel" id="lbl-pess"></div>
+  <div class="plabel" id="lbl-taiji"></div>
   <div class="plabel" id="lbl-bbot"></div>
   <div class="plabel" id="lbl-trap"></div>
   <div class="plabel" id="lbl-panic"></div>
@@ -201,6 +202,7 @@
         <label class="chk"><input type="checkbox" data-ind="big">大趨勢（籌碼，台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="bbot">布林大底</label>
         <label class="chk"><input type="checkbox" data-ind="pess">超級悲觀線（台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="taiji">太極週期線</label>
         <label class="chk"><input type="checkbox" data-ind="trap">主力套牢（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="panic">散戶恐慌（台指期）</label>
       </div>
@@ -500,12 +502,22 @@
       <details>
         <summary>超級悲觀線（只適用台指期）</summary>
         <div class="stack">
-          <div class="hint">悲觀＝大家都在賠錢的程度：散戶平均成本、主力（前十大多單）平均成本，價格低於成本幾次追繳（約指數 1.75%）取平均佔 75%，加上價格在 20 根布林通道低於中線幾個標準差佔 25%；每 1 次追繳＝25 分，正＝悲觀、負＝樂觀。上限 +50 超級悲觀（標「超級悲觀」）、+25 悲觀、下限 −60 過度樂觀。回測（2026/1～10）：60 分穿過 +50 之後 12 根平均 +0.49%（平常 +0.14%）；4 小時穿過 +50 之後 6 根 +0.94%（平常 +0.24%）。下限這一年沒有看跌的效果。不用 FinMind 額度。</div>
+          <div class="hint">悲觀＝大家都在賠錢的程度：散戶平均成本、主力（前十大多單）平均成本，價格低於成本幾次追繳（約指數 1.75%）取平均佔 75%，加上價格在 20 根布林通道低於中線幾個標準差佔 25%；每 1 次追繳＝25 分，正＝悲觀、負＝樂觀。上限 +50 超級悲觀（標「超級悲觀」）、+25 悲觀、下限 −60 過度樂觀。回測（2026/1～10）：60 分穿過 +50 之後 12 根平均 +0.49%（平常 +0.14%）；4 小時穿過 +50 之後 6 根 +0.94%（平常 +0.24%）。下限這一年沒有看跌的效果。精準底＝12 根內超級悲觀，再等太極週期線在低檔勾頭才標，時間準很多（見下面選項）。不用 FinMind 額度。</div>
           <div class="kv"><span>上限（超級悲觀）</span><select data-k="pess.hi" data-int data-redraw="pess"><option value="40">+40</option><option value="50">+50</option><option value="60">+60</option></select></div>
           <div class="kv"><span>下限（過度樂觀）</span><select data-k="pess.lo" data-int data-redraw="pess"><option value="-40">−40</option><option value="-60">−60</option><option value="-80">−80</option></select></div>
           <label class="chk"><input type="checkbox" data-k="pess.mk" data-redraw="pess">標出「超級悲觀」（K 線圖和副圖）</label>
+          <label class="chk"><input type="checkbox" data-k="pess.prec" data-redraw="pess">標出「精準底」：12 根內超級悲觀＋太極週期線低檔勾頭（回測 60 分：剛好在波段低點後 3 根內 62%，之後 12 根平均 +0.72%、75% 上漲；只看超級悲觀是 19%）</label>
           <div class="kv"><span>悲觀／樂觀</span><span class="pair"><input type="color" data-k="pess.cP" data-redraw="pess"><input type="color" data-k="pess.cO" data-redraw="pess"></span></div>
           <button class="small" data-reset="pess">恢復預設</button>
+        </div>
+      </details>
+      <details>
+        <summary>太極週期線（所有商品）</summary>
+        <div class="stack">
+          <div class="hint">比較了七種週期震盪公式（Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期），最會抓轉折時間的是網路週期和費雪轉換，兩個平均就是陽線（−100～+100），陰線是陽線前一根；陽在上＝紅、陽在下＝綠。−30 以下勾頭標「陽」（低點轉折），+30 以上下彎標「陰」（高點轉折）。回測：勾頭剛好在波段低點後 3 根內的比例，台指 60 分 52%、4 小時 77%、加權日線 66%（隨機 22～36%），平均晚 2 根左右；只準在時間，之後漲幅跟平常差不多，配合超級悲觀線用。</div>
+          <label class="chk"><input type="checkbox" data-k="taiji.mk" data-redraw="taiji">標出「陽」「陰」轉折</label>
+          <div class="kv"><span>陽升／陰降</span><span class="pair"><input type="color" data-k="taiji.cYang" data-redraw="taiji"><input type="color" data-k="taiji.cYin" data-redraw="taiji"></span></div>
+          <button class="small" data-reset="taiji">恢復預設</button>
         </div>
       </details>
       <details>
@@ -759,14 +771,15 @@ const DEFAULTS = {
   trap:{ lo:'-1', mk:true, cUp:'#ef5350', cDn:'#26a69a', cMk:'#ff8a65' },
   big:{ hi:30, lo:-60, mk:true, cUp:'#ef5350', cDn:'#26a69a' },
   bbot:{ mainSig:true, zone:true, cE:'#ffca28', cW:'#ff9800' },
-  pess:{ hi:50, lo:-60, mk:true, cP:'#29b6f6', cO:'#ff8a65' },
+  pess:{ hi:50, lo:-60, mk:true, prec:true, cP:'#29b6f6', cO:'#ff8a65', cPrec:'#00e5ff' },
+  taiji:{ mk:true, cYang:'#ef5350', cYin:'#26a69a' },
   bbr:{ len:20, m:2, m3:3, show3:true, col:'#90a4ff', col3:'#b0b8c8', alpha:7 },
   omega:{ fastLen:34, slowLen:144, anchorLen:400, atrLen:100, normLen:200, slopeLen:21, wTrend:0.45, wAnchor:0.35, wSlope:0.20, gain:1.15, clip:4, erLen:34, smFast:6, smSlow:28, twoPole:true,
           opt:35, xOpt:70, pes:-35, xPes:-70, zones:true, confirm:3, hyst:12, minSlope:1, cooldown:20, reqAnchor:true, sig:true, lineW:3, cBull:'#20DFA5', cBear:'#FF657B', cNeu:'#E9B44C' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, omega:false, big:false, bbot:true, trap:false, panic:true, pess:false }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, omega:false, big:false, bbot:true, trap:false, panic:true, pess:false, taiji:false }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -803,7 +816,7 @@ if ((S.v || 0) < 24) S.ind = Object.assign({}, S.ind, { bbot:true });   // 看�
 S.v = 25;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot','omega','pess','bbr'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot','omega','pess','bbr','taiji'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if ((S._v25 || 0) < 1){ S.qsz.showDi = false; S._v25 = 1; }   // 四色動能柱的黃色「底／追」標籤預設拿掉（設定裡還能打開）
 if ((S._v26 || 0) < 1){ S.qsz.style = 'line'; if (+S.ribbon.alpha <= 15) S.ribbon.alpha = 75; S._v26 = 1; }   // 四色動能改曲線、彩帶調淡讓 K 棒清楚
 if (!THEMES[S.themeName]) S.themeName = 'dark';
@@ -817,12 +830,12 @@ const PREF_KEY = BBV ? 'bbv.prefs' : 'clear.prefs';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get(PREF_KEY) || '{}') || {}; } catch(e){}
   const pn = Object.assign({ big:true, bbot:true }, cp.panes || {}, cp.omegaSeen ? {} : { omega:true }); S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, !!pn[k]])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
   S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); if (cp.bbot) Object.assign(S.bbot, cp.bbot); if (cp.omega) Object.assign(S.omega, cp.omega); S.cost.w = 1;   // 成本線用細線
-  if (BBV){ S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'pess' ? !(cp.panes && cp.panes.pess === false) : false]));
-    S.ovl = { bbr:cp.ovl ? cp.ovl.bbr !== false : true, cost:!!(cp.ovl && cp.ovl.cost) }; S.night = cp.night !== false; if (cp.pess) Object.assign(S.pess, cp.pess); if (cp.bbr) Object.assign(S.bbr, cp.bbr); } }
+  if (BBV){ S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, (k === 'pess' || k === 'taiji') ? !(cp.panes && cp.panes[k] === false) : false]));
+    S.ovl = { bbr:cp.ovl ? cp.ovl.bbr !== false : true, cost:!!(cp.ovl && cp.ovl.cost) }; S.night = cp.night !== false; if (cp.pess) Object.assign(S.pess, cp.pess); if (cp.bbr) Object.assign(S.bbr, cp.bbr); if (cp.taiji) Object.assign(S.taiji, cp.taiji); } }
 // 清晰看盤：主圖高度看副圖數量（0 個 100%、1 個 70%、2 個 58%）
-function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 68, 58, 50][['omega', 'big', 'bbot', 'pess'].filter(k => S.ind[k]).length]; }
+function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 68, 58, 50][['omega', 'big', 'bbot', 'pess', 'taiji'].filter(k => S.ind[k]).length]; }
 cleanRatio();
-const save = () => CLEAN ? store.set(PREF_KEY, JSON.stringify({ ovl:S.ovl, pess:S.pess, bbr:S.bbr, tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, omega:S.omega, omegaSeen:1, panes:{ omega:!!S.ind.omega, big:!!S.ind.big, bbot:!!S.ind.bbot, pess:!!S.ind.pess }, mainRatio:S.mainRatio })) : store.set('twchart.settings', JSON.stringify(S));
+const save = () => CLEAN ? store.set(PREF_KEY, JSON.stringify({ ovl:S.ovl, pess:S.pess, bbr:S.bbr, taiji:S.taiji, tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, omega:S.omega, omegaSeen:1, panes:{ omega:!!S.ind.omega, big:!!S.ind.big, bbot:!!S.ind.bbot, pess:!!S.ind.pess, taiji:!!S.ind.taiji }, mainRatio:S.mainRatio })) : store.set('twchart.settings', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -1346,7 +1359,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'omega', 'big', 'bbot', 'pess', 'trap', 'panic'];
+const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'omega', 'big', 'bbot', 'pess', 'taiji', 'trap', 'panic'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -3546,7 +3559,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'), bbot: () => drawInd('bbot'), omega: () => drawInd('omega'), pess: () => drawInd('pess'), bbr: () => drawOverlays(),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'), bbot: () => drawInd('bbot'), omega: () => drawInd('omega'), pess: () => drawInd('pess'), taiji: () => drawInd('taiji'), bbr: () => drawOverlays(),
   topg: () => drawOverlays(), bias: () => drawOverlays(), cost: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -3572,6 +3585,7 @@ const RESETS = {
   bbot: ['bbot'],
   omega: ['omega'],
   pess: ['pess'],
+  taiji: ['taiji'],
   cost: ['cost'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
@@ -3746,6 +3760,68 @@ Object.assign(IND, {
   },
 });
 
+/* ───────────── 太極週期線（所有商品、所有週期） ─────────────
+   研發：比較了 Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期，
+   看「勾頭」那根是不是剛好在波段低點後 3 根內。最好的是網路週期和費雪轉換，兩個平均更穩，就用這個：
+     陽線＝（網路週期 × 自動增益 ＋ 費雪轉換 ÷ 2.5）÷ 2 × 100（−100～+100）；陰線＝陽線前一根。
+     網路週期：(收+2×前1+2×前2+前3)/6 平滑後，用 α＝0.07 的二階高通濾波取出週期；自動增益＝除以逐漸衰減（×0.991）的最大絕對值。
+     費雪轉換：(高+低)/2 在 10 根高低區間的位置，平滑後做 0.5×ln((1+x)/(1−x))。
+   陽在陰上方＝紅（往上）、下方＝綠（往下）；−30 以下陽線勾頭＝「陽」（低點轉折），+30 以上往下勾＝「陰」（高點轉折）。
+   回測（勾頭剛好在波段低點後 3 根內的比例，隨機買是 22～36%）：台指 60 分 52%、4 小時 77%、加權日線 66%，平均晚 2 根左右；
+   只看轉折時間準不準，之後漲多少跟平常差不多，所以要配合超級悲觀線用。 */
+function taijiCalc(B){
+  const n = B.length, c = B.map(b => b.close), h = B.map(b => b.high), l = B.map(b => b.low), a = 0.07;
+  const s = c.map((x, i) => i < 3 ? x : (c[i] + 2 * c[i - 1] + 2 * c[i - 2] + c[i - 3]) / 6), cy = new Array(n).fill(0);
+  for (let i = 2; i < n; i++) cy[i] = i >= 7 ? (1 - .5 * a) ** 2 * (s[i] - 2 * s[i - 1] + s[i - 2]) + 2 * (1 - a) * cy[i - 1] - (1 - a) ** 2 * cy[i - 2] : (c[i] - 2 * c[i - 1] + c[i - 2]) / 4;
+  let pk = 1e-9; const cyN = cy.map(v => { pk = Math.max(pk * 0.991, Math.abs(v)); return pk ? v / pk : 0; });
+  const fi = []; let v1 = 0, f1 = 0;
+  for (let i = 0; i < n; i++){
+    let hi = -Infinity, lo = Infinity; for (let k = Math.max(0, i - 9); k <= i; k++){ hi = Math.max(hi, h[k]); lo = Math.min(lo, l[k]); }
+    let v = hi > lo ? .66 * (((h[i] + l[i]) / 2 - lo) / (hi - lo) - .5) + .67 * v1 : .67 * v1;
+    v = Math.max(-.999, Math.min(.999, v)); const f = .5 * Math.log((1 + v) / (1 - v)) + .5 * f1; fi.push(f); v1 = v; f1 = f;
+  }
+  const T = cyN.map((x, i) => i < 10 ? null : (x + Math.max(-1, Math.min(1, fi[i] / 2.5))) / 2 * 100);
+  const tr = T.map((_, i) => i ? T[i - 1] : null), up = new Array(n).fill(false), dn = new Array(n).fill(false);
+  for (let i = 4; i < n; i++){
+    if (T[i] == null || T[i - 1] == null || tr[i - 1] == null) continue;
+    let mn = Infinity, mx = -Infinity; for (let k = i - 3; k <= i; k++){ if (T[k] != null){ mn = Math.min(mn, T[k]); mx = Math.max(mx, T[k]); } }
+    if (T[i - 1] <= tr[i - 1] && T[i] > tr[i] && mn <= -30) up[i] = true;
+    if (T[i - 1] >= tr[i - 1] && T[i] < tr[i] && mx >= 30) dn[i] = true;
+  }
+  return { T, tr, up, dn };
+}
+Object.assign(IND, {
+  taiji: {
+    s:{}, vals:null,
+    create(p){
+      const { LineSeries } = LC(), o = (w) => ({ lineWidth:w, lineType:2, priceLineVisible:false, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 },
+        autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }) });
+      this.s.yin = chart.addSeries(LineSeries, Object.assign(o(1), { lastValueVisible:false }), p);
+      this.s.yang = chart.addSeries(LineSeries, Object.assign(o(2), { lastValueVisible:true }), p);
+      this.fill = new BandFill('poly'); this.s.yin.attachPrimitive(this.fill);
+      this.refs = [30, 0, -30].map(v => this.s.yang.createPriceLine({ price:v, lineWidth:1, lineStyle:v ? 0 : 2, axisLabelVisible:!!v, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.yang, []);
+    },
+    draw(){
+      const P = S.taiji, R = this.vals = taijiCalc(bars), r1 = x => x == null ? null : Math.round(x * 10) / 10;
+      this.s.yang.setData(bars.map((b, i) => R.T[i] == null ? { time:b.time } : { time:b.time, value:r1(R.T[i]), color:R.tr[i] != null && R.T[i] >= R.tr[i] ? P.cYang : P.cYin }));
+      this.s.yin.setData(toLine(R.tr.map(r1))); this.s.yin.applyOptions({ color:hexA(S.col.text, .45) });
+      this.fill.setItems(R.T.map((x, i) => x == null || R.tr[i] == null ? null : { up:Math.max(x, R.tr[i]), lo:Math.min(x, R.tr[i]), color:hexA(x >= R.tr[i] ? P.cYang : P.cYin, .35) }));
+      [[30, P.cYang], [0, hexA(S.col.text, .35)], [-30, P.cYin]].forEach(([y, col], j) => this.refs[j].applyOptions({ color:hexA(col, .8) }));
+      const mk = []; if (P.mk) bars.forEach((b, i) => { if (R.up[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.T[i], shape:'arrowUp', color:P.cYin, text:'陽', size:0.8 });
+        if (R.dn[i]) mk.push({ time:b.time, position:'atPriceTop', price:R.T[i], shape:'arrowDown', color:P.cYang, text:'陰', size:0.8 }); });
+      this.mk.setMarkers(mk);
+    },
+    label(i){
+      const v = this.vals, P = S.taiji; if (!v) return '';
+      const x = v.T[i], t = v.tr[i], dir = x == null || t == null ? '' : x >= t ? `　<span style="color:${P.cYang}">陽升</span>` : `　<span style="color:${P.cYin}">陰降</span>`;
+      const zone = x == null ? '' : x >= 30 ? '　<span class="muted">高檔</span>' : x <= -30 ? '　<span class="muted">低檔</span>' : '';
+      const tag = v.up[i] ? `　<span class="tag" style="background:${P.cYin};color:#000">陽：低點轉折</span>` : v.dn[i] ? `　<span class="tag" style="background:${P.cYang};color:#fff">陰：高點轉折</span>` : '';
+      return `太極週期線 <b>${x == null ? '—' : fmt(x, 0)}</b>${dir}${zone}${tag}`;
+    },
+  },
+});
+
 /* ───────────── 超級悲觀線（只適用台指期；布林悲觀看盤的副圖） ─────────────
    悲觀＝大家都在賠錢的程度，用「一次追繳的距離」（約指數 1.75%）當單位：
      散戶（小台＋微台非法人）平均成本、主力（前十大交易人多單）平均成本，價格低於成本幾次追繳（高於成本就是負的）取平均，佔 75%；
@@ -3781,17 +3857,21 @@ Object.assign(IND, {
         v.push(Math.max(-100, Math.min(100, 25 * (0.75 * (-(a + m) / 2) + 0.25 * (-z))))); });
       const hi = +P.hi, sig = [false];
       for (let i = 1; i < v.length; i++) sig.push(v[i - 1] != null && v[i] != null && v[i - 1] < hi && v[i] >= hi);
-      this.vals = { v, mr, mm, sig };
+      // 精準底：最近 12 根內超級悲觀（≥ 上限）＋太極週期線在低檔勾頭
+      const TJ = taijiCalc(bars), prec = v.map((_, i) => { if (!TJ.up[i]) return false; for (let k = Math.max(0, i - 12); k <= i; k++) if (v[k] != null && v[k] >= hi) return true; return false; });
+      this.vals = { v, mr, mm, sig, prec };
       this.s.main.setData(toLine(v.map(x => x == null ? null : Math.round(x * 10) / 10)));
       this.s.main.applyOptions({ topLineColor:P.cP, bottomLineColor:P.cO });
       [[hi, P.cP], [25, hexA(P.cP, .7)], [0, hexA(S.col.text, .4)], [+P.lo, P.cO]].forEach(([y, col], j) => this.refs[j].applyOptions({ price:y, color:col }));
-      const mk = []; if (P.mk) bars.forEach((b, i) => { if (sig[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cP, size:0.9 }); });
+      const mk = []; bars.forEach((b, i) => { if (P.mk && sig[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cP, size:0.9 });
+        if (P.prec && this.vals.prec[i]) mk.push({ time:b.time, position:'aboveBar', shape:'arrowUp', color:P.cPrec, text:'精準底', size:1.1 }); });
       this.mk.setMarkers(mk);
       refreshMarkers();
     },
     mainMarkers(){
-      const v = this.vals, P = S.pess, out = []; if (!v || !v.sig || !P.mk) return out;
-      v.sig.forEach((s, i) => { if (s) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cP, text:'超級悲觀', size:1.2 }); });
+      const v = this.vals, P = S.pess, out = []; if (!v || !v.sig) return out;
+      if (P.mk) v.sig.forEach((s, i) => { if (s) out.push({ i, position:'belowBar', shape:'circle', color:P.cP, text:'超級悲觀', size:0.8 }); });
+      if (P.prec) v.prec.forEach((s, i) => { if (s) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cPrec, text:'精準底', size:1.4 }); });
       return out;
     },
     label(i){
@@ -3800,7 +3880,7 @@ Object.assign(IND, {
       const x = v.v[i], a = v.mr[i], m = v.mm[i];
       const zone = x == null ? '　<span class="muted">資料不足</span>' : x >= +P.hi ? `　<span style="color:${P.cP}">超級悲觀（上限以上）</span>` : x >= 25 ? `　<span style="color:${P.cP}">悲觀</span>` : x <= +P.lo ? `　<span style="color:${P.cO}">過度樂觀（下限以下）</span>` : x < 0 ? '　<span class="muted">偏樂觀</span>' : '　<span class="muted">中性偏悲觀</span>';
       const sg = y => y == null ? '—' : (y < 0 ? '套 ' + fmt(-y, 1) : '賺 ' + fmt(y, 1)) + ' 次追繳';
-      const tag = v.sig[i] ? `　<span class="tag" style="background:${P.cP};color:#000">超級悲觀</span>` : '';
+      const tag = (v.sig[i] ? `　<span class="tag" style="background:${P.cP};color:#000">超級悲觀</span>` : '') + (v.prec[i] ? `　<span class="tag" style="background:${P.cPrec};color:#000">精準底</span>` : '');
       return `超級悲觀線 <b style="color:${x != null && x >= 0 ? P.cP : P.cO}">${x == null ? '—' : fmt(x, 0)}</b>${zone}　<span class="muted">散戶${sg(a)}・主力${sg(m)}</span>${tag}`;
     },
   },
@@ -4310,7 +4390,7 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
     tg.append(seg);
     chip('布林軌道', S.bbr.col, S.ovl.bbr, v => { S.ovl = Object.assign({}, S.ovl, { bbr:v }); save(); buildOverlays(); });
     chip('成本線', S.cost.cL, S.ovl.cost, v => { S.ovl = Object.assign({}, S.ovl, { cost:v }); save(); buildOverlays(); });
-    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v));
+    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v)); chip('太極週期線', S.taiji.cYang, S.ind.taiji, v => paneT('taiji', v));
   } else {
   const costT = (k, v) => { S.cost[k] = v; save(); drawOverlays(); renderLegend(); };
   chip('主力成本', S.cost.cL, S.cost.top, v => costT('top', v)); chip('散戶成本', S.cost.cRc, S.cost.rc, v => costT('rc', v)); chip('主力底線', S.cost.cFl, S.cost.fl, v => costT('fl', v));
