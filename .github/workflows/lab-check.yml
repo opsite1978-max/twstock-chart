@@ -1,0 +1,50 @@
+name: 實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out t && cd t && npm init -y >/dev/null && npm i -s playwright@1.56.0 >/dev/null && npx playwright install --with-deps chromium > ../out/install.txt 2>&1 || true
+          cat > c.js <<'JS'
+          const { chromium } = require('playwright');
+          const tok = process.env.FINMIND_TOKEN, scrub = s => String(s).split(tok).join('***'), fs = require('fs'), log = [];
+          const L = x => { log.push(scrub(x)); fs.writeFileSync('../out/log.txt', log.join('\n')); };
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ viewport:{ width:1280, height:1000 }, serviceWorkers:'block' });
+            await ctx.addInitScript(t => { try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}'); s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); localStorage.setItem('ol.iv', '20'); localStorage.setItem('clear.prefs', JSON.stringify({ tf:'5' })); } catch(e){} }, tok);
+            const pg = await ctx.newPage(); pg.setDefaultTimeout(20000);
+            pg.on('pageerror', e => L('OL pageerror: ' + e.message));
+            await pg.goto('https://opsite1978-max.github.io/twstock-chart/optlive.html?t=' + Date.now());
+            await pg.waitForTimeout(150000);
+            const txt = id => pg.evaluate(i => (document.querySelector(i) || {}).textContent || 'NONE', id);
+            L('OL msg ' + (await txt('#msg')).slice(0, 200));
+            L('OL hdr ' + await txt('#hdr') + ' | quota ' + await txt('#quota') + ' | exp ' + await txt('#expInfo'));
+            L('OL kpis ' + (await txt('#kpis')).replace(/\s+/g, ' ').slice(0, 300));
+            L('OL force ' + (await txt('#force')).replace(/\s+/g, ' ').slice(0, 300));
+            L('OL fut ' + (await txt('#fut')).replace(/\s+/g, ' ').slice(0, 200));
+            L('OL conc ' + (await txt('#conc')).replace(/\s+/g, ' ').slice(0, 400));
+            L('OL log ' + (await txt('#log')).replace(/\s+/g, ' ').slice(0, 300));
+            await pg.screenshot({ path:'../out/optlive.png', fullPage:true });
+            const p2 = await ctx.newPage(); p2.on('pageerror', e => L('CLEAN pageerror: ' + e.message));
+            await p2.goto('https://opsite1978-max.github.io/twstock-chart/index.html?clean=1&t=' + Date.now()); await p2.waitForTimeout(40000);
+            L('CLEAN ' + await p2.evaluate(() => { const B = __auto.bars, l = B[B.length - 1]; return JSON.stringify({ n:B.length, live:B.filter(b => b.live).length, last:[l.label, l.open, l.close], status:document.getElementById('status').textContent, rec:!!(window.REC || null) }); }));
+            await p2.screenshot({ path:'../out/clean.png' });
+            await b.close();
+          })().catch(e => L('ERR ' + (e.stack || e)));
+          JS
+          timeout 400 node c.js || true
+      - if: always()
+        run: |
+          cd out && git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
