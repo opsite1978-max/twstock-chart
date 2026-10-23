@@ -157,7 +157,7 @@
     <label class="chk" id="nightWrap" style="display:none"><input type="checkbox" id="night">夜盤</label>
     <label class="chk" title="盤中每分鐘抓即時報價更新最後一根 K 棒（每分鐘用 1 個 FinMind 額度，分頁沒在看時不抓）；收盤後正式資料公布會自動換上"><input type="checkbox" id="auto">自動</label>
     <span style="flex:1"></span>
-    <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋主力成本、散戶成本、主力底線，副圖大趨勢" onclick="location.href='clear.html'">清晰看盤</button>
+    <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋主力成本、散戶成本、主力底線，副圖大趨勢、布林大底" onclick="location.href='clear.html'">清晰看盤</button>
     <button id="ovBtn" title="今日總覽：台指期、選擇權撐壓、法人、資金流、族群、籌碼焦點一頁看完" onclick="location.href='overview.html'">總覽</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
     <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
@@ -196,6 +196,7 @@
   <div class="plabel" id="lbl-flow"></div>
   <div class="plabel" id="lbl-retail"></div>
   <div class="plabel" id="lbl-big"></div>
+  <div class="plabel" id="lbl-bbot"></div>
   <div class="plabel" id="lbl-trap"></div>
   <div class="plabel" id="lbl-panic"></div>
   <div id="empty">輸入股票代號（或台指期 TX）後按「看」<br><small>第一次使用請先到「⚙ 設定」最下方貼上 FinMind 憑證</small></div>
@@ -221,6 +222,7 @@
         <label class="chk"><input type="checkbox" data-ind="flow">資金流（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="retail">散戶指標（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="big">大趨勢（籌碼，台指期）</label>
+        <label class="chk"><input type="checkbox" data-ind="bbot">布林大底</label>
         <label class="chk"><input type="checkbox" data-ind="trap">主力套牢（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="panic">散戶恐慌（台指期）</label>
       </div>
@@ -504,6 +506,16 @@
         </div>
       </details>
       <details>
+        <summary>布林大底（所有商品）</summary>
+        <div class="stack">
+          <div class="hint">大底能量 0～100＝價格跌到 60 根布林通道下軌外多深 × 20 根布林通道寬度在過去約 3 年的百分位（通道越張開越恐慌）。50 以上＝大底區。W 底＝布林 W 底加能量背離：第一隻腳能量 ≥ 50，之後跌回附近（不高於第一隻腳 2%）但能量變小，再收盤突破前 3 根高點。回測加權指數日線 2005～2026（15 個跌幅 ≥ 15% 的大底）：W 底 21 年 20 次、抓到 8 個大底，之後 60 天平均 +4.1%（75% 上漲，平常 +2.8%）；大底區本身 15 個大底都會出現，但也常繼續跌，當警報用。日內週期沒有回測過。</div>
+          <label class="chk"><input type="checkbox" data-k="bbot.mainSig" data-redraw="bbot">K 線圖上標出「W底」</label>
+          <label class="chk"><input type="checkbox" data-k="bbot.zone" data-redraw="bbot">副圖標出進入大底區</label>
+          <div class="kv"><span>能量／W 底</span><span class="pair"><input type="color" data-k="bbot.cE" data-redraw="bbot"><input type="color" data-k="bbot.cW" data-redraw="bbot"></span></div>
+          <button class="small" data-reset="bbot">恢復預設</button>
+        </div>
+      </details>
+      <details>
         <summary>大趨勢（籌碼，只適用台指期）</summary>
         <div class="stack">
           <div class="hint">看整個局勢用。三個籌碼各自放在過去一年的高低區間換成 −100～+100，平均後 5 天平滑：外資台指期淨未平倉的位置、外資淨未平倉 10 天的變化、前十大交易人淨部位的位置。上界（+30）以上＝偏多、下界（−60）以下＝最糟，副圖標「轉多」「最糟」「脫離最糟」。每天收盤後更新；日內週期用約半天的 K 棒平滑成曲線（會慢一點）。回測（2025/10～2026/10，這一年大多是多頭）：+30 以上之後 10 天平均 +5.8%（93% 收高）；中間 +2.8%；−45～−60 最差，之後 10 天 −1.4%（只有 23% 收高）；跌破 −60 只發生 2 次（2026/6 初、6 月底），站回 −60 之後 5 天 +2.5%、+5.8%。偏空時主力套牢、散戶恐慌的抓底訊號之後平均再跌較深（60 分約 −2%，盤整時約 −1.1%）。價格本身的趨勢這一年沒有預測力，所以只用籌碼。不用 FinMind 額度。</div>
@@ -743,10 +755,11 @@ const DEFAULTS = {
   panic:{ hi:85, mk:true, cP:'#ff7043', cMk:'#ffb020' },
   trap:{ lo:'-1', mk:true, cUp:'#ef5350', cDn:'#26a69a', cMk:'#ff8a65' },
   big:{ hi:30, lo:-60, mk:true, cUp:'#ef5350', cDn:'#26a69a' },
+  bbot:{ mainSig:true, zone:true, cE:'#ffca28', cW:'#ff9800' },
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, big:false, trap:false, panic:true }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, big:false, bbot:false, trap:false, panic:true }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -789,17 +802,20 @@ if ((S.v || 0) < 23 && S.cost && S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7
 S.v = 23;
 S.ind = Object.assign(clone(DEFAULTS.ind), S.ind);
 if (!Array.isArray(S.ma) || S.ma.length !== 3) S.ma = clone(DEFAULTS.ma);
-['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
+['bb','arCol','arW','vpo','t3','col','wt','ztsv','topg','bias','ovl','rsib','bb3','abyss','qsz','shz','ribbon','ivx','flow','retail','ult','cost','panic','trap','big','bbot'].forEach(k => S[k] = Object.assign(clone(DEFAULTS[k]), S[k]));
 if (!THEMES[S.themeName]) S.themeName = 'dark';
 // 精簡版：只保留 VPO、T3（只留均線）、BotWT×3、RSIB 與 Top G、Bias Finder、布林 2／3 倍標準差
 S.ind = Object.assign({}, S.ind, { smi:false, aroon:false, ztsv:false });
 S.ma.forEach(m => m.on = false); S.bb.on = false; S.t3.showOsc = false;
-// 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋主力成本（前十大多單）、散戶成本、主力底線三條線，副圖大趨勢；設定另外存，不影響一般看盤
+// 清晰看盤模式（網址加 ?clean=1）：只看台指期，K 線＋主力成本（前十大多單）、散戶成本、主力底線三條線，副圖大趨勢、布林大底（都能開關）；設定另外存，不影響一般看盤
 const CLEAN = new URLSearchParams(location.search).get('clean') === '1';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get('clear.prefs') || '{}') || {}; } catch(e){}
-  S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, k === 'big'])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
-  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; S.cost.top = true; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); S.mainRatio = 70; S.cost.w = 1; }   // 主圖佔 70%，下面是大趨勢；成本線用細線
-const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
+  const pn = Object.assign({ big:true, bbot:true }, cp.panes || {}); S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, !!pn[k]])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
+  S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); if (cp.bbot) Object.assign(S.bbot, cp.bbot); S.cost.w = 1; }   // 成本線用細線
+// 清晰看盤：主圖高度看副圖數量（0 個 100%、1 個 70%、2 個 58%）
+function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 70, 58, 50][['big', 'bbot'].filter(k => S.ind[k]).length]; }
+cleanRatio();
+const save = () => CLEAN ? store.set('clear.prefs', JSON.stringify({ tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, panes:{ big:!!S.ind.big, bbot:!!S.ind.bbot }, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -1323,7 +1339,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'big', 'trap', 'panic'];
+const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'big', 'bbot', 'trap', 'panic'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1747,6 +1763,7 @@ function refreshMarkers(){
   if (paneOf.ult !== undefined && IND.ult.vals) list = list.concat(IND.ult.mainMarkers());
   if (paneOf.panic !== undefined && IND.panic.vals) list = list.concat(IND.panic.mainMarkers());
   if (paneOf.trap !== undefined && IND.trap.vals) list = list.concat(IND.trap.mainMarkers());
+  if (paneOf.bbot !== undefined && IND.bbot.vals) list = list.concat(IND.bbot.mainMarkers());
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -3481,7 +3498,7 @@ const getPath = p => p.split('.').reduce((o,k) => o[k], S);
 const setPath = (p, v) => { const ks = p.split('.'), last = ks.pop(); ks.reduce((o,k) => o[k], S)[last] = v; };
 const REDRAW = {
   smi: () => drawInd('smi'), aroon: () => drawInd('aroon'), vpo: () => drawInd('vpo'), t3: () => drawInd('t3'),
-  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'),
+  wt: () => drawInd('wt'), ztsv: () => drawInd('ztsv'), rsib: () => drawInd('rsib'), abyss: () => drawInd('abyss'), qsz: () => drawInd('qsz'), shz: () => drawInd('shz'), ivx: () => drawInd('ivx'), flow: () => drawInd('flow'), retail: () => drawInd('retail'), ult: () => drawInd('ult'), panic: () => drawInd('panic'), trap: () => drawInd('trap'), big: () => drawInd('big'), bbot: () => drawInd('bbot'),
   topg: () => drawOverlays(), bias: () => drawOverlays(), cost: () => drawOverlays(), bb3: () => drawOverlays(), ribbon: () => drawOverlays(),
   theme: () => { applyTheme(); drawIndicators(); drawOverlays(); },
   font: () => { applyTheme(); renderLegend(); layoutPanes(); },
@@ -3504,6 +3521,7 @@ const RESETS = {
   panic: ['panic'],
   trap: ['trap'],
   big: ['big'],
+  bbot: ['bbot'],
   cost: ['cost'],
   ztsv:  ['ztsv'],
   topg:  ['topg'],
@@ -3674,6 +3692,78 @@ Object.assign(IND, {
       const how = m == null ? '' : m < 0 ? `　<span class="muted">散戶平均套 ${fmt(-m, 1)} 次追繳</span>` : `　<span class="muted">散戶成本下方 ${fmt(m, 1)} 次追繳</span>`;
       const tag = (v.sig[i] ? `　<span class="tag" style="background:${P.cMk};color:#000">散戶恐慌</span>` : '') + (v.run[i] >= v.N ? `　<span class="tag" style="background:#9e9e9e;color:#000">鈍化 ${v.run[i]} 根</span><span class="muted">　散戶一直套著，訊號照樣有效但可能還會再跌</span>` : '');
       return `散戶恐慌 <b style="color:${x != null && x >= 50 ? P.cP : 'inherit'}">${x == null ? '—' : fmt(x, 0)}</b>${zone}${how}${tag}`;
+    },
+  },
+});
+
+/* ───────────── 布林大底（價格技術指標，所有商品、所有週期都能用；不用額度） ─────────────
+   大底能量（0～100）＝「價格跌到 60 根布林通道下軌外多深」×「20 根布林通道寬度在過去約 3 年的百分位」：
+     深度＝(60 根均線 − 收盤) ÷ 60 根標準差，0～3 個標準差換成 0～1（在均線上方＝0）；
+     寬度＝20 根布林通道（上軌 − 下軌）÷ 中線，跟過去 750 根比排第幾百分位（通道越張開＝越恐慌）。
+   能量 ≥ 50＝大底區（跌得深、波動又大，大底常在這裡，但也常繼續跌）。
+   W 底＝布林 W 底加能量背離：過去 60 根內有一個能量 ≥ 50 的低點（第一隻腳），最近 10 根又跌回附近（不高於第一隻腳 2%）
+     但能量比第一隻腳小（≤ 0.9 倍＝恐慌退了），然後收盤突破前 3 根最高點。
+   回測（加權指數日線 2005～2026，有 15 個大底：跌幅 ≥ 15% 的 ±60 天最低點）：
+     能量 ≥ 40 的確認訊號：21 年 50 次，15 個大底全部在 15 天內出現過，但只有約三分之一真的在大底附近，平均報酬跟平常差不多（當警報用）；
+     W 底：21 年 20 次，抓到 8 個大底，之後 20 天平均 +1.5%（70% 上漲）、60 天 +4.1%（75%，平常 +2.8%），之後平均最深再跌 −2.9%。
+   日內週期用同樣的根數計算，沒有回測過，只當參考。 */
+function bbotSeries(B){
+  const n = B.length, C = B.map(b => b.close), Hh = B.map(b => b.high), Ll = B.map(b => b.low), S = new Array(n).fill(null), bw = new Array(n).fill(null);
+  const msd = (k, i) => { let s = 0; for (let j = i - k + 1; j <= i; j++) s += C[j]; const m = s / k; let v = 0; for (let j = i - k + 1; j <= i; j++) v += (C[j] - m) ** 2; return [m, Math.sqrt(v / k)]; };
+  for (let i = 19; i < n; i++){ const [m, sd] = msd(20, i); bw[i] = m ? 4 * sd / m : null; }
+  for (let i = 59; i < n; i++){
+    const [m, sd] = msd(60, i), depth = sd > 0 ? Math.max(0, Math.min(3, (m - C[i]) / sd)) / 3 : 0;
+    const w = []; for (let j = Math.max(19, i - 749); j <= i; j++) if (bw[j] != null) w.push(bw[j]);
+    if (w.length < 100) continue;
+    let below = 0; for (const x of w) if (x < bw[i]) below++;
+    S[i] = depth * below / w.length * 100;
+  }
+  const W = new Array(n).fill(false), zone = new Array(n).fill(false); let last = -99;
+  for (let i = 1; i < n; i++) zone[i] = S[i] != null && S[i - 1] != null && S[i - 1] < 50 && S[i] >= 50;
+  for (let i = 60; i < n; i++){
+    const hh = k => Math.max(Hh[k - 3], Hh[k - 2], Hh[k - 1]);
+    if (!(C[i] > hh(i)) || C[i - 1] > hh(i - 1) || i - last <= 20) continue;
+    let k2 = i - 10; for (let k = i - 10; k <= i; k++) if (Ll[k] < Ll[k2]) k2 = k;
+    let k1 = -1; for (let k = i - 60; k <= k2 - 6; k++) if (S[k] != null && S[k] >= 50 && (k1 < 0 || Ll[k] < Ll[k1])) k1 = k;
+    if (k1 < 0 || Ll[k2] > Ll[k1] * 1.02) continue;
+    const mx = (a, b) => { let v = 0; for (let k = Math.max(0, a); k <= Math.min(n - 1, b); k++) v = Math.max(v, S[k] || 0); return v; };
+    if (mx(k2 - 2, k2) <= mx(k1 - 2, k1 + 2) * 0.9){ W[i] = true; last = i; }
+  }
+  return { S, W, zone };
+}
+Object.assign(IND, {
+  bbot: {
+    s:{}, vals:null,
+    create(p){
+      const { BaselineSeries } = LC();
+      this.s.main = chart.addSeries(BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2, lineType:2, priceLineVisible:false, lastValueVisible:true, priceFormat:{ type:'price', precision:0, minMove:1 },
+        autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }),
+        topFillColor1:'rgba(255,202,40,0.45)', topFillColor2:'rgba(255,202,40,0.10)', bottomFillColor1:'rgba(120,130,150,0.12)', bottomFillColor2:'rgba(120,130,150,0.02)' }, p);
+      this.refs = [50].map(v => this.s.main.createPriceLine({ price:v, lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'' }));
+      this.mk = LC().createSeriesMarkers(this.s.main, []);
+    },
+    draw(){
+      const P = S.bbot, R = bbotSeries(bars);
+      this.vals = R;
+      this.s.main.setData(toLine(R.S.map(x => x == null ? null : Math.round(x * 10) / 10)));
+      this.s.main.applyOptions({ topLineColor:P.cE, bottomLineColor:hexA(S.col.text, .55) });
+      this.refs[0].applyOptions({ color:P.cE });
+      const mk = []; bars.forEach((b, i) => { if (P.zone && R.zone[i]) mk.push({ time:b.time, position:'aboveBar', shape:'circle', color:P.cE, size:0.7 });
+        if (R.W[i]) mk.push({ time:b.time, position:'aboveBar', shape:'arrowUp', color:P.cW, text:'W底', size:1 }); });
+      this.mk.setMarkers(mk);
+      refreshMarkers();
+    },
+    mainMarkers(){
+      const v = this.vals, P = S.bbot, out = []; if (!v || !v.W || !P.mainSig) return out;
+      v.W.forEach((w, i) => { if (w) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cW, text:'W底', size:1.3 }); });
+      return out;
+    },
+    label(i){
+      const v = this.vals, P = S.bbot; if (!v) return '';
+      const x = v.S[i];
+      const zone = x == null ? '　<span class="muted">資料不足（至少 160 根）</span>' : x >= 50 ? `　<span style="color:${P.cE}">大底區（跌得深、通道大開）</span>` : x >= 30 ? '　<span class="muted">偏低、波動放大</span>' : '';
+      const tag = v.W[i] ? `　<span class="tag" style="background:${P.cW};color:#000">W 底</span>` : v.zone[i] ? `　<span class="tag" style="background:${P.cE};color:#000">進入大底區</span>` : '';
+      return `布林大底 <b style="color:${x != null && x >= 50 ? P.cE : 'inherit'}">${x == null ? '—' : fmt(x, 0)}</b>${zone}${tag}`;
     },
   },
 });
@@ -4007,6 +4097,14 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
   const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#adjWrap,#nightWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
   const sy = $('sym'); sy.value = 'TX'; sy.readOnly = true;
   const full = document.createElement('button'); full.textContent = '完整看盤'; full.title = '回到一般看盤（所有指標、股票）'; full.onclick = () => location.href = location.pathname; $('ovBtn').before(full);
+  // 清晰看盤的開關：三條成本線、兩個副圖
+  const tg = document.createElement('div'); tg.id = 'cleanTg'; tg.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:12px;margin-top:4px;width:100%';
+  const chip = (txt, col, on, fn) => { const l = document.createElement('label'); l.className = 'chk'; l.style.color = col; const c = document.createElement('input'); c.type = 'checkbox'; c.checked = !!on; c.onchange = () => fn(c.checked); l.append(c, txt); tg.append(l); };
+  const costT = (k, v) => { S.cost[k] = v; save(); drawOverlays(); renderLegend(); };
+  chip('主力成本', S.cost.cL, S.cost.top, v => costT('top', v)); chip('散戶成本', S.cost.cRc, S.cost.rc, v => costT('rc', v)); chip('主力底線', S.cost.cFl, S.cost.fl, v => costT('fl', v));
+  const paneT = (k, v) => { S.ind = Object.assign({}, S.ind, { [k]: v }); cleanRatio(); save(); buildIndicators(); };
+  chip('大趨勢', 'var(--muted)', S.ind.big, v => paneT('big', v)); chip('布林大底', S.bbot.cE, S.ind.bbot, v => paneT('bbot', v));
+  $('status').before(tg);
 }
 if (S.lastSym) $('sym').value = S.lastSym;
 updateKindUI(parseSym(S.lastSym));
