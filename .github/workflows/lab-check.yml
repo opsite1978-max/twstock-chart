@@ -1,0 +1,30 @@
+name: 實測（暫時）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - env:
+          TOK: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          mkdir -p out && cd out
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.parse
+          tok = os.environ['TOK']; out = []
+          def get(q):
+              with urllib.request.urlopen('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(q, token=tok)), timeout=120) as r: return json.load(r).get('data') or []
+          for d in ('2026-10-22', '2026-10-23'):
+              k = get({'dataset': 'TaiwanFuturesKBar', 'data_id': 'TX', 'start_date': d, 'end_date': d})
+              mins = sorted({r['minute'] for r in k if str(r.get('contract_date')) == '202611'})
+              out.append(f'KBar {d} rows {len(k)} 202611 minutes {len(mins)} first {mins[:1]} last {mins[-3:]}')
+          dd = get({'dataset': 'TaiwanFuturesDaily', 'data_id': 'TX', 'start_date': '2026-10-21', 'end_date': '2026-10-23'})
+          out.append('Daily ' + json.dumps([(r['date'], r['contract_date'], r['trading_session'], r['open'], r['max'], r['min'], r['close'], r['volume']) for r in dd if str(r['contract_date']) in ('202611',)], ensure_ascii=False))
+          open('log.txt', 'w').write('\n'.join(out).replace(tok, '***'))
+          PY
+          git init -q && git checkout -q -b probe-out && git add -A
+          git -c user.name=probe -c user.email=probe@users.noreply.github.com commit -qm probe
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" probe-out
