@@ -1,8 +1,9 @@
-10-16 01:54:49 2026-10-15 underlyings 717 otc unmatched traded 0
-10-16 01:55:47   retry https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&o=jso HTTPError HTTP Error 525: <none>
-10-16 01:56:05 2026-10-14 underlyings 716 otc unmatched traded 0
-10-16 01:56:47 2026-10-13 underlyings 724 otc unmatched traded 0
-10-16 01:57:25 2026-09-07 underlyings 696 otc unmatched traded 13
-10-16 01:57:25 fetched days 4
-10-16 01:57:25 summary 810 underlyings 83 days, base 60
-10-16 02:00:10 detail files 810 detail days 20 meta 58896
+10-24 01:58:39 2026-10-23 no data (holiday?)
+10-24 01:59:23 2026-10-22 underlyings 695 otc unmatched traded 0
+10-24 02:00:07 2026-10-21 underlyings 710 otc unmatched traded 0
+10-24 02:00:54 2026-10-20 underlyings 687 otc unmatched traded 0
+10-24 02:01:36 2026-10-19 underlyings 700 otc unmatched traded 0
+10-24 02:02:20 2026-10-16 underlyings 713 otc unmatched traded 0
+10-24 02:02:20 fetched days 5
+10-24 02:02:21 summary 810 underlyings 88 days, base 60
+10-24 02:03:00 detail files 810 detail days 20 meta 62289
