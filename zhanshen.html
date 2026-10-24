@@ -29,11 +29,23 @@
   --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
   --accent:#d9a85c; --accent-ink:#1a1206;
   --up:#e5484d; --down:#2fb67c; --warn:#e6c14d; --err:#ef6a5f;
+  --overlay:rgba(20,25,34,.92); --scrim:rgba(0,0,0,.45);
+  --err-bg:#1d1414; --err-line:#5a2a28; --err-fg:#f2b3ad; --warn-bg:#1b1810; --warn-line:#574a1f; --warn-fg:#ecd68e;
   --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --warn:#946600; --err:#c62828;
+  --overlay:rgba(255,255,255,.94); --scrim:rgba(20,25,35,.28);
+  --err-bg:#fdeceb; --err-line:#f1b9b3; --err-fg:#9c1d15; --warn-bg:#fff6dc; --warn-line:#e8cf86; --warn-fg:#664a00;
+  color-scheme:light;
+}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--fg)}
 body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(12px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
 button,input,select{font:inherit;color:inherit}
@@ -64,20 +76,22 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .iconbtn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px}
 .iconbtn:hover{border-color:var(--dim)}
 .spacer{flex:1}
+.selp{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:5px 8px;font-size:13px}
+@media (max-width:560px){.seg button{padding:6px 8px}}
 
 .msg{font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.msg.err{border-color:#5a2a28;color:#f2b3ad;background:#1d1414}
-.msg.warn{border-color:#574a1f;color:#ecd68e;background:#1b1810}
+.msg.err{border-color:var(--err-line);color:var(--err-fg);background:var(--err-bg)}
+.msg.warn{border-color:var(--warn-line);color:var(--warn-fg);background:var(--warn-bg)}
 .msg.ok{color:var(--muted)}
 .msg .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
 
 .chart-wrap{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);height:clamp(480px,74vh,920px)}
-.chart-wrap canvas{display:block;width:100%;height:100%;touch-action:pan-y;cursor:crosshair}
+.chart-wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
 .chart-wrap .zoom{position:absolute;right:66px;bottom:32px;display:flex;gap:4px;opacity:.85}
-.chart-wrap .zoom button{width:30px;height:28px;border:1px solid var(--line2);background:rgba(20,25,34,.9);border-radius:5px;font:600 14px var(--mono);color:var(--muted);padding:0}
+.chart-wrap .zoom button{width:30px;height:28px;border:1px solid var(--line2);background:var(--overlay);border-radius:5px;font:600 14px var(--mono);color:var(--muted);padding:0}
 .chart-wrap .zoom button.wide{width:auto;padding:0 9px;font:500 12px var(--sans)}
 .chart-wrap .zoom button:hover{color:var(--fg)}
-.loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(20,25,34,.94);border:1px solid var(--line2);border-radius:6px;padding:10px 16px;font-size:13px;color:var(--fg)}
+.loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:var(--overlay);border:1px solid var(--line2);border-radius:6px;padding:10px 16px;font-size:13px;color:var(--fg)}
 
 .below{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);gap:12px;align-items:start}
 @media (max-width:1100px){.below{grid-template-columns:repeat(3,minmax(0,1fr))}.below .sigs{grid-column:1/-1}}
@@ -109,7 +123,7 @@ footer{font-size:12px;color:var(--dim);line-height:1.7}
 footer p{margin:0;max-width:110ch}
 
 /* settings drawer */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:20}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);background:var(--panel);border-left:1px solid var(--line2);z-index:21;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s ease;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
 .drawer.open{transform:none}
 @media (prefers-reduced-motion:reduce){.drawer{transition:none}}
@@ -160,11 +174,14 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     </div>
     <span class="spacer"></span>
     <div class="seg" id="intervalSeg" role="group" aria-label="K 棒週期">
-      <button data-v="D">日K</button><button data-v="W">週K</button><button data-v="M">月K</button>
+      <button data-v="5">5分</button><button data-v="15">15分</button><button data-v="30">30分</button><button data-v="60">60分</button><button data-v="240">4時</button><button data-v="D">日</button><button data-v="W">週</button><button data-v="M">月</button>
     </div>
+    <select id="periodSel" class="selp" title="分 K 要載入的交易日數（第一次每天用 1 個 FinMind 額度，之後存在這台裝置）" aria-label="分 K 載入天數" hidden></select>
+    <button class="tog" id="togNight" aria-pressed="false" title="分 K 加上台指期夜盤（15:00 到隔天 05:00）" hidden>含夜盤</button>
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
     <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
+    <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
   </div>
@@ -176,6 +193,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="zoom">
       <button id="zOut" aria-label="縮小">−</button>
       <button id="zIn" aria-label="放大">+</button>
+      <button id="zAuto" class="wide" title="所有圖的價格座標恢復自動縮放">自動</button>
       <button id="zEnd" class="wide">最新</button>
     </div>
     <div class="loading" id="loading" hidden>資料載入中…</div>
@@ -197,7 +215,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
   </section>
 
   <footer>
-    <p>操作：拖曳左右平移、滾輪或雙指縮放、點一下固定十字線（再點一下取消）、雙擊回到最新。下方狀態卡顯示十字線所在那根 K 棒；沒有十字線時顯示最新一根。</p>
+    <p>操作：拖曳圖面左右平移，滾輪或兩指左右張開縮放時間。在右側價格座標上下拖曳（或滾輪、兩指上下張開）可放大縮小價格，之後圖面也能上下拖；雙擊價格座標或按「自動」恢復。拖曳下方日期列可快速縮放時間，拖曳兩個圖之間的分隔線可調整高度。點一下固定十字線，雙擊圖面回到最新。手機上下滑動圖面照常捲動頁面。</p>
     <p>指標依你提供的 Pine Script 逐行移植：Uptrick Volume Weighted Bands 主圖版（原作 Uptrick，ThinkScript 轉寫 Chewie）、Uptrick VW Z 全週期優化版、Volume-Weighted Displacement v9.1（cando13579 / antwerks）。移動平均、相對強弱指標（RSI）、真實波幅平均與標準差都依 Pine 內建函式的初始化方式重寫，歷史 K 棒結果應與 TradingView 一致；最後一根若尚未收盤，「只在收盤確認」選項會比照 Pine 暫停訊號。資料來源 FinMind，台指期以每日成交量最大的單一月份合約接續成連續線。僅供研究參考，非投資建議。</p>
   </footer>
 </div>
@@ -340,8 +358,22 @@ for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.
 
 const UI = Object.assign({
   symbol:'2330', interval:'D', adj:false, showZ:true, showD:true,
-  token:'', start:'2000-01-01', showVolume:true, scaleAll:false
+  token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
+  theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get('zs:ui', {}));
+if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
+if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
+const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
+const INTRA = {
+  '5':  { P:5,   days:[10, 20, 40],    def:20 },
+  '15': { P:15,  days:[20, 40, 80],    def:40 },
+  '30': { P:30,  days:[60, 120, 200],  def:120 },
+  '60': { P:60,  days:[120, 200, 300], def:200 },
+  '240':{ P:240, days:[250, 400, 600], def:400 }
+};
+const IVN = { '5':'5分K', '15':'15分K', '30':'30分K', '60':'60分K', '240':'4小時K', D:'日K', W:'週K', M:'月K' };
+const isIntra = iv => !!INTRA[iv];
+function curDays(iv){ const c = INTRA[iv], v = +(UI.days || {})[iv]; return c.days.includes(v) ? v : c.def; }
 function saveUI(){ LS.set('zs:ui', UI); }
 function siteToken(){ try { return (JSON.parse(localStorage.getItem('twchart.settings') || '{}').token || '').trim(); } catch(e){ return ''; } }
 function getToken(){ return (UI.token || '').trim() || siteToken(); }
@@ -661,7 +693,8 @@ async function finmind(params){
   if (j.status && j.status !== 200){
     if (j.status === 402) throw new Error('FinMind 本小時的請求額度已用完，請稍後再試，或在設定中填入你的 token。');
     if (j.status === 400 && /token/i.test(j.msg || '')) throw new Error('FinMind token 無效，請到設定檢查。');
-    throw new Error('FinMind：' + (j.msg || ('錯誤代碼 ' + j.status)));
+    const m = j.msg || ('錯誤代碼 ' + j.status);
+    throw new Error('FinMind：' + m + (/level|sponsor|backer|permission|權限|會員/i.test(m) ? '（此資料需要 FinMind 付費會員）' : ''));
   }
   return j.data || [];
 }
@@ -709,7 +742,7 @@ function futuresRows(data){
 }
 
 async function fetchSymbol(id, force){
-  const isTX = id === 'TX';
+  const isTX = !!FUTS[id];
   const kind = isTX ? 'TXF' : (UI.adj ? 'ADJ' : 'RAW');
   const cached = readCache(id, kind);
   const fresh = cached && Date.now() - cached.t < 30 * 60e3 && cached.start === UI.start;
@@ -727,7 +760,7 @@ async function fetchSymbol(id, force){
       const part = await Promise.all(years.slice(k, k + 3).map(y => {
         setLoading('台指期資料載入中… ' + y + ' 年');
         const s = y === years[0] ? from : y + '-01-01';
-        return finmind({ dataset:'TaiwanFuturesDaily', data_id:'TX', start_date:s, end_date:y + '-12-31' });
+        return finmind({ dataset:'TaiwanFuturesDaily', data_id:id, start_date:s, end_date:y + '-12-31' });
       }));
       for (const p of part) chunks.push(...p);
     }
@@ -770,9 +803,141 @@ function fillDatalist(){
   dl.replaceChildren(frag);
 }
 function nameOf(id){
-  if (id === 'TX') return '台指期近月';
+  if (FUTS[id]) return FUTS[id];
   if (id === 'TAIEX') return '加權指數';
   return NAMES[id] || '';
+}
+
+/* ───── 分K：與看盤頁共用同一個裝置快取（IndexedDB twchart-kbar），看過的日子不再用額度 ───── */
+async function tradingDates(n){
+  const today = tpNow().date;
+  let c = LS.get('zs:tdates', null);
+  if (!c || c.t !== today || c.ds.length < n){
+    try {
+      const rows = await finmind({ dataset:'TaiwanStockTradingDate', start_date:isoDay(dayMs(today) - Math.ceil(n * 1.6 + 30) * 864e5) });
+      const ds = [...new Set(rows.map(r => r.date))].filter(d => d <= today).sort();
+      if (ds.length >= Math.min(n, 10)){ c = { t:today, ds }; LS.set('zs:tdates', c); }
+    } catch (e){}
+  }
+  if (c && c.ds.length) return c.ds.slice(-n);
+  const ds = []; let t = dayMs(today);
+  while (ds.length < n){ const w = new Date(t).getUTCDay(); if (w > 0 && w < 6) ds.unshift(isoDay(t)); t -= 864e5; }
+  return ds;
+}
+const kdb = (() => { let p = null; return () => p || (p = new Promise(res => {
+  try {
+    const r = indexedDB.open('twchart-kbar', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('d');
+    r.onsuccess = () => res(r.result);
+    r.onerror = r.onblocked = () => res(null);
+  } catch (e){ res(null); }
+})); })();
+async function kGet(k){
+  const db = await kdb(); if (!db) return null;
+  return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e){ res(null); } });
+}
+async function kPut(k, v){ const db = await kdb(); if (!db) return; try { db.transaction('d', 'readwrite').objectStore('d').put(v, k); } catch (e){} }
+function parseHM(s){ s = String(s || '').trim().split(' ').pop(); const p = s.split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+const shiftDay = (d, n) => isoDay(dayMs(d) + n * 864e5);
+// 一天的一分K精簡成 [分鐘, 開, 高, 低, 收, 量, 合約序號]（格式與看盤頁相同）
+function compactK(rows, fut){
+  let cs = [];
+  if (fut){
+    const vol = new Map();
+    for (const r of rows){ const c = String(r.contract_date || '').trim(); if (/^\d{6}$/.test(c)) vol.set(c, (vol.get(c) || 0) + (+r.volume || 0)); }
+    cs = [...vol.keys()].sort((a, b) => vol.get(b) - vol.get(a)).slice(0, 2);
+  }
+  const out = [];
+  for (const r of rows){
+    if (!(r.close > 0)) continue;
+    let ci = 0;
+    if (fut){ ci = cs.indexOf(String(r.contract_date || '').trim()); if (ci < 0) continue; }
+    out.push([parseHM(r.minute), +r.open, +r.high, +r.low, +r.close, +r.volume || 0, ci]);
+  }
+  out.sort((a, b) => a[0] - b[0]);
+  return { c:cs, r:out };
+}
+const kMem = new Map();
+function kbarDay(sym, date){
+  const fut = sym.kind === 'fut', key = (fut ? 'F:' : 'S:') + sym.id + ':' + date;
+  if (kMem.has(key)) return kMem.get(key);
+  const today = tpNow().date;
+  const stable = fut ? date <= shiftDay(today, -2) : date < today;
+  const p = (async () => {
+    if (stable){ const v = await kGet(key); if (v && v.r) return v; }
+    const rows = await finmind({ dataset: fut ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar', data_id:sym.id, start_date:date });
+    const v = compactK(rows, fut);
+    if (stable && v.r.length) kPut(key, v);
+    return v;
+  })();
+  kMem.set(key, p); p.catch(() => kMem.delete(key));
+  return p;
+}
+async function pool(items, limit, fn, onProg, isStale){
+  let i = 0, done = 0, err = null; const out = new Array(items.length);
+  const worker = async () => { while (i < items.length && !err){
+    if (isStale && isStale()){ err = new Error('stale'); break; }
+    const k = i++; try { out[k] = await fn(items[k]); } catch (e){ err = err || e; } onProg && onProg(++done, items.length); } };
+  await Promise.all(Array.from({ length:limit }, worker));
+  if (err) throw err;
+  return out;
+}
+// 一分K → 5／15／30／60 分、4 小時：每個交易時段各自從開盤起算（股票 09:00；期貨日盤 08:45、夜盤 15:00），與看盤頁、TradingView 相同
+// 輸出 [日期 時間, 開, 高, 低, 收, 量, K 棒結束時刻]
+function intradayBars(dates, perDay, sym, P, night, firstDate){
+  const fut = sym.kind === 'fut', sess = new Map();
+  dates.forEach((date, i) => {
+    const day = perDay[i]; if (!day || !day.r) return;
+    for (const r of day.r){
+      const m = r[0]; let k, a, e, sDate = date, ext = m;
+      if (!fut){ if (m < 540 || m > 810) continue; k = 'D'; a = 540; e = 810; }
+      else if (m >= 525 && m <= 825){ k = 'D'; a = 525; e = 825; }
+      else if (night && m >= 900){ k = 'N'; a = 900; e = 1740; }
+      else if (night && m < 300){ k = 'N'; a = 900; e = 1740; sDate = shiftDay(date, -1); ext = m + 1440; }
+      else continue;
+      if (sDate < firstDate) continue;
+      const sk = sDate + k;
+      let s = sess.get(sk); if (!s){ s = { sDate, a, e, rows:[], vol:new Map() }; sess.set(sk, s); }
+      const c = fut ? day.c[r[6]] : '';
+      s.rows.push([ext, r[1], r[2], r[3], r[4], r[5], c]); s.vol.set(c, (s.vol.get(c) || 0) + r[5]);
+    }
+  });
+  const out = [];
+  for (const s of sess.values()){
+    const main = [...s.vol.keys()].sort((x, y) => s.vol.get(y) - s.vol.get(x))[0];
+    const rows = s.rows.filter(r => r[6] === main).sort((x, y) => x[0] - y[0]);
+    const [yy, mo, dd] = s.sDate.split('-').map(Number);
+    let cur = null, curB = null;
+    for (const [m, o, h, l, cl, v] of rows){
+      const mm = Math.min(Math.max(m, s.a), s.e - 1);
+      const b = s.a + Math.floor((mm - s.a) / P) * P;
+      if (b !== curB){
+        const t = Date.UTC(yy, mo - 1, dd, 0, b), iso = new Date(t).toISOString();
+        cur = [iso.slice(0, 10) + ' ' + iso.slice(11, 16), o, h, l, cl, v, Date.UTC(yy, mo - 1, dd, 0, Math.min(b + P, s.e)), t];
+        out.push(cur); curB = b;
+      } else { cur[2] = Math.max(cur[2], h); cur[3] = Math.min(cur[3], l); cur[4] = cl; cur[5] += v; }
+    }
+  }
+  return out.sort((x, y) => x[7] - y[7]);
+}
+async function fetchIntraday(id, iv, isStale){
+  if (id === 'TAIEX') throw new Error('加權指數沒有分 K 資料，請改看台指期 TX 或個股。');
+  if (id === 'SAMPLE') throw new Error('範例資料沒有分 K。');
+  const fut = !!FUTS[id], c = INTRA[iv], n = curDays(iv);
+  const dates = await tradingDates(n);
+  const night = fut && !!UI.night;
+  let list = dates.slice();
+  if (night){
+    const set = new Set(dates), today = tpNow().date;
+    for (const d of dates){ const nd = shiftDay(d, 1); if (!set.has(nd) && nd <= today){ set.add(nd); list.push(nd); } }
+    list.sort();
+  }
+  const sym = { kind: fut ? 'fut' : 'stock', id };
+  await kbarDay(sym, list[list.length - 1]);           // 先試一天，沒有權限就不浪費額度
+  const perDay = await pool(list, 6, d => kbarDay(sym, d), (k, m) => { if (!isStale()) setLoading('讀取分 K ' + k + '／' + m + ' 天…'); }, isStale);
+  const rows = intradayBars(list, perDay, sym, c.P, night, dates[0]);
+  if (!rows.length) throw new Error('查不到 ' + id + ' 的分 K 資料（當天分 K 約在收盤後 15:50–16:30 才會更新）。');
+  return rows;
 }
 
 /* deterministic sample so the chart is never empty */
@@ -811,12 +976,13 @@ function aggregate(rows, iv){
 }
 function makeBars(rows, iv, sample){
   const n = rows.length;
-  const b = { n, d:new Array(n), o:new F(n), h:new F(n), l:new F(n), c:new F(n), v:new F(n), vraw:new F(n), conf:new Uint8Array(n).fill(1) };
+  const b = { n, iv, intra:isIntra(iv), d:new Array(n), o:new F(n), h:new F(n), l:new F(n), c:new F(n), v:new F(n), vraw:new F(n), conf:new Uint8Array(n).fill(1) };
   rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; });
   if (n && !sample){
     const t = tpNow(), last = b.d[n - 1], closeM = 13 * 60 + 45;
     let open = false;
-    if (iv === 'D') open = last === t.date && t.mins < closeM;
+    if (b.intra) open = rows[n - 1][6] > Date.now() + 8 * 3600e3;
+    else if (iv === 'D') open = last === t.date && t.mins < closeM;
     else if (iv === 'W') open = weekKey(last) === weekKey(t.date) && t.dow >= 1 && t.dow <= 5 && !(t.dow === 5 && t.mins >= closeM);
     else open = monthKey(last) === monthKey(t.date);
     if (open) b.conf[n - 1] = 0;
@@ -826,7 +992,8 @@ function makeBars(rows, iv, sample){
 
 function recompute(){
   if (!RAW) return;
-  B = makeBars(aggregate(RAW.rows, UI.interval), UI.interval, RAW.sample);
+  const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
+  B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
   for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
@@ -837,7 +1004,16 @@ function recompute(){
 /* ═════════════ chart engine ═════════════ */
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 const AXIS_W = 60, TIME_H = 24;
-const CC = { bg:'#0d1016', grid:'rgba(120,135,160,.09)', axis:'#8892a3', text:'#c9d1dc', cross:'rgba(200,210,225,.45)', sep:'#252d3a', up:'#e5484d', down:'#2fb67c', tag:'#2a3342' };
+const PAL = {
+  dark:  { bg:'#0d1016', grid:'rgba(120,135,160,.09)', axis:'#8892a3', text:'#c9d1dc', cross:'rgba(200,210,225,.45)', sep:'#252d3a', up:'#e5484d', down:'#2fb67c', tag:'#2a3342', tagText:'#e8edf4', title:'#e8edf4', legendBg:'rgba(13,16,22,.78)', upVol:'rgba(229,72,77,.22)', downVol:'rgba(47,182,124,.22)', hint:'#d9a85c' },
+  light: { bg:'#ffffff', grid:'rgba(30,40,60,.07)', axis:'#5d6676', text:'#2a3140', cross:'rgba(40,50,70,.45)', sep:'#dde1e8', up:'#e53935', down:'#089981', tag:'#3a4354', tagText:'#ffffff', title:'#111722', legendBg:'rgba(255,255,255,.84)', upVol:'rgba(229,57,53,.16)', downVol:'rgba(8,153,129,.16)', hint:'#a8711a' }
+};
+let CC = PAL[UI.theme] || PAL.dark;
+function ink(c){
+  if (UI.theme !== 'light' || typeof c !== 'string' || !/^#[0-9a-f]{6}$/i.test(c)) return c;
+  const k = 0.42, h = i => Math.round(parseInt(c.slice(i, i + 2), 16) * (1 - k)).toString(16).padStart(2, '0');
+  return '#' + h(1) + h(3) + h(5);
+}
 const view = { barW:7, right:NaN };
 let cross = null;          // {i, y, pane}
 let pinned = false;
@@ -864,7 +1040,7 @@ function plotW(){ return cv.clientWidth - AXIS_W; }
 function clampView(){
   if (!B) return;
   const W = plotW(), span = W / view.barW;
-  view.barW = Math.max(1, Math.min(48, view.barW));
+  view.barW = Math.max(minBarW(), Math.min(60, view.barW));
   if (isNaN(view.right)) view.right = B.n - 1 + Math.min(6, span * 0.08);
   view.right = Math.max(Math.min(span * 0.2, B.n - 1), Math.min(B.n - 1 + span * 0.5, view.right));
 }
@@ -976,7 +1152,7 @@ function roundRect(x, y, w, h, r){
   ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
 function markerExtra(ev, i0, i1){ const out = []; for (const m of ev) if (m.i >= i0 && m.i <= i1) out.push(m.y); return out; }
-function visibleMarkers(ev, i0, i1){ for (const m of ev) if (m.i >= i0 && m.i <= i1) drawMarker(m); }
+function visibleMarkers(ev, i0, i1){ if (view.barW < 0.9) return; for (const m of ev) if (m.i >= i0 && m.i <= i1) drawMarker(m); }
 
 function gridAndAxis(dec, fmt){
   const W = plotW();
@@ -984,6 +1160,7 @@ function gridAndAxis(dec, fmt){
   ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.strokeStyle = CC.grid; ctx.lineWidth = 1;
   for (let v = Math.ceil(S.mn / step) * step; v <= S.mx + 1e-9; v += step){
+    if (Math.abs(v) < step * 1e-6) v = 0;
     const y = Math.round(S.y(v)) + 0.5;
     if (y < S.top + 4 || y > S.top + S.h - 4) continue;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
@@ -1001,9 +1178,9 @@ function legend(lines, top){
   let y = top + 11;
   for (const parts of lines){
     let w = 0; for (const p of parts) w += ctx.measureText(p[0]).width + 8;
-    ctx.fillStyle = 'rgba(13,16,22,.78)'; ctx.fillRect(4, y - 9, Math.min(w + 4, plotW() - 8), 18);
+    ctx.fillStyle = CC.legendBg; ctx.fillRect(4, y - 9, Math.min(w + 4, plotW() - 8), 18);
     let x = 8;
-    for (const [t, c] of parts){ ctx.fillStyle = c || CC.text; ctx.fillText(t, x, y + 0.5); x += ctx.measureText(t).width + 8; if (x > plotW() - 10) break; }
+    for (const [t, c] of parts){ ctx.fillStyle = ink(c || CC.text); ctx.fillText(t, x, y + 0.5); x += ctx.measureText(t).width + 8; if (x > plotW() - 10) break; }
     y += 18;
   }
 }
@@ -1020,14 +1197,15 @@ function draw(){
   const ci = cross ? Math.max(0, Math.min(B.n - 1, cross.i)) : B.n - 1;
 
   // pane layout
-  const panes = [{ id:'main', w:3 }];
-  if (UI.showZ) panes.push({ id:'z', w:1.35 });
-  if (UI.showD) panes.push({ id:'d', w:1.35 });
+  const Wt0 = UI.weights;
+  const panes = [{ id:'main', w:Wt0.main }];
+  if (UI.showZ) panes.push({ id:'z', w:Wt0.z });
+  if (UI.showD) panes.push({ id:'d', w:Wt0.d });
   const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
   let top = 0;
   for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
   panes[panes.length - 1].h = avail - panes[panes.length - 1].top;
-  layout = { panes, i0, i1 };
+  layout = { panes, i0, i1, avail };
 
   // vertical grid by time
   const step = Math.max(1, Math.ceil(84 / view.barW));
@@ -1042,6 +1220,7 @@ function draw(){
     else if (p.id === 'z') drawZ(p, i0, i1, ci);
     else drawD(p, i0, i1, ci);
     p.S = S;
+    if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
     ctx.restore();
     ctx.fillStyle = CC.sep; ctx.fillRect(0, p.top + p.h - 1, Wt, 1);
   }
@@ -1049,12 +1228,13 @@ function draw(){
 
   // time axis
   ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = CC.axis;
-  const long = UI.interval !== 'D' || step * 1 > 40;
+  const long = (B.iv !== 'D' && !B.intra) || (B.iv === 'D' && step > 40);
   let prevY = null;
   for (const i of ticks){
-    const d = B.d[i], y = d.slice(0, 4);
-    let t = long ? d.slice(0, 7).replace('-', '/') : (y !== prevY ? d.slice(0, 7).replace('-', '/') : d.slice(5).replace('-', '/'));
-    prevY = y;
+    const d = B.d[i];
+    let t;
+    if (B.intra){ const dd = d.slice(5, 10).replace('-', '/'); t = dd !== prevY ? dd : d.slice(11, 16); prevY = dd; }
+    else { const y = d.slice(0, 4); t = long ? d.slice(0, 7).replace('-', '/') : (y !== prevY ? d.slice(0, 7).replace('-', '/') : d.slice(5).replace('-', '/')); prevY = y; }
     const x = X(i); if (x < 20 || x > W - 20) continue;
     ctx.fillText(t, x, avail + TIME_H / 2);
   }
@@ -1070,14 +1250,14 @@ function draw(){
       ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(W, yy); ctx.stroke();
       ctx.setLineDash([]);
       S = p.S; const v = S.v(cross.y);
-      axisTag(v, CC.tag, '#e8edf4', p.id === 'main' ? fmtP : vv => fmtNum(vv, 2));
+      axisTag(v, CC.tag, CC.tagText, p.id === 'main' ? fmtP : vv => fmtNum(vv, 2));
     }
     ctx.setLineDash([]);
     const label = B.d[ci].replace(/-/g, '/');
     ctx.font = '600 11px "IBM Plex Mono", ui-monospace, monospace';
     const lw = ctx.measureText(label).width + 12;
     ctx.fillStyle = CC.tag; roundRect(Math.max(0, Math.min(W - lw, x - lw / 2)), avail + 3, lw, TIME_H - 6, 3); ctx.fill();
-    ctx.fillStyle = '#e8edf4'; ctx.textAlign = 'center'; ctx.fillText(label, Math.max(lw / 2, Math.min(W - lw / 2, x)), avail + TIME_H / 2);
+    ctx.fillStyle = CC.tagText; ctx.textAlign = 'center'; ctx.fillText(label, Math.max(lw / 2, Math.min(W - lw / 2, x)), avail + TIME_H / 2);
   }
 }
 
@@ -1092,7 +1272,7 @@ function drawMain(p, i0, i1, ci){
   if (ok && mode === '只有趨勢線') arrs.push(r.trend);
   const [mn0, mx0] = extent(arrs, i0, i1, ok ? markerExtra(r.ev, i0, i1) : null);
   const pad = (mx0 - mn0) * 0.04;
-  S = makeScale(p.top, p.h, mn0 - pad, mx0 + pad, 42, 8);
+  S = makeScale(p.top, p.h, ...rng('main', mn0 - pad, mx0 + pad), 42, 8);
   gridAndAxis(0, fmtP);
 
   // volume
@@ -1102,7 +1282,7 @@ function drawMain(p, i0, i1, ci){
       const vh = p.h * 0.16, base = p.top + p.h - 2, bw = Math.max(1, view.barW * 0.7);
       for (let i = i0; i <= i1; i++){
         const hgt = B.v[i] / vmax * vh;
-        ctx.fillStyle = B.c[i] >= B.o[i] ? 'rgba(229,72,77,.22)' : 'rgba(47,182,124,.22)';
+        ctx.fillStyle = B.c[i] >= B.o[i] ? CC.upVol : CC.downVol;
         ctx.fillRect(X(i) - bw / 2, base - hgt, bw, hgt);
       }
     }
@@ -1159,12 +1339,13 @@ function drawMain(p, i0, i1, ci){
 
   // legend
   const name = RAW ? (RAW.sample ? '範例資料' : RAW.id + ' ' + (RAW.name || '')) : '';
-  const ivName = { D:'日K', W:'週K', M:'月K' }[UI.interval];
+  const ivName = IVN[B.iv] + (B.intra && RAW && FUTS[RAW.id] ? (RAW.night ? '・含夜盤' : '・日盤') : '');
   const chg = ci > 0 ? (B.c[ci] - B.c[ci - 1]) / B.c[ci - 1] * 100 : NaN;
   const cc = chg >= 0 ? CC.up : CC.down;
-  const unit = RAW && RAW.id === 'TX' ? '口' : RAW && RAW.id === 'TAIEX' ? '' : '張';
-  const vol = RAW && RAW.id === 'TX' ? B.v[ci] : RAW && RAW.id === 'TAIEX' ? B.v[ci] / 1e8 : B.v[ci] / 1000;
-  const line1 = [[name.trim() + ' · ' + ivName, '#e8edf4'], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
+  const isF = RAW && FUTS[RAW.id], isIdx = RAW && RAW.id === 'TAIEX';
+  const unit = isF ? '口' : isIdx ? '' : '張';
+  const vol = isF || B.intra ? B.v[ci] : isIdx ? B.v[ci] / 1e8 : B.v[ci] / 1000;
+  const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
   const line2 = ok
     ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), colOf(ci)], ['上 ' + fmtP(r.u1[ci]), colOf(ci)], ['下 ' + fmtP(r.l1[ci]), colOf(ci)]]
     : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
@@ -1176,7 +1357,7 @@ function drawZ(p, i0, i1, ci){
   if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['VW Z PRO  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
   const [mn, mx] = extent([r.z], i0, i1, [q.extremeLevel, -q.extremeLevel].concat(markerExtra(r.ev, i0, i1)));
   const pad = (mx - mn) * 0.06;
-  S = makeScale(p.top, p.h, mn - pad, mx + pad, 26, 6);
+  S = makeScale(p.top, p.h, ...rng('z', mn - pad, mx + pad), 26, 6);
   gridAndAxis(1);
   const st = i => r.state[i] === 1 ? q.bullColor : r.state[i] === -1 ? q.bearColor : q.neutralColor;
   const K = v => () => v;
@@ -1202,7 +1383,7 @@ function drawD(p, i0, i1, ci){
   const sv = new F(B.n).fill(NaN); if (q.showSignalLine) for (let i = i0; i <= i1; i++) sv[i] = sg(i);
   const [mn, mx] = extent([vis, sv], i0, i1, [q.extremeLevel, -q.extremeLevel].concat(markerExtra(r.ev, i0, i1)));
   const pad = (mx - mn) * 0.06;
-  S = makeScale(p.top, p.h, mn - pad, mx + pad, 26, 6);
+  S = makeScale(p.top, p.h, ...rng('d', mn - pad, mx + pad), 26, 6);
   gridAndAxis(1);
   const K = v => () => v;
   if (q.showZones){
@@ -1232,8 +1413,11 @@ function drawD(p, i0, i1, ci){
 }
 
 /* ═════════════ interaction ═════════════ */
+// 每個圖的價格座標：null＝自動，{mn,mx}＝手動
+const yS = { main:null, z:null, d:null };
+const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
-let drag = null, pinch = null;
+let drag = null, pinch = null, lastTap = { t:0, kind:'' };
 function localXY(e){ const r = cv.getBoundingClientRect(); return { x:e.clientX - r.left, y:e.clientY - r.top }; }
 function setCross(pt){
   if (!B) return;
@@ -1241,14 +1425,39 @@ function setCross(pt){
   cross = { i:Math.max(0, Math.min(B.n - 1, i)), y:pt.y };
   schedule();
 }
+function minBarW(){ return B ? Math.max(0.03, Math.min(1, plotW() / (B.n * 1.05))) : 1; }
+function setBarW(w){ view.barW = Math.max(minBarW(), Math.min(60, w)); }
+function paneAt(y){ return layout ? layout.panes.find(p => y >= p.top && y < p.top + p.h) || null : null; }
+function hitTest(pt, touch){
+  if (!layout) return { kind:'none' };
+  if (pt.y >= layout.avail) return { kind:'time' };
+  const ps = layout.panes, tol = touch ? 12 : 5;
+  for (let k = 0; k < ps.length - 1; k++){ if (Math.abs(pt.y - (ps[k].top + ps[k].h)) <= tol) return { kind:'sep', k }; }
+  const p = paneAt(pt.y); if (!p || !p.S) return { kind:'none' };
+  return { kind: pt.x >= plotW() ? 'axis' : 'plot', p };
+}
+const curRange = p => yS[p.id] ? [yS[p.id].mn, yS[p.id].mx] : [p.S.mn, p.S.mx];
+function scaleY(id, range, f, anchor){
+  const [mn, mx] = range, a = anchor == null ? (mn + mx) / 2 : anchor;
+  if (!(f > 0) || !isFinite(f)) return;
+  yS[id] = { mn:a - (a - mn) * f, mx:a + (mx - a) * f };
+}
 cv.addEventListener('pointerdown', e => {
   const pt = localXY(e); ptrs.set(e.pointerId, pt);
   try { cv.setPointerCapture(e.pointerId); } catch (_){}
-  if (ptrs.size === 1){ drag = { x0:pt.x, y0:pt.y, r0:view.right, moved:false, type:e.pointerType }; pinch = null; }
-  else if (ptrs.size === 2){
+  const touch = e.pointerType !== 'mouse';
+  if (ptrs.size === 1){
+    const h = hitTest(pt, touch);
+    drag = { x0:pt.x, y0:pt.y, cy:e.clientY, r0:view.right, w0:view.barW, moved:false, touch, hit:h, lock:null };
+    if (h.p){ drag.range = curRange(h.p); drag.k = (h.p.S.mx - h.p.S.mn) / Math.max(1, h.p.h - h.p.S.padT - h.p.S.padB); }
+    if (h.kind === 'sep'){ const a = layout.panes[h.k], b = layout.panes[h.k + 1]; drag.sep = { a, b, tot:a.h + b.h }; }
+    pinch = null;
+  } else if (ptrs.size === 2){
     const [a, b] = [...ptrs.values()];
-    pinch = { d0:Math.abs(a.x - b.x) || 1, w0:view.barW, cx:(a.x + b.x) / 2 };
-    pinch.idx = idxAt(pinch.cx); drag = null;
+    const dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const p = paneAt(cy), vert = !!(p && p.S && dy > dx * 1.2);
+    pinch = { vert, d0:(vert ? dy : dx) || 1, w0:view.barW, cx, idx:idxAt(cx), p, range:p && p.S ? curRange(p) : null, av:p && p.S ? p.S.v(cy) : 0 };
+    drag = null;
   }
 });
 cv.addEventListener('pointermove', e => {
@@ -1256,24 +1465,53 @@ cv.addEventListener('pointermove', e => {
   if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, pt);
   if (pinch && ptrs.size === 2){
     const [a, b] = [...ptrs.values()];
-    const d = Math.abs(a.x - b.x) || 1;
-    view.barW = Math.max(1, Math.min(48, pinch.w0 * d / pinch.d0));
-    view.right = pinch.idx - 0.5 + (plotW() - pinch.cx) / view.barW;
+    if (pinch.vert) scaleY(pinch.p.id, pinch.range, pinch.d0 / (Math.abs(a.y - b.y) || 1), pinch.av);
+    else { setBarW(pinch.w0 * (Math.abs(a.x - b.x) || 1) / pinch.d0); view.right = pinch.idx - 0.5 + (plotW() - pinch.cx) / view.barW; }
     schedule(); return;
   }
   if (drag && ptrs.has(e.pointerId)){
-    const dx = pt.x - drag.x0;
-    if (!drag.moved && Math.abs(dx) > 5) drag.moved = true;
-    if (drag.moved){ view.right = drag.r0 - dx / view.barW; if (e.pointerType === 'mouse') setCross(pt); else schedule(); }
+    const dx = pt.x - drag.x0, dy = pt.y - drag.y0;
+    if (!drag.moved && Math.hypot(dx, dy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    const h = drag.hit;
+    if (h.kind === 'axis'){ scaleY(h.p.id, drag.range, Math.exp(dy * 0.006)); schedule(); }
+    else if (h.kind === 'time'){ setBarW(drag.w0 * Math.exp(-dx * 0.006)); schedule(); }
+    else if (h.kind === 'sep'){
+      const sp = drag.sep, min = 48, ah = Math.max(min, Math.min(sp.tot - min, sp.a.h + dy));
+      const ws = UI.weights[sp.a.id] + UI.weights[sp.b.id];
+      UI.weights[sp.a.id] = ws * ah / sp.tot; UI.weights[sp.b.id] = ws * (sp.tot - ah) / sp.tot;
+      schedule();
+    } else if (h.kind === 'plot'){
+      const manual = !!yS[h.p.id];
+      if (drag.touch && !manual){
+        if (!drag.lock) drag.lock = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h';
+        if (drag.lock === 'v'){ window.scrollBy(0, drag.cy - e.clientY); drag.cy = e.clientY; return; }
+      }
+      view.right = drag.r0 - dx / view.barW;
+      if (manual){ const [mn, mx] = drag.range; yS[h.p.id] = { mn:mn + dy * drag.k, mx:mx + dy * drag.k }; }
+      if (e.pointerType === 'mouse') setCross(pt); else schedule();
+    }
     return;
   }
-  if (e.pointerType === 'mouse' && !pinned) setCross(pt);
+  if (e.pointerType === 'mouse'){
+    const h = hitTest(pt, false);
+    cv.style.cursor = h.kind === 'axis' ? 'ns-resize' : h.kind === 'time' ? 'ew-resize' : h.kind === 'sep' ? 'row-resize' : 'crosshair';
+    if (!pinned && h.kind === 'plot') setCross(pt);
+  }
 });
 function endPtr(e, cancelled){
   const pt = localXY(e);
+  if (drag && drag.hit.kind === 'sep' && drag.moved) saveUI();
   if (drag && !drag.moved && !cancelled && ptrs.size === 1){
-    if (e.pointerType === 'mouse'){ pinned = !pinned; setCross(pt); }
-    else { if (pinned && cross && Math.abs(Math.round(idxAt(pt.x)) - cross.i) < 2){ pinned = false; cross = null; schedule(); } else { pinned = true; setCross(pt); } }
+    const h = drag.hit, now = Date.now(), dbl = now - lastTap.t < 350 && lastTap.kind === h.kind;
+    lastTap = { t:now, kind:h.kind };
+    if (h.kind === 'axis'){ if (dbl && e.pointerType !== 'mouse'){ yS[h.p.id] = null; schedule(); } }
+    else if (h.kind === 'plot'){
+      if (e.pointerType === 'mouse'){ pinned = !pinned; setCross(pt); }
+      else if (dbl){ view.right = NaN; pinned = false; cross = null; schedule(); }
+      else if (pinned && cross && Math.abs(Math.round(idxAt(pt.x)) - cross.i) < 2){ pinned = false; cross = null; schedule(); }
+      else { pinned = true; setCross(pt); }
+    }
   }
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
@@ -1284,27 +1522,38 @@ cv.addEventListener('pointercancel', e => endPtr(e, true));
 cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pinned && !drag){ cross = null; schedule(); } });
 cv.addEventListener('wheel', e => {
   if (!B) return; e.preventDefault();
-  const pt = localXY(e);
+  const pt = localXY(e), h = hitTest(pt, false);
+  if (h.kind === 'axis'){ scaleY(h.p.id, curRange(h.p), Math.exp(e.deltaY * 0.0016), h.p.S.v(pt.y)); schedule(); return; }
   if (Math.abs(e.deltaX) > Math.abs(e.deltaY)){ view.right += e.deltaX / view.barW; schedule(); return; }
   const idx = idxAt(pt.x);
-  view.barW = Math.max(1, Math.min(48, view.barW * Math.exp(-e.deltaY * 0.0016)));
+  setBarW(view.barW * Math.exp(-e.deltaY * 0.0016));
   view.right = idx - 0.5 + (plotW() - pt.x) / view.barW;
   schedule();
 }, { passive:false });
-cv.addEventListener('dblclick', () => { view.right = NaN; pinned = false; cross = null; schedule(); });
-function zoomBy(f){ if (!B) return; const W = plotW(), idx = idxAt(W * 0.7); view.barW = Math.max(1, Math.min(48, view.barW * f)); view.right = idx - 0.5 + (W - W * 0.7) / view.barW; schedule(); }
+cv.addEventListener('dblclick', e => {
+  const h = hitTest(localXY(e), false);
+  if (h.kind === 'axis') yS[h.p.id] = null;
+  else if (h.kind === 'time') view.barW = 7;
+  else { view.right = NaN; pinned = false; cross = null; }
+  schedule();
+});
+function zoomBy(f){ if (!B) return; const W = plotW(), idx = idxAt(W * 0.7); setBarW(view.barW * f); view.right = idx - 0.5 + (W - W * 0.7) / view.barW; schedule(); }
+function resetY(){ yS.main = yS.z = yS.d = null; schedule(); }
 document.getElementById('zIn').onclick = () => zoomBy(1.35);
 document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
+document.getElementById('zAuto').onclick = resetY;
 document.getElementById('zEnd').onclick = () => { view.right = NaN; pinned = false; cross = null; schedule(); };
 window.addEventListener('keydown', e => {
   if (!B || document.getElementById('drawer').classList.contains('open') || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
-  if (e.key === 'ArrowLeft'){ view.right -= Math.max(1, 10 / view.barW * 3); schedule(); }
-  else if (e.key === 'ArrowRight'){ view.right += Math.max(1, 10 / view.barW * 3); schedule(); }
+  if (e.key === 'ArrowLeft'){ view.right -= Math.max(1, 30 / view.barW); schedule(); }
+  else if (e.key === 'ArrowRight'){ view.right += Math.max(1, 30 / view.barW); schedule(); }
+  else if (e.key === '+' || e.key === '='){ zoomBy(1.25); }
+  else if (e.key === '-'){ zoomBy(1 / 1.25); }
 });
 
 /* ═════════════ status cards & signals ═════════════ */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
-function kv(rows){ return '<dl class="kv">' + rows.map(([k, v, num, col]) => '<dt>' + esc(k) + '</dt><dd class="' + (num ? 'num' : '') + '"' + (col ? ' style="color:' + col + '"' : '') + '>' + esc(v) + '</dd>').join('') + '</dl>'; }
+function kv(rows){ return '<dl class="kv">' + rows.map(([k, v, num, col]) => '<dt>' + esc(k) + '</dt><dd class="' + (num ? 'num' : '') + '"' + (col ? ' style="color:' + ink(col) + '"' : '') + '>' + esc(v) + '</dd>').join('') + '</dl>'; }
 function warmNote(need, have){ return have < need ? '<div class="note">目前只有 ' + have + ' 根 K 棒，這個設定約需 ' + need + ' 根才算得出來，可在「指標設定」縮短統計長度，或改看日 K。</div>' : ''; }
 
 function updateCards(){
@@ -1320,7 +1569,7 @@ function updateCards(){
     const st = a.state[i], col = !a.ready[i] ? qa.neutralColor : st === 1 ? qa.bullColor : st === -1 ? qa.bearColor : qa.neutralColor;
     const txt = !a.ready[i] ? '通道暖機中' : st === 1 ? 'BULL 多方' : st === -1 ? 'BEAR 空方' : 'NEUTRAL 中性';
     const data = a.volOK[i] ? 'VWMA＋EMA' : qa.fallbackEMA ? 'EMA 替代成交量' : '成交量不可用';
-    h = '<h3>VWB PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + col + '">' + txt + '</div>' +
+    h = '<h3>VWB PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(col) + '">' + txt + '</div>' +
       kv([['資料', data, false, a.volOK[i] ? null : '#e6a35a'], ['Z 分數', a.zReady[i] ? fmtNum(a.z[i], 2) : '等待歷史資料', true], ['趨勢中線', fmtP(a.trend[i]), true], ['內通道', fmtP(a.l1[i]) + ' – ' + fmtP(a.u1[i]), true]]) +
       warmNote(qa.length + qa.smoothLen + qa.atrLen, B.n);
   }
@@ -1335,7 +1584,7 @@ function updateCards(){
     const vt = z.volOK[i] ? 'VWMA＋EMA' : qz.volumeFallback ? 'EMA 替代成交量' : '成交量不可用';
     const zv = z.z[i];
     const zone = isNaN(zv) ? '—' : zv >= qz.extremeLevel ? '上方極端區' : zv >= qz.midLevel ? '上方偏離區' : zv <= -qz.extremeLevel ? '下方極端區' : zv <= -qz.midLevel ? '下方偏離區' : zv >= 0 ? '零軸上方' : '零軸下方';
-    h = '<h3>VW Z PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + col + '">' + txt + '</div>' +
+    h = '<h3>VW Z PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(col) + '">' + txt + '</div>' +
       kv([['模式', qz.mode], ['Z 分數', isNaN(zv) ? '等待資料' : fmtNum(zv, 2), true, col], ['位置', zone], ['資料來源', vt, false, z.volOK[i] ? null : '#e6a35a']]) +
       warmNote(qz.length + qz.trendSmooth + Math.max(qz.zLength, qz.atrLength), B.n);
   }
@@ -1359,7 +1608,7 @@ function updateCards(){
     const cond = !rd ? '等待資料' : unconf ? '本根尚未確認' : inf.bullC ? '下方離區，動能回升' : inf.bearC ? '上方離區，動能回落' : (inf.loExit || inf.upExit) ? '已離極端區，確認不足' : inf.upTurn ? '上方極端開始回落' : inf.loTurn ? '下方極端開始回升' : (x >= EL && bE) ? '上方極端持續擴張' : (x <= -EL && sE) ? '下方極端持續擴張' : (x >= DL && x < EL && bE) ? '上方偏離延續' : (x <= -DL && x > -EL && sE) ? '下方偏離延續' : bC ? '上方動能減弱' : sC ? '下方動能減弱' : '等待方向';
     const exitCol = inf.bullC ? qd.bullExpansionColor : inf.bearC ? qd.bearExpansionColor : (inf.loExit || inf.upExit) ? '#e6c14d' : null;
     const refT = isNaN(d.reference[i]) ? '等待資料' : d.fallback[i] ? '無有效量：使用 SMA' : '滾動成交量加權';
-    h = '<h3>VWD 9.1 <span class="when">' + when + '</span></h3><div class="state" style="color:' + bcol + '">' + cond + '</div>' +
+    h = '<h3>VWD 9.1 <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(bcol) + '">' + cond + '</div>' +
       kv([['標準化位移', rd ? fmtNum(x, 2) + ' SD' : '暖機中', true, rd ? bcol : null], ['位置', loc], ['行為', beh], ['訊號線', qd.showSignalLine ? sigT : '隱藏顯示，仍參與計算', false, qd.signalColor], ['離區事件', exitT, false, exitCol], ['參考價格', refT, false, d.fallback[i] ? '#e6c14d' : null]]);
   }
   document.getElementById('cardVWD').innerHTML = h;
@@ -1397,23 +1646,28 @@ let loadSeq = 0;
 async function loadSymbol(id, force){
   id = String(id || '').trim().toUpperCase();
   if (!id) return;
-  const seq = ++loadSeq;
-  UI.symbol = id; saveUI();
+  const seq = ++loadSeq, iv = UI.interval, intra = isIntra(iv);
+  UI.symbol = id; saveUI(); syncToolbar();
   document.getElementById('symInput').value = id;
   setLoading('資料載入中… ' + id);
   try {
-    const res = await fetchSymbol(id, force);
+    let res;
+    if (intra) res = { rows:await fetchIntraday(id, iv, () => seq !== loadSeq), from:'api' };
+    else res = await fetchSymbol(id, force);
     if (seq !== loadSeq) return;
-    const keepView = RAW && RAW.id === id && !RAW.sample;
-    RAW = { id, name:nameOf(id), rows:res.rows, sample:false };
-    if (!keepView){ view.right = NaN; cross = null; pinned = false; }
+    const tf = intra ? iv : 'D', night = intra && !!FUTS[id] && !!UI.night;
+    const keepView = RAW && RAW.id === id && !RAW.sample && RAW.tf === tf;
+    RAW = { id, name:nameOf(id), rows:res.rows, sample:false, tf, night };
+    if (!keepView){ view.right = NaN; cross = null; pinned = false; resetY(); }
     recompute();
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
-    setMsg((id === 'TX' ? '台指期近月連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
+    if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日 · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
+    else setMsg((FUTS[id] ? nameOf(id) + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
     if (!Object.keys(NAMES).length) loadNames();
   } catch (e){
     if (seq !== loadSeq) return;
-    if (!RAW){ RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true }; view.right = NaN; recompute(); }
+    if (e.message === 'stale') return;
+    if (!RAW){ RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' }; view.right = NaN; recompute(); }
     setMsg(e.message + (RAW.sample ? ' 目前畫面是範例資料（非真實行情）。' : ''), 'err');
   } finally {
     if (seq === loadSeq) setLoading(null);
@@ -1424,14 +1678,42 @@ async function loadSymbol(id, force){
 document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); const v = document.getElementById('symInput').value.split(/\s/)[0]; loadSymbol(v); });
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
 const seg = document.getElementById('intervalSeg');
+const periodSel = document.getElementById('periodSel'), togNight = document.getElementById('togNight'), themeSeg = document.getElementById('themeSeg');
 function syncToolbar(){
   for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.interval));
+  for (const b of themeSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.theme));
+  const intra = isIntra(UI.interval);
+  periodSel.hidden = !intra;
+  if (intra){
+    const c = INTRA[UI.interval], cur = curDays(UI.interval);
+    periodSel.innerHTML = c.days.map(d => '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>近 ' + d + ' 天</option>').join('');
+  }
+  togNight.hidden = !(intra && FUTS[UI.symbol]);
+  togNight.setAttribute('aria-pressed', String(!!UI.night));
+  document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol];
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
   document.getElementById('togZ').setAttribute('aria-pressed', String(!!UI.showZ));
   document.getElementById('togD').setAttribute('aria-pressed', String(!!UI.showD));
 }
-seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.interval = b.dataset.v; saveUI(); syncToolbar(); view.right = NaN; cross = null; pinned = false; view.barW = UI.interval === 'D' ? 7 : UI.interval === 'W' ? 9 : 12; recompute(); });
-document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && RAW.id !== 'TX') loadSymbol(RAW.id); };
+seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const prev = UI.interval; UI.interval = b.dataset.v; saveUI(); syncToolbar();
+  view.right = NaN; cross = null; pinned = false; resetY();
+  view.barW = isIntra(UI.interval) ? 6 : UI.interval === 'D' ? 7 : UI.interval === 'W' ? 9 : 12;
+  if (!isIntra(UI.interval) && RAW && (RAW.sample || RAW.tf === 'D')) recompute();
+  else if (RAW && !RAW.sample) loadSymbol(RAW.id);
+  else loadSymbol(UI.symbol);
+});
+periodSel.onchange = () => { UI.days = Object.assign({}, UI.days, { [UI.interval]:+periodSel.value }); saveUI(); loadSymbol(UI.symbol); };
+togNight.onclick = () => { UI.night = !UI.night; saveUI(); syncToolbar(); loadSymbol(UI.symbol); };
+themeSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.theme = b.dataset.v; saveUI(); applyTheme(); });
+function applyTheme(){
+  document.documentElement.dataset.theme = UI.theme;
+  CC = PAL[UI.theme] || PAL.dark;
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = CC.bg;
+  syncToolbar(); schedule();
+}
+document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && !FUTS[RAW.id]) loadSymbol(RAW.id); };
 document.getElementById('togZ').onclick = () => { UI.showZ = !UI.showZ; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togD').onclick = () => { UI.showD = !UI.showD; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
@@ -1523,8 +1805,8 @@ function bindApp(){
 function syncAppForm(){ const el = document.getElementById('a-adj'); if (el) el.checked = !!UI.adj; }
 
 /* ═════════════ boot ═════════════ */
-buildTabs(); buildBody(); syncToolbar();
-RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true };
+buildTabs(); buildBody(); applyTheme();
+RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' };
 recompute();
 setMsg('載入中… 先以範例資料顯示。', 'ok');
 const qs = new URLSearchParams(location.search).get('s');
