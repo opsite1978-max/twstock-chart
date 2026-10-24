@@ -512,10 +512,13 @@
         </div>
       </details>
       <details>
-        <summary>太極週期線（所有商品）</summary>
+        <summary>終極太極週期線（所有商品）</summary>
         <div class="stack">
-          <div class="hint">比較了七種週期震盪公式（Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期），最會抓轉折時間的是網路週期和費雪轉換，兩個平均就是陽線（−100～+100），陰線是陽線前一根；陽在上＝紅、陽在下＝綠。−30 以下勾頭標「陽」（低點轉折），+30 以上下彎標「陰」（高點轉折）。回測：勾頭剛好在波段低點後 3 根內的比例，台指 60 分 52%、4 小時 77%、加權日線 66%（隨機 22～36%），平均晚 2 根左右；只準在時間，之後漲幅跟平常差不多，配合超級悲觀線用。</div>
+          <div class="hint">比較了七種週期震盪公式（Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期），最會抓轉折時間的是網路週期和費雪轉換，兩個平均就是陽線（−100～+100），陰線是陽線前一根；陽在上＝紅、陽在下＝綠。−30 以下勾頭標「陽」（低點轉折），+30 以上下彎標「陰」（高點轉折）。回測：勾頭剛好在波段低點後 3 根內的比例，台指 60 分 52%、4 小時 77%、加權日線 66%（隨機 22～36%），平均晚 2 根左右；只準在時間，之後漲幅跟平常差不多，配合超級悲觀線用。終極版加上布林開口：20 根布林通道寬度在過去 500 根的百分位，開口越寬填色越深；陽轉折時 3 根內跌出布林下軌（−2 個標準差）而且開口 ≥ 50%＝「強陽」。回測強陽 vs 陽：轉折準 60 分 65% vs 53%、加權日線 73% vs 66%（4 小時 67% vs 78%，樣本 12 次）；之後最大反彈都比較大（60 分 1.31% vs 1.19%、4 小時 2.01% vs 1.56%、日線 3.20% vs 2.91%）。</div>
           <label class="chk"><input type="checkbox" data-k="taiji.mk" data-redraw="taiji">標出「陽」「陰」轉折</label>
+          <label class="chk"><input type="checkbox" data-k="taiji.bbOpen" data-redraw="taiji">布林開口越寬，太極填色越深</label>
+          <label class="chk"><input type="checkbox" data-k="taiji.mainStrong" data-redraw="taiji">K 線圖標出「強陽」（陽＋3 根內跌出布林下軌＋開口寬 ≥ 50%）</label>
+          <div class="kv"><span>強陽</span><input type="color" data-k="taiji.cStrong" data-redraw="taiji"></div>
           <div class="kv"><span>陽升／陰降</span><span class="pair"><input type="color" data-k="taiji.cYang" data-redraw="taiji"><input type="color" data-k="taiji.cYin" data-redraw="taiji"></span></div>
           <button class="small" data-reset="taiji">恢復預設</button>
         </div>
@@ -772,7 +775,7 @@ const DEFAULTS = {
   big:{ hi:30, lo:-60, mk:true, cUp:'#ef5350', cDn:'#26a69a' },
   bbot:{ mainSig:true, zone:true, cE:'#ffca28', cW:'#ff9800' },
   pess:{ hi:50, lo:-60, mk:true, prec:true, cP:'#29b6f6', cO:'#ff8a65', cPrec:'#00e5ff' },
-  taiji:{ mk:true, cYang:'#ef5350', cYin:'#26a69a' },
+  taiji:{ mk:true, bbOpen:true, mainStrong:true, cYang:'#ef5350', cYin:'#26a69a', cStrong:'#ffd600' },
   bbr:{ len:20, m:2, m3:3, show3:true, col:'#90a4ff', col3:'#b0b8c8', alpha:7 },
   omega:{ fastLen:34, slowLen:144, anchorLen:400, atrLen:100, normLen:200, slopeLen:21, wTrend:0.45, wAnchor:0.35, wSlope:0.20, gain:1.15, clip:4, erLen:34, smFast:6, smSlow:28, twoPole:true,
           opt:35, xOpt:70, pes:-35, xPes:-70, zones:true, confirm:3, hyst:12, minSlope:1, cooldown:20, reqAnchor:true, sig:true, lineW:3, cBull:'#20DFA5', cBear:'#FF657B', cNeu:'#E9B44C' },
@@ -1785,6 +1788,7 @@ function refreshMarkers(){
   if (paneOf.trap !== undefined && IND.trap.vals) list = list.concat(IND.trap.mainMarkers());
   if (paneOf.bbot !== undefined && IND.bbot.vals) list = list.concat(IND.bbot.mainMarkers());
   if (paneOf.pess !== undefined && IND.pess.vals) list = list.concat(IND.pess.mainMarkers());
+  if (paneOf.taiji !== undefined && IND.taiji.vals && S.taiji.mainStrong) IND.taiji.vals.strong.forEach((s, i) => { if (s) list.push({ i, position:'belowBar', shape:'arrowUp', color:S.taiji.cStrong, text:'強陽', size:1.1 }); });
   list.sort((a,b) => a.i - b.i);
   mainMk.setMarkers(list.filter(m => bars[m.i]).map(m => { const o = Object.assign({}, m, { time:bars[m.i].time }); delete o.i; return o; }));
 }
@@ -3781,14 +3785,22 @@ function taijiCalc(B){
     v = Math.max(-.999, Math.min(.999, v)); const f = .5 * Math.log((1 + v) / (1 - v)) + .5 * f1; fi.push(f); v1 = v; f1 = f;
   }
   const T = cyN.map((x, i) => i < 10 ? null : (x + Math.max(-1, Math.min(1, fi[i] / 2.5))) / 2 * 100);
-  const tr = T.map((_, i) => i ? T[i - 1] : null), up = new Array(n).fill(false), dn = new Array(n).fill(false);
+  const tr = T.map((_, i) => i ? T[i - 1] : null), up = new Array(n).fill(false), dn = new Array(n).fill(false), strong = new Array(n).fill(false);
+  // 布林開口：20 根布林通道寬度在過去 500 根的百分位，和收盤在通道裡的位置（幾個標準差）
+  const bwp = new Array(n).fill(null), z = new Array(n).fill(null), bwv = new Array(n).fill(null);
+  for (let i = 19; i < n; i++){ let sm = 0; for (let k = i - 19; k <= i; k++) sm += c[k]; const m = sm / 20; let vv = 0; for (let k = i - 19; k <= i; k++) vv += (c[k] - m) ** 2;
+    const sd = Math.sqrt(vv / 20); bwv[i] = m ? 4 * sd / m : null; z[i] = sd > 0 ? (c[i] - m) / sd : 0;
+    let cnt = 0, below = 0; for (let k = Math.max(19, i - 499); k <= i; k++) if (bwv[k] != null){ cnt++; if (bwv[k] < bwv[i]) below++; }
+    if (cnt >= 100) bwp[i] = below / cnt * 100; }
   for (let i = 4; i < n; i++){
     if (T[i] == null || T[i - 1] == null || tr[i - 1] == null) continue;
     let mn = Infinity, mx = -Infinity; for (let k = i - 3; k <= i; k++){ if (T[k] != null){ mn = Math.min(mn, T[k]); mx = Math.max(mx, T[k]); } }
-    if (T[i - 1] <= tr[i - 1] && T[i] > tr[i] && mn <= -30) up[i] = true;
+    if (T[i - 1] <= tr[i - 1] && T[i] > tr[i] && mn <= -30){ up[i] = true;
+      let zm = Infinity; for (let k = i - 3; k <= i; k++) if (z[k] != null) zm = Math.min(zm, z[k]);
+      strong[i] = zm <= -2 && bwp[i] != null && bwp[i] >= 50; }   // 強陽：剛跌出布林下軌（−2 個標準差）而且開口夠寬
     if (T[i - 1] >= tr[i - 1] && T[i] < tr[i] && mx >= 30) dn[i] = true;
   }
-  return { T, tr, up, dn };
+  return { T, tr, up, dn, strong, bwp, z };
 }
 Object.assign(IND, {
   taiji: {
@@ -3806,9 +3818,9 @@ Object.assign(IND, {
       const P = S.taiji, R = this.vals = taijiCalc(bars), r1 = x => x == null ? null : Math.round(x * 10) / 10;
       this.s.yang.setData(bars.map((b, i) => R.T[i] == null ? { time:b.time } : { time:b.time, value:r1(R.T[i]), color:R.tr[i] != null && R.T[i] >= R.tr[i] ? P.cYang : P.cYin }));
       this.s.yin.setData(toLine(R.tr.map(r1))); this.s.yin.applyOptions({ color:hexA(S.col.text, .45) });
-      this.fill.setItems(R.T.map((x, i) => x == null || R.tr[i] == null ? null : { up:Math.max(x, R.tr[i]), lo:Math.min(x, R.tr[i]), color:hexA(x >= R.tr[i] ? P.cYang : P.cYin, .35) }));
+      this.fill.setItems(R.T.map((x, i) => x == null || R.tr[i] == null ? null : { up:Math.max(x, R.tr[i]), lo:Math.min(x, R.tr[i]), color:hexA(x >= R.tr[i] ? P.cYang : P.cYin, P.bbOpen && R.bwp[i] != null ? 0.12 + 0.5 * R.bwp[i] / 100 : .35) }));
       [[30, P.cYang], [0, hexA(S.col.text, .35)], [-30, P.cYin]].forEach(([y, col], j) => this.refs[j].applyOptions({ color:hexA(col, .8) }));
-      const mk = []; if (P.mk) bars.forEach((b, i) => { if (R.up[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.T[i], shape:'arrowUp', color:P.cYin, text:'陽', size:0.8 });
+      const mk = []; if (P.mk) bars.forEach((b, i) => { if (R.up[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.T[i], shape:'arrowUp', color:R.strong[i] ? P.cStrong : P.cYin, text:R.strong[i] ? '強陽' : '陽', size:R.strong[i] ? 1.4 : 0.8 });
         if (R.dn[i]) mk.push({ time:b.time, position:'atPriceTop', price:R.T[i], shape:'arrowDown', color:P.cYang, text:'陰', size:0.8 }); });
       this.mk.setMarkers(mk);
     },
@@ -3816,8 +3828,9 @@ Object.assign(IND, {
       const v = this.vals, P = S.taiji; if (!v) return '';
       const x = v.T[i], t = v.tr[i], dir = x == null || t == null ? '' : x >= t ? `　<span style="color:${P.cYang}">陽升</span>` : `　<span style="color:${P.cYin}">陰降</span>`;
       const zone = x == null ? '' : x >= 30 ? '　<span class="muted">高檔</span>' : x <= -30 ? '　<span class="muted">低檔</span>' : '';
-      const tag = v.up[i] ? `　<span class="tag" style="background:${P.cYin};color:#000">陽：低點轉折</span>` : v.dn[i] ? `　<span class="tag" style="background:${P.cYang};color:#fff">陰：高點轉折</span>` : '';
-      return `太極週期線 <b>${x == null ? '—' : fmt(x, 0)}</b>${dir}${zone}${tag}`;
+      const ob = v.bwp[i] == null ? '' : `　<span class="muted">布林開口 ${fmt(v.bwp[i], 0)}%（${v.bwp[i] >= 70 ? '大開' : v.bwp[i] >= 50 ? '偏寬' : v.bwp[i] >= 20 ? '正常' : '收窄'}）</span>`;
+      const tag = v.strong[i] ? `　<span class="tag" style="background:${P.cStrong};color:#000">強陽：跌出下軌＋開口寬的低點轉折</span>` : v.up[i] ? `　<span class="tag" style="background:${P.cYin};color:#000">陽：低點轉折</span>` : v.dn[i] ? `　<span class="tag" style="background:${P.cYang};color:#fff">陰：高點轉折</span>` : '';
+      return `終極太極 <b>${x == null ? '—' : fmt(x, 0)}</b>${dir}${zone}${ob}${tag}`;
     },
   },
 });
@@ -4390,7 +4403,7 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
     tg.append(seg);
     chip('布林軌道', S.bbr.col, S.ovl.bbr, v => { S.ovl = Object.assign({}, S.ovl, { bbr:v }); save(); buildOverlays(); });
     chip('成本線', S.cost.cL, S.ovl.cost, v => { S.ovl = Object.assign({}, S.ovl, { cost:v }); save(); buildOverlays(); });
-    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v)); chip('太極週期線', S.taiji.cYang, S.ind.taiji, v => paneT('taiji', v));
+    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v)); chip('終極太極', S.taiji.cYang, S.ind.taiji, v => paneT('taiji', v));
   } else {
   const costT = (k, v) => { S.cost[k] = v; save(); drawOverlays(); renderLegend(); };
   chip('主力成本', S.cost.cL, S.cost.top, v => costT('top', v)); chip('散戶成本', S.cost.cRc, S.cost.rc, v => costT('rc', v)); chip('主力底線', S.cost.cFl, S.cost.fl, v => costT('fl', v));
