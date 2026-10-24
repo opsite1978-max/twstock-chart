@@ -110,6 +110,21 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chipsec h2 span{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
 .chipsec iframe{width:100%;border:0;min-height:240px;display:block;background:transparent}
 .chipsec .note2{font-size:13px;color:var(--muted)}
+.wsum{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+.wsum b{color:var(--fg);font-family:var(--mono);font-weight:600}
+.wtable{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.wtable table{border-collapse:collapse;width:100%;font-size:13px;min-width:860px}
+.wtable th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:500;text-align:right;padding:7px 8px;white-space:nowrap;border-bottom:1px solid var(--line)}
+.wtable th:first-child,.wtable td:first-child{text-align:left}
+.wtable td{padding:6px 8px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap}
+.wtable td.nm{font-family:var(--sans);max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.wtable td.nm small{display:block;color:var(--dim);font-family:var(--mono);font-size:11px}
+.wtable .gr{display:inline-block;min-width:26px;text-align:center;border-radius:4px;padding:1px 6px;font-family:var(--sans);font-weight:700;font-size:12px}
+.gr.g1{background:rgba(47,182,124,.18);color:var(--down)}
+.gr.g2{background:rgba(217,168,92,.18);color:var(--accent)}
+.gr.g3{background:rgba(239,106,95,.16);color:var(--err)}
+.wtable td.why{font-family:var(--sans);text-align:left;color:var(--muted);white-space:normal;min-width:180px;font-size:12px}
+.wtable tr.empty td{text-align:center;color:var(--dim);font-family:var(--sans)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
 .card h3{margin:0 0 2px;font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
 .card h3 span{text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:500}
@@ -197,6 +212,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
     <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
     <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
+    <button class="tog" id="togTG" aria-pressed="true" title="龜苓膏：權證買方溫度計（時間價值、波動）">龜苓膏</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
@@ -239,15 +255,27 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="card" id="cardVWD"></div>
     <div class="card" id="cardBB"></div>
     <div class="card" id="cardVL"></div>
+    <div class="card" id="cardTG"></div>
     <div class="card sigs">
       <div class="head">
         <h3>近期訊號 <span>Signal log</span></h3>
         <select id="sigFilter" aria-label="篩選訊號來源">
-          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option><option value="布林大底">布林大底</option><option value="布林谷底線">布林谷底線</option>
+          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option><option value="布林大底">布林大底</option><option value="布林谷底線">布林谷底線</option><option value="龜苓膏">龜苓膏</option>
         </select>
       </div>
       <ul class="siglist" id="sigList"></ul>
     </div>
+  </section>
+
+  <section class="chipsec" id="wSec" hidden>
+    <div class="head">
+      <h2>權證挑選<span>龜苓膏評等：時間價值、隱含波動率、槓桿、成交量</span></h2>
+      <span class="spacer"></span>
+      <div class="seg" id="wSeg" role="group" aria-label="權證類型"><button data-v="C">認購</button><button data-v="P">認售</button><button data-v="A">全部</button></div>
+    </div>
+    <div class="wsum" id="wSum"></div>
+    <div class="wtable"><table id="wTable"></table></div>
+    <p class="help" id="wNote">價格用近 20 個交易日成交最多的 60 檔權證、各自最新一天的收盤價，不是即時買賣價；隱含波動率用 Black–Scholes 從收盤價反推（無風險利率 1.6%、不計股利）。「放 10 天不動」＝股價和隱含波動率都不變，10 天後權證剩多少。「打平每天要動」＝每天至少要往有利方向動這麼多，才抵得掉時間價值。評等：<b>甜</b>＝剩 60 天以上、價外 15% 以內、隱含波動率不超過實際波動 1.3 倍、槓桿 3～9 倍、20 天成交 500 萬以上；<b>苦</b>＝剩不到 30 天、隱含波動率貴 1.6 倍以上、價外超過 25%、槓桿超過 12 倍、成交太少，或收盤價低於內含價值；其餘為<b>可</b>。這是篩選參考，不是買進建議。</p>
   </section>
 
   <section class="chipsec" id="chipSec" hidden>
@@ -423,18 +451,33 @@ SCHEMA.valley = { tab:'布林谷底線', title:'布林谷底線（與看盤頁�
     {k:'cReso', l:'共振底★★', t:'color', d:'#ffd600'}
   ]}
 ]};
+SCHEMA.turtle = { tab:'龜苓膏', title:'龜苓膏（權證買方溫度計）：最近 N 根的漲跌，換算成「平常波動的幾倍」（−100～+100）。動得比平常快，權證的時間價值才追得上；卡在中間又不起波動＝龜速區，時間價值每天在吃你。回測（2025/6～2026/10、810 檔有權證的股票，模擬買 5% 價外、90 天的認購抱 10 天）：認購甜點之後平均 +23%（全部日子 +11%），但中位數 −11%、勝率 43%（全部 42%）；龜速區平均只有 +6.7%、勝率 39%。這一年是多頭，認售訊號沒有幫助。', groups:[
+  { name:'計算', items:[
+    {k:'L', l:'位移根數（看幾根的漲跌）', t:'int', d:10, min:2, max:60},
+    {k:'hvLen', l:'平常波動：標準差根數', t:'int', d:60, min:20, max:500},
+    {k:'fastLen', l:'波動擴張：短期標準差根數', t:'int', d:10, min:3, max:60},
+    {k:'th', l:'甜點門檻', t:'float', d:40, min:10, max:90, step:5},
+    {k:'slowZone', l:'龜速區（正負多少以內）', t:'float', d:20, min:5, max:50, step:5}
+  ]},
+  { name:'顯示', items:[
+    {k:'mainSig', l:'主圖也標甜點', t:'bool', d:false},
+    {k:'cCall', l:'認購（往上）', t:'color', d:'#ef5350'},
+    {k:'cPut', l:'認售（往下）', t:'color', d:'#26a69a'},
+    {k:'cTurtle', l:'龜速區（龜苓膏色）', t:'color', d:'#6b4a35'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get('zs:p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true,
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get('zs:ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -738,6 +781,59 @@ function calcVWD(B, p){
   }
   return { d, signal, reference, fallback, ready, beh, info, ev, sig };
 }
+
+/* ═════════════ 龜苓膏：權證買方溫度計 ═════════════
+   G＝100 × tanh(z ÷ 2)，z＝最近 L 根的對數報酬 ÷（每根報酬的 hvLen 根標準差 × √L），再做 3 根指數平均。
+   ±1 個標準差 ≈ ±46、±2 個 ≈ ±76。E＝短期標準差 ÷ 長期標準差（> 1＝波動在擴張）。
+   認購甜點＝G 往上穿過門檻且 E > 1；認售甜點反之；龜速區＝|G| 小於龜速門檻且 E < 1（不動又不起波動，時間價值在吃權證）。 */
+function barsPerYear(B){
+  if (!B.intra) return B.iv === 'W' ? 52 : B.iv === 'M' ? 12 : 252;
+  const P = INTRA[B.iv].P, fut = RAW && FUTS[RAW.id];
+  return 252 * Math.max(1, (fut ? (RAW.night ? 1140 : 300) : 270) / P);
+}
+function calcTURTLE(B, p){
+  const n = B.n, c = B.c, lr = nanArr(n);
+  for (let i = 1; i < n; i++) if (c[i] > 0 && c[i - 1] > 0) lr[i] = Math.log(c[i] / c[i - 1]);
+  const sdL = stdevPop(lr, p.hvLen), sdF = stdevPop(lr, p.fastLen);
+  const raw = nanArr(n), E = nanArr(n), G = nanArr(n), hv = nanArr(n), ann = Math.sqrt(barsPerYear(B));
+  for (let i = p.L; i < n; i++){
+    const sd = sdL[i]; if (!(sd > 0)) continue;
+    raw[i] = 100 * Math.tanh(Math.log(c[i] / c[i - p.L]) / (sd * Math.sqrt(p.L)) / 2);
+    E[i] = sdF[i] / sd; hv[i] = sd * ann;
+  }
+  let g = NaN; for (let i = 0; i < n; i++){ if (isNaN(raw[i])){ g = NaN; continue; } g = isNaN(g) ? raw[i] : g + 0.5 * (raw[i] - g); G[i] = g; }
+  const zone = new Int8Array(n), ev = [], sig = [], main = [];
+  let wasSlow = false;
+  for (let i = 1; i < n; i++){
+    const x = G[i], x1 = G[i - 1]; if (isNaN(x)) continue;
+    const slow = Math.abs(x) < p.slowZone && E[i] < 1;
+    zone[i] = slow ? 0 : x >= p.th ? 1 : x <= -p.th ? -1 : x > 0 ? 2 : -2;
+    const up = x > p.th && x1 <= p.th && E[i] > 1, dn = x < -p.th && x1 >= -p.th && E[i] > 1;
+    if (up){ sig.push({ i, src:'龜苓膏', text:'認購甜點（往上動得夠快、波動擴張）', col:p.cCall }); ev.push({ i, y:x, shape:'labelUp', dy:6, text:'購', col:p.cCall, tcol:'#fff', size:0.85 }); if (p.mainSig) main.push({ i, text:'購', col:p.cCall }); }
+    if (dn){ sig.push({ i, src:'龜苓膏', text:'認售甜點（往下動得夠快、波動擴張）', col:p.cPut }); ev.push({ i, y:x, shape:'labelDown', dy:-6, text:'售', col:p.cPut, tcol:'#fff', size:0.85 }); if (p.mainSig) main.push({ i, text:'售', col:p.cPut }); }
+    if (slow && !wasSlow) sig.push({ i, src:'龜苓膏', text:'進入龜速區（時間價值開始吃權證）', col:p.cTurtle });
+    wasSlow = slow;
+  }
+  return { G, E, hv, zone, ev, sig, main };
+}
+
+/* ═════════════ 權證定價（Black–Scholes 近似；台股權證多為美式，認購不發股利時與歐式相同） ═════════════ */
+function erf(x){ const t = 1 / (1 + 0.3275911 * Math.abs(x)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; }
+const ncdf = x => 0.5 * (1 + erf(x / Math.SQRT2));
+const RATE = 0.016;
+function bsm(S, K, T, sg, call){
+  if (!(T > 0) || !(sg > 0)) return { p:call ? Math.max(0, S - K) : Math.max(0, K - S), d:call ? (S > K ? 1 : 0) : (S < K ? -1 : 0), th:0 };
+  const sq = Math.sqrt(T), d1 = (Math.log(S / K) + (RATE + sg * sg / 2) * T) / (sg * sq), d2 = d1 - sg * sq, nd1 = Math.exp(-d1 * d1 / 2) / Math.sqrt(2 * Math.PI), df = Math.exp(-RATE * T);
+  if (call) return { p:S * ncdf(d1) - K * df * ncdf(d2), d:ncdf(d1), th:(-S * nd1 * sg / (2 * sq) - RATE * K * df * ncdf(d2)) / 365 };
+  return { p:K * df * ncdf(-d2) - S * ncdf(-d1), d:ncdf(d1) - 1, th:(-S * nd1 * sg / (2 * sq) + RATE * K * df * ncdf(-d2)) / 365 };
+}
+function impVol(price, S, K, T, call){
+  let lo = 0.01, hi = 4;
+  if (!(price > 0) || bsm(S, K, T, hi, call).p < price || bsm(S, K, T, lo, call).p > price) return NaN;
+  for (let k = 0; k < 70; k++){ const m = (lo + hi) / 2; if (bsm(S, K, T, m, call).p > price) hi = m; else lo = m; }
+  return (lo + hi) / 2;
+}
+function median(a){ const q = a.filter(x => isFinite(x)).sort((x, y) => x - y); if (!q.length) return NaN; const m = q.length >> 1; return q.length % 2 ? q[m] : (q[m - 1] + q[m]) / 2; }
 
 /* ═════════════ 布林大底（與看盤頁 bbotSeries 相同） ═════════════ */
 function calcBBOT(B, p){
@@ -1216,13 +1312,13 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  for (const k of ['bbot', 'valley']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
-  syncChips();
+  for (const k of ['bbot', 'valley', 'turtle']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
+  syncChips(); syncWarrants();
   schedule(); renderSignals();
 }
 
@@ -1433,6 +1529,7 @@ function draw(){
   if (UI.showD) panes.push({ id:'d', w:Wt0.d });
   if (UI.showBB) panes.push({ id:'bb', w:Wt0.bb });
   if (UI.showVL) panes.push({ id:'vl', w:Wt0.vl });
+  if (UI.showTG) panes.push({ id:'tg', w:Wt0.tg });
   const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
   let top = 0;
   for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
@@ -1452,7 +1549,8 @@ function draw(){
     else if (p.id === 'z') drawZ(p, i0, i1, ci);
     else if (p.id === 'd') drawD(p, i0, i1, ci);
     else if (p.id === 'bb') drawBB(p, i0, i1, ci);
-    else drawVL(p, i0, i1, ci);
+    else if (p.id === 'vl') drawVL(p, i0, i1, ci);
+    else drawTG(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
     if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
@@ -1611,6 +1709,31 @@ function drawZ(p, i0, i1, ci){
   visibleMarkers(r.ev, i0, i1);
   const zl = r.z[B.n - 1]; if (!isNaN(zl)) axisTag(zl, st(B.n - 1), '#0d1016', v => fmtNum(v, 2));
   legend([[['VW Z PRO', CC.axis], [r.enh ? '平滑優化' : '原版邏輯', CC.axis], ['Z ' + fmtNum(r.z[ci], 2), st(ci)], ['未平滑 ' + fmtNum(r.zRaw[ci], 2), CC.axis]]], p.top);
+}
+
+function drawTG(p, i0, i1, ci){
+  const r = R.turtle, q = P.turtle;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 6); legend([[['龜苓膏  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const [mn, mx] = extent([r.G], i0, i1, [-100, 100]);
+  S = makeScale(p.top, p.h, ...rng('tg', mn - 4, mx + 4), 26, 8);
+  gridAndAxis(0);
+  const K = v => () => v, W = plotW();
+  // 龜速區：不動又不起波動的那幾根，整條塗成龜苓膏色
+  for (let i = Math.max(1, i0); i <= i1; i++) if (r.zone[i] === 0 && !isNaN(r.G[i])){ ctx.fillStyle = rgba(q.cTurtle, UI.theme === 'light' ? 72 : 55); ctx.fillRect(X(i) - view.barW / 2, p.top, view.barW + 0.5, p.h); }
+  fillBetween(K(q.slowZone), K(-q.slowZone), () => rgba(q.cTurtle, UI.theme === 'light' ? 85 : 75), i0, i1);
+  fillBetween(i => Math.max(0, r.G[i]), K(0), () => rgba(q.cCall, 82), i0, i1);
+  fillBetween(i => Math.min(0, r.G[i]), K(0), () => rgba(q.cPut, 82), i0, i1);
+  const hl = (v, col, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(q.th, rgba(q.cCall, 25), [4, 3], 1); hl(-q.th, rgba(q.cPut, 25), [4, 3], 1); hl(0, rgba(CC.axis, 50), [2, 3], 1);
+  // 線越粗＝波動越擴張（短期 ÷ 長期標準差）
+  for (const [lo, hi, w] of [[0, 1, 1.4], [1, 1.4, 2.4], [1.4, 99, 3.4]])
+    strokeSeries(i => r.G[i], i => r.E[i] >= lo && r.E[i] < hi ? (r.G[i] >= 0 ? q.cCall : q.cPut) : null, i0, i1, w);
+  visibleMarkers(r.ev, i0, i1);
+  for (const [v, c] of [[q.th, q.cCall], [-q.th, q.cPut]]) axisTag(v, c, '#fff', x => fmtNum(x, 0));
+  const lv = r.G[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= 0 ? q.cCall : q.cPut, '#fff', v => fmtNum(v, 0));
+  const x = r.G[ci], e = r.E[ci], z = r.zone[ci];
+  const st = isNaN(x) ? ['資料不足', CC.axis] : z === 0 ? ['龜速區：時間價值在吃權證', q.cTurtle === '#6b4a35' ? '#b07a52' : q.cTurtle] : z === 1 ? ['認購有利（動得比平常快）', q.cCall] : z === -1 ? ['認售有利（跌得比平常快）', q.cPut] : x > 0 ? ['偏多，但還不夠快', CC.axis] : ['偏空，但還不夠快', CC.axis];
+  legend([[['龜苓膏', CC.axis], [isNaN(x) ? '—' : fmtNum(x, 0), isNaN(x) ? CC.text : x >= 0 ? q.cCall : q.cPut], st, ['波動 ' + (isNaN(e) ? '—' : fmtNum(e, 2) + ' 倍') + (e > 1 ? ' 擴張' : e < 1 ? ' 收斂' : ''), CC.axis]]], p.top);
 }
 
 function drawBB(p, i0, i1, ci){
@@ -1876,7 +1999,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -2181,12 +2304,28 @@ function updateCards(){
           ['當時恐慌跡象', lb >= 0 ? why : '—'], ['共振來源', src]]);
   }
   document.getElementById('cardVL').innerHTML = h;
+
+  // 龜苓膏
+  const tg = R.turtle, qt = P.turtle;
+  if (!tg || tg.error) h = '<h3>龜苓膏</h3><div class="note">' + esc(tg ? tg.error : '') + '</div>';
+  else {
+    const x = tg.G[i], e = tg.E[i], z = tg.zone[i];
+    const st = isNaN(x) ? ['資料不足', 'var(--fg)'] : z === 0 ? ['龜速區', '#b07a52'] : z === 1 ? ['認購有利', qt.cCall] : z === -1 ? ['認售有利', qt.cPut] : x > 0 ? ['偏多・還不夠快', 'var(--fg)'] : ['偏空・還不夠快', 'var(--fg)'];
+    const tip = isNaN(x) ? '' : z === 0 ? '股價不動、波動又在收斂，權證每天被時間價值吃掉；手上有權證要想清楚還要抱多久。' : z === 1 ? '漲得比平常快，認購的時間價值追得上。' : z === -1 ? '跌得比平常快，認售的時間價值追得上。' : '方向有，但速度還不足以抵掉時間價值。';
+    const W = WSTATE.data && WSTATE.id === (RAW && RAW.id) ? WSTATE : null;
+    const ivC = W ? W.ivC : NaN, ivP = W ? W.ivP : NaN, hvD = W ? W.hv : NaN;
+    h = '<h3>龜苓膏 <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(st[1]) + '">' + (isNaN(x) ? '—' : fmtNum(x, 0)) + '　<span style="font-size:13px;font-weight:500">' + st[0] + '</span></div>' +
+      kv([['波動', isNaN(e) ? '—' : fmtNum(e, 2) + ' 倍・' + (e > 1 ? '擴張' : '收斂'), true], ['近 ' + qt.hvLen + ' 根實際波動', isNaN(tg.hv[i]) ? '—' : fmtNum(tg.hv[i] * 100, 0) + '%（年化）', true]]
+        .concat(W ? [['認購隱含波動率', isFinite(ivC) ? fmtNum(ivC * 100, 0) + '%（日線實際 ' + fmtNum(hvD * 100, 0) + '% 的 ' + fmtNum(ivC / hvD, 2) + ' 倍）' : '—', true], ['認售隱含波動率', isFinite(ivP) ? fmtNum(ivP * 100, 0) + '%' : '—', true]] : [])) +
+      '<div class="note" style="color:var(--muted)">' + tip + '</div>';
+  }
+  document.getElementById('cardTG').innerHTML = h;
 }
 
 let SIGS = [];
 function renderSignals(){
   SIGS = [];
-  for (const k of ['vwb', 'vwz', 'vwd', 'bbot', 'valley']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
+  for (const k of ['vwb', 'vwz', 'vwd', 'bbot', 'valley', 'turtle']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
   SIGS.sort((a, b) => b.i - a.i);
   const f = document.getElementById('sigFilter').value;
   const list = SIGS.filter(s => f === 'all' || s.src === f).slice(0, 60);
@@ -2263,6 +2402,105 @@ async function loadSymbol(input, force){
   }
 }
 
+/* ═════════════ 權證挑選（龜苓膏評等） ═════════════ */
+const WSTATE = { id:null, data:null, rows:null, hv:NaN, S:NaN, ivC:NaN, ivP:NaN, pend:null };
+async function dailyRawCloses(id){
+  if (RAW && RAW.id === id && RAW.tf === 'D' && !UI.adj) return RAW.rows;
+  const c = readCache(id, 'RAW');
+  if (c && c.rows && c.rows.length > 80 && Date.now() - c.t < 18 * 3600e3) return c.rows;
+  const data = await finmind({ dataset:'TaiwanStockPrice', data_id:id, start_date:isoDay(dayMs(tpNow().date) - 200 * 864e5), end_date:tpNow().date });
+  return stockRows(data);
+}
+function syncWarrants(){
+  const sec = document.getElementById('wSec');
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
+  if (!stock){ sec.hidden = true; return; }
+  if (WSTATE.id === id && (WSTATE.data || WSTATE.pend)) { renderWarrants(); return; }
+  WSTATE.id = id; WSTATE.data = null; WSTATE.rows = null; WSTATE.ivC = WSTATE.ivP = NaN;
+  const my = WSTATE.pend = (async () => {
+    let d = null;
+    try { const r = await fetch('data/warrant/u/' + id + '.json?v=' + Math.floor(Date.now() / 600000)); if (r.ok) d = await r.json(); } catch (e){}
+    if (WSTATE.pend !== my) return;
+    if (!d || !d.warrants || !d.warrants.length){ WSTATE.pend = null; sec.hidden = false; document.getElementById('wSum').textContent = id + ' 近 20 個交易日沒有成交活絡的權證。'; document.getElementById('wTable').innerHTML = ''; document.getElementById('wSeg').hidden = true; return; }
+    let rows = [];
+    try { rows = await dailyRawCloses(id); } catch (e){}
+    if (WSTATE.pend !== my) return;
+    WSTATE.pend = null; WSTATE.data = d; buildWarrants(d, rows); renderWarrants(); schedule();
+  })();
+}
+function buildWarrants(d, rows){
+  const asof = d.detailTo || (rows.length ? rows[rows.length - 1][0] : tpNow().date);
+  let k = rows.length - 1; while (k > 0 && rows[k][0] > asof) k--;
+  const S = rows.length ? rows[k][4] : NaN;
+  const lr = []; for (let j = Math.max(1, k - 59); j <= k; j++) lr.push(Math.log(rows[j][4] / rows[j - 1][4]));
+  const mu = lr.reduce((a, b) => a + b, 0) / (lr.length || 1), hv = lr.length > 20 ? Math.sqrt(lr.reduce((a, b) => a + (b - mu) ** 2, 0) / lr.length * 252) : NaN;
+  WSTATE.S = S; WSTATE.hv = hv; WSTATE.asof = asof;
+  const out = [];
+  for (const w of d.warrants){
+    const [code, name, kind, val, , , , px, K, last, ratio, issuer] = w;
+    const call = kind === 'C', days = last ? Math.round((dayMs(last) - dayMs(asof)) / 864e5) : NaN;
+    if (!(px > 0) || !(K > 0) || !(ratio > 0) || !(days >= 0) || !(S > 0)) continue;
+    const T = Math.max(days, 0.5) / 365, unit = px / ratio, iv = impVol(unit, S, K, T, call);
+    const g = isFinite(iv) ? bsm(S, K, T, iv, call) : null;
+    const otm = call ? K / S - 1 : 1 - K / S;
+    const lev = g ? Math.abs(g.d) * S * ratio / px : NaN;
+    const burn = g ? Math.abs(g.th) / unit : NaN;
+    const after10 = g ? bsm(S, K, Math.max(T - 10 / 365, 0), iv, call).p / unit - 1 : NaN;
+    const be = g && Math.abs(g.d) > 1e-4 ? Math.abs(g.th) / Math.abs(g.d) / S : NaN;
+    const ivr = iv / hv;
+    const bad = [], meh = [];
+    if (!isFinite(iv)) bad.push('收盤價低於內含價值，報價可能失真');
+    if (days < 30) bad.push('剩不到 30 天，時間價值掉最快');
+    if (ivr > 1.6) bad.push('隱含波動率比實際波動貴很多');
+    if (otm > 0.25) bad.push('太價外');
+    if (lev > 12) bad.push('槓桿太高');
+    if (val < 100) bad.push('成交太少，買賣價差大');
+    if (!bad.length){
+      if (days < 60) meh.push('剩不到 60 天');
+      if (otm > 0.15) meh.push('價外偏多');
+      if (otm < -0.05) meh.push('價內較深，槓桿低');
+      if (ivr > 1.3) meh.push('隱含波動率偏貴');
+      if (lev < 3) meh.push('槓桿偏低');
+      if (lev > 9) meh.push('槓桿偏高');
+      if (val < 500) meh.push('成交偏少');
+    }
+    const grade = bad.length ? 3 : meh.length ? 2 : 1;
+    out.push({ code, name, call, val, px, K, days, ratio, issuer, iv, ivr, otm, lev, burn, after10, be, grade, why: bad.length ? bad : meh });
+  }
+  WSTATE.rows = out;
+  WSTATE.ivC = median(out.filter(r => r.call && r.grade < 3).map(r => r.iv));
+  WSTATE.ivP = median(out.filter(r => !r.call && r.grade < 3).map(r => r.iv));
+}
+const pctS = (v, d = 1) => isFinite(v) ? (v * 100).toFixed(d) + '%' : '—';
+function renderWarrants(){
+  const sec = document.getElementById('wSec'), W = WSTATE;
+  if (!W.rows){ return; }
+  sec.hidden = false; document.getElementById('wSeg').hidden = false;
+  const g = R.turtle && R.turtle.G ? R.turtle.G[B.n - 1] : NaN;
+  const f = UI.wFilter || (g < 0 ? 'P' : 'C');
+  for (const b of document.querySelectorAll('#wSeg button')) b.setAttribute('aria-pressed', String(b.dataset.v === f));
+  const list = W.rows.filter(r => f === 'A' || (f === 'C') === r.call).sort((a, b) => a.grade - b.grade || (a.burn - b.burn) || (a.ivr - b.ivr));
+  const calls = W.rows.filter(r => r.call && r.grade < 3), puts = W.rows.filter(r => !r.call && r.grade < 3);
+  const mBe = median(calls.map(r => r.be)), mBurn = median(calls.map(r => r.burn));
+  const z = R.turtle ? R.turtle.zone[B.n - 1] : null;
+  document.getElementById('wSum').innerHTML =
+    '<span>股價 <b>' + fmtPx(W.S) + '</b>（' + (W.asof || '').replace(/-/g, '/') + '）</span>' +
+    '<span>近 60 日實際波動 <b>' + pctS(W.hv, 0) + '</b></span>' +
+    '<span>認購隱含波動率中位數 <b>' + pctS(W.ivC, 0) + '</b>' + (isFinite(W.ivC / W.hv) ? '（' + fmtNum(W.ivC / W.hv, 2) + ' 倍）' : '') + '</span>' +
+    '<span>認售 <b>' + pctS(W.ivP, 0) + '</b></span>' +
+    (isFinite(mBurn) ? '<span>認購每天時間價值流失中位數 <b>' + pctS(mBurn, 2) + '</b>，股價每天要漲 <b>' + pctS(mBe, 2) + '</b> 才打平</span>' : '') +
+    '<span>龜苓膏：<b>' + (z === 0 ? '龜速區，先別急著買' : z === 1 ? '認購有利' : z === -1 ? '認售有利' : isFinite(g) ? (g > 0 ? '偏多但還不夠快' : '偏空但還不夠快') : '—') + '</b></span>';
+  const head = '<tr><th>權證</th><th>評等</th><th>收盤</th><th>剩餘天數</th><th>價內外</th><th>隱含波動率</th><th>貴不貴</th><th>實質槓桿</th><th>每天流失</th><th>放 10 天不動</th><th>打平每天要動</th><th>20 日成交</th><th>說明</th></tr>';
+  const gt = ['', '甜', '可', '苦'];
+  const body = list.slice(0, 30).map(r => '<tr><td class="nm">' + esc(r.name || r.code) + '<small>' + esc(r.code) + '・' + (r.call ? '認購' : '認售') + '・履約 ' + fmtPx(r.K) + '</small></td>' +
+    '<td><span class="gr g' + r.grade + '">' + gt[r.grade] + '</span></td><td>' + fmtPx(r.px) + '</td><td>' + r.days + '</td>' +
+    '<td>' + (r.otm >= 0 ? '價外 ' : '價內 ') + pctS(Math.abs(r.otm)) + '</td><td>' + pctS(r.iv, 0) + '</td><td>' + (isFinite(r.ivr) ? fmtNum(r.ivr, 2) + ' 倍' : '—') + '</td>' +
+    '<td>' + (isFinite(r.lev) ? fmtNum(r.lev, 1) + ' 倍' : '—') + '</td><td>' + pctS(r.burn, 2) + '</td><td>' + pctS(r.after10) + '</td><td>' + pctS(r.be, 2) + '</td>' +
+    '<td>' + fmtNum(r.val, 0) + ' 萬</td><td class="why">' + esc(r.why.join('、') || '條件都符合') + '</td></tr>').join('');
+  document.getElementById('wTable').innerHTML = head + (body || '<tr class="empty"><td colspan="13">這一類沒有活絡的權證。</td></tr>');
+}
+document.getElementById('wSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.wFilter = b.dataset.v; saveUI(); renderWarrants(); });
+
 /* ═════════════ 籌碼（嵌入籌碼頁的個股區塊） ═════════════ */
 let chipCode = null, chipTheme = null;
 function syncChips(){
@@ -2309,6 +2547,7 @@ function syncToolbar(){
   document.getElementById('togD').setAttribute('aria-pressed', String(!!UI.showD));
   document.getElementById('togBB').setAttribute('aria-pressed', String(!!UI.showBB));
   document.getElementById('togVL').setAttribute('aria-pressed', String(!!UI.showVL));
+  document.getElementById('togTG').setAttribute('aria-pressed', String(!!UI.showTG));
   sizeChart();
 }
 seg.addEventListener('click', e => {
@@ -2334,8 +2573,9 @@ document.getElementById('togZ').onclick = () => { UI.showZ = !UI.showZ; saveUI()
 document.getElementById('togD').onclick = () => { UI.showD = !UI.showD; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togBB').onclick = () => { UI.showBB = !UI.showBB; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togVL').onclick = () => { UI.showVL = !UI.showVL; saveUI(); syncToolbar(); recompute(); };
+document.getElementById('togTG').onclick = () => { UI.showTG = !UI.showTG; saveUI(); syncToolbar(); schedule(); };
 // 副圖越多，圖表越高，主圖不會被擠扁
-function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
+function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL, UI.showTG].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
 
 /* ═════════════ settings drawer ═════════════ */
@@ -2353,7 +2593,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
