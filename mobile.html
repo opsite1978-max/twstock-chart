@@ -544,10 +544,12 @@
         <summary>布林谷底線（所有商品）</summary>
         <div class="stack">
           <div class="hint">一段下跌只留一個谷底：價格在 40 根布林通道裡的位置（幾個標準差，1 個標準差＝50 分），用 Ehlers 超級平滑 10 根濾掉小波動，悲觀區裡不容易走出好幾個 W。曾到 −50 以下後第一次往上勾＝「谷底」。回測（訊號在大低點後 5 根內算準）：台指 60 分準 36%（太極 23%），之後 24 根 +0.56%（平常 +0.28%）；4 小時準 70%（太極 56%）；加權日線準 44%（太極 32%）。訊號比太極少四成，平均晚 2～2.5 根。</div>
+          <div class="hint">共振底（超極找底）：谷底前 6 根內，另外三個獨立來源的恐慌出現幾個就打幾顆星——散戶套牢 ≥ 2 次追繳（期交所部位）、選擇權資金流殘差 ≤ −40（逐筆主動成交）、爆量（成交量 ≥ 過去 500 根第 90 百分位）。兩顆星以上＝「共振底」。回測台指 60 分（訊號在大低點後 5 根內算準，之後 24 根）：沒有星 25 次、準 12%、−0.24%；一顆星以上 79 次、準 43%、+0.81%；兩顆星 37 次、準 57%、+1.41%（72% 上漲）；三顆星 8 次、準 75%、+2.76%（88% 上漲）；平常 +0.28%。4 小時分不太出差別。散戶套牢、資金流只有台指期有。</div>
+          <div class="kv"><span>最少幾顆星才標</span><select data-k="valley.minStar" data-int data-redraw="valley"><option value="0">0（全部谷底）</option><option value="1">1</option><option value="2">2（只標共振底）</option></select></div>
           <label class="chk"><input type="checkbox" data-k="valley.mk" data-redraw="valley">副圖標出「谷底」</label>
           <label class="chk"><input type="checkbox" data-k="valley.mainSig" data-redraw="valley">K 線圖也標出「谷底」</label>
           <label class="chk"><input type="checkbox" data-k="valley.mkTop" data-redraw="valley">標出「峰」（+50 以上往下勾，只當參考）</label>
-          <div class="kv"><span>樂觀／悲觀／谷底</span><span class="pair"><input type="color" data-k="valley.cUp" data-redraw="valley"><input type="color" data-k="valley.cDn" data-redraw="valley"><input type="color" data-k="valley.cBot" data-redraw="valley"></span></div>
+          <div class="kv"><span>樂觀／悲觀／谷底／共振底</span><span class="pair"><input type="color" data-k="valley.cUp" data-redraw="valley"><input type="color" data-k="valley.cDn" data-redraw="valley"><input type="color" data-k="valley.cBot" data-redraw="valley"><input type="color" data-k="valley.cReso" data-redraw="valley"></span></div>
           <button class="small" data-reset="valley">恢復預設</button>
         </div>
       </details>
@@ -815,7 +817,7 @@ const DEFAULTS = {
   big:{ hi:30, lo:-60, mk:true, cUp:'#ef5350', cDn:'#26a69a' },
   bbot:{ mainSig:true, zone:true, cE:'#ffca28', cW:'#ff9800' },
   pess:{ hi:50, lo:-60, mk:true, prec:true, cP:'#29b6f6', cO:'#ff8a65', cPrec:'#00e5ff' },
-  valley:{ mk:true, mainSig:true, mkTop:false, cUp:'#ef5350', cDn:'#26a69a', cBot:'#00e676' },
+  valley:{ mk:true, mainSig:true, mkTop:false, minStar:1, cUp:'#ef5350', cDn:'#26a69a', cBot:'#00e676', cReso:'#ffd600' },
   taiji:{ mk:true, bbOpen:true, mainStrong:true, cYang:'#ef5350', cYin:'#26a69a', cStrong:'#ffd600' },
   bbr:{ len:20, m:2, m3:3, show3:true, col:'#90a4ff', col3:'#b0b8c8', alpha:7 },
   omega:{ fastLen:34, slowLen:144, anchorLen:400, atrLen:100, normLen:200, slopeLen:21, wTrend:0.45, wAnchor:0.35, wSlope:0.20, gain:1.15, clip:4, erLen:34, smFast:6, smSlow:28, twoPole:true,
@@ -2390,7 +2392,7 @@ function cstLoad(){
         TRm.set(r.d, { tr:e, a, b, c, fi:r.fiTX, t10:r.t10 }); }); }
     const days = [...new Set([...C.keys(), ...R.keys(), ...TRm.keys()])].sort();
     CST.rows = days.map(d => { const c = C.get(d) || {}, r = R.get(d) || {}; return { d, cL:c.cL || null, cS:c.cS || null, cFI:c.cFI || null, fl:c.fl || c.fl20 || null, fi:c.fi, rc:r.rc || null, net:r.net, big:TRm.get(d) || null }; });
-    drawOverlays(); drawInd('panic'); drawInd('trap'); drawInd('big'); drawInd('pess');
+    drawOverlays(); drawInd('panic'); drawInd('trap'); drawInd('big'); drawInd('pess'); drawInd('valley');
   })().catch(() => { CST.pend = null; });
   return null;
 }
@@ -2924,7 +2926,7 @@ function recToFlow(){
       r.h = Math.max(r.h, b[2]); r.l = Math.min(r.l, b[3]); r.c = b[4]; r.net += b[5] || 0; r.gross += b[6] || 0; r.v += b[7] || 0; } }
   FLW.base = FLW.site.concat([...rows.values()].sort((a, b) => a.t - b.t));
   FLW.cache.clear(); if (typeof ULT !== 'undefined') ULT.cache.clear();
-  drawInd('flow'); drawInd('ult');
+  drawInd('flow'); drawInd('ult'); drawInd('valley');
 }
 async function auSnap(path, id){
   const tok = (S.token || '').trim();
@@ -3434,7 +3436,7 @@ function flwLoad(){
       for (const s of j.sessions) for (const r of s.bars){ const o = { td:s.td, s:s.s }; j.cols.forEach((c, i) => o[c] = r[i]); out.push(o); } }
     out.sort((a, b) => a.t - b.t);
     while (out.length){ const b = out[out.length - 1]; if (!b.v && !b.net && !b.gross && b.o === b.h && b.h === b.l && b.l === b.c) out.pop(); else break; }
-    FLW.site = out; FLW.base = out; FLW.cache.clear(); drawInd('flow'); drawInd('retail'); drawInd('ult'); recToFlow();
+    FLW.site = out; FLW.base = out; FLW.cache.clear(); drawInd('flow'); drawInd('retail'); drawInd('ult'); drawInd('valley'); recToFlow();
   })().catch(() => { FLW.pend = null; });
   return null;
 }
@@ -3849,24 +3851,38 @@ Object.assign(IND, {
     },
     draw(){
       const P = S.valley, R = this.vals = valleyCalc(bars);
+      // 共振：谷底前 6 根內（含當根）出現幾個「獨立來源」的恐慌：散戶套牢 ≥ 2 次追繳、選擇權資金流殘差 ≤ −40、爆量（成交量 ≥ 過去 500 根的第 90 百分位）
+      const n = bars.length, fut = !!(currentSym && currentSym.kind === 'fut'), day = !(TF[S.tf] || {}).intraday;
+      const rows = fut ? cstLoad() : null, PNv = new Array(n).fill(null), FRv = new Array(n).fill(null), VPv = new Array(n).fill(null);
+      if (rows){ let k = -1; bars.forEach((b, i) => { const t = day ? Date.parse(b.date + 'T00:00:00Z') / 1000 : b.time;
+        while (k + 1 < rows.length && Date.parse(rows[k + 1].d + 'T16:00:00Z') / 1000 <= t) k++;
+        const r = k >= 0 ? rows[k] : null; if (r && r.rc != null) PNv[i] = (b.close - r.rc) / (b.close * 815 / 46600); }); }
+      if (fut && !['W', 'M'].includes(S.tf) && flwLoad()){ const U = ultSeries(S.tf === 'D' ? 'D' : +S.tf); bars.forEach((b, i) => { const j = U.map.get(day ? b.date : b.time); FRv[i] = j == null ? null : U.F[j]; }); }
+      { const vol = bars.map(b => b.volume || 0); for (let i = 0; i < n; i++){ let cnt = 0, below = 0; for (let k = Math.max(0, i - 499); k <= i; k++){ cnt++; if (vol[k] < vol[i]) below++; } if (cnt >= 100) VPv[i] = below / cnt * 100; } }
+      R.score = R.bot.map((b, i) => { if (!b) return null; let pn = false, fr = false, vp = false;
+        for (let k = Math.max(0, i - 6); k <= i; k++){ if (PNv[k] != null && PNv[k] <= -2) pn = true; if (FRv[k] != null && FRv[k] <= -40) fr = true; if (VPv[k] != null && VPv[k] >= 90) vp = true; }
+        return { n:pn + fr + vp, pn, fr, vp }; });
       this.s.main.setData(toLine(R.V.map(x => x == null ? null : Math.round(x * 10) / 10)));
       this.s.main.applyOptions({ topLineColor:P.cUp, bottomLineColor:P.cDn });
       [[50, P.cUp], [0, hexA(S.col.text, .35)], [-50, P.cDn], [-80, P.cDn]].forEach(([y, col], j) => this.refs[j].applyOptions({ color:hexA(col, .85) }));
-      const mk = []; bars.forEach((b, i) => { if (P.mk && R.bot[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.V[i], shape:'arrowUp', color:P.cBot, text:'谷底', size:1.2 });
+      const star = k => k ? '★'.repeat(k) : '', colOf = k => k >= 2 ? P.cReso : k === 1 ? P.cBot : '#9e9e9e';
+      this.star = star; this.colOf = colOf;
+      const mk = []; bars.forEach((b, i) => { if (P.mk && R.bot[i]){ const k = R.score[i].n; if (k >= +P.minStar) mk.push({ time:b.time, position:'atPriceBottom', price:R.V[i], shape:'arrowUp', color:colOf(k), text:(k >= 2 ? '共振底' : '谷底') + star(k), size:k >= 2 ? 1.5 : 1 }); }
         if (P.mkTop && R.top[i]) mk.push({ time:b.time, position:'atPriceTop', price:R.V[i], shape:'arrowDown', color:P.cUp, text:'峰', size:0.8 }); });
       this.mk.setMarkers(mk);
       refreshMarkers();
     },
     mainMarkers(){
       const v = this.vals, P = S.valley, out = []; if (!v || !v.bot || !P.mainSig) return out;
-      v.bot.forEach((s, i) => { if (s) out.push({ i, position:'belowBar', shape:'arrowUp', color:P.cBot, text:'谷底', size:1.3 }); });
+      v.bot.forEach((s, i) => { if (!s) return; const k = v.score[i].n; if (k < +P.minStar) return; out.push({ i, position:'belowBar', shape:'arrowUp', color:this.colOf(k), text:(k >= 2 ? '共振底' : '谷底') + this.star(k), size:k >= 2 ? 1.6 : 1.1 }); });
       return out;
     },
     label(i){
       const v = this.vals, P = S.valley; if (!v) return '';
       const x = v.V[i], d = x == null || v.V[i - 1] == null ? '' : x > v.V[i - 1] ? '　<span class="muted">往上</span>' : '　<span class="muted">往下</span>';
       const zone = x == null ? '　<span class="muted">資料不足</span>' : x <= -80 ? `　<span style="color:${P.cDn}">極悲觀（−80 以下）</span>` : x <= -50 ? `　<span style="color:${P.cDn}">悲觀區（−50 以下）</span>` : x >= 50 ? `　<span style="color:${P.cUp}">樂觀區</span>` : '';
-      const tag = v.bot[i] ? `　<span class="tag" style="background:${P.cBot};color:#000">谷底</span>` : '';
+      const sc = v.bot[i] ? v.score[i] : null;
+      const tag = sc ? `　<span class="tag" style="background:${this.colOf(sc.n)};color:#000">${sc.n >= 2 ? '共振底' : '谷底'}${this.star(sc.n)}</span><span class="muted">　${[sc.pn && '散戶套牢', sc.fr && '資金流殺低', sc.vp && '爆量'].filter(Boolean).join('・') || '沒有其他恐慌跡象（多半只是小反彈）'}</span>` : '';
       return `布林谷底線 <b>${x == null ? '—' : fmt(x, 0)}</b>${d}${zone}${tag}`;
     },
   },
