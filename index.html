@@ -514,7 +514,7 @@
       <details>
         <summary>終極太極週期線（所有商品）</summary>
         <div class="stack">
-          <div class="hint">比較了七種週期震盪公式（Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期），最會抓轉折時間的是網路週期和費雪轉換，兩個平均就是陽線（−100～+100），陰線是陽線前一根；陽在上＝紅、陽在下＝綠。−30 以下勾頭標「陽」（低點轉折），+30 以上下彎標「陰」（高點轉折）。回測：勾頭剛好在波段低點後 3 根內的比例，台指 60 分 52%、4 小時 77%、加權日線 66%（隨機 22～36%），平均晚 2 根左右；只準在時間，之後漲幅跟平常差不多，配合超級悲觀線用。終極版加上布林開口：20 根布林通道寬度在過去 500 根的百分位，開口越寬填色越深；陽轉折時 3 根內跌出布林下軌（−2 個標準差）而且開口 ≥ 50%＝「強陽」。回測強陽 vs 陽：轉折準 60 分 65% vs 53%、加權日線 73% vs 66%（4 小時 67% vs 78%，樣本 12 次）；之後最大反彈都比較大（60 分 1.31% vs 1.19%、4 小時 2.01% vs 1.56%、日線 3.20% vs 2.91%）。</div>
+          <div class="hint">比較了七種週期震盪公式（Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期），最會抓轉折時間的是網路週期和費雪轉換，兩個平均就是陽線（−100～+100），陰線是陽線前一根；陽在上＝紅、陽在下＝綠。下界畫兩條線 −50、−80；−30 以下勾頭就標「陽」（低點轉折，回測改成 −50 或 −80 才標並沒有更準），+30 以上下彎標「陰」（高點轉折）。回測：勾頭剛好在波段低點後 3 根內的比例，台指 60 分 52%、4 小時 77%、加權日線 66%（隨機 22～36%），平均晚 2 根左右；只準在時間，之後漲幅跟平常差不多，配合超級悲觀線用。終極版加上布林開口：20 根布林通道寬度在過去 500 根的百分位，開口越寬填色越深；陽轉折時 3 根內跌出布林下軌（−2 個標準差）而且開口 ≥ 50%＝「強陽」。回測強陽 vs 陽：轉折準 60 分 65% vs 53%、加權日線 73% vs 66%（4 小時 67% vs 78%，樣本 12 次）；之後最大反彈都比較大（60 分 1.31% vs 1.19%、4 小時 2.01% vs 1.56%、日線 3.20% vs 2.91%）。</div>
           <label class="chk"><input type="checkbox" data-k="taiji.mk" data-redraw="taiji">標出「陽」「陰」轉折</label>
           <label class="chk"><input type="checkbox" data-k="taiji.bbOpen" data-redraw="taiji">布林開口越寬，太極填色越深</label>
           <label class="chk"><input type="checkbox" data-k="taiji.mainStrong" data-redraw="taiji">K 線圖標出「強陽」（陽＋3 根內跌出布林下軌＋開口寬 ≥ 50%）</label>
@@ -3811,7 +3811,7 @@ Object.assign(IND, {
       this.s.yin = chart.addSeries(LineSeries, Object.assign(o(1), { lastValueVisible:false }), p);
       this.s.yang = chart.addSeries(LineSeries, Object.assign(o(2), { lastValueVisible:true }), p);
       this.fill = new BandFill('poly'); this.s.yin.attachPrimitive(this.fill);
-      this.refs = [30, 0, -30].map(v => this.s.yang.createPriceLine({ price:v, lineWidth:1, lineStyle:v ? 0 : 2, axisLabelVisible:!!v, title:'' }));
+      this.refs = [30, 0, -50, -80].map(v => this.s.yang.createPriceLine({ price:v, lineWidth:v === -80 ? 2 : 1, lineStyle:v === 0 ? 2 : 0, axisLabelVisible:!!v, title:'' }));   // 下界兩條：−50、−80
       this.mk = LC().createSeriesMarkers(this.s.yang, []);
     },
     draw(){
@@ -3819,7 +3819,7 @@ Object.assign(IND, {
       this.s.yang.setData(bars.map((b, i) => R.T[i] == null ? { time:b.time } : { time:b.time, value:r1(R.T[i]), color:R.tr[i] != null && R.T[i] >= R.tr[i] ? P.cYang : P.cYin }));
       this.s.yin.setData(toLine(R.tr.map(r1))); this.s.yin.applyOptions({ color:hexA(S.col.text, .45) });
       this.fill.setItems(R.T.map((x, i) => x == null || R.tr[i] == null ? null : { up:Math.max(x, R.tr[i]), lo:Math.min(x, R.tr[i]), color:hexA(x >= R.tr[i] ? P.cYang : P.cYin, P.bbOpen && R.bwp[i] != null ? 0.12 + 0.5 * R.bwp[i] / 100 : .35) }));
-      [[30, P.cYang], [0, hexA(S.col.text, .35)], [-30, P.cYin]].forEach(([y, col], j) => this.refs[j].applyOptions({ color:hexA(col, .8) }));
+      [[30, P.cYang], [0, hexA(S.col.text, .35)], [-50, P.cYin], [-80, P.cYin]].forEach(([y, col], j) => this.refs[j].applyOptions({ color:hexA(col, .8) }));
       const mk = []; if (P.mk) bars.forEach((b, i) => { if (R.up[i]) mk.push({ time:b.time, position:'atPriceBottom', price:R.T[i], shape:'arrowUp', color:R.strong[i] ? P.cStrong : P.cYin, text:R.strong[i] ? '強陽' : '陽', size:R.strong[i] ? 1.4 : 0.8 });
         if (R.dn[i]) mk.push({ time:b.time, position:'atPriceTop', price:R.T[i], shape:'arrowDown', color:P.cYang, text:'陰', size:0.8 }); });
       this.mk.setMarkers(mk);
@@ -3827,7 +3827,7 @@ Object.assign(IND, {
     label(i){
       const v = this.vals, P = S.taiji; if (!v) return '';
       const x = v.T[i], t = v.tr[i], dir = x == null || t == null ? '' : x >= t ? `　<span style="color:${P.cYang}">陽升</span>` : `　<span style="color:${P.cYin}">陰降</span>`;
-      const zone = x == null ? '' : x >= 30 ? '　<span class="muted">高檔</span>' : x <= -30 ? '　<span class="muted">低檔</span>' : '';
+      const zone = x == null ? '' : x >= 30 ? '　<span class="muted">高檔</span>' : x <= -80 ? '　<span class="muted">極低檔（−80 以下）</span>' : x <= -50 ? '　<span class="muted">低檔（−50 以下）</span>' : x <= -30 ? '　<span class="muted">偏低</span>' : '';
       const ob = v.bwp[i] == null ? '' : `　<span class="muted">布林開口 ${fmt(v.bwp[i], 0)}%（${v.bwp[i] >= 70 ? '大開' : v.bwp[i] >= 50 ? '偏寬' : v.bwp[i] >= 20 ? '正常' : '收窄'}）</span>`;
       const tag = v.strong[i] ? `　<span class="tag" style="background:${P.cStrong};color:#000">強陽：跌出下軌＋開口寬的低點轉折</span>` : v.up[i] ? `　<span class="tag" style="background:${P.cYin};color:#000">陽：低點轉折</span>` : v.dn[i] ? `　<span class="tag" style="background:${P.cYang};color:#fff">陰：高點轉折</span>` : '';
       return `終極太極 <b>${x == null ? '—' : fmt(x, 0)}</b>${dir}${zone}${ob}${tag}`;
