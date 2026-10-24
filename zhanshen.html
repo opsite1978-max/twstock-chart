@@ -60,7 +60,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .sym{display:flex;align-items:stretch;border:1px solid var(--line2);border-radius:6px;background:var(--panel);overflow:hidden}
-.sym input{width:150px;border:0;background:transparent;padding:7px 10px;font-family:var(--mono);font-size:14px;outline:none;min-width:0}
+.sym input{width:190px;border:0;background:transparent;padding:7px 10px;font-family:var(--mono);font-size:14px;outline:none;min-width:0}
 .sym button{border:0;border-left:1px solid var(--line2);background:var(--accent);color:var(--accent-ink);font-weight:700;padding:0 14px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--line2);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:12.5px;color:var(--muted);white-space:nowrap}
@@ -158,7 +158,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="brand"><h1>戰神看盤</h1><span class="sub">VWB · VW Z · VWD</span></div>
     <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
-      <input id="symInput" list="symList" placeholder="代號，如 2330" aria-label="股票代號" spellcheck="false">
+      <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
     </form>
     <datalist id="symList"></datalist>
@@ -799,7 +799,7 @@ async function loadNames(){
 function fillDatalist(){
   const dl = document.getElementById('symList'); const frag = document.createDocumentFragment();
   const ids = Object.keys(NAMES).filter(k => /^\d{4,6}[A-Z]?$/.test(k)).sort();
-  for (const k of ids){ const o = document.createElement('option'); o.value = k; o.label = NAMES[k]; frag.appendChild(o); }
+  for (const k of ids){ const o = document.createElement('option'); o.value = k + ' ' + NAMES[k]; frag.appendChild(o); }
   dl.replaceChildren(frag);
 }
 function nameOf(id){
@@ -1220,7 +1220,7 @@ function draw(){
     else if (p.id === 'z') drawZ(p, i0, i1, ci);
     else drawD(p, i0, i1, ci);
     p.S = S;
-    if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
+    if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
     ctx.restore();
     ctx.fillStyle = CC.sep; ctx.fillRect(0, p.top + p.h - 1, Wt, 1);
   }
@@ -1643,13 +1643,31 @@ function setMsg(text, kind){
 function setLoading(t){ const el = document.getElementById('loading'); if (t){ el.textContent = t; el.hidden = false; } else el.hidden = true; }
 
 let loadSeq = 0;
-async function loadSymbol(id, force){
-  id = String(id || '').trim().toUpperCase();
-  if (!id) return;
-  const seq = ++loadSeq, iv = UI.interval, intra = isIntra(iv);
+const ALIAS = { '台指期':'TX', '台指':'TX', '大台':'TX', '小台':'MTX', '小台指':'MTX', '微台':'TMF', '微台指':'TMF', '加權指數':'TAIEX', '加權':'TAIEX', '大盤':'TAIEX' };
+async function resolveSym(raw){
+  const t = String(raw || '').trim().replace(/\s+近月$/, '');
+  if (!t) return null;
+  if (ALIAS[t]) return ALIAS[t];
+  const up = t.toUpperCase();
+  let m = up.match(/^(TX|MTX|TMF|TAIEX)(?![0-9A-Z])/); if (m) return m[1];
+  m = up.match(/^\d{4,6}[A-Z]?(?![0-9A-Z])/); if (m) return m[0];
+  if (!Object.keys(NAMES).length){ setLoading('查詢股票名稱…'); await loadNames(); }
+  const name = t.split(/\s+/)[0], all = Object.entries(NAMES);
+  const pick = list => list.sort((a, b) => (a[0].length - b[0].length) || a[0].localeCompare(b[0]))[0];
+  const hit = pick(all.filter(([, v]) => v === name)) || pick(all.filter(([, v]) => v.startsWith(name))) || pick(all.filter(([, v]) => v.includes(name)));
+  return hit ? hit[0] : null;
+}
+async function loadSymbol(input, force){
+  const typed = String(input || '').trim();
+  if (!typed) return;
+  const seq = ++loadSeq;
+  const id = await resolveSym(typed);
+  if (seq !== loadSeq) return;
+  if (!id){ setLoading(null); setMsg('找不到「' + typed + '」，請輸入股票代號（例如 2408）或完整名稱（例如 南亞科）。' + (RAW && !RAW.sample ? ' 畫面仍是 ' + RAW.id + ' ' + (RAW.name || '') + '。' : ''), 'err'); return; }
+  const iv = UI.interval, intra = isIntra(iv);
   UI.symbol = id; saveUI(); syncToolbar();
-  document.getElementById('symInput').value = id;
-  setLoading('資料載入中… ' + id);
+  document.getElementById('symInput').value = id + (nameOf(id) ? ' ' + nameOf(id) : '');
+  setLoading('資料載入中… ' + id + ' ' + nameOf(id));
   try {
     let res;
     if (intra) res = { rows:await fetchIntraday(id, iv, () => seq !== loadSeq), from:'api' };
@@ -1668,14 +1686,14 @@ async function loadSymbol(id, force){
     if (seq !== loadSeq) return;
     if (e.message === 'stale') return;
     if (!RAW){ RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' }; view.right = NaN; recompute(); }
-    setMsg(e.message + (RAW.sample ? ' 目前畫面是範例資料（非真實行情）。' : ''), 'err');
+    setMsg(e.message + (RAW.sample ? ' 目前畫面是範例資料（非真實行情）。' : (RAW.id !== id || RAW.tf !== (intra ? iv : 'D') ? ' 畫面仍是 ' + RAW.id + ' ' + (RAW.name || '') + ' ' + IVN[RAW.tf || 'D'] + '。' : '')), 'err');
   } finally {
     if (seq === loadSeq) setLoading(null);
   }
 }
 
 /* ═════════════ toolbar ═════════════ */
-document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); const v = document.getElementById('symInput').value.split(/\s/)[0]; loadSymbol(v); });
+document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); document.getElementById('symInput').blur(); loadSymbol(document.getElementById('symInput').value); });
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
 const seg = document.getElementById('intervalSeg');
 const periodSel = document.getElementById('periodSel'), togNight = document.getElementById('togNight'), themeSeg = document.getElementById('themeSeg');
