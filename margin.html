@@ -95,6 +95,14 @@
     </section>
 
     <section class="card">
+      <h3>融資水位 <span class="muted">扣掉股價變貴的影響</span></h3>
+      <div class="cmp" id="lvl"></div>
+      <div class="leg" id="leg6"></div>
+      <div class="chart s" id="c6"></div>
+      <div class="note" id="lvlNote"></div>
+    </section>
+
+    <section class="card">
       <h3>ABC 規劃 <span class="muted">依今天的均線自動算，僅供參考</span></h3>
       <div class="zones" id="zones"></div>
       <div class="note" id="zoneNote"></div>
@@ -130,7 +138,7 @@ const L = 120;   // 高點回看 120 個交易日（約半年）
 
 async function main(){
   const j = await fetch('data/margin/daily.json?v=' + Math.floor(Date.now() / 600000)).then(r => r.json());
-  const R = j.rows.filter(r => r[4] && r[6]), n = R.length;
+  const R = j.rows.filter(r => r[4] && r[6]), n = R.length, LOTS = R.map(r => r[7] ? r[7] / 1e4 : null), AMT = R.map(r => r[5]);
   const D = R.map(r => r[0]), O = R.map(r => r[1]), H = R.map(r => r[2]), Lo = R.map(r => r[3]), C = R.map(r => r[4]), M = R.map(r => r[6]);
   $('upd').textContent = '資料至 ' + D[n - 1] + '（更新 ' + j.updated + '）';
   const sma = k => C.map((_, i) => { if (i < k - 1) return null; let s = 0; for (let t = i - k + 1; t <= i; t++) s += C[t]; return s / k; });
@@ -182,7 +190,17 @@ async function main(){
     ['斷頭潮（單日 ≤ −2.5%）', capDay >= 0 ? '有' : '還沒有', capDay >= 0 ? `${md(D[capDay])} ${sg(dpct[capDay], 2)}%` : '今天 ' + sg(dpct[last], 2) + '%', false],
   ].map(([t, v, s, hl]) => `<div class="box${hl ? ' hl' : ''}"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
 
-  // ── ABC 規劃 ──
+  // ── 融資水位：融資餘額 ÷ 20 日平均成交金額（要幾天的成交量才消化得完）、融資張數、融資 ÷ 指數 ──
+  const A20 = AMT.map((_, i) => { if (i < 19) return null; let s = 0; for (let k = i - 19; k <= i; k++) s += AMT[k]; return s / 20; });
+  const DAYS = M.map((m, i) => A20[i] ? m / A20[i] : null), MI = M.map((m, i) => m / C[i] * 1000);
+  const pctl = (arr, x) => { const v = arr.filter(y => y != null); return v.filter(y => y < x).length / v.length * 100; };
+  const yAvg = (arr, y) => { const v = arr.filter((x, i) => x != null && D[i].startsWith(y)); return v.reduce((a, b) => a + b, 0) / v.length; };
+  $('lvl').innerHTML = [
+    ['融資 ÷ 20 日均成交', DAYS[last].toFixed(2) + ' 天', `2005 年以來百分位 ${Math.round(pctl(DAYS, DAYS[last]))}%（2005 年平均 ${yAvg(DAYS, '2005').toFixed(1)} 天）`],
+    ['融資張數', f0(LOTS[last]) + ' 萬張', `百分位 ${Math.round(pctl(LOTS, LOTS[last]))}%（2005 年平均 ${f0(yAvg(LOTS, '2005'))} 萬張）`],
+    ['融資 ÷ 指數（每千點）', f0(MI[last]) + ' 億', `百分位 ${Math.round(pctl(MI, MI[last]))}%（2007 年最高 ${f0(Math.max(...MI))} 億）`],
+  ].map(([t, v, s2]) => `<div class="box"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join('');
+  $('lvlNote').innerHTML = `融資金額從以前一兩千億漲到現在五六千億，主要是股價變貴：融資張數反而從 2005 年的約 ${f0(yAvg(LOTS, '2005'))} 萬張降到 ${f0(LOTS[last])} 萬張，每張平均金額從約 ${f1(yAvg(M, '2005') * 1e4 / yAvg(LOTS, '2005') / 1e4 * 1)} 萬元變成 ${f1(M[last] / LOTS[last])} 萬元。用成交量來比，現在的融資只要 ${DAYS[last].toFixed(2)} 天的成交金額就消化得完，比 2005 年以來 ${Math.round(100 - pctl(DAYS, DAYS[last]))}% 的時間都低——槓桿其實不算高。所以本頁的判斷都用「跌幅百分比」和「洗淨度」，不用億元絕對數字比；七月殺 1,375 億和以前殺幾百億，要看佔餘額多少。`;
   const a1 = ma120[last], q = ma60[last], m20 = ma20[last], r50 = x => Math.round(x / 50) * 50;
   const A = [r50(a1 * 0.995), r50(a1 * 1.008)], B = q < m20 ? [r50(q * 1.01), r50(m20 * 0.99)] : [r50(m20 * 0.99), r50(m20 * 1.01)];
   $('zones').innerHTML = `
@@ -232,7 +250,7 @@ async function main(){
   const LC = LightweightCharts, mk = (el, h) => LC.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
     grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line'), minimumWidth:70 }, timeScale:{ borderColor:css('--line') },
     localization:{ locale:'zh-TW' }, crosshair:{ mode:LC.CrosshairMode.Normal } });
-  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), c4 = mk($('c4')), c5 = mk($('c5'));
+  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), c4 = mk($('c4')), c5 = mk($('c5')), c6 = mk($('c6'));
   const t = D.map(d => d), P0 = { type:'price', precision:0, minMove:1 };
   const k1 = c1.addSeries(LC.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceFormat:P0 });
   k1.setData(t.map((d, i) => ({ time:d, open:O[i], high:H[i], low:Lo[i], close:C[i] })));
@@ -256,6 +274,9 @@ async function main(){
   const k5 = c5.addSeries(LC.HistogramSeries, { priceFormat:P0 }), s5 = Math.max(1, n - 30);
   k5.setData(t.slice(s5).map((d, k) => { const i = s5 + k; return { time:d, value:Math.round(dchg[i]), color:dchg[i] >= 0 ? 'rgba(239,83,80,.85)' : (dpct[i] <= -2.5 ? '#00e676' : 'rgba(38,166,154,.85)') }; }));
   c5.timeScale().fitContent();
+  const s6 = c6.addSeries(LC.LineSeries, { color:css('--gold'), lineWidth:2, priceLineVisible:false, priceFormat:{ type:'price', precision:2, minMove:0.01 } });
+  s6.setData(t.map((d, i) => DAYS[i] == null ? { time:d } : { time:d, value:Math.round(DAYS[i] * 100) / 100 })); c6.timeScale().fitContent();
+  $('leg6').innerHTML = '<span class="gold">融資 ÷ 20 日平均成交金額（天）</span><span class="muted">越高＝槓桿相對市場越重</span>';
   // 同步
   const charts = [c1, c2, c3, c4]; let busy = false;
   charts.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(r => { if (busy || !r) return; busy = true; charts.forEach(o => { if (o !== ch) o.timeScale().setVisibleLogicalRange(r); }); busy = false; }));
