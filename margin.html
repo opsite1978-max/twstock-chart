@@ -95,6 +95,14 @@
     </section>
 
     <section class="card">
+      <h3>融資恐慌震盪 <span class="muted">0～100：35 以上相對恐慌、60 以上極度恐慌</span></h3>
+      <div class="leg" id="leg9"></div>
+      <div class="chart" id="c9"></div>
+      <div class="tblwrap"><table id="pstat"></table></div>
+      <div class="note" id="pnote"></div>
+    </section>
+
+    <section class="card">
       <h3>融資水位 <span class="muted">扣掉股價變貴的影響</span></h3>
       <div class="cmp" id="lvl"></div>
       <div class="leg" id="leg6"></div>
@@ -205,7 +213,20 @@ async function main(){
     ['融資 ÷ 指數（每千點）', f0(MI[last]) + ' 億', `百分位 ${Math.round(pctl(MI, MI[last]))}%（2007 年最高 ${f0(Math.max(...MI))} 億）`],
   ].map(([t, v, s2]) => `<div class="box"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join('');
   $('lvlNote').innerHTML = `融資金額從以前一兩千億漲到現在五六千億，主要是股價變貴：融資張數反而從 2005 年的約 ${f0(yAvg(LOTS, '2005'))} 萬張降到 ${f0(LOTS[last])} 萬張，每張平均金額從約 ${f1(yAvg(M, '2005') * 1e4 / yAvg(LOTS, '2005') / 1e4 * 1)} 萬元變成 ${f1(M[last] / LOTS[last])} 萬元。用成交量來比，現在的融資只要 ${DAYS[last].toFixed(2)} 天的成交金額就消化得完，比 2005 年以來 ${Math.round(100 - pctl(DAYS, DAYS[last]))}% 的時間都低——槓桿其實不算高。所以本頁的判斷都用「跌幅百分比」和「洗淨度」，不用億元絕對數字比；七月殺 1,375 億和以前殺幾百億，要看佔餘額多少。`;
-  // ── 自動研擬：歷史多段修正的比例 ──
+  // ── 融資恐慌震盪 ──
+  // 恐慌＝60%「5 天內融資減少幾 %」（8% 算滿分）＋20%「洗淨度」（1.5 算滿分）＋20%「單日融資減少幾 %」（4% 算滿分），
+  // 指數跌不到 5% 時按比例打折（多頭裡的融資減少不算恐慌），再 3 天平滑。歷史上 35 以上約前 10%、60 以上約前 3%。
+  const clp = (x, a) => Math.max(0, Math.min(1, x / a)), D5 = M.map((x, i) => i < 5 ? null : -(x - M[i - 5]) / M[i - 5] * 100);
+  const PRAW = M.map((_, i) => i < 5 ? null : 100 * (0.6 * clp(D5[i], 8) + 0.2 * clp(IDD[i] > 3 ? MDD[i] / IDD[i] : 0, 1.5) + 0.2 * clp(-dpct[i], 4)) * Math.min(1, IDD[i] / 5));
+  const PAN = []; { let e = null; PRAW.forEach(x => { if (x != null) e = e == null ? x : e + 0.5 * (x - e); PAN.push(x == null ? null : e); }); }
+  const sigX = [], sigR = [], sigW = []; { let arm = false;
+    for (let i = 1; i < n; i++){ if (PAN[i] == null || PAN[i - 1] == null) continue;
+      if (PAN[i - 1] < 60 && PAN[i] >= 60) sigX.push(i);
+      if (PAN[i] >= 40) arm = true;
+      if (arm && PAN[i - 1] >= 25 && PAN[i] < 25){ arm = false; sigR.push([i, IDD[i] >= 10 && MDD[i] / IDD[i] >= 1]); }
+      const w = j => IDD[j] >= 10 && MDD[j] / IDD[j] >= 1; if (w(i) && !w(i - 1)) sigW.push(i); } }
+  const thin = a => { const o = []; let lst = -99; a.forEach(i => { if (i - lst > 10) o.push(i); lst = i; }); return o; };
+
   const zig = (s0, e0, th) => { const pts = [[s0, 'H']]; let mode = 'down', ext = s0;
     for (let i = s0 + 1; i <= e0; i++){
       if (mode === 'down'){ if (C[i] < C[ext]) ext = i; else if ((C[i] - C[ext]) / C[ext] >= th){ pts.push([ext, 'L']); mode = 'up'; ext = i; } }
@@ -249,6 +270,7 @@ async function main(){
     if (sDL && idd >= 12) lines.push(`指數跌 15% 以上、洗淨度還不到 1 的日子，之後 60 天平均 <b class="dn">${sg(sDL.avg, 1)}%</b>（${Math.round(sDL.up)}% 上漲）；洗淨度 ≥ 1 時是 <b class="up">${sg(sDH.avg, 1)}%</b>（平常 ${sg(base60.avg, 1)}%）。`);
     if (capDay >= 0) lines.push(`已經出現斷頭潮（${md(D[capDay])} 單日 ${sg(dpct[capDay], 2)}%）：歷史上指數已跌 8% 以上、單日融資減 2.5% 以上之後 20 天平均 ${sg(sC20.avg, 1)}%、60 天 ${sg(sC60.avg, 1)}%。`);
     else lines.push(`還沒有斷頭潮：這段最大單日是 ${md(D[bigDay])} ${sg(dchg[bigDay], 0)} 億（${sg(dpct[bigDay], 2)}%），歷史上真正的斷頭潮是單日 −2.5% 以上（以現在的餘額約 ${f0(M[last] * 0.025)} 億）。`);
+    lines.push(`融資恐慌 <b>${f1(PAN[last])}</b>（${PAN[last] >= 60 ? '極度恐慌' : PAN[last] >= 35 ? '相對恐慌' : '還不恐慌'}）：5 天融資 ${sg(-D5[last], 2)}%；相對恐慌約要 5 天減 4～5%，極度恐慌約 7～8% 以上。`);
     let act;
     if (ratio >= 1 && capDay >= 0) act = '融資洗乾淨又出現斷頭潮，進入找底區：配合布林悲觀看盤的「共振底」分批進場，跌破這段低點停損。';
     else if (ratio >= 1) act = '融資已經殺到位，可以開始找底；等斷頭潮或布林谷底線的共振底再進場比較穩。';
@@ -281,7 +303,7 @@ async function main(){
   const LC = LightweightCharts, mk = (el, h) => LC.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
     grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line'), minimumWidth:70 }, timeScale:{ borderColor:css('--line') },
     localization:{ locale:'zh-TW' }, crosshair:{ mode:LC.CrosshairMode.Normal } });
-  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), c4 = mk($('c4')), c5 = mk($('c5')), c6 = mk($('c6')), c7 = mk($('c7')), c8 = mk($('c8'));
+  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), c4 = mk($('c4')), c5 = mk($('c5')), c6 = mk($('c6')), c7 = mk($('c7')), c8 = mk($('c8')), c9 = mk($('c9'));
   const t = D.map(d => d), PF0 = { type:'price', precision:0, minMove:1 };
   const k1 = c1.addSeries(LC.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceFormat:PF0 });
   k1.setData(t.map((d, i) => ({ time:d, open:O[i], high:H[i], low:Lo[i], close:C[i] })));
@@ -302,6 +324,28 @@ async function main(){
   const s6 = c6.addSeries(LC.LineSeries, { color:css('--gold'), lineWidth:2, priceLineVisible:false, priceFormat:{ type:'price', precision:2, minMove:0.01 } });
   s6.setData(t.map((d, i) => DAYS[i] == null ? { time:d } : { time:d, value:Math.round(DAYS[i] * 100) / 100 })); c6.timeScale().fitContent();
   $('leg6').innerHTML = '<span class="gold">融資 ÷ 20 日平均成交金額（天）</span><span class="muted">越高＝槓桿相對市場越重</span>';
+  // ── 融資恐慌圖 ──
+  const p9 = c9.addSeries(LC.BaselineSeries, { baseValue:{ type:'price', price:35 }, lineWidth:2, lineType:2, priceLineVisible:false, priceFormat:PF0,
+    topLineColor:'#ff7043', topFillColor1:'rgba(255,112,67,.40)', topFillColor2:'rgba(255,112,67,.08)', bottomLineColor:'#8a93a6', bottomFillColor1:'rgba(138,147,166,.06)', bottomFillColor2:'rgba(138,147,166,.02)',
+    autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }) });
+  p9.setData(t.map((d, i) => PAN[i] == null ? { time:d } : { time:d, value:Math.round(PAN[i] * 10) / 10 }));
+  p9.createPriceLine({ price:60, color:'#ef5350', lineWidth:2, lineStyle:0, title:'極度恐慌' }); p9.createPriceLine({ price:35, color:'#ff9800', lineWidth:1, lineStyle:2, title:'相對恐慌' });
+  const m9 = []; thin(sigX).forEach(i => m9.push({ time:t[i], position:'aboveBar', shape:'circle', color:'#ef5350', text:'極度恐慌', size:0.8 }));
+  sigR.forEach(([i, w]) => m9.push({ time:t[i], position:'belowBar', shape:'arrowUp', color:w ? '#ffd600' : '#9e9e9e', text:w ? '洗淨退潮' : '退潮', size:w ? 1.3 : 0.8 }));
+  thin(sigW).forEach(i => m9.push({ time:t[i], position:'belowBar', shape:'square', color:'#26a69a', text:'洗淨達標', size:0.8 }));
+  LC.createSeriesMarkers(p9, m9.sort((a, b) => a.time < b.time ? -1 : 1));
+  c9.timeScale().setVisibleLogicalRange({ from:n - 750, to:n + 2 });
+  const zoneTxt = x => x == null ? '—' : x >= 60 ? '<b class="up">極度恐慌</b>' : x >= 35 ? '<b style="color:#ff9800">相對恐慌</b>' : '平靜';
+  $('leg9').innerHTML = `<span>今天 <b>${f1(PAN[last])}</b> ${zoneTxt(PAN[last])}</span><span class="muted">5 天融資 ${sg(-D5[last], 2)}%・單日 ${sg(dpct[last], 2)}%・洗淨度 ${ratio == null ? '—' : ratio.toFixed(2)}</span>`;
+  c9.subscribeCrosshairMove(p => { const i = p && p.time ? idxOf.get(typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null;
+    if (i == null) return; $('leg9').innerHTML = `<span>${D[i]} <b>${f1(PAN[i])}</b> ${zoneTxt(PAN[i])}</span><span class="muted">5 天融資 ${sg(-D5[i], 2)}%・單日 ${sg(dpct[i], 2)}%・洗淨度 ${IDD[i] > 3 ? (MDD[i] / IDD[i]).toFixed(2) : '—'}</span>`; });
+  const row = (name, idx) => { const a = stat(idx, 20), b = stat(idx, 60); return a ? `<tr><td>${name}</td><td>${a.n}</td><td class="${a.avg > base20.avg ? 'up' : 'dn'}">${sg(a.avg, 1)}%</td><td>${Math.round(a.up)}%</td><td class="${b && b.avg > base60.avg ? 'up' : 'dn'}">${b ? sg(b.avg, 1) + '%' : '—'}</td><td>${b ? Math.round(b.up) + '%' : '—'}</td></tr>` : ''; };
+  $('pstat').innerHTML = '<tr><th>訊號（2005 年以來）</th><th>次數</th><th>之後 20 天</th><th>上漲</th><th>之後 60 天</th><th>上漲</th></tr>' +
+    row('進入極度恐慌（≥60）', thin(sigX)) + row('洗淨退潮（曾 ≥40 退回 25 以下＋洗淨度 ≥ 1）', sigR.filter(x => x[1]).map(x => x[0])) + row('一般退潮（洗淨度 < 1）', sigR.filter(x => !x[1]).map(x => x[0])) + row('洗淨達標（指數跌 ≥10%、洗淨度剛到 1）', thin(sigW)) +
+    `<tr class="muted"><td>平常任一天</td><td>—</td><td>${sg(base20.avg, 1)}%</td><td>${Math.round(base20.up)}%</td><td>${sg(base60.avg, 1)}%</td><td>${Math.round(base60.up)}%</td></tr>`;
+  $('pnote').innerHTML = `恐慌＝60%「5 天內融資減少幾 %」（8% 算滿分）＋20%「洗淨度」（1.5 算滿分）＋20%「單日融資減少幾 %」（4% 算滿分）；指數跌不到 5% 時按比例打折，再 3 天平滑。35 以上約是歷史前 10%、60 以上約前 3%。
+    轉折點：<b style="color:#ffd600">洗淨退潮</b>（恐慌曾 ≥ 40、退回 25 以下，而且融資跌幅已追上指數跌幅）最值得注意；灰色「退潮」常常只是空頭裡的中繼，之後還會再跌；綠色「洗淨達標」是指數跌 10% 以上、洗淨度剛到 1 的那天。
+    老實說：融資恐慌很會抓「局部低點」，但空頭市場（2008、2011、2022）裡恐慌退潮後常再破底，所以一定要看洗淨度，並配合布林悲觀看盤的共振底。`;
   // ── 研擬圖 ──
   const s0 = Math.max(0, ip - 40);
   const a7 = c7.addSeries(LC.LineSeries, { color:css('--text'), lineWidth:2, priceLineVisible:false, priceFormat:PF0 }); a7.setData(t.slice(s0).map((d, k) => ({ time:d, value:C[s0 + k] })));
