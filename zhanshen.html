@@ -87,6 +87,14 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
 .chart-wrap{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);height:clamp(480px,74vh,920px)}
 .chart-wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.tools{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.tools button{flex:none;border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:5px 10px;font-size:13px;color:var(--muted);white-space:nowrap}
+.tools button[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.tools button:disabled{opacity:.4;cursor:default}
+.tools .vsep{flex:none;width:1px;align-self:stretch;background:var(--line2);margin:2px 2px}
+.tools .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.tools .sw[aria-pressed="true"]{border-color:var(--fg);box-shadow:none}
+.txtin{position:absolute;z-index:5;min-width:120px;max-width:70%;padding:4px 8px;border-radius:5px;border:1px solid var(--accent);background:var(--overlay);color:var(--fg);font:14px var(--sans);outline:none}
 .chart-wrap .zoom{position:absolute;right:66px;bottom:32px;display:flex;gap:4px;opacity:.85}
 .chart-wrap .zoom button{width:30px;height:28px;border:1px solid var(--line2);background:var(--overlay);border-radius:5px;font:600 14px var(--mono);color:var(--muted);padding:0}
 .chart-wrap .zoom button.wide{width:auto;padding:0 9px;font:500 12px var(--sans)}
@@ -188,6 +196,24 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 
   <div class="msg ok" id="msg" role="status"><span class="dot"></span><span id="msgText">準備中…</span></div>
 
+  <div class="tools" id="tools" role="toolbar" aria-label="畫圖工具">
+    <button data-tool="cursor" aria-pressed="true" title="選取、移動畫好的線；拖曳圖面平移">游標</button>
+    <button id="togCross" aria-pressed="false" title="開啟後單指在圖上滑動就是移動十字線，一根一根看（不會平移）">十字線</button>
+    <span class="vsep"></span>
+    <button data-tool="trend" title="兩點趨勢線">趨勢線</button>
+    <button data-tool="ray" title="從起點穿過終點一直往右延伸">延伸線</button>
+    <button data-tool="hline" title="水平價位線">水平線</button>
+    <button data-tool="vline" title="垂直時間線（所有圖都畫）">垂直線</button>
+    <button data-tool="rect" title="矩形區間">矩形</button>
+    <button data-tool="fib" title="費波那契回撤：從起漲（跌）點拉到高（低）點">費波那契</button>
+    <button data-tool="text" title="在圖上加註文字">文字</button>
+    <span class="vsep"></span>
+    <span id="swatches" style="display:flex;gap:6px;flex:none"></span>
+    <button id="togMagnet" aria-pressed="false" title="畫線時吸附到最近的開、高、低、收價">磁吸</button>
+    <button id="drawDel" disabled title="刪除選取的線（電腦可按 Delete）">刪除</button>
+    <button id="drawClear" title="清除這檔股票的所有畫線">全部清除</button>
+  </div>
+
   <div class="chart-wrap" id="chartWrap">
     <canvas id="cv" aria-label="K 線與指標圖表"></canvas>
     <div class="zoom">
@@ -215,6 +241,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
   </section>
 
   <footer>
+    <p>十字線：手機長按圖面約半秒就會叫出十字線，手指不放直接左右滑動，一根一根看；放開後十字線留著，從十字線附近再拖一次可以繼續移動。也可以按上方「十字線」，單指滑動就一直是移動十字線。電腦上滑鼠移過去就有，點一下固定後可用鍵盤左右鍵逐根移動。</p>
+    <p>畫圖：選一個工具，在圖上拖一下（或點起點、再點終點）就畫好。畫好的線點一下會選取，拖端點改位置、拖線身整條移動，按「刪除」刪掉；文字點兩下可以改。畫線依「時間＋價格」存在這台裝置，換週期（例如日 K 畫的線切到 60 分 K）一樣看得到，每檔股票分開存。</p>
     <p>操作：拖曳圖面左右平移，滾輪或兩指左右張開縮放時間。在右側價格座標上下拖曳（或滾輪、兩指上下張開）可放大縮小價格，之後圖面也能上下拖；雙擊價格座標或按「自動」恢復。拖曳下方日期列可快速縮放時間，拖曳兩個圖之間的分隔線可調整高度。點一下固定十字線，雙擊圖面回到最新。手機上下滑動圖面照常捲動頁面。</p>
     <p>指標依你提供的 Pine Script 逐行移植：Uptrick Volume Weighted Bands 主圖版（原作 Uptrick，ThinkScript 轉寫 Chewie）、Uptrick VW Z 全週期優化版、Volume-Weighted Displacement v9.1（cando13579 / antwerks）。移動平均、相對強弱指標（RSI）、真實波幅平均與標準差都依 Pine 內建函式的初始化方式重寫，歷史 K 棒結果應與 TradingView 一致；最後一根若尚未收盤，「只在收盤確認」選項會比照 Pine 暫停訊號。資料來源 FinMind，台指期以每日成交量最大的單一月份合約接續成連續線。僅供研究參考，非投資建議。</p>
   </footer>
@@ -977,7 +1005,8 @@ function aggregate(rows, iv){
 function makeBars(rows, iv, sample){
   const n = rows.length;
   const b = { n, iv, intra:isIntra(iv), d:new Array(n), o:new F(n), h:new F(n), l:new F(n), c:new F(n), v:new F(n), vraw:new F(n), conf:new Uint8Array(n).fill(1) };
-  rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; });
+  b.t = new F(n);
+  rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; b.t[i] = r.length > 7 ? r[7] : dayMs(r[0].slice(0, 10)); });
   if (n && !sample){
     const t = tpNow(), last = b.d[n - 1], closeM = 13 * 60 + 45;
     let open = false;
@@ -1220,6 +1249,7 @@ function draw(){
     else if (p.id === 'z') drawZ(p, i0, i1, ci);
     else drawD(p, i0, i1, ci);
     p.S = S;
+    drawShapes(p);
     if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
     ctx.restore();
     ctx.fillStyle = CC.sep; ctx.fillRect(0, p.top + p.h - 1, Wt, 1);
@@ -1242,8 +1272,10 @@ function draw(){
   // crosshair
   if (cross){
     const x = Math.round(X(ci)) + 0.5;
-    ctx.strokeStyle = CC.cross; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    const live = drag && drag.mode === 'cross';
+    ctx.strokeStyle = live ? CC.hint : CC.cross; ctx.setLineDash(live ? [] : [4, 4]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, avail); ctx.stroke();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = CC.cross;
     const p = panes.find(q => cross.y >= q.top && cross.y < q.top + q.h);
     if (p){
       const yy = Math.round(cross.y) + 0.5;
@@ -1412,18 +1444,203 @@ function drawD(p, i0, i1, ci){
   legend([[['VWD 9.1', CC.axis], ['位移 ' + fmtNum(dv(ci), 2) + ' SD', bc(ci)], ['訊號 ' + fmtNum(sg(ci), 2), q.signalColor]]], p.top);
 }
 
+/* ═════════════ drawings ═════════════ */
+const DRAW_COLORS = ['#4c8dff', '#ef5350', '#26a69a', '#f5c542', '#c77dff', '#ff8a65', '#9aa3b2'];
+const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+let tool = 'cursor', drawColor = LS.get('zs:drawColor', DRAW_COLORS[0]), magnet = !!LS.get('zs:magnet', false), crossMode = false;
+let shapes = [], shapesKey = '', sel = null, draft = null;
+function shapesFor(id){
+  const k = 'zs:draw:' + id;
+  if (k !== shapesKey){ shapesKey = k; shapes = LS.get(k, []) || []; sel = null; draft = null; syncDrawUI(); }
+  return shapes;
+}
+function saveShapes(){ if (shapesKey) LS.set(shapesKey, shapes); }
+function stepMs(){ return B.intra ? INTRA[B.iv].P * 60e3 : B.iv === 'D' ? 864e5 * 1.45 : B.iv === 'W' ? 7 * 864e5 : 30.44 * 864e5; }
+function t2i(t){
+  const T = B.t, n = B.n; if (!n) return 0;
+  if (t >= T[n - 1]) return n - 1 + (t - T[n - 1]) / stepMs();
+  if (t <= T[0]) return (t - T[0]) / stepMs();
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1){ const m = (lo + hi) >> 1; if (T[m] <= t) lo = m; else hi = m; }
+  return lo + (t - T[lo]) / (T[lo + 1] - T[lo]);
+}
+function i2t(i){
+  const T = B.t, n = B.n;
+  if (i >= n - 1) return T[n - 1] + (i - (n - 1)) * stepMs();
+  if (i <= 0) return T[0] + i * stepMs();
+  const lo = Math.floor(i); return T[lo] + (i - lo) * (T[lo + 1] - T[lo]);
+}
+const paneById = id => layout && layout.panes.find(p => p.id === id);
+function ptFor(p, pt){
+  const i = Math.round(idxAt(pt.x));
+  let v = p.S.v(pt.y);
+  if (magnet && p.id === 'main' && i >= 0 && i < B.n){
+    let best = v, bd = Infinity;
+    for (const c of [B.o[i], B.h[i], B.l[i], B.c[i]]){ const d = Math.abs(p.S.y(c) - pt.y); if (d < bd){ bd = d; best = c; } }
+    if (bd < 40) v = best;
+  }
+  return { t:i2t(i), v };
+}
+const sx = q => X(t2i(q.t)), sy = q => S.y(q.v);
+function drawShapes(p){
+  if (!B || !B.n) return;
+  const list = shapesFor(RAW ? RAW.id : 'SAMPLE').filter(d => d.pane === p.id || d.type === 'vline');
+  if (draft && (draft.pane === p.id || draft.type === 'vline')) list.push(draft);
+  const W = plotW();
+  for (const d of list){
+    const c = d.color || DRAW_COLORS[0], on = sel === d.id || d === draft;
+    ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = on ? 2.2 : 1.6; ctx.setLineDash([]);
+    const a = d.pts[0], b = d.pts[1] || d.pts[0];
+    const x1 = sx(a), y1 = d.type === 'vline' ? 0 : sy(a), x2 = sx(b), y2 = d.type === 'vline' ? 0 : sy(b);
+    ctx.beginPath();
+    if (d.type === 'trend'){ ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+    else if (d.type === 'ray'){
+      let ex = x2, ey = y2; const dx = x2 - x1, dy = y2 - y1;
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01){ const k = 4000 / Math.max(1e-6, Math.hypot(dx, dy)); ex = x1 + dx * k; ey = y1 + dy * k; }
+      ctx.moveTo(x1, y1); ctx.lineTo(ex, ey); ctx.stroke();
+    } else if (d.type === 'hline'){
+      ctx.moveTo(0, y1); ctx.lineTo(W, y1); ctx.stroke();
+      axisTag(a.v, c, '#fff', p.id === 'main' ? fmtP : v => fmtNum(v, 2));
+    } else if (d.type === 'vline'){
+      ctx.moveTo(x1, p.top); ctx.lineTo(x1, p.top + p.h); ctx.stroke();
+    } else if (d.type === 'rect'){
+      const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+      ctx.fillStyle = rgba(c, 86); ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+    } else if (d.type === 'fib'){
+      const xa = Math.min(x1, x2), xb = Math.max(x1, x2);
+      ctx.font = '10.5px "IBM Plex Mono", ui-monospace, monospace'; ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';
+      FIB.forEach((f, k) => {
+        const v = b.v + (a.v - b.v) * f, y = S.y(v);
+        if (k > 0){ const v0 = b.v + (a.v - b.v) * FIB[k - 1]; ctx.fillStyle = rgba(c, 92); ctx.fillRect(xa, Math.min(y, S.y(v0)), xb - xa, Math.abs(y - S.y(v0))); }
+        ctx.strokeStyle = c; ctx.lineWidth = f === 0.5 || f === 0.618 ? 1.6 : 1; ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
+        ctx.fillStyle = ink(c); ctx.fillText(f.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + '  ' + (p.id === 'main' ? fmtP(v) : fmtNum(v, 2)), xa + 3, y - 2);
+      });
+      ctx.setLineDash([3, 3]); ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+    } else if (d.type === 'text'){
+      ctx.font = '600 13px "Noto Sans TC", sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      const tw = ctx.measureText(d.text || '').width;
+      ctx.fillStyle = CC.legendBg; ctx.fillRect(x1 - 3, y1 - 10, tw + 6, 20);
+      ctx.fillStyle = ink(c); ctx.fillText(d.text || '', x1, y1 + 0.5);
+      d._w = tw;
+    }
+    if (on && d !== draft){
+      const hs = d.type === 'hline' ? [[Math.min(W - 12, Math.max(12, x1)), y1]] : d.type === 'vline' ? [[x1, p.top + p.h / 2]] : d.type === 'text' ? [] : [[x1, y1], [x2, y2]];
+      for (const [hx, hy] of hs){ ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fillStyle = CC.bg; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = c; ctx.stroke(); }
+    }
+  }
+}
+function segDist(px, py, x1, y1, x2, y2, ray){
+  const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
+  let t = L ? ((px - x1) * dx + (py - y1) * dy) / L : 0;
+  t = ray ? Math.max(0, t) : Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+function hitShape(pt, touch){
+  if (!layout) return null;
+  const tol = touch ? 14 : 7, list = shapesFor(RAW ? RAW.id : 'SAMPLE');
+  for (let k = list.length - 1; k >= 0; k--){
+    const d = list[k];
+    const ps = d.type === 'vline' ? layout.panes : [paneById(d.pane)];
+    for (const p of ps){
+      if (!p || !p.S || pt.y < p.top || pt.y >= p.top + p.h) continue;
+      S = p.S;
+      const a = d.pts[0], b = d.pts[1] || a, x1 = sx(a), y1 = sy(a), x2 = sx(b), y2 = sy(b);
+      if (d.type === 'trend' || d.type === 'ray' || d.type === 'rect' || d.type === 'fib'){
+        if (Math.hypot(pt.x - x1, pt.y - y1) <= tol + 2) return { d, p, h:0 };
+        if (Math.hypot(pt.x - x2, pt.y - y2) <= tol + 2) return { d, p, h:1 };
+      }
+      let body = false;
+      if (d.type === 'trend') body = segDist(pt.x, pt.y, x1, y1, x2, y2) <= tol;
+      else if (d.type === 'ray') body = segDist(pt.x, pt.y, x1, y1, x2, y2, true) <= tol;
+      else if (d.type === 'hline') body = Math.abs(pt.y - y1) <= tol;
+      else if (d.type === 'vline') body = Math.abs(pt.x - x1) <= tol;
+      else if (d.type === 'rect') body = pt.x >= Math.min(x1, x2) - tol && pt.x <= Math.max(x1, x2) + tol && pt.y >= Math.min(y1, y2) - tol && pt.y <= Math.max(y1, y2) + tol;
+      else if (d.type === 'fib') body = pt.x >= Math.min(x1, x2) - tol && pt.x <= Math.max(x1, x2) + tol && FIB.some(f => Math.abs(pt.y - S.y(b.v + (a.v - b.v) * f)) <= tol);
+      else if (d.type === 'text') body = pt.x >= x1 - 4 && pt.x <= x1 + (d._w || 40) + 4 && Math.abs(pt.y - y1) <= 12;
+      if (body) return { d, p, h:-1 };
+    }
+  }
+  return null;
+}
+function addShape(d){
+  d.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  d.color = d.color || drawColor;
+  shapes.push(d); sel = d.id; saveShapes(); setTool('cursor'); syncDrawUI(); schedule();
+}
+function setTool(t){
+  const was = tool; tool = t; draft = null;
+  if (t === 'cursor' && was !== 'cursor' && lastMsg) setMsg(lastMsg[0], lastMsg[1]);
+  for (const b of document.querySelectorAll('#tools [data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === t));
+  if (t !== 'cursor') setMsg({ hline:'點一下要畫水平線的價位。', vline:'點一下要畫垂直線的位置。', text:'點一下要放文字的位置，輸入後按 Enter。' }[t] || '在圖上從起點拖到終點；或先點起點，再點終點。按 Esc 或「游標」取消。', 'ok', true);
+  schedule();
+}
+function syncDrawUI(){
+  const del = document.getElementById('drawDel'); if (del) del.disabled = !sel;
+  for (const b of document.querySelectorAll('#swatches .sw')) b.setAttribute('aria-pressed', String(b.dataset.c === drawColor));
+  const m = document.getElementById('togMagnet'); if (m) m.setAttribute('aria-pressed', String(magnet));
+  const c = document.getElementById('togCross'); if (c) c.setAttribute('aria-pressed', String(crossMode));
+}
+function deleteSel(){ if (!sel) return; shapes = shapes.filter(d => d.id !== sel); sel = null; saveShapes(); syncDrawUI(); schedule(); }
+function openTextInput(p, pnt, pt, existing){
+  const wrap = document.getElementById('chartWrap'), inp = document.createElement('input');
+  inp.className = 'txtin'; inp.type = 'text'; inp.maxLength = 60; inp.placeholder = '輸入文字後按 Enter';
+  inp.value = existing ? existing.text || '' : '';
+  inp.style.left = Math.max(4, Math.min(pt.x, plotW() - 130)) + 'px'; inp.style.top = Math.max(4, pt.y - 14) + 'px';
+  wrap.appendChild(inp); setTimeout(() => inp.focus(), 0);
+  let done = false;
+  const commit = ok => {
+    if (done) return; done = true;
+    const v = inp.value.trim(); inp.remove();
+    if (!ok) return;
+    if (existing){ if (v){ existing.text = v; } else shapes = shapes.filter(d => d !== existing); saveShapes(); schedule(); }
+    else if (v) addShape({ type:'text', pane:p.id, pts:[pnt], text:v });
+    setTool('cursor');
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); commit(true); } else if (e.key === 'Escape') commit(false); e.stopPropagation(); });
+  inp.addEventListener('blur', () => commit(true));
+}
+document.getElementById('swatches').innerHTML = DRAW_COLORS.map(c => '<button class="sw" data-c="' + c + '" style="background:' + c + '" aria-label="顏色 ' + c + '"></button>').join('');
+document.getElementById('tools').addEventListener('click', e => {
+  const t = e.target.closest('[data-tool]'); if (t){ setTool(t.dataset.tool); return; }
+  const sw = e.target.closest('.sw');
+  if (sw){ drawColor = sw.dataset.c; LS.set('zs:drawColor', drawColor); const d = shapes.find(x => x.id === sel); if (d){ d.color = drawColor; saveShapes(); } syncDrawUI(); schedule(); }
+});
+document.getElementById('togMagnet').onclick = () => { magnet = !magnet; LS.set('zs:magnet', magnet); syncDrawUI(); };
+document.getElementById('togCross').onclick = () => {
+  crossMode = !crossMode;
+  if (crossMode){ pinned = true; if (!cross && B) cross = { i:B.n - 1, y:cv.clientHeight * 0.3 }; }
+  else { pinned = false; cross = null; }
+  syncDrawUI(); schedule();
+};
+document.getElementById('drawDel').onclick = deleteSel;
+let clearArm = 0;
+document.getElementById('drawClear').onclick = e => {
+  const b = e.currentTarget;
+  if (!shapes.length) return;
+  if (Date.now() - clearArm < 3000){ shapes = []; sel = null; saveShapes(); syncDrawUI(); schedule(); b.textContent = '全部清除'; clearArm = 0; return; }
+  clearArm = Date.now(); b.textContent = '再按一次確定清除';
+  setTimeout(() => { if (Date.now() - clearArm >= 2900) b.textContent = '全部清除'; }, 3000);
+};
+
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
 const yS = { main:null, z:null, d:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
-let drag = null, pinch = null, lastTap = { t:0, kind:'' };
+let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
 function localXY(e){ const r = cv.getBoundingClientRect(); return { x:e.clientX - r.left, y:e.clientY - r.top }; }
 function setCross(pt){
   if (!B) return;
   const i = Math.round(idxAt(pt.x));
   cross = { i:Math.max(0, Math.min(B.n - 1, i)), y:pt.y };
   schedule();
+}
+// 十字線拖到邊緣時，畫面跟著捲
+function crossFollow(pt){
+  const W = plotW();
+  if (pt.x > W - 14) view.right += Math.max(1, 6 / view.barW);
+  else if (pt.x < 14) view.right -= Math.max(1, 6 / view.barW);
+  setCross({ x:Math.max(1, Math.min(W - 1, pt.x)), y:pt.y });
 }
 function minBarW(){ return B ? Math.max(0.03, Math.min(1, plotW() / (B.n * 1.05))) : 1; }
 function setBarW(w){ view.barW = Math.max(minBarW(), Math.min(60, w)); }
@@ -1446,17 +1663,42 @@ cv.addEventListener('pointerdown', e => {
   const pt = localXY(e); ptrs.set(e.pointerId, pt);
   try { cv.setPointerCapture(e.pointerId); } catch (_){}
   const touch = e.pointerType !== 'mouse';
+  clearTimeout(pressTimer);
   if (ptrs.size === 1){
     const h = hitTest(pt, touch);
-    drag = { x0:pt.x, y0:pt.y, cy:e.clientY, r0:view.right, w0:view.barW, moved:false, touch, hit:h, lock:null };
+    drag = { x0:pt.x, y0:pt.y, cy:e.clientY, r0:view.right, w0:view.barW, moved:false, touch, hit:h, lock:null, mode:'pan' };
     if (h.p){ drag.range = curRange(h.p); drag.k = (h.p.S.mx - h.p.S.mn) / Math.max(1, h.p.h - h.p.S.padT - h.p.S.padB); }
     if (h.kind === 'sep'){ const a = layout.panes[h.k], b = layout.panes[h.k + 1]; drag.sep = { a, b, tot:a.h + b.h }; }
     pinch = null;
+    if (h.kind !== 'plot' || !B) return;
+    // 畫圖中
+    if (draft && draft.waiting){ draft.pts[1] = ptFor(paneById(draft.pane), pt); const d = draft; draft = null; delete d.waiting; addShape(d); drag.mode = 'none'; return; }
+    if (tool !== 'cursor'){
+      const pnt = ptFor(h.p, pt);
+      if (tool === 'text'){ drag.mode = 'none'; openTextInput(h.p, pnt, pt, null); return; }
+      if (tool === 'hline' || tool === 'vline'){ drag.mode = 'none'; addShape({ type:tool, pane:h.p.id, pts:[pnt] }); return; }
+      draft = { type:tool, pane:h.p.id, pts:[pnt, Object.assign({}, pnt)], color:drawColor };
+      drag.mode = 'draw'; schedule(); return;
+    }
+    // 選取／移動畫好的線
+    const hs = hitShape(pt, touch);
+    if (hs){
+      sel = hs.d.id; syncDrawUI();
+      drag.mode = 'edit'; drag.shape = hs.d; drag.handle = hs.h; drag.pane = hs.p;
+      drag.orig = hs.d.pts.map(q => ({ i:t2i(q.t), v:q.v }));
+      drag.vk = (hs.p.S.mx - hs.p.S.mn) / Math.max(1, hs.p.h - hs.p.S.padT - hs.p.S.padB);
+      schedule(); return;
+    }
+    if (sel){ sel = null; syncDrawUI(); schedule(); }
+    // 十字線：開啟十字線模式、或從十字線附近起手 → 直接移動十字線；手機長按也會叫出來
+    if (crossMode || (pinned && cross && Math.abs(pt.x - X(cross.i)) < (touch ? 24 : 6))){ drag.mode = 'cross'; pinned = true; setCross(pt); return; }
+    if (touch) pressTimer = setTimeout(() => { if (drag && !drag.moved && ptrs.size === 1){ drag.mode = 'cross'; pinned = true; setCross(drag.last || pt); try { navigator.vibrate && navigator.vibrate(8); } catch (_){} } }, 420);
   } else if (ptrs.size === 2){
     const [a, b] = [...ptrs.values()];
     const dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
     const p = paneAt(cy), vert = !!(p && p.S && dy > dx * 1.2);
     pinch = { vert, d0:(vert ? dy : dx) || 1, w0:view.barW, cx, idx:idxAt(cx), p, range:p && p.S ? curRange(p) : null, av:p && p.S ? p.S.v(cy) : 0 };
+    if (draft && !draft.waiting) draft = null;
     drag = null;
   }
 });
@@ -1470,9 +1712,22 @@ cv.addEventListener('pointermove', e => {
     schedule(); return;
   }
   if (drag && ptrs.has(e.pointerId)){
+    drag.last = pt;
     const dx = pt.x - drag.x0, dy = pt.y - drag.y0;
-    if (!drag.moved && Math.hypot(dx, dy) > 5) drag.moved = true;
+    if (!drag.moved && Math.hypot(dx, dy) > 6){ drag.moved = true; if (drag.mode === 'pan') clearTimeout(pressTimer); }
+    if (drag.mode === 'cross'){ crossFollow(pt); return; }
     if (!drag.moved) return;
+    if (drag.mode === 'none') return;
+    if (drag.mode === 'draw'){ if (draft) draft.pts[1] = ptFor(paneById(draft.pane), pt); schedule(); return; }
+    if (drag.mode === 'edit'){
+      const d = drag.shape, p = drag.pane;
+      if (drag.handle >= 0 && d.type !== 'hline' && d.type !== 'vline') d.pts[drag.handle] = ptFor(p, pt);
+      else {
+        const di = Math.round(dx / view.barW), dv = -dy * drag.vk;
+        d.pts = drag.orig.map(q => ({ t:d.type === 'hline' ? i2t(q.i) : i2t(q.i + di), v:d.type === 'vline' ? q.v : q.v + dv }));
+      }
+      schedule(); return;
+    }
     const h = drag.hit;
     if (h.kind === 'axis'){ scaleY(h.p.id, drag.range, Math.exp(dy * 0.006)); schedule(); }
     else if (h.kind === 'time'){ setBarW(drag.w0 * Math.exp(-dx * 0.006)); schedule(); }
@@ -1489,37 +1744,46 @@ cv.addEventListener('pointermove', e => {
       }
       view.right = drag.r0 - dx / view.barW;
       if (manual){ const [mn, mx] = drag.range; yS[h.p.id] = { mn:mn + dy * drag.k, mx:mx + dy * drag.k }; }
-      if (e.pointerType === 'mouse') setCross(pt); else schedule();
+      if (e.pointerType === 'mouse' && !pinned) setCross(pt); else schedule();
     }
     return;
   }
   if (e.pointerType === 'mouse'){
     const h = hitTest(pt, false);
-    cv.style.cursor = h.kind === 'axis' ? 'ns-resize' : h.kind === 'time' ? 'ew-resize' : h.kind === 'sep' ? 'row-resize' : 'crosshair';
+    if (draft && draft.waiting && h.p){ draft.pts[1] = ptFor(paneById(draft.pane), pt); schedule(); }
+    const onShape = tool === 'cursor' && h.kind === 'plot' && hitShape(pt, false);
+    cv.style.cursor = h.kind === 'axis' ? 'ns-resize' : h.kind === 'time' ? 'ew-resize' : h.kind === 'sep' ? 'row-resize' : onShape ? 'move' : 'crosshair';
     if (!pinned && h.kind === 'plot') setCross(pt);
   }
 });
 function endPtr(e, cancelled){
+  clearTimeout(pressTimer);
   const pt = localXY(e);
   if (drag && drag.hit.kind === 'sep' && drag.moved) saveUI();
-  if (drag && !drag.moved && !cancelled && ptrs.size === 1){
+  if (drag && drag.mode === 'draw' && draft){
+    if (drag.moved && !cancelled){ const d = draft; draft = null; addShape(d); }
+    else if (!cancelled) draft.waiting = true;          // 點一下：等第二點
+    else draft = null;
+  } else if (drag && drag.mode === 'edit'){ saveShapes(); }
+  else if (drag && drag.mode === 'pan' && !drag.moved && !cancelled && ptrs.size === 1){
     const h = drag.hit, now = Date.now(), dbl = now - lastTap.t < 350 && lastTap.kind === h.kind;
     lastTap = { t:now, kind:h.kind };
     if (h.kind === 'axis'){ if (dbl && e.pointerType !== 'mouse'){ yS[h.p.id] = null; schedule(); } }
     else if (h.kind === 'plot'){
       if (e.pointerType === 'mouse'){ pinned = !pinned; setCross(pt); }
       else if (dbl){ view.right = NaN; pinned = false; cross = null; schedule(); }
-      else if (pinned && cross && Math.abs(Math.round(idxAt(pt.x)) - cross.i) < 2){ pinned = false; cross = null; schedule(); }
+      else if (pinned && cross && !crossMode){ pinned = false; cross = null; schedule(); }
       else { pinned = true; setCross(pt); }
     }
   }
   ptrs.delete(e.pointerId);
   if (ptrs.size < 2) pinch = null;
-  if (ptrs.size === 0) drag = null;
+  if (ptrs.size === 0){ drag = null; schedule(); }
 }
 cv.addEventListener('pointerup', e => endPtr(e, false));
 cv.addEventListener('pointercancel', e => endPtr(e, true));
 cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pinned && !drag){ cross = null; schedule(); } });
+cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('wheel', e => {
   if (!B) return; e.preventDefault();
   const pt = localXY(e), h = hitTest(pt, false);
@@ -1531,25 +1795,49 @@ cv.addEventListener('wheel', e => {
   schedule();
 }, { passive:false });
 cv.addEventListener('dblclick', e => {
-  const h = hitTest(localXY(e), false);
+  const pt = localXY(e), h = hitTest(pt, false);
+  const hs = h.kind === 'plot' && hitShape(pt, false);
+  if (hs && hs.d.type === 'text'){ openTextInput(hs.p, hs.d.pts[0], pt, hs.d); return; }
+  if (hs) return;
   if (h.kind === 'axis') yS[h.p.id] = null;
   else if (h.kind === 'time') view.barW = 7;
   else { view.right = NaN; pinned = false; cross = null; }
   schedule();
+});
+// 手機點兩下文字可修改
+cv.addEventListener('pointerup', e => {
+  if (e.pointerType === 'mouse') return;
+  const pt = localXY(e), hs = sel && hitShape(pt, true);
+  if (hs && hs.d.type === 'text' && hs.d.id === sel){
+    const now = Date.now();
+    if (now - (cv._tt || 0) < 350) openTextInput(hs.p, hs.d.pts[0], pt, hs.d);
+    cv._tt = now;
+  }
 });
 function zoomBy(f){ if (!B) return; const W = plotW(), idx = idxAt(W * 0.7); setBarW(view.barW * f); view.right = idx - 0.5 + (W - W * 0.7) / view.barW; schedule(); }
 function resetY(){ yS.main = yS.z = yS.d = null; schedule(); }
 document.getElementById('zIn').onclick = () => zoomBy(1.35);
 document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
 document.getElementById('zAuto').onclick = resetY;
-document.getElementById('zEnd').onclick = () => { view.right = NaN; pinned = false; cross = null; schedule(); };
+document.getElementById('zEnd').onclick = () => { view.right = NaN; if (!crossMode){ pinned = false; cross = null; } else if (B) cross = { i:B.n - 1, y:cross ? cross.y : 100 }; schedule(); };
+function stepCross(k){
+  if (!cross) cross = { i:B.n - 1, y:cv.clientHeight * 0.3 };
+  cross.i = Math.max(0, Math.min(B.n - 1, cross.i + k)); pinned = true;
+  const W = plotW(), x = X(cross.i);
+  if (x > W - 20) view.right += (x - (W - 20)) / view.barW;
+  else if (x < 20) view.right -= (20 - x) / view.barW;
+  schedule();
+}
 window.addEventListener('keydown', e => {
   if (!B || document.getElementById('drawer').classList.contains('open') || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
-  if (e.key === 'ArrowLeft'){ view.right -= Math.max(1, 30 / view.barW); schedule(); }
-  else if (e.key === 'ArrowRight'){ view.right += Math.max(1, 30 / view.barW); schedule(); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel){ e.preventDefault(); deleteSel(); return; }
+  if (e.key === 'Escape'){ if (tool !== 'cursor' || draft) setTool('cursor'); else if (sel){ sel = null; syncDrawUI(); schedule(); } return; }
+  if (e.key === 'ArrowLeft'){ e.preventDefault(); if (pinned && cross) stepCross(-1); else { view.right -= Math.max(1, 30 / view.barW); schedule(); } }
+  else if (e.key === 'ArrowRight'){ e.preventDefault(); if (pinned && cross) stepCross(1); else { view.right += Math.max(1, 30 / view.barW); schedule(); } }
   else if (e.key === '+' || e.key === '='){ zoomBy(1.25); }
   else if (e.key === '-'){ zoomBy(1 / 1.25); }
 });
+syncDrawUI();
 
 /* ═════════════ status cards & signals ═════════════ */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
@@ -1636,7 +1924,9 @@ document.getElementById('sigList').addEventListener('click', e => { const li = e
 document.getElementById('sigList').addEventListener('keydown', e => { if (e.key === 'Enter'){ const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); } });
 
 /* ═════════════ messages & loading ═════════════ */
-function setMsg(text, kind){
+let lastMsg = null;
+function setMsg(text, kind, temp){
+  if (!temp) lastMsg = [text, kind];
   const m = document.getElementById('msg'); m.className = 'msg ' + (kind || 'ok');
   document.getElementById('msgText').textContent = text;
 }
