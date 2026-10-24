@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>戰神看盤</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<script>
+/* 憑證失效偵測（與看盤頁相同）：FinMind 對失效憑證的回應不帶跨網站標頭，瀏覽器只看到「連不上」；改用不帶憑證試一次，通了就明確說是憑證失效 */
+(() => { const of = window.fetch.bind(window); let dead = null;
+  window.fetch = async (u, o) => { const s = String(u && u.url || u);
+    if (!/finmindtrade\.com/.test(s) || !/[?&]token=/.test(s)) return of(u, o);
+    try { return await of(u, o); }
+    catch(e){
+      if (dead === null){ try { const r = await of(s.replace(/([?&])token=[^&]*&?/, '$1').replace(/[?&]$/, ''), o); dead = r.ok; } catch(e2){ dead = false; } setTimeout(() => { dead = null; }, 60000); }
+      if (dead) return new Response(JSON.stringify({ status:401, msg:'憑證已失效（FinMind 拒絕這把憑證），請到看盤頁「⚙ 設定」貼上新的 FinMind 憑證' }), { status:401, headers:{ 'Content-Type':'application/json' } });
+      throw e;
+    } }; })();
+</script>
+<style>
+/* Layout: one trading desk — toolbar, a tall three-pane canvas, status cards and a signal log under it. Dark by design (indicator colors are tuned for dark). */
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --warn:#e6c14d; --err:#ef6a5f;
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(12px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1500px;margin:0 auto;padding-block:12px 40px;display:flex;flex-direction:column;gap:12px}
+
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;min-width:0}
+.brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:.02em}
+.brand .sub{font:500 11px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sym{display:flex;align-items:stretch;border:1px solid var(--line2);border-radius:6px;background:var(--panel);overflow:hidden}
+.sym input{width:150px;border:0;background:transparent;padding:7px 10px;font-family:var(--mono);font-size:14px;outline:none;min-width:0}
+.sym button{border:0;border-left:1px solid var(--line2);background:var(--accent);color:var(--accent-ink);font-weight:700;padding:0 14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line2);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.chip{text-decoration:none}
+.chip:hover{color:var(--fg);border-color:var(--dim)}
+.chip b{font-family:var(--mono);font-weight:500;color:var(--fg);margin-right:4px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:6px 12px;color:var(--muted);font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+.tog{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px;color:var(--muted)}
+.tog[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.iconbtn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px}
+.iconbtn:hover{border-color:var(--dim)}
+.spacer{flex:1}
+
+.msg{font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.msg.err{border-color:#5a2a28;color:#f2b3ad;background:#1d1414}
+.msg.warn{border-color:#574a1f;color:#ecd68e;background:#1b1810}
+.msg.ok{color:var(--muted)}
+.msg .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+
+.chart-wrap{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);height:clamp(480px,74vh,920px)}
+.chart-wrap canvas{display:block;width:100%;height:100%;touch-action:pan-y;cursor:crosshair}
+.chart-wrap .zoom{position:absolute;right:66px;bottom:32px;display:flex;gap:4px;opacity:.85}
+.chart-wrap .zoom button{width:30px;height:28px;border:1px solid var(--line2);background:rgba(20,25,34,.9);border-radius:5px;font:600 14px var(--mono);color:var(--muted);padding:0}
+.chart-wrap .zoom button.wide{width:auto;padding:0 9px;font:500 12px var(--sans)}
+.chart-wrap .zoom button:hover{color:var(--fg)}
+.loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(20,25,34,.94);border:1px solid var(--line2);border-radius:6px;padding:10px 16px;font-size:13px;color:var(--fg)}
+
+.below{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);gap:12px;align-items:start}
+@media (max-width:1100px){.below{grid-template-columns:repeat(3,minmax(0,1fr))}.below .sigs{grid-column:1/-1}}
+@media (max-width:720px){.below{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.card h3{margin:0 0 2px;font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
+.card h3 span{text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:500}
+.state{font-size:18px;font-weight:700;margin:4px 0 8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv dd.num{font-family:var(--mono)}
+.note{font-size:12px;color:var(--warn);margin-top:8px}
+.when{font:500 11.5px var(--mono);color:var(--dim)}
+
+.sigs .head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.sigs select{background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:3px 6px;font-size:12.5px}
+.siglist{list-style:none;margin:0;padding:0;max-height:320px;overflow:auto}
+.siglist li{display:grid;grid-template-columns:86px 52px 1fr;gap:8px;align-items:center;padding:5px 4px;border-top:1px solid var(--line);font-size:13px;cursor:pointer;border-radius:4px}
+.siglist li:first-child{border-top:0}
+.siglist li:hover{background:var(--panel2)}
+.siglist .d{font:12px var(--mono);color:var(--muted)}
+.siglist .s{font:600 11px var(--mono);color:var(--dim)}
+.siglist .t{display:flex;align-items:center;gap:6px;min-width:0}
+.siglist .t i{width:9px;height:9px;border-radius:2px;flex:none}
+.empty{color:var(--dim);font-size:13px;padding:8px 0}
+
+footer{font-size:12px;color:var(--dim);line-height:1.7}
+footer p{margin:0;max-width:110ch}
+
+/* settings drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);background:var(--panel);border-left:1px solid var(--line2);z-index:21;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s ease;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer.open{transform:none}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+.drawer .dh{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.drawer .dh h2{font-size:15px;margin:0;margin-right:auto}
+.tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{flex:1;border:0;background:transparent;padding:10px 8px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.dbody{flex:1;overflow:auto;padding:6px 14px 30px}
+fieldset{border:0;padding:0;margin:14px 0 4px}
+legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px;letter-spacing:.03em}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.row label{font-size:13px;color:var(--fg);min-width:0}
+.row input[type=number],.row input[type=text],.row input[type=password],.row input[type=date],.row select{background:var(--bg);border:1px solid var(--line2);border-radius:5px;padding:5px 8px;font-family:var(--mono);font-size:13px;width:118px;flex:none}
+.row input[type=password],.row input[type=text].wide{width:190px}
+.row select{font-family:var(--sans)}
+.row input[type=color]{width:44px;height:28px;border:1px solid var(--line2);border-radius:5px;background:var(--bg);padding:2px;flex:none}
+.row input[type=checkbox]{appearance:none;-webkit-appearance:none;width:38px;height:22px;border-radius:999px;background:var(--line2);position:relative;flex:none;cursor:pointer;transition:background .15s}
+.row input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--fg);transition:transform .15s}
+.row input[type=checkbox]:checked{background:var(--accent)}
+.row input[type=checkbox]:checked::after{transform:translateX(16px);background:var(--accent-ink)}
+.help{font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.6}
+.err-inline{font-size:12px;color:var(--err);margin:8px 0}
+.dfoot{display:flex;gap:8px;padding-top:16px}
+.dfoot button{border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:7px 12px;font-size:13px}
+.dfoot button.danger{color:#f2b3ad}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>戰神看盤</h1><span class="sub">VWB · VW Z · VWD</span></div>
+    <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <form class="sym" id="symForm" autocomplete="off">
+      <input id="symInput" list="symList" placeholder="代號，如 2330" aria-label="股票代號" spellcheck="false">
+      <button type="submit">載入</button>
+    </form>
+    <datalist id="symList"></datalist>
+  </header>
+
+  <div class="bar">
+    <div class="chips" id="presets">
+      <button class="chip" data-s="2330"><b>2330</b>台積電</button>
+      <button class="chip" data-s="0050"><b>0050</b>元大台灣50</button>
+      <button class="chip" data-s="2454"><b>2454</b>聯發科</button>
+      <button class="chip" data-s="TX"><b>TX</b>台指期近月</button>
+      <button class="chip" data-s="TAIEX"><b>TAIEX</b>加權指數</button>
+    </div>
+    <span class="spacer"></span>
+    <div class="seg" id="intervalSeg" role="group" aria-label="K 棒週期">
+      <button data-v="D">日K</button><button data-v="W">週K</button><button data-v="M">月K</button>
+    </div>
+    <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
+    <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
+    <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
+    <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
+    <button class="iconbtn" id="btnSettings">指標設定</button>
+  </div>
+
+  <div class="msg ok" id="msg" role="status"><span class="dot"></span><span id="msgText">準備中…</span></div>
+
+  <div class="chart-wrap" id="chartWrap">
+    <canvas id="cv" aria-label="K 線與指標圖表"></canvas>
+    <div class="zoom">
+      <button id="zOut" aria-label="縮小">−</button>
+      <button id="zIn" aria-label="放大">+</button>
+      <button id="zEnd" class="wide">最新</button>
+    </div>
+    <div class="loading" id="loading" hidden>資料載入中…</div>
+  </div>
+
+  <section class="below">
+    <div class="card" id="cardVWB"></div>
+    <div class="card" id="cardVWZ"></div>
+    <div class="card" id="cardVWD"></div>
+    <div class="card sigs">
+      <div class="head">
+        <h3>近期訊號 <span>Signal log</span></h3>
+        <select id="sigFilter" aria-label="篩選訊號來源">
+          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option>
+        </select>
+      </div>
+      <ul class="siglist" id="sigList"></ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>操作：拖曳左右平移、滾輪或雙指縮放、點一下固定十字線（再點一下取消）、雙擊回到最新。下方狀態卡顯示十字線所在那根 K 棒；沒有十字線時顯示最新一根。</p>
+    <p>指標依你提供的 Pine Script 逐行移植：Uptrick Volume Weighted Bands 主圖版（原作 Uptrick，ThinkScript 轉寫 Chewie）、Uptrick VW Z 全週期優化版、Volume-Weighted Displacement v9.1（cando13579 / antwerks）。移動平均、相對強弱指標（RSI）、真實波幅平均與標準差都依 Pine 內建函式的初始化方式重寫，歷史 K 棒結果應與 TradingView 一致；最後一根若尚未收盤，「只在收盤確認」選項會比照 Pine 暫停訊號。資料來源 FinMind，台指期以每日成交量最大的單一月份合約接續成連續線。僅供研究參考，非投資建議。</p>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-label="指標設定" aria-hidden="true">
+  <div class="dh"><h2>指標設定 Settings</h2><button class="iconbtn" id="btnClose">關閉</button></div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="dbody" id="dbody"></div>
+</aside>
+
+<script>
+"use strict";
+/* ═════════════ storage ═════════════ */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+  keys(){ try{ return Object.keys(localStorage); }catch(e){ return []; } }
+};
+
+/* ═════════════ parameter schema (mirrors the Pine inputs) ═════════════ */
+const SCHEMA = {
+  vwb: { tab:'VWB 主圖', title:'Uptrick Volume Weighted Bands｜主圖版', groups:[
+    { name:'① 核心參數', items:[
+      {k:'length', l:'VWMA／EMA 長度', t:'int', d:50, min:2, max:500},
+      {k:'smoothLen', l:'趨勢線平滑', t:'int', d:50, min:1, max:500},
+      {k:'atrLen', l:'ATR／Z 統計長度', t:'int', d:500, min:10, max:2000},
+      {k:'mult1', l:'內通道 ATR 倍數', t:'float', d:1.0, min:0.1, step:0.1},
+      {k:'mult3', l:'第二通道 ATR 倍數', t:'float', d:3.0, min:0.1, step:0.1},
+      {k:'mult6', l:'第三通道 ATR 倍數', t:'float', d:6.0, min:0.1, step:0.1},
+      {k:'mult9', l:'外通道 ATR 倍數', t:'float', d:9.0, min:0.1, step:0.1},
+      {k:'fallbackEMA', l:'缺少成交量時改用 EMA', t:'bool', d:true}
+    ]},
+    { name:'② 顯示', items:[
+      {k:'visualMode', l:'顯示模式', t:'select', d:'雲帶', o:['雲帶','單邊通道','只有趨勢線']},
+      {k:'colorBars', l:'K 棒依趨勢變色', t:'bool', d:true},
+      {k:'showOuter', l:'顯示 3／6／9 倍外通道', t:'bool', d:true},
+      {k:'cloudAlpha', l:'雲帶透明度', t:'int', d:85, min:0, max:100},
+      {k:'trendWidth', l:'趨勢線粗細', t:'int', d:4, min:1, max:5},
+      {k:'bullColor', l:'多方顏色', t:'color', d:'#5CF0D7'},
+      {k:'bearColor', l:'空方顏色', t:'color', d:'#B32AC3'},
+      {k:'neutralColor', l:'中性顏色', t:'color', d:'#808080'}
+    ]},
+    { name:'③ Up／Down 訊號', items:[
+      {k:'closeOnly', l:'趨勢切換與訊號只在收盤確認', t:'bool', d:true},
+      {k:'showEntries', l:'顯示 Up／Down', t:'bool', d:true},
+      {k:'buyOffset', l:'Up 垂直偏移：ATR 倍數', t:'float', d:0.0, step:0.1},
+      {k:'sellOffset', l:'Down 垂直偏移：ATR 倍數', t:'float', d:0.0, step:0.1}
+    ]},
+    { name:'④ TP 動能提醒', items:[
+      {k:'showTPLabels', l:'顯示 TP 文字', t:'bool', d:true},
+      {k:'showTPArrows', l:'顯示 TP 箭頭', t:'bool', d:true},
+      {k:'tpThreshold', l:'TP Z 分數門檻', t:'float', d:0.5, min:0, step:0.1},
+      {k:'tpHigh', l:'高檔 RSI 門檻', t:'float', d:63, min:51, max:99},
+      {k:'tpLow', l:'低檔 RSI 門檻', t:'float', d:37, min:1, max:49}
+    ]},
+    { name:'⑤ BB 回測通道', items:[
+      {k:'showBBLabels', l:'顯示 BB 文字', t:'bool', d:true},
+      {k:'showBBDots', l:'顯示 BB 圓點', t:'bool', d:true},
+      {k:'bbCooldown', l:'BB 共用冷卻根數', t:'int', d:5, min:0, max:200}
+    ]}
+  ]},
+  vwz: { tab:'VW Z 副圖', title:'Uptrick VW Z｜全週期優化版', groups:[
+    { name:'① 核心計算', items:[
+      {k:'mode', l:'運作模式', t:'select', d:'平滑優化', o:['平滑優化','原版邏輯']},
+      {k:'length', l:'VWMA／EMA 長度', t:'int', d:50, min:2, max:500},
+      {k:'trendSmooth', l:'趨勢線 EMA 平滑', t:'int', d:50, min:1, max:500},
+      {k:'atrLength', l:'ATR 長度：TR 簡單平均', t:'int', d:500, min:10, max:2000},
+      {k:'zLength', l:'Z 分數統計長度', t:'int', d:500, min:20, max:2000},
+      {k:'zSmooth', l:'優化模式：Z 主線 EMA', t:'int', d:3, min:1, max:50},
+      {k:'bandMult', l:'趨勢通道 ATR 倍數', t:'float', d:1.0, min:0.1, max:10, step:0.1},
+      {k:'volumeFallback', l:'無成交量時退回 EMA', t:'bool', d:true}
+    ]},
+    { name:'② 訊號', items:[
+      {k:'closeOnly', l:'訊號只在收盤確認', t:'bool', d:true},
+      {k:'showCross', l:'顯示零軸穿越箭頭', t:'bool', d:true},
+      {k:'filterCross', l:'優化模式：零軸訊號順應趨勢', t:'bool', d:false},
+      {k:'showTP', l:'顯示 TP 動能提醒', t:'bool', d:true},
+      {k:'showTurns', l:'優化模式：顯示極端區轉折', t:'bool', d:true},
+      {k:'cooldown', l:'優化模式：同類同方向訊號冷卻根數', t:'int', d:8, min:0, max:200}
+    ]},
+    { name:'③ RSI 與 TP', items:[
+      {k:'rsiLength', l:'RSI 長度', t:'int', d:14, min:2, max:100},
+      {k:'rsiSmooth', l:'RSI EMA 平滑', t:'int', d:7, min:1, max:50},
+      {k:'tpThreshold', l:'TP 的 Z 門檻', t:'float', d:0.25, min:0, max:5, step:0.05},
+      {k:'tpHigh', l:'高檔 RSI 門檻', t:'float', d:63, min:50, max:99},
+      {k:'tpLow', l:'低檔 RSI 門檻', t:'float', d:37, min:1, max:50}
+    ]},
+    { name:'④ 外觀', items:[
+      {k:'midLevel', l:'中度偏離區', t:'float', d:1.5, min:0.1, max:5, step:0.1},
+      {k:'extremeLevel', l:'極端偏離區', t:'float', d:2.0, min:0.2, max:8, step:0.1},
+      {k:'showCloud', l:'顯示色帶', t:'bool', d:true},
+      {k:'lineWidth', l:'主線粗細', t:'int', d:2, min:1, max:5},
+      {k:'cloudAlpha', l:'主線色帶透明度', t:'int', d:85, min:0, max:100},
+      {k:'zoneAlpha', l:'極端區色帶透明度', t:'int', d:83, min:0, max:100},
+      {k:'bullColor', l:'多方顏色', t:'color', d:'#5CF0D7'},
+      {k:'bearColor', l:'空方顏色', t:'color', d:'#B32AC3'},
+      {k:'neutralColor', l:'中性顏色', t:'color', d:'#90949E'}
+    ]}
+  ]},
+  vwd: { tab:'VWD 副圖', title:'Volume Weighted Displacement｜成交量加權位移', groups:[
+    { name:'① 核心設定', items:[
+      {k:'referenceLength', l:'成交量加權參考長度', t:'int', d:20, min:2, max:1000},
+      {k:'normalizationLength', l:'位移標準差長度', t:'int', d:14, min:2, max:1000},
+      {k:'signalLength', l:'訊號線 SMA 長度', t:'int', d:5, min:1, max:500},
+      {k:'priceSource', l:'加權參考價格', t:'select', d:'HLC3', o:['HLC3','Close','Open','High','Low','HL2','OHLC4']}
+    ]},
+    { name:'② 區間', items:[
+      {k:'valueLevel', l:'均衡區門檻', t:'float', d:0.5, min:0.01, step:0.05},
+      {k:'displacementLevel', l:'方向偏離門檻', t:'float', d:1.0, min:0.02, step:0.1},
+      {k:'extremeLevel', l:'極端偏離門檻', t:'float', d:2.0, min:0.03, step:0.1}
+    ]},
+    { name:'③ 顯示與訊號', items:[
+      {k:'viewMode', l:'位移顯示', t:'select', d:'柱狀圖', o:['柱狀圖','主線']},
+      {k:'showSignalLine', l:'顯示訊號線', t:'bool', d:true},
+      {k:'showZones', l:'顯示區域色帶', t:'bool', d:true},
+      {k:'showTurns', l:'顯示原版極端轉折箭頭', t:'bool', d:true},
+      {k:'showExits', l:'額外顯示離開極端區標記', t:'bool', d:false},
+      {k:'closeOnly', l:'事件訊號只在收盤確認', t:'bool', d:true},
+      {k:'zoneAlpha', l:'區域透明度', t:'int', d:85, min:0, max:100}
+    ]},
+    { name:'④ 顏色', items:[
+      {k:'bullExpansionColor', l:'上方擴張', t:'color', d:'#00AA00'},
+      {k:'bullContractionColor', l:'上方收縮', t:'color', d:'#FFA500'},
+      {k:'bearExpansionColor', l:'下方擴張', t:'color', d:'#DC0000'},
+      {k:'bearContractionColor', l:'下方收縮', t:'color', d:'#FF69B4'},
+      {k:'valueColor', l:'均衡／持平', t:'color', d:'#808080'},
+      {k:'signalColor', l:'訊號線', t:'color', d:'#1E90FF'},
+      {k:'referenceColor', l:'水平參考線', t:'color', d:'#919191'},
+      {k:'upperZoneColor', l:'上方色帶', t:'color', d:'#144614'},
+      {k:'lowerZoneColor', l:'下方色帶', t:'color', d:'#461414'},
+      {k:'valueZoneColor', l:'均衡色帶', t:'color', d:'#373737'}
+    ]}
+  ]}
+};
+function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
+const P = {};
+for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get('zs:p:' + ind, {}));
+
+const UI = Object.assign({
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true,
+  token:'', start:'2000-01-01', showVolume:true, scaleAll:false
+}, LS.get('zs:ui', {}));
+function saveUI(){ LS.set('zs:ui', UI); }
+function siteToken(){ try { return (JSON.parse(localStorage.getItem('twchart.settings') || '{}').token || '').trim(); } catch(e){ return ''; } }
+function getToken(){ return (UI.token || '').trim() || siteToken(); }
+
+/* ═════════════ Pine-equivalent series math (NaN = na) ═════════════ */
+const F = Float64Array;
+function nanArr(n){ return new F(n).fill(NaN); }
+function sma(src, n){
+  const len = src.length, out = nanArr(len); let s = 0, bad = 0;
+  for (let i = 0; i < len; i++){
+    const x = src[i]; if (isNaN(x)) bad++; else s += x;
+    if (i >= n){ const y = src[i - n]; if (isNaN(y)) bad--; else s -= y; }
+    if (i >= n - 1 && bad === 0) out[i] = s / n;
+  }
+  return out;
+}
+function rollSum(src, n){
+  const len = src.length, out = nanArr(len); let s = 0, bad = 0;
+  for (let i = 0; i < len; i++){
+    const x = src[i]; if (isNaN(x)) bad++; else s += x;
+    if (i >= n){ const y = src[i - n]; if (isNaN(y)) bad--; else s -= y; }
+    if (i >= n - 1 && bad === 0) out[i] = s;
+  }
+  return out;
+}
+// Pine: sum := na(sum[1]) ? ta.sma(src, len) : alpha*src + (1-alpha)*nz(sum[1])
+function emaLike(src, n, alpha){
+  const len = src.length, out = nanArr(len), s = sma(src, n); let prev = NaN;
+  for (let i = 0; i < len; i++){
+    const v = isNaN(prev) ? s[i] : alpha * src[i] + (1 - alpha) * prev;
+    out[i] = v; prev = v;
+  }
+  return out;
+}
+const ema = (s, n) => emaLike(s, n, 2 / (n + 1));
+const rma = (s, n) => emaLike(s, n, 1 / n);
+// ta.stdev(src, n, biased=true): population deviation around the window SMA
+function stdevPop(src, n){
+  const len = src.length, out = nanArr(len), avg = sma(src, n);
+  for (let i = n - 1; i < len; i++){
+    const m = avg[i]; if (isNaN(m)) continue;
+    let ss = 0;
+    for (let j = i - n + 1; j <= i; j++){
+      let d = src[j] - m;
+      if (Math.abs(d) <= 1e-10) d = 0; // Pine SUM() treats near-zero as zero
+      ss += d * d;
+    }
+    out[i] = Math.sqrt(ss / n);
+  }
+  return out;
+}
+function trueRange(h, l, c){
+  const n = c.length, out = new F(n);
+  for (let i = 0; i < n; i++){
+    if (i === 0 || isNaN(c[i - 1])) out[i] = h[i] - l[i];
+    else out[i] = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]));
+  }
+  return out;
+}
+function rsi(c, n){
+  const len = c.length, u = nanArr(len), d = nanArr(len), out = nanArr(len);
+  for (let i = 1; i < len; i++){ const ch = c[i] - c[i - 1]; u[i] = Math.max(ch, 0); d[i] = Math.max(-ch, 0); }
+  const ru = rma(u, n), rd = rma(d, n);
+  for (let i = 0; i < len; i++){
+    const a = ru[i], b = rd[i];
+    out[i] = b === 0 ? 100 : a === 0 ? 0 : 100 - 100 / (1 + a / b);
+  }
+  return out;
+}
+const xOver = (a, b, i) => i > 0 && a[i] > b[i] && a[i - 1] <= b[i - 1];
+const xUnder = (a, b, i) => i > 0 && a[i] < b[i] && a[i - 1] >= b[i - 1];
+const xOverK = (a, k, i) => i > 0 && a[i] > k && a[i - 1] <= k;
+const xUnderK = (a, k, i) => i > 0 && a[i] < k && a[i - 1] >= k;
+
+/* shared volume-weighted trend engine */
+function vwTrend(B, length, smooth, fallback){
+  const n = B.n, c = B.c, v = B.v;
+  const pv = new F(n), miss = new F(n);
+  for (let i = 0; i < n; i++){ pv[i] = c[i] * v[i]; miss[i] = isNaN(B.vraw[i]) ? 1 : 0; }
+  const avgV = sma(v, length), avgPV = sma(pv, length), missV = sma(miss, length), emaB = ema(c, length);
+  const volOK = new Uint8Array(n), raw = nanArr(n);
+  for (let i = 0; i < n; i++){
+    const ok = !isNaN(avgV[i]) && avgV[i] > 0 && missV[i] === 0;
+    volOK[i] = ok ? 1 : 0;
+    raw[i] = ok ? (avgPV[i] / avgV[i] + emaB[i]) / 2 : fallback ? emaB[i] : NaN;
+  }
+  const tE = ema(raw, smooth), trend = nanArr(n);
+  for (let i = 0; i < n; i++) trend[i] = isNaN(raw[i]) ? NaN : tE[i];
+  return { trend, volOK };
+}
+
+/* ═════════════ VWB PRO (main chart) ═════════════ */
+function calcVWB(B, p){
+  if (!(p.mult3 > p.mult1 && p.mult6 > p.mult3 && p.mult9 > p.mult6))
+    return { error:'通道倍數必須依序遞增：內通道 < 第二 < 第三 < 外通道。' };
+  const n = B.n, c = B.c, h = B.h, l = B.l, conf = B.conf;
+  const { trend, volOK } = vwTrend(B, p.length, p.smoothLen, p.fallbackEMA);
+  const tr = trueRange(h, l, c), atr = sma(tr, p.atrLen), mATR = rma(tr, 60);
+  const band = k => { const a = new F(n); for (let i = 0; i < n; i++) a[i] = trend[i] + atr[i] * k; return a; };
+  const u1 = band(p.mult1), l1 = band(-p.mult1), u3 = band(p.mult3), l3 = band(-p.mult3);
+  const u6 = band(p.mult6), l6 = band(-p.mult6), u9 = band(p.mult9), l9 = band(-p.mult9);
+  const ready = new Uint8Array(n), state = new Int8Array(n);
+  const r = rsi(c, 14), rE = ema(r, 7);
+  const dist = new F(n); for (let i = 0; i < n; i++) dist[i] = c[i] - trend[i];
+  const dMean = sma(dist, p.atrLen), dSD = stdevPop(dist, p.atrLen);
+  const z = nanArr(n), zReady = new Uint8Array(n);
+  const ev = [], sig = [];
+  let ts = 0, em = 0, canH = true, canL = true, lastBB = NaN;
+  for (let i = 0; i < n; i++){
+    const rd = !isNaN(u1[i]) && !isNaN(l1[i]); ready[i] = rd ? 1 : 0;
+    const upd = !p.closeOnly || conf[i];
+    if (rd && upd){ if (c[i] > u1[i]) ts = 1; else if (c[i] < l1[i]) ts = -1; }
+    state[i] = ts;
+    const bull = ts === 1, bear = ts === -1;
+
+    // entries — alternate directions
+    const nb = rd && upd && xOver(c, u1, i) && em !== 1;
+    const ns = rd && upd && xUnder(c, l1, i) && em !== -1;
+    if (nb) em = 1; else if (ns) em = -1;
+    if (nb){
+      sig.push({ i, src:'VWB', text:'Up 價格上穿內通道', col:p.bullColor });
+      if (p.showEntries) ev.push({ i, y:l1[i] - atr[i] * 0.3 + atr[i] * p.buyOffset, shape:'labelUp', text:'Up', col:p.bullColor, tcol:'#000', size:1 });
+    }
+    if (ns){
+      sig.push({ i, src:'VWB', text:'Down 價格下穿內通道', col:p.bearColor });
+      if (p.showEntries) ev.push({ i, y:u1[i] + atr[i] * 0.3 + atr[i] * p.sellOffset, shape:'labelDown', text:'Down', col:p.bearColor, tcol:'#fff', size:1 });
+    }
+
+    // Z distance
+    const zr = !isNaN(dist[i]) && !isNaN(dMean[i]) && !isNaN(dSD[i]); zReady[i] = zr ? 1 : 0;
+    if (zr) z[i] = dSD[i] > 0 ? (dist[i] - dMean[i]) / dSD[i] : 0;
+
+    // TP once per RSI excursion
+    const slope = i > 0 ? rE[i] - rE[i - 1] : NaN;
+    const hc = rd && zr && bull && z[i] > p.tpThreshold && rE[i] > p.tpHigh && slope < 0;
+    const lc = rd && zr && bear && z[i] < -p.tpThreshold && rE[i] < p.tpLow && slope > 0;
+    const htp = upd && canH && hc, ltp = upd && canL && lc;
+    if (upd){
+      if (htp) canH = false; else if (rE[i] <= p.tpHigh) canH = true;
+      if (ltp) canL = false; else if (rE[i] >= p.tpLow) canL = true;
+    }
+    if (htp){
+      sig.push({ i, src:'VWB', text:'多方 TP 動能降溫', col:p.bearColor });
+      if (p.showTPLabels) ev.push({ i, y:h[i] + atr[i] * 0.3, shape:'labelDown', text:'TP', col:p.bearColor, tcol:'#fff', size:0.8 });
+      if (p.showTPArrows) ev.push({ i, y:h[i] + mATR[i] / 2, shape:'arrowDown', col:p.bearColor, size:1 });
+    }
+    if (ltp){
+      sig.push({ i, src:'VWB', text:'空方 TP 動能降溫', col:p.bullColor });
+      if (p.showTPLabels) ev.push({ i, y:l[i] - atr[i] * 0.3, shape:'labelUp', text:'TP', col:p.bullColor, tcol:'#000', size:0.8 });
+      if (p.showTPArrows) ev.push({ i, y:l[i] - mATR[i] / 2, shape:'arrowUp', col:p.bullColor, size:1 });
+    }
+
+    // BB — wick touches active band and closes back inside, shared cooldown
+    const bt = rd && bull && l[i] <= l1[i] && c[i] > l1[i];
+    const st = rd && bear && h[i] >= u1[i] && c[i] < u1[i];
+    const allowed = isNaN(lastBB) || i - lastBB > p.bbCooldown;
+    const bbB = upd && allowed && bt, bbS = upd && allowed && st;
+    if (bbB || bbS) lastBB = i;
+    if (bbB){
+      sig.push({ i, src:'VWB', text:'多方 BB 回測下通道收回', col:p.bullColor });
+      if (p.showBBLabels) ev.push({ i, y:l[i] - atr[i] * 0.2, shape:'labelUp', text:'BB', col:p.bullColor, tcol:'#000', size:0.8 });
+      if (p.showBBDots) ev.push({ i, y:l[i] - mATR[i] / 2, shape:'circle', col:p.bullColor, size:0.8 });
+    }
+    if (bbS){
+      sig.push({ i, src:'VWB', text:'空方 BB 回測上通道收回', col:p.bearColor });
+      if (p.showBBLabels) ev.push({ i, y:h[i] + atr[i] * 0.2, shape:'labelDown', text:'BB', col:p.bearColor, tcol:'#fff', size:0.8 });
+      if (p.showBBDots) ev.push({ i, y:h[i] + mATR[i] / 2, shape:'circle', col:p.bearColor, size:0.8 });
+    }
+  }
+  return { trend, volOK, atr, u1, l1, u3, l3, u6, l6, u9, l9, ready, state, z, zReady, ev, sig };
+}
+
+/* ═════════════ VW Z PRO (oscillator) ═════════════ */
+function calcVWZ(B, p){
+  if (p.extremeLevel <= p.midLevel) return { error:'極端偏離區必須大於中度偏離區。' };
+  const n = B.n, c = B.c, h = B.h, l = B.l, conf = B.conf, enh = p.mode === '平滑優化';
+  const { trend, volOK } = vwTrend(B, p.length, p.trendSmooth, p.volumeFallback);
+  const atr = sma(trueRange(h, l, c), p.atrLength);
+  const up = new F(n), lo = new F(n), dist = new F(n);
+  for (let i = 0; i < n; i++){ up[i] = trend[i] + atr[i] * p.bandMult; lo[i] = trend[i] - atr[i] * p.bandMult; dist[i] = c[i] - trend[i]; }
+  const dMean = sma(dist, p.zLength), dSD = stdevPop(dist, p.zLength);
+  const zRaw = nanArr(n), statsReady = new Uint8Array(n);
+  for (let i = 0; i < n; i++){
+    const s = !isNaN(dist[i]) && !isNaN(dMean[i]) && !isNaN(dSD[i]); statsReady[i] = s ? 1 : 0;
+    if (s) zRaw[i] = dSD[i] > 0 ? (dist[i] - dMean[i]) / dSD[i] : 0;
+  }
+  const zE = ema(zRaw, p.zSmooth), z = nanArr(n);
+  for (let i = 0; i < n; i++) if (statsReady[i]) z[i] = enh ? zE[i] : zRaw[i];
+
+  const state = new Int8Array(n), ready = new Uint8Array(n), sOK = new Uint8Array(n);
+  let ts = 0;
+  for (let i = 0; i < n; i++){
+    const br = !isNaN(up[i]) && !isNaN(lo[i]);
+    if (br){ if (c[i] > up[i]) ts = 1; else if (c[i] < lo[i]) ts = -1; }
+    state[i] = ts;
+    ready[i] = statsReady[i] && br && !isNaN(z[i]) ? 1 : 0;
+    sOK[i] = ready[i] && (!p.closeOnly || conf[i]) ? 1 : 0;
+  }
+  const r = rsi(c, p.rsiLength), rE = ema(r, p.rsiSmooth);
+  const slope = nanArr(n); for (let i = 1; i < n; i++) slope[i] = rE[i] - rE[i - 1];
+  const hcA = new Uint8Array(n), lcA = new Uint8Array(n);
+  for (let i = 0; i < n; i++){
+    hcA[i] = ready[i] && state[i] === 1 && z[i] > p.tpThreshold && rE[i] > p.tpHigh && slope[i] < 0 ? 1 : 0;
+    lcA[i] = ready[i] && state[i] === -1 && z[i] < -p.tpThreshold && rE[i] < p.tpLow && slope[i] > 0 ? 1 : 0;
+  }
+  const ev = [], sig = [];
+  let lastBuy = NaN, lastSell = NaN, lastHT = NaN, lastLT = NaN, lastBot = NaN, lastTop = NaN;
+  const gap = (last, i) => isNaN(last) || i - last > p.cooldown;
+  for (let i = 0; i < n; i++){
+    const bull = state[i] === 1, bear = state[i] === -1;
+    const buy = sOK[i] && xOverK(z, 0, i) && (!enh || gap(lastBuy, i)) && (!enh || !p.filterCross || bull);
+    const sell = sOK[i] && xUnderK(z, 0, i) && (!enh || gap(lastSell, i)) && (!enh || !p.filterCross || bear);
+    if (buy) lastBuy = i;
+    if (sell) lastSell = i;
+    if (buy){ sig.push({ i, src:'VW Z', text:'零軸轉強', col:p.bullColor }); if (p.showCross) ev.push({ i, y:0, shape:'arrowUp', col:p.bullColor, size:1 }); }
+    if (sell){ sig.push({ i, src:'VW Z', text:'零軸轉弱', col:p.bearColor }); if (p.showCross) ev.push({ i, y:0, shape:'arrowDown', col:p.bearColor, size:1 }); }
+
+    const hStart = hcA[i] && !(i > 0 && hcA[i - 1]);
+    const lStart = lcA[i] && !(i > 0 && lcA[i - 1]);
+    const hTP = sOK[i] && (enh ? hStart && gap(lastHT, i) : hcA[i]);
+    const lTP = sOK[i] && (enh ? lStart && gap(lastLT, i) : lcA[i]);
+    if (hTP) lastHT = i;
+    if (lTP) lastLT = i;
+    if (hTP){ sig.push({ i, src:'VW Z', text:'多方動能降溫 TP', col:p.bearColor }); if (p.showTP) ev.push({ i, y:z[i] + 0.3, shape:'triDown', text:'TP', col:p.bearColor, tcol:p.bearColor, size:0.8 }); }
+    if (lTP){ sig.push({ i, src:'VW Z', text:'空方動能降溫 TP', col:p.bullColor }); if (p.showTP) ev.push({ i, y:z[i] - 0.3, shape:'triUp', text:'TP', col:p.bullColor, tcol:p.bullColor, size:0.8 }); }
+
+    const bot = enh && sOK[i] && xOverK(z, -p.extremeLevel, i) && slope[i] > 0 && gap(lastBot, i);
+    const top = enh && sOK[i] && xUnderK(z, p.extremeLevel, i) && slope[i] < 0 && gap(lastTop, i);
+    if (bot) lastBot = i;
+    if (top) lastTop = i;
+    if (bot){ sig.push({ i, src:'VW Z', text:'極端低檔回升', col:p.bullColor }); if (p.showTurns) ev.push({ i, y:z[i] - 0.45, shape:'labelUp', text:'回升', col:p.bullColor, tcol:'#000', size:0.8 }); }
+    if (top){ sig.push({ i, src:'VW Z', text:'極端高檔回落', col:p.bearColor }); if (p.showTurns) ev.push({ i, y:z[i] + 0.45, shape:'labelDown', text:'回落', col:p.bearColor, tcol:'#fff', size:0.8 }); }
+  }
+  return { z, zRaw, trend, up, lo, state, ready, volOK, ev, sig, enh };
+}
+
+/* ═════════════ VWD 9.1 (oscillator) ═════════════ */
+function calcVWD(B, p){
+  if (!(p.valueLevel < p.displacementLevel && p.displacementLevel < p.extremeLevel))
+    return { error:'門檻必須符合：均衡區 < 方向偏離區 < 極端區。' };
+  const n = B.n, o = B.o, h = B.h, l = B.l, c = B.c, conf = B.conf;
+  const ref = new F(n);
+  for (let i = 0; i < n; i++){
+    ref[i] = ({ Close:c[i], Open:o[i], High:h[i], Low:l[i], HL2:(h[i] + l[i]) / 2, OHLC4:(o[i] + h[i] + l[i] + c[i]) / 4 })[p.priceSource] ?? (h[i] + l[i] + c[i]) / 3;
+  }
+  const w = new F(n), rw = new F(n);
+  for (let i = 0; i < n; i++){ const vv = B.vraw[i]; w[i] = !isNaN(vv) && vv > 0 ? vv : 0; rw[i] = ref[i] * w[i]; }
+  const wSum = rollSum(rw, p.referenceLength), tW = rollSum(w, p.referenceLength), un = sma(ref, p.referenceLength);
+  const reference = new F(n), fallback = new Uint8Array(n), rawD = new F(n);
+  for (let i = 0; i < n; i++){
+    reference[i] = tW[i] > 0 ? wSum[i] / tW[i] : un[i];
+    fallback[i] = !isNaN(tW[i]) && tW[i] <= 0 ? 1 : 0;
+    rawD[i] = c[i] - reference[i];
+  }
+  const dev = stdevPop(rawD, p.normalizationLength), d = nanArr(n);
+  for (let i = 0; i < n; i++){
+    if (!isNaN(rawD[i]) && !isNaN(dev[i])){
+      if (dev[i] > 1e-7) d[i] = rawD[i] / dev[i];
+      else if (dev[i] === 0) d[i] = 0;
+    }
+  }
+  const signal = sma(d, p.signalLength);
+  const minBars = p.referenceLength + p.normalizationLength + p.signalLength - 2;
+  const VL = p.valueLevel, DL = p.displacementLevel, EL = p.extremeLevel;
+  const ready = new Uint8Array(n), beh = new Int8Array(n), info = new Array(n);
+  const ev = [], sig = [];
+  for (let i = 0; i < n; i++){
+    const rd = i + 1 >= minBars && !isNaN(d[i]) && !isNaN(signal[i]); ready[i] = rd ? 1 : 0;
+    const eok = rd && (!p.closeOnly || conf[i]);
+    const x = d[i], x1 = i > 0 ? d[i - 1] : NaN;
+    const atValue = Math.abs(x) <= VL;
+    const bE = x > VL && x > x1, bC = x > VL && x < x1, sE = x < -VL && x < x1, sC = x < -VL && x > x1;
+    beh[i] = atValue ? 0 : bE ? 1 : bC ? 2 : sE ? 3 : sC ? 4 : 0;
+    const upTurn = eok && x1 >= EL && x < x1;
+    const loTurn = eok && x1 <= -EL && x > x1;
+    const loExit = eok && x1 <= -EL && x > -EL && x > x1;
+    const upExit = eok && x1 >= EL && x < EL && x < x1;
+    const bullC = loExit && x > signal[i], bearC = upExit && x < signal[i];
+    info[i] = { upTurn, loTurn, loExit, upExit, bullC, bearC, eok };
+    if (upTurn){ sig.push({ i, src:'VWD', text:'上方極端轉折', col:p.bullContractionColor }); if (p.showTurns) ev.push({ i, y:x, shape:'arrowDown', col:p.bullContractionColor, size:1 }); }
+    if (loTurn){ sig.push({ i, src:'VWD', text:'下方極端轉折', col:p.bearContractionColor }); if (p.showTurns) ev.push({ i, y:x, shape:'arrowUp', col:p.bearContractionColor, size:1 }); }
+    if (loExit){
+      sig.push({ i, src:'VWD', text: bullC ? '離開下方極端區・訊號線確認' : '離開下方極端區', col: bullC ? p.bullExpansionColor : '#e6c14d' });
+      if (p.showExits) ev.push({ i, y:-EL, shape:'diamond', col: bullC ? p.bullExpansionColor : '#ffeb3b', size:1 });
+    }
+    if (upExit){
+      sig.push({ i, src:'VWD', text: bearC ? '離開上方極端區・訊號線確認' : '離開上方極端區', col: bearC ? p.bearExpansionColor : '#e6c14d' });
+      if (p.showExits) ev.push({ i, y:EL, shape:'diamond', col: bearC ? p.bearExpansionColor : '#ffeb3b', size:1 });
+    }
+  }
+  return { d, signal, reference, fallback, ready, beh, info, ev, sig };
+}
+
+/* ═════════════ data ═════════════ */
+const API = 'https://api.finmindtrade.com/api/v4/data';
+let RAW = null;         // { id, name, kind, rows:[[date,o,h,l,c,v]], sample }
+let B = null, R = {};
+let NAMES = {};
+
+function tpNow(){
+  const d = new Date(Date.now() + 8 * 3600e3);
+  return { date:d.toISOString().slice(0, 10), dow:d.getUTCDay(), mins:d.getUTCHours() * 60 + d.getUTCMinutes() };
+}
+function dayMs(s){ return Date.parse(s + 'T00:00:00Z'); }
+function isoDay(ms){ return new Date(ms).toISOString().slice(0, 10); }
+function weekKey(s){ const t = dayMs(s), dw = new Date(t).getUTCDay(); return isoDay(t - ((dw + 6) % 7) * 864e5); }
+function monthKey(s){ return s.slice(0, 7); }
+
+async function finmind(params){
+  const q = new URLSearchParams(params);
+  const tk = getToken(); if (tk) q.set('token', tk);
+  let r;
+  try { r = await fetch(API + '?' + q.toString()); }
+  catch (e){ throw new Error('連不到 FinMind（網路中斷，或瀏覽器擋下跨網域連線）。請確認網路後按「重新整理」。'); }
+  let j;
+  try { j = await r.json(); } catch (e){ throw new Error('FinMind 回應無法解讀（HTTP ' + r.status + '）。'); }
+  if (j.status && j.status !== 200){
+    if (j.status === 402) throw new Error('FinMind 本小時的請求額度已用完，請稍後再試，或在設定中填入你的 token。');
+    if (j.status === 400 && /token/i.test(j.msg || '')) throw new Error('FinMind token 無效，請到設定檢查。');
+    throw new Error('FinMind：' + (j.msg || ('錯誤代碼 ' + j.status)));
+  }
+  return j.data || [];
+}
+
+function cacheKey(id, kind){ return 'zs:d:' + kind + ':' + id; }
+function readCache(id, kind){ return LS.get(cacheKey(id, kind), null); }
+function writeCache(id, kind, obj){
+  const key = cacheKey(id, kind);
+  if (LS.set(key, obj)) return;
+  // quota: drop the oldest cached symbols and retry
+  const entries = LS.keys().filter(k => k.startsWith('zs:d:') && k !== key)
+    .map(k => [k, (LS.get(k, {}) || {}).t || 0]).sort((a, b) => a[1] - b[1]);
+  for (const [k] of entries){ LS.del(k); if (LS.set(key, obj)) return; }
+}
+function mergeRows(oldRows, newRows){
+  if (!oldRows || !oldRows.length) return newRows;
+  if (!newRows.length) return oldRows;
+  const first = newRows[0][0];
+  const kept = oldRows.filter(r => r[0] < first);
+  return kept.concat(newRows);
+}
+
+function stockRows(data){
+  const out = [];
+  for (const r of data){
+    const c = +r.close; if (!(c > 0)) continue;
+    const o = +r.open > 0 ? +r.open : c, h = +r.max > 0 ? +r.max : Math.max(o, c), l = +r.min > 0 ? +r.min : Math.min(o, c);
+    out.push([r.date, o, h, l, c, +r.Trading_Volume || 0]);
+  }
+  return out.sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+function futuresRows(data){
+  const best = new Map();
+  for (const r of data){
+    if (r.trading_session && r.trading_session !== 'position') continue;
+    if (!/^\d{6}$/.test(String(r.contract_date || '').trim())) continue;
+    const c = +r.close, v = +r.volume || 0; if (!(c > 0)) continue;
+    const cur = best.get(r.date);
+    if (!cur || v > cur[5]){
+      const o = +r.open > 0 ? +r.open : c;
+      best.set(r.date, [r.date, o, +r.max > 0 ? +r.max : Math.max(o, c), +r.min > 0 ? +r.min : Math.min(o, c), c, v]);
+    }
+  }
+  return [...best.values()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+
+async function fetchSymbol(id, force){
+  const isTX = id === 'TX';
+  const kind = isTX ? 'TXF' : (UI.adj ? 'ADJ' : 'RAW');
+  const cached = readCache(id, kind);
+  const fresh = cached && Date.now() - cached.t < 30 * 60e3 && cached.start === UI.start;
+  if (cached && fresh && !force) return { rows:cached.rows, from:'cache' };
+  const today = tpNow().date;
+
+  if (isTX){
+    const startY = Math.max(+UI.start.slice(0, 4), 2008);
+    let rows = cached && cached.start === UI.start ? cached.rows : [];
+    let from = rows.length ? rows[rows.length - 1][0] : startY + '-01-01';
+    const years = [];
+    for (let y = +from.slice(0, 4); y <= +today.slice(0, 4); y++) years.push(y);
+    const chunks = [];
+    for (let k = 0; k < years.length; k += 3){
+      const part = await Promise.all(years.slice(k, k + 3).map(y => {
+        setLoading('台指期資料載入中… ' + y + ' 年');
+        const s = y === years[0] ? from : y + '-01-01';
+        return finmind({ dataset:'TaiwanFuturesDaily', data_id:'TX', start_date:s, end_date:y + '-12-31' });
+      }));
+      for (const p of part) chunks.push(...p);
+    }
+    rows = mergeRows(rows, futuresRows(chunks));
+    if (!rows.length) throw new Error('查不到台指期資料。');
+    writeCache(id, kind, { rows, t:Date.now(), start:UI.start });
+    return { rows, from:'api' };
+  }
+
+  const dataset = UI.adj ? 'TaiwanStockPriceAdj' : 'TaiwanStockPrice';
+  const incremental = cached && cached.start === UI.start && kind === 'RAW' && cached.rows.length;
+  const start = incremental ? cached.rows[cached.rows.length - 1][0] : UI.start;
+  const data = await finmind({ dataset, data_id:id, start_date:start, end_date:today });
+  let rows = stockRows(data);
+  if (incremental) rows = mergeRows(cached.rows, rows);
+  if (!rows.length) throw new Error(UI.adj ? '查不到「' + id + '」的還原權息資料（此資料集可能需要贊助會員），可關閉還原權息再試。' : '查不到代號「' + id + '」的日資料，請確認代號。');
+  writeCache(id, kind, { rows, t:Date.now(), start:UI.start });
+  return { rows, from:'api' };
+}
+
+async function loadNames(){
+  try {
+    const sl = JSON.parse(localStorage.getItem('twchart.stocklist') || 'null');
+    if (sl && sl.list && sl.list.length){ NAMES = Object.fromEntries(sl.list); fillDatalist(); if (RAW && !RAW.sample && NAMES[RAW.id]){ RAW.name = NAMES[RAW.id]; schedule(); } return; }
+  } catch(e){}
+  const c = LS.get('zs:names', null);
+  if (c && Date.now() - c.t < 7 * 864e5){ NAMES = c.m; fillDatalist(); return; }
+  try {
+    const data = await finmind({ dataset:'TaiwanStockInfo' });
+    const m = {};
+    for (const r of data) if (r.stock_id && !m[r.stock_id]) m[r.stock_id] = r.stock_name;
+    NAMES = m; LS.set('zs:names', { m, t:Date.now() }); fillDatalist();
+    if (RAW && !RAW.sample && NAMES[RAW.id]){ RAW.name = NAMES[RAW.id]; schedule(); }
+  } catch (e){ /* names are optional */ }
+}
+function fillDatalist(){
+  const dl = document.getElementById('symList'); const frag = document.createDocumentFragment();
+  const ids = Object.keys(NAMES).filter(k => /^\d{4,6}[A-Z]?$/.test(k)).sort();
+  for (const k of ids){ const o = document.createElement('option'); o.value = k; o.label = NAMES[k]; frag.appendChild(o); }
+  dl.replaceChildren(frag);
+}
+function nameOf(id){
+  if (id === 'TX') return '台指期近月';
+  if (id === 'TAIEX') return '加權指數';
+  return NAMES[id] || '';
+}
+
+/* deterministic sample so the chart is never empty */
+function sampleRows(){
+  let a = 20261025;
+  const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const rows = []; let p = 300, drift = 0.0006, vol = 0.016;
+  const end = dayMs(tpNow().date) - 864e5;
+  for (let t = Date.UTC(2010, 0, 4); t <= end; t += 864e5){
+    const dw = new Date(t).getUTCDay(); if (dw === 0 || dw === 6) continue;
+    if (rnd() < 0.008) drift = (rnd() - 0.42) * 0.0035;
+    if (rnd() < 0.02) vol = 0.009 + rnd() * 0.022;
+    const r = drift + vol * gauss();
+    const o = p * (1 + (rnd() - 0.5) * vol * 0.6), c = p * Math.exp(r);
+    const h = Math.max(o, c) * (1 + rnd() * vol * 0.7), l = Math.min(o, c) * (1 - rnd() * vol * 0.7);
+    const v = Math.round((18000 + 26000 * rnd()) * (1 + 2.5 * Math.abs(r) / vol)) * 1000;
+    const f = x => Math.round(x * 100) / 100;
+    rows.push([isoDay(t), f(o), f(h), f(l), f(c), v]); p = c;
+  }
+  return rows;
+}
+
+/* bars for the chosen interval */
+function aggregate(rows, iv){
+  if (iv === 'D') return rows;
+  const key = iv === 'W' ? weekKey : monthKey;
+  const out = []; let cur = null, k0 = null;
+  for (const r of rows){
+    const k = key(r[0]);
+    if (k !== k0){ if (cur) out.push(cur); k0 = k; cur = r.slice(); }
+    else { cur[2] = Math.max(cur[2], r[2]); cur[3] = Math.min(cur[3], r[3]); cur[4] = r[4]; cur[5] += r[5]; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function makeBars(rows, iv, sample){
+  const n = rows.length;
+  const b = { n, d:new Array(n), o:new F(n), h:new F(n), l:new F(n), c:new F(n), v:new F(n), vraw:new F(n), conf:new Uint8Array(n).fill(1) };
+  rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; });
+  if (n && !sample){
+    const t = tpNow(), last = b.d[n - 1], closeM = 13 * 60 + 45;
+    let open = false;
+    if (iv === 'D') open = last === t.date && t.mins < closeM;
+    else if (iv === 'W') open = weekKey(last) === weekKey(t.date) && t.dow >= 1 && t.dow <= 5 && !(t.dow === 5 && t.mins >= closeM);
+    else open = monthKey(last) === monthKey(t.date);
+    if (open) b.conf[n - 1] = 0;
+  }
+  return b;
+}
+
+function recompute(){
+  if (!RAW) return;
+  B = makeBars(aggregate(RAW.rows, UI.interval), UI.interval, RAW.sample);
+  R = {};
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD]]){
+    try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
+  }
+  schedule(); renderSignals();
+}
+
+/* ═════════════ chart engine ═════════════ */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const AXIS_W = 60, TIME_H = 24;
+const CC = { bg:'#0d1016', grid:'rgba(120,135,160,.09)', axis:'#8892a3', text:'#c9d1dc', cross:'rgba(200,210,225,.45)', sep:'#252d3a', up:'#e5484d', down:'#2fb67c', tag:'#2a3342' };
+const view = { barW:7, right:NaN };
+let cross = null;          // {i, y, pane}
+let pinned = false;
+let layout = null;
+let rafId = 0;
+const colorCache = new Map();
+function rgba(hex, transp){
+  const key = hex + '|' + transp; let v = colorCache.get(key); if (v) return v;
+  let h = String(hex).replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join('');
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  v = 'rgba(' + r + ',' + g + ',' + b + ',' + Math.max(0, Math.min(1, (100 - transp) / 100)) + ')';
+  colorCache.set(key, v); return v;
+}
+function schedule(){ if (!rafId) rafId = requestAnimationFrame(() => { rafId = 0; draw(); updateCards(); }); }
+
+function resize(){
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  schedule();
+}
+new ResizeObserver(resize).observe(document.getElementById('chartWrap'));
+
+function plotW(){ return cv.clientWidth - AXIS_W; }
+function clampView(){
+  if (!B) return;
+  const W = plotW(), span = W / view.barW;
+  view.barW = Math.max(1, Math.min(48, view.barW));
+  if (isNaN(view.right)) view.right = B.n - 1 + Math.min(6, span * 0.08);
+  view.right = Math.max(Math.min(span * 0.2, B.n - 1), Math.min(B.n - 1 + span * 0.5, view.right));
+}
+const X = i => plotW() - (view.right - i + 0.5) * view.barW;
+const idxAt = x => view.right + 0.5 - (plotW() - x) / view.barW;
+
+function niceStep(range, count){
+  const raw = range / Math.max(1, count), mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+}
+function fmtNum(v, dec){ return isNaN(v) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
+function priceDec(v){ const a = Math.abs(v); return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
+function fmtP(v){ return fmtNum(v, priceDec(v)); }
+function fmtPx(v){ // OHLC exact, trims zeros
+  if (isNaN(v)) return '—'; const a = Math.abs(v);
+  return v.toLocaleString('en-US', { maximumFractionDigits: a >= 10000 ? 0 : 2 });
+}
+
+function makeScale(top, h, mn, mx, padT, padB){
+  if (!isFinite(mn) || !isFinite(mx)){ mn = -1; mx = 1; }
+  if (mx - mn < 1e-9){ mx += 1; mn -= 1; }
+  const s = { top, h, mn, mx, padT, padB };
+  s.y = v => top + padT + (mx - v) / (mx - mn) * (h - padT - padB);
+  s.v = y => mx - (y - top - padT) / (h - padT - padB) * (mx - mn);
+  return s;
+}
+function extent(arrs, i0, i1, extra){
+  let mn = Infinity, mx = -Infinity;
+  for (const a of arrs) for (let i = i0; i <= i1; i++){ const v = a[i]; if (!isNaN(v)){ if (v < mn) mn = v; if (v > mx) mx = v; } }
+  if (extra) for (const v of extra) if (!isNaN(v)){ if (v < mn) mn = v; if (v > mx) mx = v; }
+  return [mn, mx];
+}
+
+/* per-bar colored polyline; get(i) value, col(i) color */
+function strokeSeries(get, col, i0, i1, width, dash){
+  ctx.lineWidth = width; ctx.setLineDash(dash || []); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  let cur = null, lastI = -2;
+  for (let i = Math.max(1, i0); i <= i1; i++){
+    const a = get(i - 1), b = get(i);
+    if (isNaN(a) || isNaN(b)) continue;
+    const c = col(i); if (!c) continue;
+    if (c !== cur){ if (cur) ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = c; cur = c; ctx.moveTo(X(i - 1), S.y(a)); }
+    else if (lastI !== i - 1) ctx.moveTo(X(i - 1), S.y(a));
+    ctx.lineTo(X(i), S.y(b)); lastI = i;
+  }
+  if (cur) ctx.stroke();
+  ctx.setLineDash([]);
+}
+function fillBetween(getA, getB, col, i0, i1){
+  const groups = new Map();
+  for (let i = Math.max(1, i0); i <= i1; i++){
+    const a0 = getA(i - 1), a1 = getA(i), b0 = getB(i - 1), b1 = getB(i);
+    if (isNaN(a0) || isNaN(a1) || isNaN(b0) || isNaN(b1)) continue;
+    const c = col(i); if (!c) continue;
+    let g = groups.get(c); if (!g){ g = []; groups.set(c, g); } g.push(i);
+  }
+  for (const [c, list] of groups){
+    ctx.fillStyle = c; ctx.beginPath();
+    for (const i of list){
+      const x0 = X(i - 1), x1 = X(i);
+      ctx.moveTo(x0, S.y(getA(i - 1))); ctx.lineTo(x1, S.y(getA(i))); ctx.lineTo(x1, S.y(getB(i))); ctx.lineTo(x0, S.y(getB(i - 1))); ctx.closePath();
+    }
+    ctx.fill();
+  }
+}
+let S = null; // current pane scale
+
+function drawMarker(m){
+  const x = X(m.i), y = S.y(m.y), s = m.size || 1;
+  ctx.fillStyle = m.col; ctx.strokeStyle = m.col;
+  if (m.shape === 'labelUp' || m.shape === 'labelDown'){
+    ctx.font = '600 ' + Math.round(11 * s) + 'px "IBM Plex Mono", ui-monospace, monospace';
+    const tw = ctx.measureText(m.text).width, bw = tw + 10 * s, bh = 16 * s, tip = 5 * s;
+    const down = m.shape === 'labelDown';
+    const by = down ? y - tip - bh : y + tip;
+    ctx.beginPath();
+    if (down){ ctx.moveTo(x - 4 * s, y - tip); ctx.lineTo(x, y); ctx.lineTo(x + 4 * s, y - tip); }
+    else { ctx.moveTo(x - 4 * s, y + tip); ctx.lineTo(x, y); ctx.lineTo(x + 4 * s, y + tip); }
+    ctx.closePath(); ctx.fill();
+    roundRect(x - bw / 2, by, bw, bh, 3 * s); ctx.fill();
+    ctx.fillStyle = m.tcol; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(m.text, x, by + bh / 2 + 0.5);
+  } else if (m.shape === 'arrowUp' || m.shape === 'arrowDown'){
+    const d = m.shape === 'arrowUp' ? -1 : 1, L = 8 * s;
+    ctx.beginPath();
+    ctx.moveTo(x, y + d * L); ctx.lineTo(x - 5 * s, y + d * (L - 6 * s)); ctx.lineTo(x - 1.6 * s, y + d * (L - 6 * s));
+    ctx.lineTo(x - 1.6 * s, y - d * L); ctx.lineTo(x + 1.6 * s, y - d * L); ctx.lineTo(x + 1.6 * s, y + d * (L - 6 * s));
+    ctx.lineTo(x + 5 * s, y + d * (L - 6 * s)); ctx.closePath(); ctx.fill();
+  } else if (m.shape === 'triUp' || m.shape === 'triDown'){
+    const up = m.shape === 'triUp', r = 5 * s;
+    ctx.beginPath();
+    if (up){ ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r * 0.8); ctx.lineTo(x - r, y + r * 0.8); }
+    else { ctx.moveTo(x, y + r); ctx.lineTo(x + r, y - r * 0.8); ctx.lineTo(x - r, y - r * 0.8); }
+    ctx.closePath(); ctx.fill();
+    if (m.text){
+      ctx.font = '600 ' + Math.round(10 * s + 1) + 'px "IBM Plex Mono", ui-monospace, monospace';
+      ctx.fillStyle = m.tcol; ctx.textAlign = 'center'; ctx.textBaseline = up ? 'top' : 'bottom';
+      ctx.fillText(m.text, x, up ? y + r + 2 : y - r - 2);
+    }
+  } else if (m.shape === 'circle'){
+    ctx.beginPath(); ctx.arc(x, y, 3.6 * s, 0, Math.PI * 2); ctx.fill();
+  } else if (m.shape === 'diamond'){
+    const r = 5.5 * s; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill();
+  }
+}
+function roundRect(x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+function markerExtra(ev, i0, i1){ const out = []; for (const m of ev) if (m.i >= i0 && m.i <= i1) out.push(m.y); return out; }
+function visibleMarkers(ev, i0, i1){ for (const m of ev) if (m.i >= i0 && m.i <= i1) drawMarker(m); }
+
+function gridAndAxis(dec, fmt){
+  const W = plotW();
+  const step = niceStep(S.mx - S.mn, Math.max(2, Math.floor(S.h / 56)));
+  ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.strokeStyle = CC.grid; ctx.lineWidth = 1;
+  for (let v = Math.ceil(S.mn / step) * step; v <= S.mx + 1e-9; v += step){
+    const y = Math.round(S.y(v)) + 0.5;
+    if (y < S.top + 4 || y > S.top + S.h - 4) continue;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = CC.axis; ctx.fillText(fmt ? fmt(v) : fmtNum(v, dec), W + 6, y);
+  }
+}
+function axisTag(v, color, txtColor, fmt){
+  const y = S.y(v); if (isNaN(y) || y < S.top || y > S.top + S.h) return;
+  const W = plotW(); ctx.font = '600 11px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.fillStyle = color; roundRect(W + 2, y - 9, AXIS_W - 4, 18, 3); ctx.fill();
+  ctx.fillStyle = txtColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v), W + 6, y + 0.5);
+}
+function legend(lines, top){
+  ctx.font = '11.5px "IBM Plex Mono", "Noto Sans TC", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  let y = top + 11;
+  for (const parts of lines){
+    let w = 0; for (const p of parts) w += ctx.measureText(p[0]).width + 8;
+    ctx.fillStyle = 'rgba(13,16,22,.78)'; ctx.fillRect(4, y - 9, Math.min(w + 4, plotW() - 8), 18);
+    let x = 8;
+    for (const [t, c] of parts){ ctx.fillStyle = c || CC.text; ctx.fillText(t, x, y + 0.5); x += ctx.measureText(t).width + 8; if (x > plotW() - 10) break; }
+    y += 18;
+  }
+}
+
+function draw(){
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const Wt = cv.clientWidth, Ht = cv.clientHeight;
+  ctx.fillStyle = CC.bg; ctx.fillRect(0, 0, Wt, Ht);
+  if (!B || !B.n) return;
+  clampView();
+  const W = plotW();
+  const i0 = Math.max(0, Math.floor(idxAt(0)) - 1), i1 = Math.min(B.n - 1, Math.ceil(idxAt(W)) + 1);
+  const ci = cross ? Math.max(0, Math.min(B.n - 1, cross.i)) : B.n - 1;
+
+  // pane layout
+  const panes = [{ id:'main', w:3 }];
+  if (UI.showZ) panes.push({ id:'z', w:1.35 });
+  if (UI.showD) panes.push({ id:'d', w:1.35 });
+  const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
+  let top = 0;
+  for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
+  panes[panes.length - 1].h = avail - panes[panes.length - 1].top;
+  layout = { panes, i0, i1 };
+
+  // vertical grid by time
+  const step = Math.max(1, Math.ceil(84 / view.barW));
+  const ticks = [];
+  for (let i = Math.ceil(i0 / step) * step; i <= i1; i += step) ticks.push(i);
+
+  for (const p of panes){
+    ctx.save(); ctx.beginPath(); ctx.rect(0, p.top, Wt, p.h); ctx.clip();
+    ctx.strokeStyle = CC.grid; ctx.lineWidth = 1;
+    for (const i of ticks){ const x = Math.round(X(i)) + 0.5; ctx.beginPath(); ctx.moveTo(x, p.top); ctx.lineTo(x, p.top + p.h); ctx.stroke(); }
+    if (p.id === 'main') drawMain(p, i0, i1, ci);
+    else if (p.id === 'z') drawZ(p, i0, i1, ci);
+    else drawD(p, i0, i1, ci);
+    p.S = S;
+    ctx.restore();
+    ctx.fillStyle = CC.sep; ctx.fillRect(0, p.top + p.h - 1, Wt, 1);
+  }
+  ctx.fillStyle = CC.sep; ctx.fillRect(W, 0, 1, avail);
+
+  // time axis
+  ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = CC.axis;
+  const long = UI.interval !== 'D' || step * 1 > 40;
+  let prevY = null;
+  for (const i of ticks){
+    const d = B.d[i], y = d.slice(0, 4);
+    let t = long ? d.slice(0, 7).replace('-', '/') : (y !== prevY ? d.slice(0, 7).replace('-', '/') : d.slice(5).replace('-', '/'));
+    prevY = y;
+    const x = X(i); if (x < 20 || x > W - 20) continue;
+    ctx.fillText(t, x, avail + TIME_H / 2);
+  }
+
+  // crosshair
+  if (cross){
+    const x = Math.round(X(ci)) + 0.5;
+    ctx.strokeStyle = CC.cross; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, avail); ctx.stroke();
+    const p = panes.find(q => cross.y >= q.top && cross.y < q.top + q.h);
+    if (p){
+      const yy = Math.round(cross.y) + 0.5;
+      ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(W, yy); ctx.stroke();
+      ctx.setLineDash([]);
+      S = p.S; const v = S.v(cross.y);
+      axisTag(v, CC.tag, '#e8edf4', p.id === 'main' ? fmtP : vv => fmtNum(vv, 2));
+    }
+    ctx.setLineDash([]);
+    const label = B.d[ci].replace(/-/g, '/');
+    ctx.font = '600 11px "IBM Plex Mono", ui-monospace, monospace';
+    const lw = ctx.measureText(label).width + 12;
+    ctx.fillStyle = CC.tag; roundRect(Math.max(0, Math.min(W - lw, x - lw / 2)), avail + 3, lw, TIME_H - 6, 3); ctx.fill();
+    ctx.fillStyle = '#e8edf4'; ctx.textAlign = 'center'; ctx.fillText(label, Math.max(lw / 2, Math.min(W - lw / 2, x)), avail + TIME_H / 2);
+  }
+}
+
+function drawMain(p, i0, i1, ci){
+  const r = R.vwb, q = P.vwb, ok = r && !r.error;
+  const mode = q.visualMode, cloud = mode === '雲帶', single = mode === '單邊通道';
+  const arrs = [B.h, B.l];
+  if (ok && mode !== '只有趨勢線'){
+    if (UI.scaleAll && cloud){ arrs.push(r.u1, r.l1, r.u3, r.l3); if (q.showOuter) arrs.push(r.u9, r.l9); }
+    else arrs.push(r.u1, r.l1);
+  }
+  if (ok && mode === '只有趨勢線') arrs.push(r.trend);
+  const [mn0, mx0] = extent(arrs, i0, i1, ok ? markerExtra(r.ev, i0, i1) : null);
+  const pad = (mx0 - mn0) * 0.04;
+  S = makeScale(p.top, p.h, mn0 - pad, mx0 + pad, 42, 8);
+  gridAndAxis(0, fmtP);
+
+  // volume
+  if (UI.showVolume){
+    let vmax = 0; for (let i = i0; i <= i1; i++) if (B.v[i] > vmax) vmax = B.v[i];
+    if (vmax > 0){
+      const vh = p.h * 0.16, base = p.top + p.h - 2, bw = Math.max(1, view.barW * 0.7);
+      for (let i = i0; i <= i1; i++){
+        const hgt = B.v[i] / vmax * vh;
+        ctx.fillStyle = B.c[i] >= B.o[i] ? 'rgba(229,72,77,.22)' : 'rgba(47,182,124,.22)';
+        ctx.fillRect(X(i) - bw / 2, base - hgt, bw, hgt);
+      }
+    }
+  }
+
+  const colOf = i => !ok || !r.ready[i] ? q.neutralColor : r.state[i] === 1 ? q.bullColor : r.state[i] === -1 ? q.bearColor : q.neutralColor;
+  const fillOf = i => ok && r.ready[i] && r.state[i] !== 0 ? rgba(r.state[i] === 1 ? q.bullColor : q.bearColor, q.cloudAlpha) : null;
+  if (ok){
+    if (cloud){
+      fillBetween(i => r.u1[i], i => r.l1[i], fillOf, i0, i1);
+      if (q.showOuter){
+        fillBetween(i => r.u9[i], i => r.u6[i], fillOf, i0, i1);
+        fillBetween(i => r.l6[i], i => r.l9[i], fillOf, i0, i1);
+      }
+    } else if (single){
+      const sb = i => r.state[i] === 1 ? r.l1[i] : r.state[i] === -1 ? r.u1[i] : NaN;
+      fillBetween(i => B.c[i], sb, i => r.ready[i] ? rgba(B.c[i] >= sb(i) ? q.bullColor : q.bearColor, q.cloudAlpha) : null, i0, i1);
+    }
+  }
+
+  // candles
+  const bw = Math.max(1, Math.min(view.barW * 0.7, view.barW - 1));
+  for (let i = i0; i <= i1; i++){
+    const o = B.o[i], h = B.h[i], l = B.l[i], c = B.c[i], x = Math.round(X(i)) + 0.5;
+    const upBar = c >= o;
+    let col = upBar ? CC.up : CC.down;
+    const painted = ok && q.colorBars && r.ready[i] && r.state[i] !== 0;
+    if (painted) col = r.state[i] === 1 ? q.bullColor : q.bearColor;
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
+    const yo = S.y(o), yc = S.y(c), yh = S.y(h), yl = S.y(l);
+    if (bw < 2.5){ ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yl); ctx.stroke(); continue; }
+    const yt = Math.min(yo, yc), hb = Math.max(1, Math.abs(yc - yo));
+    ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yt); ctx.moveTo(x, yt + hb); ctx.lineTo(x, yl); ctx.stroke();
+    if (painted && upBar){ ctx.fillStyle = CC.bg; ctx.fillRect(x - bw / 2, yt, bw, hb); ctx.strokeRect(x - bw / 2, yt, bw, hb); }
+    else ctx.fillRect(x - bw / 2, yt, bw, hb);
+  }
+
+  if (ok){
+    if (cloud){
+      if (q.showOuter){
+        for (const [a, t] of [[r.u3, 20], [r.l3, 20], [r.u6, 30], [r.l6, 30], [r.u9, 20], [r.l9, 20]])
+          strokeSeries(i => a[i], i => rgba(colOf(i), t), i0, i1, 1);
+      }
+      strokeSeries(i => r.u1[i], colOf, i0, i1, 2);
+      strokeSeries(i => r.l1[i], colOf, i0, i1, 2);
+    }
+    if (single){
+      const sb = i => r.state[i] === 1 ? r.l1[i] : r.state[i] === -1 ? r.u1[i] : NaN;
+      strokeSeries(sb, i => (r.state[i] === r.state[i - 1]) ? colOf(i) : null, i0, i1, 2);
+    } else strokeSeries(i => r.trend[i], colOf, i0, i1, q.trendWidth);
+    visibleMarkers(r.ev, i0, i1);
+    axisTag(B.c[B.n - 1], B.c[B.n - 1] >= B.o[B.n - 1] ? CC.up : CC.down, '#fff', fmtP);
+  }
+
+  // legend
+  const name = RAW ? (RAW.sample ? '範例資料' : RAW.id + ' ' + (RAW.name || '')) : '';
+  const ivName = { D:'日K', W:'週K', M:'月K' }[UI.interval];
+  const chg = ci > 0 ? (B.c[ci] - B.c[ci - 1]) / B.c[ci - 1] * 100 : NaN;
+  const cc = chg >= 0 ? CC.up : CC.down;
+  const unit = RAW && RAW.id === 'TX' ? '口' : RAW && RAW.id === 'TAIEX' ? '' : '張';
+  const vol = RAW && RAW.id === 'TX' ? B.v[ci] : RAW && RAW.id === 'TAIEX' ? B.v[ci] / 1e8 : B.v[ci] / 1000;
+  const line1 = [[name.trim() + ' · ' + ivName, '#e8edf4'], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
+  const line2 = ok
+    ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), colOf(ci)], ['上 ' + fmtP(r.u1[ci]), colOf(ci)], ['下 ' + fmtP(r.l1[ci]), colOf(ci)]]
+    : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
+  legend([line1, line2], p.top);
+}
+
+function drawZ(p, i0, i1, ci){
+  const r = R.vwz, q = P.vwz;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['VW Z PRO  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const [mn, mx] = extent([r.z], i0, i1, [q.extremeLevel, -q.extremeLevel].concat(markerExtra(r.ev, i0, i1)));
+  const pad = (mx - mn) * 0.06;
+  S = makeScale(p.top, p.h, mn - pad, mx + pad, 26, 6);
+  gridAndAxis(1);
+  const st = i => r.state[i] === 1 ? q.bullColor : r.state[i] === -1 ? q.bearColor : q.neutralColor;
+  const K = v => () => v;
+  if (q.showCloud){
+    fillBetween(i => r.z[i], K(0), i => rgba(r.z[i] >= 0 ? q.bullColor : q.bearColor, q.cloudAlpha), i0, i1);
+    fillBetween(K(q.midLevel), K(q.extremeLevel), i => rgba(st(i), q.zoneAlpha), i0, i1);
+    fillBetween(K(-q.extremeLevel), K(-q.midLevel), i => rgba(st(i), q.zoneAlpha), i0, i1);
+  }
+  for (const [v, t] of [[q.tpThreshold, 40], [-q.tpThreshold, 40], [q.midLevel, 35], [-q.midLevel, 35], [q.extremeLevel, 15], [-q.extremeLevel, 15]])
+    strokeSeries(K(v), i => rgba(st(i), t), i0, i1, 1);
+  strokeSeries(K(0), st, i0, i1, 2);
+  strokeSeries(i => r.z[i], st, i0, i1, q.lineWidth);
+  visibleMarkers(r.ev, i0, i1);
+  const zl = r.z[B.n - 1]; if (!isNaN(zl)) axisTag(zl, st(B.n - 1), '#0d1016', v => fmtNum(v, 2));
+  legend([[['VW Z PRO', CC.axis], [r.enh ? '平滑優化' : '原版邏輯', CC.axis], ['Z ' + fmtNum(r.z[ci], 2), st(ci)], ['未平滑 ' + fmtNum(r.zRaw[ci], 2), CC.axis]]], p.top);
+}
+
+function drawD(p, i0, i1, ci){
+  const r = R.vwd, q = P.vwd;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['VWD 9.1  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const dv = i => r.ready[i] ? r.d[i] : NaN, sg = i => r.ready[i] ? r.signal[i] : NaN;
+  const vis = new F(B.n).fill(NaN); for (let i = i0; i <= i1; i++){ vis[i] = dv(i); }
+  const sv = new F(B.n).fill(NaN); if (q.showSignalLine) for (let i = i0; i <= i1; i++) sv[i] = sg(i);
+  const [mn, mx] = extent([vis, sv], i0, i1, [q.extremeLevel, -q.extremeLevel].concat(markerExtra(r.ev, i0, i1)));
+  const pad = (mx - mn) * 0.06;
+  S = makeScale(p.top, p.h, mn - pad, mx + pad, 26, 6);
+  gridAndAxis(1);
+  const K = v => () => v;
+  if (q.showZones){
+    fillBetween(K(q.valueLevel), K(-q.valueLevel), () => rgba(q.valueZoneColor, q.zoneAlpha), i0, i1);
+    fillBetween(K(q.extremeLevel), K(q.displacementLevel), () => rgba(q.upperZoneColor, q.zoneAlpha), i0, i1);
+    fillBetween(K(-q.displacementLevel), K(-q.extremeLevel), () => rgba(q.lowerZoneColor, q.zoneAlpha), i0, i1);
+  }
+  const W = plotW();
+  const hl = (v, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = q.referenceColor; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(0, [4, 4]);
+  for (const v of [q.valueLevel, -q.valueLevel]) hl(v, [1, 3]);
+  for (const v of [q.displacementLevel, -q.displacementLevel, q.extremeLevel, -q.extremeLevel]) hl(v, [4, 4]);
+  const cols = [q.valueColor, q.bullExpansionColor, q.bullContractionColor, q.bearExpansionColor, q.bearContractionColor];
+  const bc = i => cols[r.beh[i]];
+  if (q.viewMode === '柱狀圖'){
+    const bw = Math.max(1, Math.min(view.barW * 0.62, 9)), y0 = S.y(0);
+    for (let i = i0; i <= i1; i++){
+      const v = dv(i); if (isNaN(v)) continue;
+      const y = S.y(v); ctx.fillStyle = bc(i);
+      ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0)));
+    }
+  } else strokeSeries(dv, bc, i0, i1, 2);
+  if (q.showSignalLine) strokeSeries(sg, () => q.signalColor, i0, i1, 2);
+  visibleMarkers(r.ev, i0, i1);
+  const dl = dv(B.n - 1); if (!isNaN(dl)) axisTag(dl, bc(B.n - 1), '#0d1016', v => fmtNum(v, 2));
+  legend([[['VWD 9.1', CC.axis], ['位移 ' + fmtNum(dv(ci), 2) + ' SD', bc(ci)], ['訊號 ' + fmtNum(sg(ci), 2), q.signalColor]]], p.top);
+}
+
+/* ═════════════ interaction ═════════════ */
+const ptrs = new Map();
+let drag = null, pinch = null;
+function localXY(e){ const r = cv.getBoundingClientRect(); return { x:e.clientX - r.left, y:e.clientY - r.top }; }
+function setCross(pt){
+  if (!B) return;
+  const i = Math.round(idxAt(pt.x));
+  cross = { i:Math.max(0, Math.min(B.n - 1, i)), y:pt.y };
+  schedule();
+}
+cv.addEventListener('pointerdown', e => {
+  const pt = localXY(e); ptrs.set(e.pointerId, pt);
+  try { cv.setPointerCapture(e.pointerId); } catch (_){}
+  if (ptrs.size === 1){ drag = { x0:pt.x, y0:pt.y, r0:view.right, moved:false, type:e.pointerType }; pinch = null; }
+  else if (ptrs.size === 2){
+    const [a, b] = [...ptrs.values()];
+    pinch = { d0:Math.abs(a.x - b.x) || 1, w0:view.barW, cx:(a.x + b.x) / 2 };
+    pinch.idx = idxAt(pinch.cx); drag = null;
+  }
+});
+cv.addEventListener('pointermove', e => {
+  const pt = localXY(e);
+  if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, pt);
+  if (pinch && ptrs.size === 2){
+    const [a, b] = [...ptrs.values()];
+    const d = Math.abs(a.x - b.x) || 1;
+    view.barW = Math.max(1, Math.min(48, pinch.w0 * d / pinch.d0));
+    view.right = pinch.idx - 0.5 + (plotW() - pinch.cx) / view.barW;
+    schedule(); return;
+  }
+  if (drag && ptrs.has(e.pointerId)){
+    const dx = pt.x - drag.x0;
+    if (!drag.moved && Math.abs(dx) > 5) drag.moved = true;
+    if (drag.moved){ view.right = drag.r0 - dx / view.barW; if (e.pointerType === 'mouse') setCross(pt); else schedule(); }
+    return;
+  }
+  if (e.pointerType === 'mouse' && !pinned) setCross(pt);
+});
+function endPtr(e, cancelled){
+  const pt = localXY(e);
+  if (drag && !drag.moved && !cancelled && ptrs.size === 1){
+    if (e.pointerType === 'mouse'){ pinned = !pinned; setCross(pt); }
+    else { if (pinned && cross && Math.abs(Math.round(idxAt(pt.x)) - cross.i) < 2){ pinned = false; cross = null; schedule(); } else { pinned = true; setCross(pt); } }
+  }
+  ptrs.delete(e.pointerId);
+  if (ptrs.size < 2) pinch = null;
+  if (ptrs.size === 0) drag = null;
+}
+cv.addEventListener('pointerup', e => endPtr(e, false));
+cv.addEventListener('pointercancel', e => endPtr(e, true));
+cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pinned && !drag){ cross = null; schedule(); } });
+cv.addEventListener('wheel', e => {
+  if (!B) return; e.preventDefault();
+  const pt = localXY(e);
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)){ view.right += e.deltaX / view.barW; schedule(); return; }
+  const idx = idxAt(pt.x);
+  view.barW = Math.max(1, Math.min(48, view.barW * Math.exp(-e.deltaY * 0.0016)));
+  view.right = idx - 0.5 + (plotW() - pt.x) / view.barW;
+  schedule();
+}, { passive:false });
+cv.addEventListener('dblclick', () => { view.right = NaN; pinned = false; cross = null; schedule(); });
+function zoomBy(f){ if (!B) return; const W = plotW(), idx = idxAt(W * 0.7); view.barW = Math.max(1, Math.min(48, view.barW * f)); view.right = idx - 0.5 + (W - W * 0.7) / view.barW; schedule(); }
+document.getElementById('zIn').onclick = () => zoomBy(1.35);
+document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
+document.getElementById('zEnd').onclick = () => { view.right = NaN; pinned = false; cross = null; schedule(); };
+window.addEventListener('keydown', e => {
+  if (!B || document.getElementById('drawer').classList.contains('open') || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowLeft'){ view.right -= Math.max(1, 10 / view.barW * 3); schedule(); }
+  else if (e.key === 'ArrowRight'){ view.right += Math.max(1, 10 / view.barW * 3); schedule(); }
+});
+
+/* ═════════════ status cards & signals ═════════════ */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[c]);
+function kv(rows){ return '<dl class="kv">' + rows.map(([k, v, num, col]) => '<dt>' + esc(k) + '</dt><dd class="' + (num ? 'num' : '') + '"' + (col ? ' style="color:' + col + '"' : '') + '>' + esc(v) + '</dd>').join('') + '</dl>'; }
+function warmNote(need, have){ return have < need ? '<div class="note">目前只有 ' + have + ' 根 K 棒，這個設定約需 ' + need + ' 根才算得出來，可在「指標設定」縮短統計長度，或改看日 K。</div>' : ''; }
+
+function updateCards(){
+  if (!B || !B.n) return;
+  const i = cross ? cross.i : B.n - 1;
+  const when = B.d[i].replace(/-/g, '/') + (B.conf[i] ? '' : ' · 尚未收盤');
+
+  // VWB
+  let h = '';
+  const a = R.vwb, qa = P.vwb;
+  if (!a || a.error) h = '<h3>VWB PRO <span>主圖</span></h3><div class="state" style="color:var(--err)">設定錯誤</div><div class="note">' + esc(a ? a.error : '') + '</div>';
+  else {
+    const st = a.state[i], col = !a.ready[i] ? qa.neutralColor : st === 1 ? qa.bullColor : st === -1 ? qa.bearColor : qa.neutralColor;
+    const txt = !a.ready[i] ? '通道暖機中' : st === 1 ? 'BULL 多方' : st === -1 ? 'BEAR 空方' : 'NEUTRAL 中性';
+    const data = a.volOK[i] ? 'VWMA＋EMA' : qa.fallbackEMA ? 'EMA 替代成交量' : '成交量不可用';
+    h = '<h3>VWB PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + col + '">' + txt + '</div>' +
+      kv([['資料', data, false, a.volOK[i] ? null : '#e6a35a'], ['Z 分數', a.zReady[i] ? fmtNum(a.z[i], 2) : '等待歷史資料', true], ['趨勢中線', fmtP(a.trend[i]), true], ['內通道', fmtP(a.l1[i]) + ' – ' + fmtP(a.u1[i]), true]]) +
+      warmNote(qa.length + qa.smoothLen + qa.atrLen, B.n);
+  }
+  document.getElementById('cardVWB').innerHTML = h;
+
+  // VW Z
+  const z = R.vwz, qz = P.vwz;
+  if (!z || z.error) h = '<h3>VW Z PRO <span>副圖</span></h3><div class="state" style="color:var(--err)">設定錯誤</div><div class="note">' + esc(z ? z.error : '') + '</div>';
+  else {
+    const st = z.state[i], col = st === 1 ? qz.bullColor : st === -1 ? qz.bearColor : qz.neutralColor;
+    const txt = !z.ready[i] ? '資料暖機中' : st === 1 ? '多方狀態' : st === -1 ? '空方狀態' : '中性';
+    const vt = z.volOK[i] ? 'VWMA＋EMA' : qz.volumeFallback ? 'EMA 替代成交量' : '成交量不可用';
+    const zv = z.z[i];
+    const zone = isNaN(zv) ? '—' : zv >= qz.extremeLevel ? '上方極端區' : zv >= qz.midLevel ? '上方偏離區' : zv <= -qz.extremeLevel ? '下方極端區' : zv <= -qz.midLevel ? '下方偏離區' : zv >= 0 ? '零軸上方' : '零軸下方';
+    h = '<h3>VW Z PRO <span class="when">' + when + '</span></h3><div class="state" style="color:' + col + '">' + txt + '</div>' +
+      kv([['模式', qz.mode], ['Z 分數', isNaN(zv) ? '等待資料' : fmtNum(zv, 2), true, col], ['位置', zone], ['資料來源', vt, false, z.volOK[i] ? null : '#e6a35a']]) +
+      warmNote(qz.length + qz.trendSmooth + Math.max(qz.zLength, qz.atrLength), B.n);
+  }
+  document.getElementById('cardVWZ').innerHTML = h;
+
+  // VWD
+  const d = R.vwd, qd = P.vwd;
+  if (!d || d.error) h = '<h3>VWD 9.1 <span>副圖</span></h3><div class="state" style="color:var(--err)">設定錯誤</div><div class="note">' + esc(d ? d.error : '') + '</div>';
+  else {
+    const rd = d.ready[i], x = d.d[i], sg = d.signal[i], inf = d.info[i];
+    const cols = [qd.valueColor, qd.bullExpansionColor, qd.bullContractionColor, qd.bearExpansionColor, qd.bearContractionColor];
+    const bcol = rd ? cols[d.beh[i]] : 'var(--muted)';
+    const VL = qd.valueLevel, DL = qd.displacementLevel, EL = qd.extremeLevel;
+    const loc = !rd ? '資料暖機中' : x >= EL ? '上方極端偏離' : x >= DL ? '上方偏離' : x > VL ? '上方過渡區' : Math.abs(x) <= VL ? '均衡區' : x > -DL ? '下方過渡區' : x > -EL ? '下方偏離' : '下方極端偏離';
+    const x1 = i > 0 ? d.d[i - 1] : NaN;
+    const bE = x > VL && x > x1, bC = x > VL && x < x1, sE = x < -VL && x < x1, sC = x < -VL && x > x1, atV = Math.abs(x) <= VL;
+    const beh = !rd ? '等待資料' : bE ? '上方擴張' : bC ? '上方收縮' : sE ? '下方擴張' : sC ? '下方收縮' : atV ? '均衡區內' : '位移持平';
+    const sigT = !rd ? '等待資料' : x > sg ? '位移高於訊號線' : x < sg ? '位移低於訊號線' : '位移等於訊號線';
+    const unconf = qd.closeOnly && !B.conf[i];
+    const exitT = !rd ? '等待資料' : unconf ? '等待本根收盤' : inf.bullC ? '下方離區：訊號線確認' : inf.bearC ? '上方離區：訊號線確認' : inf.loExit ? '下方離區：未獲訊號線確認' : inf.upExit ? '上方離區：未獲訊號線確認' : '本根無離區事件';
+    const cond = !rd ? '等待資料' : unconf ? '本根尚未確認' : inf.bullC ? '下方離區，動能回升' : inf.bearC ? '上方離區，動能回落' : (inf.loExit || inf.upExit) ? '已離極端區，確認不足' : inf.upTurn ? '上方極端開始回落' : inf.loTurn ? '下方極端開始回升' : (x >= EL && bE) ? '上方極端持續擴張' : (x <= -EL && sE) ? '下方極端持續擴張' : (x >= DL && x < EL && bE) ? '上方偏離延續' : (x <= -DL && x > -EL && sE) ? '下方偏離延續' : bC ? '上方動能減弱' : sC ? '下方動能減弱' : '等待方向';
+    const exitCol = inf.bullC ? qd.bullExpansionColor : inf.bearC ? qd.bearExpansionColor : (inf.loExit || inf.upExit) ? '#e6c14d' : null;
+    const refT = isNaN(d.reference[i]) ? '等待資料' : d.fallback[i] ? '無有效量：使用 SMA' : '滾動成交量加權';
+    h = '<h3>VWD 9.1 <span class="when">' + when + '</span></h3><div class="state" style="color:' + bcol + '">' + cond + '</div>' +
+      kv([['標準化位移', rd ? fmtNum(x, 2) + ' SD' : '暖機中', true, rd ? bcol : null], ['位置', loc], ['行為', beh], ['訊號線', qd.showSignalLine ? sigT : '隱藏顯示，仍參與計算', false, qd.signalColor], ['離區事件', exitT, false, exitCol], ['參考價格', refT, false, d.fallback[i] ? '#e6c14d' : null]]);
+  }
+  document.getElementById('cardVWD').innerHTML = h;
+}
+
+let SIGS = [];
+function renderSignals(){
+  SIGS = [];
+  for (const k of ['vwb', 'vwz', 'vwd']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
+  SIGS.sort((a, b) => b.i - a.i);
+  const f = document.getElementById('sigFilter').value;
+  const list = SIGS.filter(s => f === 'all' || s.src === f).slice(0, 60);
+  const ul = document.getElementById('sigList');
+  if (!list.length){ ul.innerHTML = '<li class="empty" style="cursor:default">目前範圍內沒有訊號。</li>'; return; }
+  ul.innerHTML = list.map(s => '<li data-i="' + s.i + '" tabindex="0"><span class="d">' + B.d[s.i].replace(/-/g, '/') + '</span><span class="s">' + esc(s.src) + '</span><span class="t"><i style="background:' + s.col + '"></i>' + esc(s.text) + '</span></li>').join('');
+}
+document.getElementById('sigFilter').onchange = renderSignals;
+function jumpTo(i){
+  const span = plotW() / view.barW;
+  view.right = Math.min(B.n - 1 + span * 0.1, i + span * 0.35);
+  cross = { i, y:cv.clientHeight * 0.3 }; pinned = true; schedule();
+  document.getElementById('chartWrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+document.getElementById('sigList').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); });
+document.getElementById('sigList').addEventListener('keydown', e => { if (e.key === 'Enter'){ const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); } });
+
+/* ═════════════ messages & loading ═════════════ */
+function setMsg(text, kind){
+  const m = document.getElementById('msg'); m.className = 'msg ' + (kind || 'ok');
+  document.getElementById('msgText').textContent = text;
+}
+function setLoading(t){ const el = document.getElementById('loading'); if (t){ el.textContent = t; el.hidden = false; } else el.hidden = true; }
+
+let loadSeq = 0;
+async function loadSymbol(id, force){
+  id = String(id || '').trim().toUpperCase();
+  if (!id) return;
+  const seq = ++loadSeq;
+  UI.symbol = id; saveUI();
+  document.getElementById('symInput').value = id;
+  setLoading('資料載入中… ' + id);
+  try {
+    const res = await fetchSymbol(id, force);
+    if (seq !== loadSeq) return;
+    const keepView = RAW && RAW.id === id && !RAW.sample;
+    RAW = { id, name:nameOf(id), rows:res.rows, sample:false };
+    if (!keepView){ view.right = NaN; cross = null; pinned = false; }
+    recompute();
+    const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
+    setMsg((id === 'TX' ? '台指期近月連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
+    if (!Object.keys(NAMES).length) loadNames();
+  } catch (e){
+    if (seq !== loadSeq) return;
+    if (!RAW){ RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true }; view.right = NaN; recompute(); }
+    setMsg(e.message + (RAW.sample ? ' 目前畫面是範例資料（非真實行情）。' : ''), 'err');
+  } finally {
+    if (seq === loadSeq) setLoading(null);
+  }
+}
+
+/* ═════════════ toolbar ═════════════ */
+document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); const v = document.getElementById('symInput').value.split(/\s/)[0]; loadSymbol(v); });
+document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
+const seg = document.getElementById('intervalSeg');
+function syncToolbar(){
+  for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.interval));
+  document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
+  document.getElementById('togZ').setAttribute('aria-pressed', String(!!UI.showZ));
+  document.getElementById('togD').setAttribute('aria-pressed', String(!!UI.showD));
+}
+seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.interval = b.dataset.v; saveUI(); syncToolbar(); view.right = NaN; cross = null; pinned = false; view.barW = UI.interval === 'D' ? 7 : UI.interval === 'W' ? 9 : 12; recompute(); });
+document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && RAW.id !== 'TX') loadSymbol(RAW.id); };
+document.getElementById('togZ').onclick = () => { UI.showZ = !UI.showZ; saveUI(); syncToolbar(); schedule(); };
+document.getElementById('togD').onclick = () => { UI.showD = !UI.showD; saveUI(); syncToolbar(); schedule(); };
+document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
+
+/* ═════════════ settings drawer ═════════════ */
+const drawer = document.getElementById('drawer'), scrim = document.getElementById('scrim');
+let activeTab = 'vwb';
+function openDrawer(){ drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; }
+function closeDrawer(){ drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); scrim.hidden = true; }
+document.getElementById('btnSettings').onclick = openDrawer;
+document.getElementById('btnClose').onclick = closeDrawer;
+scrim.onclick = closeDrawer;
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
+
+let recTimer = 0;
+function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompute, 140); }
+
+function buildTabs(){
+  const tabs = document.getElementById('tabs');
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['app', '資料與顯示']];
+  tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
+  tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
+}
+function ctrlHTML(ind, it){
+  const id = 'p-' + ind + '-' + it.k, v = P[ind][it.k];
+  if (it.t === 'bool') return '<input type="checkbox" id="' + id + '"' + (v ? ' checked' : '') + '>';
+  if (it.t === 'select') return '<select id="' + id + '">' + it.o.map(o => '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>';
+  if (it.t === 'color') return '<input type="color" id="' + id + '" value="' + String(v).toLowerCase() + '">';
+  const step = it.step || (it.t === 'int' ? 1 : 0.1);
+  return '<input type="number" inputmode="decimal" id="' + id + '" value="' + v + '" step="' + step + '"' + (it.min != null ? ' min="' + it.min + '"' : '') + (it.max != null ? ' max="' + it.max + '"' : '') + '>';
+}
+function buildBody(){
+  const body = document.getElementById('dbody');
+  if (activeTab === 'app'){ body.innerHTML = appHTML(); bindApp(); return; }
+  const sc = SCHEMA[activeTab];
+  let h = '<p class="help">' + esc(sc.title) + '。改動會立即重算並自動記住。</p>';
+  for (const g of sc.groups){
+    h += '<fieldset><legend>' + esc(g.name) + '</legend>';
+    for (const it of g.items) h += '<div class="row"><label for="p-' + activeTab + '-' + it.k + '">' + esc(it.l) + '</label>' + ctrlHTML(activeTab, it) + '</div>';
+    h += '</fieldset>';
+  }
+  h += '<div class="dfoot"><button id="btnReset">恢復此指標預設值</button></div>';
+  body.innerHTML = h;
+  const ind = activeTab;
+  for (const g of sc.groups) for (const it of g.items){
+    const el = document.getElementById('p-' + ind + '-' + it.k);
+    const apply = () => {
+      let v;
+      if (it.t === 'bool') v = el.checked;
+      else if (it.t === 'select' || it.t === 'color') v = el.value;
+      else {
+        v = it.t === 'int' ? parseInt(el.value, 10) : parseFloat(el.value);
+        if (isNaN(v)) return;
+        if (it.min != null) v = Math.max(it.min, v);
+        if (it.max != null) v = Math.min(it.max, v);
+      }
+      P[ind][it.k] = v; LS.set('zs:p:' + ind, P[ind]); queueRecompute();
+    };
+    el.addEventListener(it.t === 'bool' || it.t === 'select' ? 'change' : 'input', apply);
+    if (it.t === 'int' || it.t === 'float') el.addEventListener('change', () => { apply(); el.value = P[ind][it.k]; });
+  }
+  document.getElementById('btnReset').onclick = () => { P[ind] = defaults(ind); LS.set('zs:p:' + ind, P[ind]); buildBody(); recompute(); };
+}
+function appHTML(){
+  return '<fieldset><legend>FinMind 資料</legend>' +
+    '<div class="row"><label for="a-token">本頁專用 token</label><input type="password" id="a-token" value="' + esc(UI.token || '') + '" placeholder="留空＝沿用看盤頁憑證" autocomplete="off" spellcheck="false"></div>' +
+    '<p class="help">' + (siteToken() ? '目前沿用看盤頁「⚙ 設定」裡的 FinMind 憑證，這裡不用另外填。' : '看盤頁還沒有設定 FinMind 憑證；可以在這裡填，或到看盤頁「⚙ 設定」填一次全站共用。') + '</p>' +
+    '<div class="row"><label for="a-start">資料起始日</label><input type="date" id="a-start" value="' + esc(UI.start) + '"></div>' +
+    '<div class="row"><label for="a-adj">還原權息價格</label><input type="checkbox" id="a-adj"' + (UI.adj ? ' checked' : '') + '></div>' +
+    '<p class="help">憑證只存在這台裝置的瀏覽器裡，請求時直接送到 FinMind。每個代號第一次載入抓一次完整日資料，之後只補最新幾天；週 K、月 K 由日資料在本機合成，不另外消耗額度。台指期從 2008 年起依年份分段抓取。</p></fieldset>' +
+    '<fieldset><legend>圖表</legend>' +
+    '<div class="row"><label for="a-vol">主圖底部顯示成交量</label><input type="checkbox" id="a-vol"' + (UI.showVolume ? ' checked' : '') + '></div>' +
+    '<div class="row"><label for="a-scale">價格座標納入 3／9 倍外通道</label><input type="checkbox" id="a-scale"' + (UI.scaleAll ? ' checked' : '') + '></div>' +
+    '<p class="help">預設只用 K 棒與內通道決定縱軸範圍，外通道超出時會被裁切，K 棒才不會被壓扁。</p></fieldset>' +
+    '<div class="dfoot"><button id="a-apply">套用並重新載入</button><button class="danger" id="a-clear">清除暫存的行情資料</button></div>';
+}
+function bindApp(){
+  document.getElementById('a-vol').onchange = e => { UI.showVolume = e.target.checked; saveUI(); schedule(); };
+  document.getElementById('a-scale').onchange = e => { UI.scaleAll = e.target.checked; saveUI(); schedule(); };
+  document.getElementById('a-adj').onchange = e => { UI.adj = e.target.checked; saveUI(); syncToolbar(); };
+  document.getElementById('a-token').onchange = e => { UI.token = e.target.value.trim(); saveUI(); };
+  document.getElementById('a-start').onchange = e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ UI.start = e.target.value; saveUI(); } };
+  document.getElementById('a-apply').onclick = () => { UI.token = document.getElementById('a-token').value.trim(); saveUI(); closeDrawer(); loadSymbol(UI.symbol, true); };
+  document.getElementById('a-clear').onclick = e => {
+    for (const k of LS.keys()) if (k.startsWith('zs:d:') || k === 'zs:names') LS.del(k);
+    e.target.textContent = '已清除';
+  };
+}
+function syncAppForm(){ const el = document.getElementById('a-adj'); if (el) el.checked = !!UI.adj; }
+
+/* ═════════════ boot ═════════════ */
+buildTabs(); buildBody(); syncToolbar();
+RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true };
+recompute();
+setMsg('載入中… 先以範例資料顯示。', 'ok');
+const qs = new URLSearchParams(location.search).get('s');
+loadSymbol((qs && qs.trim()) || UI.symbol || '2330');
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+</script>
+<script src="autoreload.js"></script>
+</body>
+</html>
