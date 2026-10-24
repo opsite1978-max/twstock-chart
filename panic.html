@@ -33,14 +33,14 @@
   .seg button{font:inherit;font-size:12px;color:var(--text);background:var(--panel2);border:0;padding:4px 11px;cursor:pointer}
   .seg button.on{background:var(--accent);color:#fff}
   .leg{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12px;font-variant-numeric:tabular-nums;min-height:20px;margin-top:6px}
-  .chart{height:300px} .chart.p{height:220px}
+  .chart{height:440px} .chart.p{height:260px}
   table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
   th,td{padding:6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
   th{color:var(--muted);font-weight:500;font-size:12px} td:first-child,th:first-child{text-align:left;white-space:normal}
   .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
   .note{font-size:12px;color:var(--muted);line-height:1.8;margin-top:8px}
   ul{margin:4px 0 0;padding-left:20px;line-height:1.85}
-  @media (max-width:560px){ .hero{grid-template-columns:1fr;justify-items:center} .facts{width:100%} .chart{height:250px} .chart.p{height:190px} }
+  @media (max-width:560px){ main{padding-left:8px;padding-right:8px} .card{padding:10px 8px} .hero{grid-template-columns:1fr;justify-items:center} .facts{width:100%} .chart{height:380px} .chart.p{height:240px} }
 </style>
 </head>
 <body>
@@ -55,12 +55,14 @@
   </section>
 
   <section class="card" id="chartCard" style="display:none">
-    <h2>走勢 <span class="muted">上：加權指數　下：融資恐慌指數（兩張時間同步）</span></h2>
+    <h2>走勢 <span class="muted">加權指數、融資恐慌指數、終極太極（三張時間同步）</span></h2>
     <span class="seg" id="rng"></span>
     <div class="leg" id="leg1"></div>
     <div class="chart" id="c1"></div>
     <div class="leg" id="leg2"></div>
     <div class="chart p" id="c2"></div>
+    <div class="leg" id="leg3"></div>
+    <div class="chart p" id="c3"></div>
   </section>
 
   <section class="card" id="howCard" style="display:none">
@@ -71,6 +73,7 @@
       <li><span class="dot" style="background:#ffd600"></span><b>洗淨退潮</b>：恐慌曾到 40 以上、退回 25 以下，而且洗淨度已經 ≥ 1。最值得注意的轉折。</li>
       <li><span class="dot" style="background:#26a69a"></span><b>洗淨達標</b>：指數跌 10% 以上、洗淨度剛到 1 的那天。</li>
       <li><span class="dot" style="background:#9e9e9e"></span><b>退潮</b>（灰）：恐慌退了但融資還沒洗乾淨，常常只是下跌中途的喘息。</li>
+      <li><b>終極太極</b>（最下面那張，加權指數日線）：抓轉折時間的週期震盪線，紅＝往上、綠＝往下。−30 以下往上勾標「陽」（低點轉折），同時 3 天內跌出布林下軌、通道又開得夠寬的標「強陽」；+30 以上往下彎標「陰」。下面兩條線是 −50、−80。2005 年以來加權指數日線：「陽」大約 66% 剛好落在波段低點後 3 天內，「強陽」73%。它只準在時間，配合融資的洗淨度一起看。</li>
     </ul>
     <div class="note" id="formula"></div>
   </section>
@@ -83,6 +86,36 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
+function taijiCalc(B){
+  const n = B.length, c = B.map(b => b.close), h = B.map(b => b.high), l = B.map(b => b.low), a = 0.07;
+  const s = c.map((x, i) => i < 3 ? x : (c[i] + 2 * c[i - 1] + 2 * c[i - 2] + c[i - 3]) / 6), cy = new Array(n).fill(0);
+  for (let i = 2; i < n; i++) cy[i] = i >= 7 ? (1 - .5 * a) ** 2 * (s[i] - 2 * s[i - 1] + s[i - 2]) + 2 * (1 - a) * cy[i - 1] - (1 - a) ** 2 * cy[i - 2] : (c[i] - 2 * c[i - 1] + c[i - 2]) / 4;
+  let pk = 1e-9; const cyN = cy.map(v => { pk = Math.max(pk * 0.991, Math.abs(v)); return pk ? v / pk : 0; });
+  const fi = []; let v1 = 0, f1 = 0;
+  for (let i = 0; i < n; i++){
+    let hi = -Infinity, lo = Infinity; for (let k = Math.max(0, i - 9); k <= i; k++){ hi = Math.max(hi, h[k]); lo = Math.min(lo, l[k]); }
+    let v = hi > lo ? .66 * (((h[i] + l[i]) / 2 - lo) / (hi - lo) - .5) + .67 * v1 : .67 * v1;
+    v = Math.max(-.999, Math.min(.999, v)); const f = .5 * Math.log((1 + v) / (1 - v)) + .5 * f1; fi.push(f); v1 = v; f1 = f;
+  }
+  const T = cyN.map((x, i) => i < 10 ? null : (x + Math.max(-1, Math.min(1, fi[i] / 2.5))) / 2 * 100);
+  const tr = T.map((_, i) => i ? T[i - 1] : null), up = new Array(n).fill(false), dn = new Array(n).fill(false), strong = new Array(n).fill(false);
+  // 布林開口：20 根布林通道寬度在過去 500 根的百分位，和收盤在通道裡的位置（幾個標準差）
+  const bwp = new Array(n).fill(null), z = new Array(n).fill(null), bwv = new Array(n).fill(null);
+  for (let i = 19; i < n; i++){ let sm = 0; for (let k = i - 19; k <= i; k++) sm += c[k]; const m = sm / 20; let vv = 0; for (let k = i - 19; k <= i; k++) vv += (c[k] - m) ** 2;
+    const sd = Math.sqrt(vv / 20); bwv[i] = m ? 4 * sd / m : null; z[i] = sd > 0 ? (c[i] - m) / sd : 0;
+    let cnt = 0, below = 0; for (let k = Math.max(19, i - 499); k <= i; k++) if (bwv[k] != null){ cnt++; if (bwv[k] < bwv[i]) below++; }
+    if (cnt >= 100) bwp[i] = below / cnt * 100; }
+  for (let i = 4; i < n; i++){
+    if (T[i] == null || T[i - 1] == null || tr[i - 1] == null) continue;
+    let mn = Infinity, mx = -Infinity; for (let k = i - 3; k <= i; k++){ if (T[k] != null){ mn = Math.min(mn, T[k]); mx = Math.max(mx, T[k]); } }
+    if (T[i - 1] <= tr[i - 1] && T[i] > tr[i] && mn <= -30){ up[i] = true;
+      let zm = Infinity; for (let k = i - 3; k <= i; k++) if (z[k] != null) zm = Math.min(zm, z[k]);
+      strong[i] = zm <= -2 && bwp[i] != null && bwp[i] >= 50; }   // 強陽：剛跌出布林下軌（−2 個標準差）而且開口夠寬
+    if (T[i - 1] >= tr[i - 1] && T[i] < tr[i] && mx >= 30) dn[i] = true;
+  }
+  return { T, tr, up, dn, strong, bwp, z };
+}
+
 const f0 = x => x == null || isNaN(x) ? '—' : Math.round(x).toLocaleString('zh-TW');
 const f1 = x => x == null || isNaN(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:1, maximumFractionDigits:1 });
 const sg = (x, d = 1) => x == null || isNaN(x) ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -144,7 +177,7 @@ const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
   const mk = el => LC.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
     grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line'), minimumWidth:64 }, timeScale:{ borderColor:css('--line') },
     localization:{ locale:'zh-TW' }, crosshair:{ mode:LC.CrosshairMode.Normal }, handleScale:{ axisPressedMouseMove:false } });
-  const c1 = mk($('c1')), c2 = mk($('c2')), PF = { type:'price', precision:0, minMove:1 };
+  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), PF = { type:'price', precision:0, minMove:1 };
   const k = c1.addSeries(LC.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceFormat:PF });
   k.setData(D.map((d, i) => ({ time:d, open:O[i], high:H[i], low:Lo[i], close:C[i] })));
   const ma60 = C.map((_, i) => { if (i < 59) return null; let s = 0; for (let t = i - 59; t <= i; t++) s += C[t]; return s / 60; });
@@ -161,12 +194,25 @@ const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
   sigR.forEach(([i, w]) => m2.push({ time:D[i], position:'belowBar', shape:'arrowUp', color:w ? '#ffd600' : '#9e9e9e', text:w ? '洗淨退潮' : '退潮', size:w ? 1.2 : 0.7 }));
   thin(sigW).forEach(i => m2.push({ time:D[i], position:'belowBar', shape:'square', color:'#26a69a', text:'洗淨達標', size:0.7 }));
   LC.createSeriesMarkers(s2, m2.sort((a, b) => a.time < b.time ? -1 : 1));
+  // ── 終極太極（加權指數日線）──
+  const TJ = taijiCalc(D.map((d, i) => ({ open:O[i], high:H[i], low:Lo[i], close:C[i] })));
+  const yin = c3.addSeries(LC.LineSeries, { color:'rgba(214,219,230,.35)', lineWidth:1, lineType:2, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:PF });
+  const yang = c3.addSeries(LC.LineSeries, { lineWidth:3, lineType:2, priceLineVisible:false, priceFormat:PF, autoscaleInfoProvider:() => ({ priceRange:{ minValue:-100, maxValue:100 } }) });
+  yin.setData(D.map((d, i) => TJ.tr[i] == null ? { time:d } : { time:d, value:Math.round(TJ.tr[i]) }));
+  yang.setData(D.map((d, i) => TJ.T[i] == null ? { time:d } : { time:d, value:Math.round(TJ.T[i]), color:TJ.tr[i] != null && TJ.T[i] >= TJ.tr[i] ? '#ef5350' : '#26a69a' }));
+  [[30, '#ef5350', 0, 1], [0, 'rgba(214,219,230,.35)', 2, 1], [-50, '#26a69a', 0, 1], [-80, '#26a69a', 0, 2]].forEach(([v, col, st, w]) => yang.createPriceLine({ price:v, color:col, lineStyle:st, lineWidth:w, axisLabelVisible:v !== 0, title:'' }));
+  // 圖上只寫「強陽」，一般的陽、陰只畫小箭頭，免得太擠
+  const m3 = []; D.forEach((d, i) => { if (TJ.up[i]) m3.push({ time:d, position:'belowBar', shape:'arrowUp', color:TJ.strong[i] ? '#ffd600' : '#26a69a', text:TJ.strong[i] ? '強陽' : '', size:TJ.strong[i] ? 1.2 : 0.5 });
+    if (TJ.dn[i]) m3.push({ time:d, position:'aboveBar', shape:'arrowDown', color:'#ef5350', size:0.5 }); });
+  LC.createSeriesMarkers(yang, m3);
   const idx = new Map(D.map((d, i) => [d, i])), tkey = t => typeof t === 'string' ? t : `${t.year}-${String(t.month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`;
   const legend = i => { if (i == null) i = last; const [z, col] = zone(PAN[i] || 0);
     $('leg1').innerHTML = `<span>${D[i]}</span><span>加權指數 <b class="${C[i] >= (C[i - 1] || C[i]) ? 'up' : 'dn'}">${f0(C[i])}</b></span><span class="gold">季線 ${f0(ma60[i])}</span><span class="muted">離半年高點 ${sg(-IDD[i], 1)}%</span>`;
+    const tv = TJ.T[i], tt = TJ.tr[i];
+    $('leg3').innerHTML = `<span>終極太極 <b style="color:${tv != null && tt != null && tv >= tt ? '#ef5350' : '#26a69a'}">${tv == null ? '—' : Math.round(tv)}</b> ${tv == null || tt == null ? '' : tv >= tt ? '往上' : '往下'}</span><span class="muted">${tv == null ? '' : tv <= -80 ? '極低檔（−80 以下）' : tv <= -50 ? '低檔（−50 以下）' : tv >= 30 ? '高檔' : ''}${TJ.bwp[i] == null ? '' : '・布林開口 ' + Math.round(TJ.bwp[i]) + '%'}</span>${TJ.strong[i] ? '<b style="color:#ffd600">強陽</b>' : TJ.up[i] ? '<b class="dn">陽</b>' : TJ.dn[i] ? '<b class="up">陰</b>' : ''}`;
     $('leg2').innerHTML = `<span>融資恐慌 <b style="color:${col}">${f1(PAN[i])}</b> ${z}</span><span class="muted">融資 ${f0(M[i])} 億・5 天 ${sg(-D5[i], 2)}%・洗淨度 ${IDD[i] > 3 ? (MDD[i] / IDD[i]).toFixed(2) : '—'}</span>`; };
-  [c1, c2].forEach(ch => ch.subscribeCrosshairMove(p => legend(p && p.time ? idx.get(tkey(p.time)) : null)));
-  let busy = false; [c1, c2].forEach((ch, a, arr) => ch.timeScale().subscribeVisibleLogicalRangeChange(r => { if (busy || !r) return; busy = true; arr[1 - a].timeScale().setVisibleLogicalRange(r); busy = false; }));
+  const CH = [c1, c2, c3]; CH.forEach(ch => ch.subscribeCrosshairMove(p => legend(p && p.time ? idx.get(tkey(p.time)) : null)));
+  let busy = false; CH.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(r => { if (busy || !r) return; busy = true; CH.forEach(o => { if (o !== ch) o.timeScale().setVisibleLogicalRange(r); }); busy = false; }));
   legend(last);
   const RNG = [['6 個月', 126], ['1 年', 250], ['3 年', 750], ['全部', 0]];
   const setR = v => { [...$('rng').children].forEach(b => b.classList.toggle('on', +b.dataset.k === v)); if (!v) c1.timeScale().fitContent(); else c1.timeScale().setVisibleLogicalRange({ from:n - v, to:n + 2 }); };
