@@ -159,6 +159,7 @@
     <span style="flex:1"></span>
     <button id="clrBtn" title="台指清晰看盤：台指期完整 K 線（全週期、含夜盤）＋主力成本、散戶成本、主力底線，副圖大趨勢、布林大底" onclick="location.href='clear.html'">清晰看盤</button>
     <button id="bbvBtn" title="台指布林悲觀看盤：台指期近全（含夜盤）或近月日盤，主圖布林軌道，副圖超級悲觀線" onclick="location.href='bbview.html'">布林悲觀</button>
+    <button id="mgBtn" title="融資看盤：加權指數和融資餘額、洗淨度、斷頭潮、ABC 規劃" onclick="location.href='margin.html'">融資</button>
     <button id="ovBtn" title="今日總覽：台指期、選擇權撐壓、法人、資金流、族群、籌碼焦點一頁看完" onclick="location.href='overview.html'">總覽</button>
     <button id="holdersBtn" title="籌碼：大戶散戶、內部人買賣、大戶買散戶賣選股" onclick="var m=(document.getElementById('sym').value||'').match(/[0-9]{4}[0-9A-Z]{0,2}/i);location.href='holders.html?v=3'+(m?'&s='+m[0].toUpperCase():'')">籌碼</button>
     <button id="stratBtn" title="技術面策略選股（含回測勝率）" onclick="location.href='strategy.html'">選股</button>
@@ -4511,7 +4512,7 @@ $('adj').checked = !!S.adj; $('night').checked = !!S.night; $('auto').checked = 
 if (!CLEAN){ const q = new URLSearchParams(location.search).get('s'); if (q && /^[0-9A-Z]{4,6}$/i.test(q)) S.lastSym = q.toUpperCase(); }   // 從選股頁點過來時直接看那一檔
 if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定 TX
   document.title = BBV ? '台指布林悲觀看盤' : '台指清晰看盤';
-  const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#bbvBtn,#adjWrap,#nightWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
+  const st = document.createElement('style'); st.textContent = '#holdersBtn,#stratBtn,#simBtn,#fsBtn,#clrBtn,#bbvBtn,#mgBtn,#adjWrap,#nightWrap,#setBtn,#installBtn{display:none!important}'; document.head.appendChild(st);
   const sy = $('sym'); sy.value = 'TX'; sy.readOnly = true;
   const full = document.createElement('button'); full.textContent = '完整看盤'; full.title = '回到一般看盤（所有指標、股票）'; full.onclick = () => location.href = location.pathname; $('ovBtn').before(full);
   // 清晰看盤的開關：三條成本線、兩個副圖

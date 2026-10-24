@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest.webmanifest">
+<title>融資看盤</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#1f2636;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff; --gold:#e0b04a;
+    --up:#ef5350; --down:#26a69a; --upbg:rgba(239,83,80,.12); --dnbg:rgba(38,166,154,.13); --goldbg:rgba(224,176,74,.12);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.55}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+    padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:16px;margin:0;font-weight:700;white-space:nowrap}
+  .spacer{flex:1}
+  .btn{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:7px;height:30px;padding:0 10px;font-size:13px;display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap}
+  .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  main{max-width:1180px;margin:0 auto;padding:12px 14px 60px}
+  .muted{color:var(--muted)} .up{color:var(--up)} .dn{color:var(--down)} .gold{color:var(--gold)}
+  .hero{background:linear-gradient(135deg,#1f2535,#1a1f2c);border:1px solid var(--line);border-radius:14px;padding:16px 18px;text-align:center}
+  .hero .date{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 12px;font-size:12px;color:var(--muted)}
+  .hero .l1{font-size:20px;font-weight:700;margin-top:8px}
+  .hero .big{font-size:38px;font-weight:900;letter-spacing:2px;margin:2px 0;line-height:1.25}
+  .hero .l3{font-size:17px;font-variant-numeric:tabular-nums}
+  .cmp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:center;min-width:0}
+  .box .t{font-size:13px;color:var(--muted)} .box .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.3} .box .s{font-size:12px;color:var(--muted)}
+  .box.hl{border-color:var(--gold);background:var(--goldbg)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;min-width:0}
+  .card h3{margin:0 0 6px;font-size:15px;font-weight:800;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .card h3::before{content:"";width:4px;height:16px;background:var(--gold);border-radius:2px;align-self:center}
+  .card h3 .muted{font-size:12px;font-weight:400}
+  .verdict{border-radius:12px;padding:12px 14px;margin-top:12px;line-height:1.8}
+  .verdict b{font-size:16px}
+  .zones{display:grid;gap:6px;margin-top:8px}
+  .zone{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-variant-numeric:tabular-nums}
+  .zone .k{font-size:20px;font-weight:900}
+  .zone .r{font-size:17px;font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg button{font:inherit;font-size:12px;color:var(--text);background:var(--panel2);border:0;padding:4px 10px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .chart{height:330px;margin-top:4px} .chart.s{height:170px}
+  .leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;font-variant-numeric:tabular-nums;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+  th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500;font-size:12px} td:first-child,th:first-child{text-align:left}
+  .tblwrap{overflow-x:auto}
+  .note{font-size:12px;color:var(--muted);line-height:1.75;margin-top:8px}
+  ul.rules{margin:6px 0 0;padding-left:20px;line-height:1.85}
+  @media (max-width:640px){ main{padding:10px 10px 50px} .hero .big{font-size:30px} .cmp{grid-template-columns:1fr 1fr} .box .v{font-size:20px} .chart{height:260px} .zone{grid-template-columns:52px 1fr} .zone .s2{grid-column:1/-1} }
+</style>
+</head>
+<body>
+<header>
+  <h1>融資看盤</h1>
+  <span class="muted" id="upd" style="font-size:12px"></span>
+  <span class="spacer"></span>
+  <a class="btn" href="overview.html">總覽</a>
+  <a class="btn" href="bbview.html">布林悲觀</a>
+  <a class="btn" href="./">看盤</a>
+</header>
+<main>
+  <div id="msg" class="muted">讀取中…</div>
+  <div id="app" style="display:none">
+    <section class="hero">
+      <span class="date" id="hDate"></span>
+      <div class="l1" id="hL1"></div>
+      <div class="big" id="hBig"></div>
+      <div class="l3" id="hL3"></div>
+      <div class="cmp" id="hCmp"></div>
+    </section>
+
+    <div class="verdict" id="verdict"></div>
+
+    <section class="card">
+      <h3>加權指數 × 融資餘額 <span class="muted">月線＝20 日、季線＝60 日、半年線＝120 日</span></h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="seg" id="rng"></span><span class="muted" style="font-size:12px">上下兩張圖時間同步，手指或滑鼠移動可看數字</span></div>
+      <div class="leg" id="leg1"></div>
+      <div class="chart" id="c1"></div>
+      <div class="leg" id="leg2"></div>
+      <div class="chart s" id="c2"></div>
+      <div class="leg" id="leg3"></div>
+      <div class="chart s" id="c3"></div>
+      <div class="leg" id="leg4"></div>
+      <div class="chart s" id="c4"></div>
+    </section>
+
+    <section class="card">
+      <h3>ABC 規劃 <span class="muted">依今天的均線自動算，僅供參考</span></h3>
+      <div class="zones" id="zones"></div>
+      <div class="note" id="zoneNote"></div>
+    </section>
+
+    <section class="card">
+      <h3>最近融資單日增減 <span class="muted">億元</span></h3>
+      <div class="chart s" id="c5"></div>
+    </section>
+
+    <section class="card">
+      <h3>歷史大底時融資殺了多少 <span class="muted">2005 年以來，指數從一年高點跌 10% 以上的大低點</span></h3>
+      <div class="tblwrap"><table id="hist"></table></div>
+      <div class="note" id="histNote"></div>
+    </section>
+
+    <section class="card">
+      <h3>判斷規則與回測 <span class="muted">全部用 2005 年以來的資料即時計算</span></h3>
+      <ul class="rules" id="rules"></ul>
+      <div class="note">以上是歷史統計，不是投資建議；我不是投資顧問，請自行評估風險。融資餘額每天晚上約 21:30 後公布，網站 21:40、23:30、隔天 08:20 自動更新，不用 FinMind 額度。</div>
+    </section>
+  </div>
+</main>
+<script src="autoreload.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const f0 = x => x == null || isNaN(x) ? '—' : Math.round(x).toLocaleString('zh-TW');
+const f1 = x => x == null || isNaN(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:1, maximumFractionDigits:1 });
+const sg = (x, d = 1) => x == null ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const md = d => +d.slice(5, 7) + '/' + +d.slice(8, 10);
+const L = 120;   // 高點回看 120 個交易日（約半年）
+
+async function main(){
+  const j = await fetch('data/margin/daily.json?v=' + Math.floor(Date.now() / 600000)).then(r => r.json());
+  const R = j.rows.filter(r => r[4] && r[6]), n = R.length;
+  const D = R.map(r => r[0]), O = R.map(r => r[1]), H = R.map(r => r[2]), Lo = R.map(r => r[3]), C = R.map(r => r[4]), M = R.map(r => r[6]);
+  $('upd').textContent = '資料至 ' + D[n - 1] + '（更新 ' + j.updated + '）';
+  const sma = k => C.map((_, i) => { if (i < k - 1) return null; let s = 0; for (let t = i - k + 1; t <= i; t++) s += C[t]; return s / k; });
+  const ma20 = sma(20), ma60 = sma(60), ma120 = sma(120);
+  const argmax = (a, s, e) => { let b = s; for (let i = s; i <= e; i++) if (a[i] >= a[b]) b = i; return b; };
+  const ddArr = A => A.map((x, i) => { const p = A[argmax(A, Math.max(0, i - L), i)]; return (p - x) / p * 100; });
+  const IDD = ddArr(C), MDD = ddArr(M), dchg = M.map((x, i) => i ? x - M[i - 1] : null), dpct = M.map((x, i) => i ? (x - M[i - 1]) / M[i - 1] * 100 : null);
+
+  // ── 這一段：指數高點、融資高點 ──
+  const last = n - 1, ip = argmax(C, Math.max(0, last - L), last), mp = argmax(M, Math.max(0, ip - 20), last);
+  const idd = (C[ip] - C[last]) / C[ip] * 100, mdd = (M[mp] - M[last]) / M[mp] * 100, ratio = idd > 0.5 ? mdd / idd : null, lag = mp - ip;
+  let capDay = -1; for (let i = ip + 1; i <= last; i++) if (dpct[i] <= -2.5 && (capDay < 0 || dpct[i] < dpct[capDay])) capDay = i;
+  let bigDay = ip + 1; for (let i = ip + 1; i <= last; i++) if (dchg[i] < dchg[bigDay]) bigDay = i;
+
+  // ── 歷史大低點（±60 天最低、距一年高點跌 ≥ 10%）──
+  const bots = [];
+  for (let i = 250; i < n - 5; i++){ const a = Math.max(0, i - 60), b = Math.min(n - 1, i + 60); let mn = Infinity; for (let t = a; t <= b; t++) mn = Math.min(mn, Lo[t]);
+    if (Lo[i] !== mn) continue; const hi = C[argmax(C, Math.max(0, i - 250), i)]; if ((hi - Lo[i]) / hi >= 0.10 && i <= n - 61) bots.push(i); }
+  const ratios = bots.map(i => MDD[i] / IDD[i]).filter(x => isFinite(x)).sort((a, b) => a - b), medR = ratios[ratios.length >> 1];
+  const medM = bots.map(i => MDD[i]).sort((a, b) => a - b)[bots.length >> 1];
+  // ── 回測 ──
+  const fwd = (i, h) => i + h < n ? (C[i + h] / C[i] - 1) * 100 : null;
+  const stat = (idx, h) => { const f = idx.map(i => fwd(i, h)).filter(x => x != null); return f.length ? { n:f.length, avg:f.reduce((a, b) => a + b, 0) / f.length, up:f.filter(x => x > 0).length / f.length * 100 } : null; };
+  const all = [...Array(n).keys()].filter(i => i >= 250);
+  const base20 = stat(all, 20), base60 = stat(all, 60);
+  const deepLow = all.filter(i => IDD[i] >= 15 && MDD[i] / IDD[i] < 1), deepHi = all.filter(i => IDD[i] >= 15 && MDD[i] / IDD[i] >= 1);
+  const capDays = all.filter(i => dpct[i] <= -2.5 && IDD[i] >= 8), capDays35 = all.filter(i => dpct[i] <= -3.5 && IDD[i] >= 8);
+  const sDL = stat(deepLow, 60), sDH = stat(deepHi, 60), sC20 = stat(capDays, 20), sC60 = stat(capDays, 60), sC35 = stat(capDays35, 60);
+
+  // ── 標題 ──
+  $('hDate').textContent = D[last].replace(/-/g, '.') + ' 收盤';
+  const inCorr = idd >= 5;
+  $('hL1').innerHTML = inCorr ? `指數從高點跌了 <b>${f1(idd)}%</b>` : `指數離半年高點 <b>${f1(idd)}%</b>（沒有在修正）`;
+  let big, bigCol;
+  if (!inCorr){ big = '沒有在修正'; bigCol = css('--muted'); }
+  else if (capDay >= 0 && ratio >= 1){ big = '融資洗乾淨＋斷頭潮'; bigCol = css('--down'); }
+  else if (ratio != null && ratio >= 1){ big = '融資殺到位了'; bigCol = css('--down'); }
+  else if (capDay >= 0){ big = '斷頭潮出現，還沒洗完'; bigCol = css('--gold'); }
+  else if (ratio != null && ratio >= 0.5){ big = '融資開始退，還沒殺完'; bigCol = css('--gold'); }
+  else { big = '融資還沒殺完'; bigCol = css('--gold'); }
+  $('hBig').textContent = big; $('hBig').style.color = bigCol;
+  $('hL3').innerHTML = `融資 ${f0(M[mp])} → ${f0(M[last])} 億，${mdd >= 0 ? '退' : '增'} ${f1(Math.abs(mdd))}%`;
+  $('hCmp').innerHTML = [
+    ['指數 自頂', '−' + f1(idd) + '%', `${md(D[ip])} ${f0(C[ip])} → ${f0(C[last])}`, false],
+    ['融資 自頂', '−' + f1(mdd) + '%', `${md(D[mp])} ${f0(M[mp])} → ${f0(M[last])} 億`, true],
+    ['洗淨度（融資跌幅÷指數跌幅）', ratio == null ? '—' : ratio.toFixed(2), `歷史大底中位數 ${medR.toFixed(2)}`, false],
+    ['融資高點' + (lag >= 0 ? '晚了' : '早了'), Math.abs(lag) + ' 天', lag > 0 ? '指數先見頂，融資還在加' : lag < 0 ? '融資先退' : '同一天', false],
+    ['這段最大單日', sg(dchg[bigDay], 0) + ' 億', `${md(D[bigDay])}，佔餘額 ${sg(dpct[bigDay], 2)}%`, false],
+    ['斷頭潮（單日 ≤ −2.5%）', capDay >= 0 ? '有' : '還沒有', capDay >= 0 ? `${md(D[capDay])} ${sg(dpct[capDay], 2)}%` : '今天 ' + sg(dpct[last], 2) + '%', false],
+  ].map(([t, v, s, hl]) => `<div class="box${hl ? ' hl' : ''}"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // ── ABC 規劃 ──
+  const a1 = ma120[last], q = ma60[last], m20 = ma20[last], r50 = x => Math.round(x / 50) * 50;
+  const A = [r50(a1 * 0.995), r50(a1 * 1.008)], B = q < m20 ? [r50(q * 1.01), r50(m20 * 0.99)] : [r50(m20 * 0.99), r50(m20 * 1.01)];
+  $('zones').innerHTML = `
+    <div class="zone"><span class="k gold">A 區</span><span class="r">${f0(A[0])} ～ ${f0(A[1])}</span><span class="s2 muted">半年線 ${f0(a1)} 一帶，第一波滿足區，不急著接</span></div>
+    <div class="zone"><span class="k up">B 彈</span><span class="r">${f0(B[0])} ～ ${f0(B[1])}</span><span class="s2 muted">${q < m20 ? `季線 ${f0(q)} 上、月線 ${f0(m20)} 下` : `月線 ${f0(m20)} 一帶（季線 ${f0(q)} 在上方）`}，反彈減碼區</span></div>
+    <div class="zone"><span class="k">C</span><span class="r">看融資</span><span class="s2 muted">融資跌幅追上指數跌幅（洗淨度 ≥ 1）或出現斷頭潮，C 才算到</span></div>`;
+  $('zoneNote').innerHTML = `現在 ${f0(C[last])}：月線 ${f0(m20)}、季線 ${f0(q)}、半年線 ${f0(a1)}。A 區＝半年線 −0.5%～+0.8%，B＝季線到月線之間（四捨五入到 50 點）。滿足區不等於底，C 才是真正洗籌碼的那段。`;
+
+  // ── 終極建議 ──
+  const lines = [];
+  if (!inCorr) lines.push(`指數離半年高點只有 ${f1(idd)}%，不算修正，融資看盤先當參考。`);
+  else {
+    lines.push(`指數跌了 <b>${f1(idd)}%</b>，融資才退 <b>${f1(mdd)}%</b>，洗淨度 <b>${ratio == null ? '—' : ratio.toFixed(2)}</b>。2005 年以來 ${bots.length} 個大低點，洗淨度中位數 ${medR.toFixed(2)}、融資退幅中位數 ${f1(medM)}%。`);
+    if (ratio < 1) lines.push(`還差：融資要再退到約 <b>${f0(M[mp] * (1 - Math.max(idd * medR, medM * 0.6) / 100))} 億</b>（以現在的指數跌幅 × 歷史中位數估算）才算洗乾淨。`);
+    if (sDL && idd >= 12) lines.push(`指數跌 15% 以上、洗淨度還不到 1 的日子，之後 60 天平均 <b class="dn">${sg(sDL.avg, 1)}%</b>（${Math.round(sDL.up)}% 上漲）；洗淨度 ≥ 1 時是 <b class="up">${sg(sDH.avg, 1)}%</b>（平常 ${sg(base60.avg, 1)}%）。`);
+    if (capDay >= 0) lines.push(`已經出現斷頭潮（${md(D[capDay])} 單日 ${sg(dpct[capDay], 2)}%）：歷史上指數已跌 8% 以上、單日融資減 2.5% 以上之後 20 天平均 ${sg(sC20.avg, 1)}%、60 天 ${sg(sC60.avg, 1)}%。`);
+    else lines.push(`還沒有斷頭潮：這段最大單日是 ${md(D[bigDay])} ${sg(dchg[bigDay], 0)} 億（${sg(dpct[bigDay], 2)}%），歷史上真正的斷頭潮是單日 −2.5% 以上（以現在的餘額約 ${f0(M[last] * 0.025)} 億）。`);
+    let act;
+    if (ratio >= 1 && capDay >= 0) act = '融資洗乾淨又出現斷頭潮，進入找底區：配合布林悲觀看盤的「共振底」分批進場，跌破這段低點停損。';
+    else if (ratio >= 1) act = '融資已經殺到位，可以開始找底；等斷頭潮或布林谷底線的共振底再進場比較穩。';
+    else if (capDay >= 0) act = '斷頭潮已經來了但融資還沒洗乾淨，可能是 A 段：反彈到 B 區先減碼，等第二波（C）。';
+    else if (C[last] <= A[1]) act = '已經到 A 區（半年線）但融資還沒殺：不急著接，看接下來兩天融資有沒有大減；反彈到 B 區減碼。';
+    else act = '融資還沒開始殺：點位先不講死，不急著接；反彈到 B 區減碼，C 要看融資。';
+    lines.push(`<b>建議：</b>${act}`);
+  }
+  const vc = $('verdict'); vc.innerHTML = lines.map(x => `<div>${x}</div>`).join('');
+  vc.style.background = inCorr ? (ratio >= 1 ? css('--dnbg') : css('--goldbg')) : css('--panel'); vc.style.border = '1px solid ' + (inCorr ? (ratio >= 1 ? css('--down') : css('--gold')) : css('--line'));
+
+  // ── 規則 ──
+  $('rules').innerHTML = [
+    `洗淨度＝融資從半年高點的跌幅 ÷ 指數從半年高點的跌幅。${bots.length} 個大低點裡有 ${ratios.filter(x => x >= 0.85).length} 個在 0.85 以上，中位數 ${medR.toFixed(2)}；跌 20% 以上的大底全部 ≥ 0.88。`,
+    sDL ? `指數跌 15% 以上：洗淨度 < 1 之後 60 天平均 ${sg(sDL.avg, 1)}%（${sDL.n} 天，${Math.round(sDL.up)}% 上漲）；≥ 1 是 ${sg(sDH.avg, 1)}%（${sDH.n} 天，${Math.round(sDH.up)}% 上漲）。平常 60 天 ${sg(base60.avg, 1)}%。` : '',
+    sC20 ? `斷頭潮＝指數已跌 8% 以上、單日融資減 ≥ 2.5%：${sC20.n} 天，之後 20 天 ${sg(sC20.avg, 1)}%（${Math.round(sC20.up)}% 上漲）、60 天 ${sg(sC60.avg, 1)}%；單日 ≥ 3.5% 時 60 天 ${sg(sC35.avg, 1)}%。平常 20 天 ${sg(base20.avg, 1)}%。` : '',
+    '指數跌 8～15% 的小修正，洗淨度高低對之後的漲跌影響不大，主要用在較深的修正。',
+    '融資高點比指數晚，代表指數先跌時散戶還在借錢加碼，籌碼比較亂。',
+  ].filter(Boolean).map(x => `<li>${x}</li>`).join('');
+
+  // ── 歷史表 ──
+  $('hist').innerHTML = '<tr><th>大低點</th><th>指數跌幅</th><th>融資跌幅</th><th>融資減少</th><th>洗淨度</th><th>之後 60 天</th></tr>' +
+    bots.slice().reverse().map(i => { const pk = argmax(M, Math.max(0, i - L), i), r = MDD[i] / IDD[i], f = fwd(i, 60);
+      return `<tr><td>${D[i]}</td><td>−${f1(IDD[i])}%</td><td>−${f1(MDD[i])}%</td><td>${f0(M[pk] - M[i])} 億</td><td class="${r >= 1 ? 'dn' : 'gold'}">${r.toFixed(2)}</td><td class="${f > 0 ? 'up' : 'dn'}">${sg(f, 1)}%</td></tr>`; }).join('') +
+    (inCorr ? `<tr style="background:var(--goldbg)"><td>這次到今天</td><td>−${f1(idd)}%</td><td>−${f1(mdd)}%</td><td>${f0(M[mp] - M[last])} 億</td><td class="gold">${ratio == null ? '—' : ratio.toFixed(2)}</td><td>—</td></tr>` : '');
+  $('histNote').textContent = '跌幅都從前 120 個交易日的最高收盤算起；融資減少＝融資半年高點到大低點那天少了多少。';
+
+  $('msg').style.display = 'none'; $('app').style.display = '';
+  // ── 圖 ──
+  const LC = LightweightCharts, mk = (el, h) => LC.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
+    grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line'), minimumWidth:70 }, timeScale:{ borderColor:css('--line') },
+    localization:{ locale:'zh-TW' }, crosshair:{ mode:LC.CrosshairMode.Normal } });
+  const c1 = mk($('c1')), c2 = mk($('c2')), c3 = mk($('c3')), c4 = mk($('c4')), c5 = mk($('c5'));
+  const t = D.map(d => d), P0 = { type:'price', precision:0, minMove:1 };
+  const k1 = c1.addSeries(LC.CandlestickSeries, { upColor:css('--up'), downColor:css('--down'), borderUpColor:css('--up'), borderDownColor:css('--down'), wickUpColor:css('--up'), wickDownColor:css('--down'), priceFormat:P0 });
+  k1.setData(t.map((d, i) => ({ time:d, open:O[i], high:H[i], low:Lo[i], close:C[i] })));
+  const ln = (ch, col, w, st) => ch.addSeries(LC.LineSeries, { color:col, lineWidth:w, lineStyle:st || 0, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, priceFormat:P0 });
+  const toL = a => t.map((d, i) => a[i] == null ? { time:d } : { time:d, value:a[i] });
+  ln(c1, '#e57373', 1).setData(toL(ma20)); ln(c1, '#e0b04a', 1).setData(toL(ma60)); ln(c1, '#b8925a', 2).setData(toL(ma120));
+  k1.createPriceLine({ price:A[0], color:'rgba(224,176,74,.7)', lineWidth:1, lineStyle:2, title:'A 區' }); k1.createPriceLine({ price:A[1], color:'rgba(224,176,74,.7)', lineWidth:1, lineStyle:2, title:'' });
+  k1.createPriceLine({ price:B[0], color:'rgba(239,83,80,.6)', lineWidth:1, lineStyle:2, title:'B 彈' }); k1.createPriceLine({ price:B[1], color:'rgba(239,83,80,.6)', lineWidth:1, lineStyle:2, title:'' });
+  const mks = []; if (inCorr){ mks.push({ time:t[ip], position:'aboveBar', shape:'circle', color:css('--gold'), text:'頂 ' + f0(C[ip]) }); }
+  bots.forEach(i => mks.push({ time:t[i], position:'belowBar', shape:'arrowUp', color:css('--down'), text:'大底' }));
+  LC.createSeriesMarkers(k1, mks.sort((a, b) => a.time < b.time ? -1 : 1));
+  const mL = c2.addSeries(LC.AreaSeries, { lineColor:css('--gold'), topColor:'rgba(224,176,74,.28)', bottomColor:'rgba(224,176,74,.02)', lineWidth:2, priceFormat:P0 });
+  mL.setData(t.map((d, i) => ({ time:d, value:M[i] })));
+  if (inCorr) LC.createSeriesMarkers(mL, [{ time:t[mp], position:'aboveBar', shape:'circle', color:css('--gold'), text:md(D[mp]) + ' ' + f0(M[mp]) }]);
+  const hB = c3.addSeries(LC.HistogramSeries, { priceFormat:P0 });
+  hB.setData(t.map((d, i) => ({ time:d, value:dchg[i] == null ? 0 : Math.round(dchg[i]), color:dpct[i] <= -2.5 ? '#00e676' : dchg[i] >= 0 ? 'rgba(239,83,80,.75)' : 'rgba(38,166,154,.75)' })));
+  const dI = ln(c4, css('--text'), 2), dM = ln(c4, css('--gold'), 2);
+  dI.applyOptions({ priceFormat:{ type:'price', precision:1, minMove:0.1 } }); dM.applyOptions({ priceFormat:{ type:'price', precision:1, minMove:0.1 } });
+  dI.setData(t.map((d, i) => ({ time:d, value:-IDD[i] }))); dM.setData(t.map((d, i) => ({ time:d, value:-MDD[i] })));
+  // 最近 30 天單日增減
+  const k5 = c5.addSeries(LC.HistogramSeries, { priceFormat:P0 }), s5 = Math.max(1, n - 30);
+  k5.setData(t.slice(s5).map((d, k) => { const i = s5 + k; return { time:d, value:Math.round(dchg[i]), color:dchg[i] >= 0 ? 'rgba(239,83,80,.85)' : (dpct[i] <= -2.5 ? '#00e676' : 'rgba(38,166,154,.85)') }; }));
+  c5.timeScale().fitContent();
+  // 同步
+  const charts = [c1, c2, c3, c4]; let busy = false;
+  charts.forEach(ch => ch.timeScale().subscribeVisibleLogicalRangeChange(r => { if (busy || !r) return; busy = true; charts.forEach(o => { if (o !== ch) o.timeScale().setVisibleLogicalRange(r); }); busy = false; }));
+  const legend = i => {
+    if (i == null || i < 0) i = last;
+    $('leg1').innerHTML = `<span>${D[i]}</span><span>收 <b class="${C[i] >= (C[i - 1] || C[i]) ? 'up' : 'dn'}">${f0(C[i])}</b></span><span style="color:#e57373">月線 ${f0(ma20[i])}</span><span style="color:#e0b04a">季線 ${f0(ma60[i])}</span><span style="color:#b8925a">半年線 ${f0(ma120[i])}</span>`;
+    $('leg2').innerHTML = `<span class="gold">融資餘額 <b>${f0(M[i])}</b> 億</span>`;
+    $('leg3').innerHTML = `<span>融資單日增減 <b class="${dchg[i] >= 0 ? 'up' : 'dn'}">${sg(dchg[i], 0)}</b> 億（${sg(dpct[i], 2)}%）</span><span class="muted">亮綠＝單日減 2.5% 以上（斷頭潮）</span>`;
+    $('leg4').innerHTML = `<span>從半年高點的跌幅：指數 <b>${sg(-IDD[i], 1)}%</b></span><span class="gold">融資 <b>${sg(-MDD[i], 1)}%</b></span><span class="muted">洗淨度 ${IDD[i] > 0.5 ? (MDD[i] / IDD[i]).toFixed(2) : '—'}</span>`;
+  };
+  const idxOf = new Map(t.map((d, i) => [d, i]));
+  charts.forEach(ch => ch.subscribeCrosshairMove(p => legend(p && p.time ? idxOf.get(typeof p.time === 'string' ? p.time : `${p.time.year}-${String(p.time.month).padStart(2, '0')}-${String(p.time.day).padStart(2, '0')}`) : null)));
+  legend(last);
+  const RNG = [['3 個月', 63], ['6 個月', 126], ['1 年', 250], ['3 年', 750], ['全部', 0]];
+  let cur = 126; try { cur = +localStorage.getItem('margin.rng') || 126; } catch(e){}
+  const setR = k => { cur = k; try { localStorage.setItem('margin.rng', k); } catch(e){}
+    [...$('rng').children].forEach(b => b.classList.toggle('on', +b.dataset.k === k));
+    if (!k) c1.timeScale().fitContent(); else c1.timeScale().setVisibleLogicalRange({ from:n - k, to:n + 2 }); };
+  $('rng').innerHTML = RNG.map(([l, k]) => `<button data-k="${k}">${l}</button>`).join('');
+  [...$('rng').children].forEach(b => b.onclick = () => setR(+b.dataset.k));
+  setR(cur);
+  $('msg').style.display = 'none'; $('app').style.display = '';
+}
+main().catch(e => { $('msg').textContent = '讀取失敗：' + e.message; });
+</script>
+</body>
+</html>
