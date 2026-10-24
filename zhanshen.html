@@ -101,9 +101,15 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chart-wrap .zoom button:hover{color:var(--fg)}
 .loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:var(--overlay);border:1px solid var(--line2);border-radius:6px;padding:10px 16px;font-size:13px;color:var(--fg)}
 
-.below{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);gap:12px;align-items:start}
-@media (max-width:1100px){.below{grid-template-columns:repeat(3,minmax(0,1fr))}.below .sigs{grid-column:1/-1}}
-@media (max-width:720px){.below{grid-template-columns:1fr}}
+.below{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-items:start}
+.below .sigs{grid-column:span 2}
+@media (max-width:620px){.below{grid-template-columns:1fr}.below .sigs{grid-column:auto}}
+.chipsec{display:flex;flex-direction:column;gap:8px}
+.chipsec .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chipsec h2{font-size:16px;margin:0}
+.chipsec h2 span{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
+.chipsec iframe{width:100%;border:0;min-height:240px;display:block;background:transparent}
+.chipsec .note2{font-size:13px;color:var(--muted)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
 .card h3{margin:0 0 2px;font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
 .card h3 span{text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:500}
@@ -118,7 +124,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .sigs .head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
 .sigs select{background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:3px 6px;font-size:12.5px}
 .siglist{list-style:none;margin:0;padding:0;max-height:320px;overflow:auto}
-.siglist li{display:grid;grid-template-columns:86px 52px 1fr;gap:8px;align-items:center;padding:5px 4px;border-top:1px solid var(--line);font-size:13px;cursor:pointer;border-radius:4px}
+.siglist li{display:grid;grid-template-columns:auto 70px 1fr;gap:8px;align-items:center;padding:5px 4px;border-top:1px solid var(--line);font-size:13px;cursor:pointer;border-radius:4px}
 .siglist li:first-child{border-top:0}
 .siglist li:hover{background:var(--panel2)}
 .siglist .d{font:12px var(--mono);color:var(--muted)}
@@ -189,6 +195,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
     <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
+    <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
+    <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
@@ -229,15 +237,28 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="card" id="cardVWB"></div>
     <div class="card" id="cardVWZ"></div>
     <div class="card" id="cardVWD"></div>
+    <div class="card" id="cardBB"></div>
+    <div class="card" id="cardVL"></div>
     <div class="card sigs">
       <div class="head">
         <h3>近期訊號 <span>Signal log</span></h3>
         <select id="sigFilter" aria-label="篩選訊號來源">
-          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option>
+          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option><option value="布林大底">布林大底</option><option value="布林谷底線">布林谷底線</option>
         </select>
       </div>
       <ul class="siglist" id="sigList"></ul>
     </div>
+  </section>
+
+  <section class="chipsec" id="chipSec" hidden>
+    <div class="head">
+      <h2>籌碼<span>股價 × 大戶 × 散戶、內部人買賣（和籌碼頁同一份資料）</span></h2>
+      <span class="spacer"></span>
+      <button class="tog" id="togChips" aria-pressed="true">顯示</button>
+      <a class="chip" id="chipLink" href="holders.html?v=3">在籌碼頁開啟</a>
+    </div>
+    <div class="note2" id="chipNote" hidden></div>
+    <iframe id="chipFrame" title="籌碼：大戶散戶與內部人買賣" loading="lazy"></iframe>
   </section>
 
   <footer>
@@ -380,17 +401,40 @@ const SCHEMA = {
     ]}
   ]}
 };
+SCHEMA.bbot = { tab:'布林大底', title:'布林大底（與看盤頁相同）：大底能量 0～100＝跌到 60 根布林下軌外多深 × 20 根通道寬度在過去 750 根的百分位；≥ 50 大底區，W 底＝能量背離後突破', groups:[
+  { name:'顯示', items:[
+    {k:'mainSig', l:'主圖也標 W 底', t:'bool', d:true},
+    {k:'zone', l:'標出進入大底區（≥ 50）', t:'bool', d:true},
+    {k:'cE', l:'大底能量顏色', t:'color', d:'#ffca28'},
+    {k:'cW', l:'W 底／上限 80 顏色', t:'color', d:'#ff9800'}
+  ]}
+]};
+SCHEMA.valley = { tab:'布林谷底線', title:'布林谷底線（與看盤頁相同）：價格在 40 根布林通道的位置（1 個標準差＝50 分），再用 10 根超級平滑；曾到 −50 以下後往上勾＝谷底，前 6 根內有其他恐慌跡象就加星（共振底）', groups:[
+  { name:'訊號', items:[
+    {k:'mk', l:'副圖標出谷底', t:'bool', d:true},
+    {k:'mainSig', l:'主圖也標谷底', t:'bool', d:true},
+    {k:'mkTop', l:'標出峰（+50 以上往下勾）', t:'bool', d:false},
+    {k:'minStar', l:'至少幾顆星才標（0＝沒有任何恐慌跡象的也標）', t:'select', d:'1', o:['0', '1', '2']}
+  ]},
+  { name:'顏色', items:[
+    {k:'cUp', l:'零軸上方', t:'color', d:'#ef5350'},
+    {k:'cDn', l:'零軸下方', t:'color', d:'#26a69a'},
+    {k:'cBot', l:'谷底★', t:'color', d:'#00e676'},
+    {k:'cReso', l:'共振底★★', t:'color', d:'#ffd600'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get('zs:p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true,
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true,
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get('zs:ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
+UI.weights = Object.assign({ bb:1.1, vl:1.2 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -693,6 +737,154 @@ function calcVWD(B, p){
     }
   }
   return { d, signal, reference, fallback, ready, beh, info, ev, sig };
+}
+
+/* ═════════════ 布林大底（與看盤頁 bbotSeries 相同） ═════════════ */
+function calcBBOT(B, p){
+  const n = B.n, C = B.c, Hh = B.h, Ll = B.l, Sv = nanArr(n), bw = nanArr(n);
+  const msd = (k, i) => { let s = 0; for (let j = i - k + 1; j <= i; j++) s += C[j]; const m = s / k; let v = 0; for (let j = i - k + 1; j <= i; j++) v += (C[j] - m) ** 2; return [m, Math.sqrt(v / k)]; };
+  for (let i = 19; i < n; i++){ const [m, sd] = msd(20, i); bw[i] = m ? 4 * sd / m : NaN; }
+  for (let i = 59; i < n; i++){
+    const [m, sd] = msd(60, i), depth = sd > 0 ? Math.max(0, Math.min(3, (m - C[i]) / sd)) / 3 : 0;
+    let cnt = 0, below = 0;
+    for (let j = Math.max(19, i - 749); j <= i; j++) if (!isNaN(bw[j])){ cnt++; if (bw[j] < bw[i]) below++; }
+    if (cnt < 100) continue;
+    Sv[i] = depth * below / cnt * 100;
+  }
+  const W = new Uint8Array(n), zone = new Uint8Array(n); let last = -99;
+  for (let i = 1; i < n; i++) zone[i] = !isNaN(Sv[i]) && !isNaN(Sv[i - 1]) && Sv[i - 1] < 50 && Sv[i] >= 50 ? 1 : 0;
+  for (let i = 60; i < n; i++){
+    const hh = k => Math.max(Hh[k - 3], Hh[k - 2], Hh[k - 1]);
+    if (!(C[i] > hh(i)) || C[i - 1] > hh(i - 1) || i - last <= 20) continue;
+    let k2 = i - 10; for (let k = i - 10; k <= i; k++) if (Ll[k] < Ll[k2]) k2 = k;
+    let k1 = -1; for (let k = i - 60; k <= k2 - 6; k++) if (Sv[k] >= 50 && (k1 < 0 || Ll[k] < Ll[k1])) k1 = k;
+    if (k1 < 0 || Ll[k2] > Ll[k1] * 1.02) continue;
+    const mx = (a, b) => { let v = 0; for (let k = Math.max(0, a); k <= Math.min(n - 1, b); k++) v = Math.max(v, Sv[k] || 0); return v; };
+    if (mx(k2 - 2, k2) <= mx(k1 - 2, k1 + 2) * 0.9){ W[i] = 1; last = i; }
+  }
+  const ev = [], sig = [], main = [];
+  for (let i = 0; i < n; i++){
+    if (zone[i]){ sig.push({ i, src:'布林大底', text:'進入大底區（≥ 50）', col:p.cE }); if (p.zone) ev.push({ i, y:Sv[i] + 9, shape:'circle', col:p.cE, size:0.8 }); }
+    if (W[i]){ sig.push({ i, src:'布林大底', text:'W 底', col:p.cW }); ev.push({ i, y:Sv[i] + 6, shape:'labelUp', text:'W底', col:p.cW, tcol:'#000', size:0.85 }); if (p.mainSig) main.push({ i, text:'W底', col:p.cW }); }
+  }
+  return { S:Sv, W, zone, ev, sig, main };
+}
+
+/* ═════════════ 布林谷底線（與看盤頁 valleyCalc 相同；共振＝散戶套牢、資金流殺低、爆量） ═════════════ */
+function calcVALLEY(B, p){
+  const n = B.n, c = B.c, K = 40, Pp = 10, z = nanArr(n);
+  for (let i = K - 1; i < n; i++){ let s = 0; for (let k = i - K + 1; k <= i; k++) s += c[k]; const m = s / K; let v = 0; for (let k = i - K + 1; k <= i; k++) v += (c[k] - m) ** 2; const sd = Math.sqrt(v / K); z[i] = sd > 0 ? (c[i] - m) / sd : 0; }
+  const a1 = Math.exp(-1.414 * Math.PI / Pp), b1 = 2 * a1 * Math.cos(1.414 * Math.PI / Pp), c2 = b1, c3 = -a1 * a1, c1 = 1 - c2 - c3, y = new F(n);
+  for (let i = 0; i < n; i++){ const x = isNaN(z[i]) ? 0 : z[i], x1 = i ? (isNaN(z[i - 1]) ? 0 : z[i - 1]) : 0; y[i] = i < 2 ? x : c1 * (x + x1) / 2 + c2 * y[i - 1] + c3 * y[i - 2]; }
+  const V = nanArr(n), bot = new Uint8Array(n), top = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (!isNaN(z[i])) V[i] = y[i] * 50;
+  for (let i = 4; i < n; i++){
+    if (isNaN(V[i]) || isNaN(V[i - 1]) || isNaN(V[i - 2]) || isNaN(V[i - 3])) continue;
+    const mn = Math.min(V[i - 3], V[i - 2], V[i - 1], V[i]), mx = Math.max(V[i - 3], V[i - 2], V[i - 1], V[i]);
+    if (V[i - 1] <= V[i - 2] && V[i] > V[i - 1] && mn <= -50) bot[i] = 1;
+    if (V[i - 1] >= V[i - 2] && V[i] < V[i - 1] && mx >= 50) top[i] = 1;
+  }
+  // 共振來源（台指期才有散戶套牢、資金流；爆量所有商品都有）
+  const fut = !!(RAW && FUTS[RAW.id]), PNv = nanArr(n), FRv = nanArr(n), VPv = nanArr(n);
+  if (fut && CST.rows){ const rows = CST.rows; let k = -1;
+    for (let i = 0; i < n; i++){ const t = B.t[i] / 1000;
+      while (k + 1 < rows.length && Date.parse(rows[k + 1].d + 'T16:00:00Z') / 1000 <= t) k++;
+      const r = k >= 0 ? rows[k] : null; if (r && r.rc != null) PNv[i] = (c[i] - r.rc) / (c[i] * 815 / 46600); } }
+  if (fut && B.iv !== 'W' && B.iv !== 'M' && FLW.base){ const U = ultF(B.iv === 'D' ? 'D' : +B.iv);
+    for (let i = 0; i < n; i++){ const j = U.map.get(B.intra ? B.t[i] / 1000 : B.d[i]); if (j != null && U.F[j] != null) FRv[i] = U.F[j]; } }
+  for (let i = 0; i < n; i++){ let cnt = 0, below = 0; for (let k = Math.max(0, i - 499); k <= i; k++){ cnt++; if (B.v[k] < B.v[i]) below++; } if (cnt >= 100) VPv[i] = below / cnt * 100; }
+  const score = new Array(n).fill(null);
+  for (let i = 0; i < n; i++){ if (!bot[i]) continue; let pn = false, fr = false, vp = false;
+    for (let k = Math.max(0, i - 6); k <= i; k++){ if (PNv[k] <= -2) pn = true; if (FRv[k] <= -40) fr = true; if (VPv[k] >= 90) vp = true; }
+    score[i] = { n:pn + fr + vp, pn, fr, vp }; }
+  const star = k => k ? '★'.repeat(k) : '', colOf = k => k >= 2 ? p.cReso : k === 1 ? p.cBot : '#9e9e9e';
+  const ev = [], sig = [], main = [];
+  for (let i = 0; i < n; i++){
+    if (bot[i]){ const k = score[i].n, t = (k >= 2 ? '共振底' : '谷底') + star(k);
+      sig.push({ i, src:'布林谷底線', text:t, col:colOf(k) });
+      if (k >= +p.minStar){ if (p.mk) ev.push({ i, y:V[i], shape:'arrowUp', dy:12, text:t, col:colOf(k), tcol:colOf(k), size:k >= 2 ? 1.15 : 0.95 }); if (p.mainSig) main.push({ i, text:t, col:colOf(k) }); } }
+    if (top[i] && p.mkTop){ ev.push({ i, y:V[i], shape:'arrowDown', dy:-12, text:'峰', col:p.cUp, tcol:p.cUp, size:0.8 }); }
+  }
+  return { V, bot, top, score, ev, sig, main, star, colOf, fut, flowOn:!!FLW.base, cstOn:!!CST.rows };
+}
+
+/* 台指期才用的網站資料（看盤頁同一份，不用 FinMind 額度） */
+const CST = { rows:null, pend:null }, FLW = { base:null, pend:null }, ULTC = new Map();
+function cstLoad(){
+  if (CST.rows || CST.pend) return;
+  CST.pend = (async () => {
+    const v = Math.floor(Date.now() / 600000), g = p => fetch(p + '?v=' + v).then(r => r.json());
+    const [co, ch, hi] = await Promise.all([g('data/ctrl/cost.json'), g('data/txo/chips.json'), g('data/txo/history.json')]);
+    const H = new Map(hi.days.map(d => [d.d, d])), Cm = new Map(co.days.map(d => [d.d, d])), out = [];
+    let cost = null, pos = 0;
+    for (const r of ch.days){ const h = H.get(r.d); if (!h || r.mtxR == null || r.tmfR == null) continue;
+      const net = r.mtxR / 100 * r.mtxOI * 0.25 + r.tmfR / 100 * r.tmfOI * 0.05, cc = Cm.get(r.d), vw = cc && cc.vwN ? cc.vwN : (h.h + h.l + h.c) / 3;
+      if (cost == null || pos === 0 || (net > 0) !== (pos > 0)) cost = vw;
+      else if (Math.abs(net) > Math.abs(pos)) cost = (cost * Math.abs(pos) + vw * (Math.abs(net) - Math.abs(pos))) / Math.abs(net);
+      pos = net; out.push({ d:r.d, rc:cost }); }
+    out.sort((a, b) => a.d < b.d ? -1 : 1);
+    CST.rows = out; recompute();
+  })().catch(() => { CST.pend = null; });
+}
+function flwLoad(){
+  if (FLW.base || FLW.pend) return;
+  FLW.pend = (async () => {
+    const v = Math.floor(Date.now() / 600000);
+    const idx = await fetch('data/force/index.json?v=' + v).then(r => r.json());
+    const months = await Promise.all((idx.months || []).map(m => fetch('data/force/m5/' + m + '.json?v=' + v).then(r => r.ok ? r.json() : null).catch(() => null)));
+    const out = [];
+    for (const j of months){ if (!j) continue; for (const s of j.sessions) for (const r of s.bars){ const o = { td:s.td, s:s.s }; j.cols.forEach((c, i) => o[c] = r[i]); out.push(o); } }
+    out.sort((a, b) => a.t - b.t);
+    while (out.length){ const b = out[out.length - 1]; if (!b.v && !b.net && !b.gross && b.o === b.h && b.h === b.l && b.l === b.c) out.pop(); else break; }
+    FLW.base = out; ULTC.clear(); recompute();
+  })().catch(() => { FLW.pend = null; });
+}
+function flwS0(b){ const day = Math.floor(b.t / 86400) * 86400, m = (b.t - day) / 60; return b.s === 'D' ? day + 525 * 60 : m >= 900 ? day + 900 * 60 : day - 86400 + 900 * 60; }
+function flwAgg(base, tf){
+  const out = []; let cur = null;
+  for (const b of base){
+    let key, t, k;
+    if (tf === 'D'){ key = b.td; t = b.td; k = 0; }
+    else { const s0 = flwS0(b); k = Math.floor((b.t - s0) / (tf * 60)); t = s0 + k * tf * 60; key = b.s + t; }
+    if (!cur || cur.key !== key){ cur = { key, t, o:b.o, h:b.h, l:b.l, c:b.c, net:0, s:tf === 'D' ? 'X' : b.s, k }; out.push(cur); }
+    cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c; cur.net += b.net || 0;
+  }
+  return out;
+}
+const flwMed = a => { const q = a.slice().sort((x, y) => x - y), m = q.length >> 1; return q.length % 2 ? q[m] : (q[m - 1] + q[m]) / 2; };
+function flwSlotZ(bars, vals){
+  const slots = new Map(), z = [];
+  bars.forEach((b, i) => {
+    const key = b.s + ':' + b.k, x = vals[i]; let h = slots.get(key); if (!h){ h = []; slots.set(key, h); }
+    let zz = null;
+    if (x != null && h.length >= 8){ const m = flwMed(h), mad = flwMed(h.map(v => Math.abs(v - m))) * 1.4826;
+      if (mad > 0) zz = (x - m) / mad; else { const sd = Math.sqrt(h.reduce((t, v) => t + (v - m) ** 2, 0) / h.length); zz = sd > 0 ? (x - m) / sd : 0; }
+      zz = Math.max(-8, Math.min(8, zz)); }
+    z.push(zz);
+    if (x != null){ h.push(x); if (h.length > 30) h.shift(); }
+  });
+  return z;
+}
+// 終極力道（抓底版）主線，與看盤頁 ultSeries 的 F 相同
+function ultF(tf){
+  if (ULTC.has(tf)) return ULTC.get(tf);
+  const bars = flwAgg(FLW.base, tf), D = tf === 'D';
+  const zN = flwSlotZ(bars, bars.map(b => b.net)), zR = flwSlotZ(bars, bars.map(b => b.o ? (b.c - b.o) / b.o : 0));
+  const resid = [], xs = [], ys = []; let sx = 0, sy = 0, sxx = 0, sxy = 0; const minn = D ? 30 : 100;
+  for (let i = 0; i < bars.length; i++){ let r = null;
+    if (zN[i] != null && zR[i] != null){ const m = xs.length;
+      if (m >= minn && sxx - sx * sx / m > 1e-9){ const bt = (sxy - sx * sy / m) / (sxx - sx * sx / m); r = zN[i] - bt * zR[i]; }
+      xs.push(zR[i]); ys.push(zN[i]); sx += zR[i]; sy += zN[i]; sxx += zR[i] ** 2; sxy += zR[i] * zN[i];
+      if (xs.length > 500){ const p = xs.shift(), q = ys.shift(); sx -= p; sy -= q; sxx -= p * p; sxy -= p * q; } }
+    resid.push(r); }
+  const a = 2 / 9, K6 = Math.atanh(0.6), QMIN = D ? 30 : 120, QN = D ? 150 : 1500, hist = [], Fv = []; let em = null, qv = null;
+  resid.forEach((x, i) => { let f = null;
+    if (x != null){ em = em == null ? x : em + a * (x - em); hist.push(Math.abs(em)); if (hist.length > QN) hist.shift();
+      if (hist.length >= QMIN && (qv == null || i % 25 === 0)){ const q = hist.slice().sort((p, r) => p - r); qv = q[Math.min(q.length - 1, Math.floor(q.length * 0.95))] || 1e-9; }
+      if (qv) f = 100 * Math.tanh(K6 * em / qv); }
+    Fv.push(f); });
+  const R = { F:Fv, map:new Map(bars.map((b, i) => [b.t, i])) };
+  ULTC.set(tf, R); return R;
 }
 
 /* ═════════════ data ═════════════ */
@@ -1024,9 +1216,13 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
+  if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
+  R.mainExtra = [];
+  for (const k of ['bbot', 'valley']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
+  syncChips();
   schedule(); renderSignals();
 }
 
@@ -1138,7 +1334,7 @@ function fillBetween(getA, getB, col, i0, i1){
 let S = null; // current pane scale
 
 function drawMarker(m){
-  const x = X(m.i), y = S.y(m.y), s = m.size || 1;
+  const x = X(m.i), y = S.y(m.y) + (m.dy || 0), s = m.size || 1;
   ctx.fillStyle = m.col; ctx.strokeStyle = m.col;
   if (m.shape === 'labelUp' || m.shape === 'labelDown'){
     ctx.font = '600 ' + Math.round(11 * s) + 'px "IBM Plex Mono", ui-monospace, monospace';
@@ -1158,6 +1354,11 @@ function drawMarker(m){
     ctx.moveTo(x, y + d * L); ctx.lineTo(x - 5 * s, y + d * (L - 6 * s)); ctx.lineTo(x - 1.6 * s, y + d * (L - 6 * s));
     ctx.lineTo(x - 1.6 * s, y - d * L); ctx.lineTo(x + 1.6 * s, y - d * L); ctx.lineTo(x + 1.6 * s, y + d * (L - 6 * s));
     ctx.lineTo(x + 5 * s, y + d * (L - 6 * s)); ctx.closePath(); ctx.fill();
+    if (m.text){
+      ctx.font = '600 ' + Math.round(10.5 * s + 1) + 'px "Noto Sans TC", sans-serif';
+      ctx.fillStyle = ink(m.tcol || m.col); ctx.textAlign = 'center'; ctx.textBaseline = d < 0 ? 'top' : 'bottom';
+      ctx.fillText(m.text, x, d < 0 ? y + L + 2 : y - L - 2);
+    }
   } else if (m.shape === 'triUp' || m.shape === 'triDown'){
     const up = m.shape === 'triUp', r = 5 * s;
     ctx.beginPath();
@@ -1230,6 +1431,8 @@ function draw(){
   const panes = [{ id:'main', w:Wt0.main }];
   if (UI.showZ) panes.push({ id:'z', w:Wt0.z });
   if (UI.showD) panes.push({ id:'d', w:Wt0.d });
+  if (UI.showBB) panes.push({ id:'bb', w:Wt0.bb });
+  if (UI.showVL) panes.push({ id:'vl', w:Wt0.vl });
   const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
   let top = 0;
   for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
@@ -1247,7 +1450,9 @@ function draw(){
     for (const i of ticks){ const x = Math.round(X(i)) + 0.5; ctx.beginPath(); ctx.moveTo(x, p.top); ctx.lineTo(x, p.top + p.h); ctx.stroke(); }
     if (p.id === 'main') drawMain(p, i0, i1, ci);
     else if (p.id === 'z') drawZ(p, i0, i1, ci);
-    else drawD(p, i0, i1, ci);
+    else if (p.id === 'd') drawD(p, i0, i1, ci);
+    else if (p.id === 'bb') drawBB(p, i0, i1, ci);
+    else drawVL(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
     if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
@@ -1366,6 +1571,7 @@ function drawMain(p, i0, i1, ci){
       strokeSeries(sb, i => (r.state[i] === r.state[i - 1]) ? colOf(i) : null, i0, i1, 2);
     } else strokeSeries(i => r.trend[i], colOf, i0, i1, q.trendWidth);
     visibleMarkers(r.ev, i0, i1);
+    if (R.mainExtra) visibleMarkers(R.mainExtra, i0, i1);
     axisTag(B.c[B.n - 1], B.c[B.n - 1] >= B.o[B.n - 1] ? CC.up : CC.down, '#fff', fmtP);
   }
 
@@ -1405,6 +1611,52 @@ function drawZ(p, i0, i1, ci){
   visibleMarkers(r.ev, i0, i1);
   const zl = r.z[B.n - 1]; if (!isNaN(zl)) axisTag(zl, st(B.n - 1), '#0d1016', v => fmtNum(v, 2));
   legend([[['VW Z PRO', CC.axis], [r.enh ? '平滑優化' : '原版邏輯', CC.axis], ['Z ' + fmtNum(r.z[ci], 2), st(ci)], ['未平滑 ' + fmtNum(r.zRaw[ci], 2), CC.axis]]], p.top);
+}
+
+function drawBB(p, i0, i1, ci){
+  const r = R.bbot, q = P.bbot;
+  if (!r || r.error){ S = makeScale(p.top, p.h, 0, 100, 26, 6); legend([[['布林大底  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const [mn, mx] = extent([r.S], i0, i1, [0, 100]);
+  S = makeScale(p.top, p.h, ...rng('bb', mn - 4, mx + 12), 26, 6);
+  gridAndAxis(0);
+  const K = v => () => v, sv = i => r.S[i];
+  fillBetween(i => Math.max(50, r.S[i]), K(50), () => rgba(q.cE, 62), i0, i1);
+  fillBetween(i => Math.min(50, r.S[i]), K(0), () => rgba('#78829a', 90), i0, i1);
+  const W = plotW();
+  const hl = (v, col, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(50, q.cE, [4, 3], 1); hl(80, q.cW, [], 1.6);
+  strokeSeries(sv, i => r.S[i] >= 50 ? q.cE : rgba(UI.theme === 'light' ? '#5d6676' : '#9aa3b2', 15), i0, i1, 2);
+  visibleMarkers(r.ev, i0, i1);
+  axisTag(80, q.cW, '#000', v => fmtNum(v, 0)); axisTag(50, q.cE, '#000', v => fmtNum(v, 0));
+  const lv = r.S[B.n - 1]; if (!isNaN(lv)) axisTag(lv, CC.tag, CC.tagText, v => fmtNum(v, 0));
+  const x = r.S[ci];
+  const zone = isNaN(x) ? ['資料不足（至少 160 根）', CC.axis] : x >= 80 ? ['超過上限 80（極端恐慌）', q.cW] : x >= 50 ? ['大底區（跌得深、通道大開）', q.cE] : x >= 30 ? ['偏低、波動放大', CC.axis] : ['', CC.axis];
+  const tag = r.W[ci] ? ['W 底', q.cW] : r.zone[ci] ? ['進入大底區', q.cE] : ['', CC.axis];
+  legend([[['布林大底', CC.axis], [isNaN(x) ? '—' : fmtNum(x, 0), x >= 50 ? q.cE : CC.text], zone, tag]], p.top);
+}
+function drawVL(p, i0, i1, ci){
+  const r = R.valley, q = P.valley;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -120, 120, 26, 6); legend([[['布林谷底線  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const [mn, mx] = extent([r.V], i0, i1, [-120, 120].concat(markerExtra(r.ev, i0, i1)));
+  S = makeScale(p.top, p.h, ...rng('vl', mn - 6, mx + 6), 26, 34);
+  gridAndAxis(0);
+  const K = v => () => v, vv = i => r.V[i];
+  fillBetween(i => Math.max(0, r.V[i]), K(0), () => rgba(q.cUp, 84), i0, i1);
+  fillBetween(i => Math.min(0, r.V[i]), K(0), () => rgba(q.cDn, 80), i0, i1);
+  const W = plotW();
+  const hl = (v, col, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(50, rgba(q.cUp, 15), [], 1); hl(0, rgba(CC.axis.length === 7 ? CC.axis : '#8892a3', 50), [2, 3], 1); hl(-50, rgba(q.cDn, 15), [], 1); hl(-80, rgba(q.cDn, 10), [], 2);
+  strokeSeries(vv, i => r.V[i] >= 0 ? q.cUp : q.cDn, i0, i1, 3);
+  visibleMarkers(r.ev, i0, i1);
+  for (const [v, c] of [[50, q.cUp], [-50, q.cDn], [-80, q.cDn]]) axisTag(v, c, '#fff', x => fmtNum(x, 0));
+  const lv = r.V[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= 0 ? q.cUp : q.cDn, '#fff', v => fmtNum(v, 0));
+  const x = r.V[ci], x1 = ci > 0 ? r.V[ci - 1] : NaN;
+  const dir = isNaN(x) || isNaN(x1) ? '' : x > x1 ? '往上' : '往下';
+  const zone = isNaN(x) ? ['資料不足', CC.axis] : x <= -80 ? ['極悲觀（−80 以下）', q.cDn] : x <= -50 ? ['悲觀區（−50 以下）', q.cDn] : x >= 50 ? ['樂觀區', q.cUp] : ['', CC.axis];
+  const sc = r.bot[ci] ? r.score[ci] : null;
+  const parts = [['布林谷底線', CC.axis], [isNaN(x) ? '—' : fmtNum(x, 0), CC.text], [dir, CC.axis], zone];
+  if (sc){ parts.push([(sc.n >= 2 ? '共振底' : '谷底') + r.star(sc.n), r.colOf(sc.n)]); parts.push([[sc.pn && '散戶套牢', sc.fr && '資金流殺低', sc.vp && '爆量'].filter(Boolean).join('・') || '沒有其他恐慌跡象（多半只是小反彈）', CC.axis]); }
+  legend([parts], p.top);
 }
 
 function drawD(p, i0, i1, ci){
@@ -1624,7 +1876,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -1815,7 +2067,7 @@ cv.addEventListener('pointerup', e => {
   }
 });
 function zoomBy(f){ if (!B) return; const W = plotW(), idx = idxAt(W * 0.7); setBarW(view.barW * f); view.right = idx - 0.5 + (W - W * 0.7) / view.barW; schedule(); }
-function resetY(){ yS.main = yS.z = yS.d = null; schedule(); }
+function resetY(){ for (const k in yS) yS[k] = null; schedule(); }
 document.getElementById('zIn').onclick = () => zoomBy(1.35);
 document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
 document.getElementById('zAuto').onclick = resetY;
@@ -1900,12 +2152,41 @@ function updateCards(){
       kv([['標準化位移', rd ? fmtNum(x, 2) + ' SD' : '暖機中', true, rd ? bcol : null], ['位置', loc], ['行為', beh], ['訊號線', qd.showSignalLine ? sigT : '隱藏顯示，仍參與計算', false, qd.signalColor], ['離區事件', exitT, false, exitCol], ['參考價格', refT, false, d.fallback[i] ? '#e6c14d' : null]]);
   }
   document.getElementById('cardVWD').innerHTML = h;
+
+  // 布林大底
+  const bb = R.bbot, qb = P.bbot;
+  if (!bb || bb.error) h = '<h3>布林大底</h3><div class="note">' + esc(bb ? bb.error : '') + '</div>';
+  else {
+    const x = bb.S[i];
+    const zone = isNaN(x) ? '資料不足（至少 160 根）' : x >= 80 ? '超過上限 80（極端恐慌）' : x >= 50 ? '大底區（跌得深、通道大開）' : x >= 30 ? '偏低、波動放大' : '正常';
+    let lastW = -1; for (let k = i; k >= 0; k--) if (bb.W[k]){ lastW = k; break; }
+    h = '<h3>布林大底 <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(x >= 50 ? qb.cE : 'var(--fg)') + '">' + (isNaN(x) ? '—' : fmtNum(x, 0)) + '　<span style="font-size:13px;font-weight:500">' + zone + '</span></div>' +
+      kv([['本根', bb.W[i] ? 'W 底' : bb.zone[i] ? '進入大底區' : '沒有訊號', false, bb.W[i] ? qb.cW : bb.zone[i] ? qb.cE : null], ['上一次 W 底', lastW >= 0 ? B.d[lastW].replace(/-/g, '/') + '（' + (i - lastW) + ' 根前）' : '這段資料沒有', true]]);
+  }
+  document.getElementById('cardBB').innerHTML = h;
+
+  // 布林谷底線
+  const vl = R.valley, qv = P.valley;
+  if (!vl || vl.error) h = '<h3>布林谷底線</h3><div class="note">' + esc(vl ? vl.error : '') + '</div>';
+  else {
+    const x = vl.V[i], x1 = i > 0 ? vl.V[i - 1] : NaN;
+    const zone = isNaN(x) ? '資料不足' : x <= -80 ? '極悲觀（−80 以下）' : x <= -50 ? '悲觀區（−50 以下）' : x >= 50 ? '樂觀區' : x >= 0 ? '零軸上方' : '零軸下方';
+    let lb = -1; for (let k = i; k >= 0; k--) if (vl.bot[k]){ lb = k; break; }
+    const sc = lb >= 0 ? vl.score[lb] : null;
+    const why = sc ? ([sc.pn && '散戶套牢', sc.fr && '資金流殺低', sc.vp && '爆量'].filter(Boolean).join('・') || '沒有其他恐慌跡象') : '';
+    const src = vl.fut ? '散戶套牢' + (vl.cstOn ? '' : '（讀取中）') + '・資金流殺低' + (B.iv === 'W' || B.iv === 'M' ? '（週月 K 不適用）' : vl.flowOn ? '' : '（讀取中）') + '・爆量' : '爆量（散戶套牢、資金流只有台指期才有）';
+    h = '<h3>布林谷底線 <span class="when">' + when + '</span></h3><div class="state" style="color:' + ink(isNaN(x) ? 'var(--fg)' : x >= 0 ? qv.cUp : qv.cDn) + '">' + (isNaN(x) ? '—' : fmtNum(x, 0)) + '　<span style="font-size:13px;font-weight:500">' + (isNaN(x1) ? '' : x > x1 ? '往上・' : '往下・') + zone + '</span></div>' +
+      kv([['本根', vl.bot[i] ? (vl.score[i].n >= 2 ? '共振底' : '谷底') + vl.star(vl.score[i].n) : '沒有谷底', false, vl.bot[i] ? vl.colOf(vl.score[i].n) : null],
+          ['上一次谷底', lb >= 0 ? B.d[lb].replace(/-/g, '/') + '（' + (i - lb) + ' 根前）' + vl.star(sc.n) : '這段資料沒有', true],
+          ['當時恐慌跡象', lb >= 0 ? why : '—'], ['共振來源', src]]);
+  }
+  document.getElementById('cardVL').innerHTML = h;
 }
 
 let SIGS = [];
 function renderSignals(){
   SIGS = [];
-  for (const k of ['vwb', 'vwz', 'vwd']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
+  for (const k of ['vwb', 'vwz', 'vwd', 'bbot', 'valley']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
   SIGS.sort((a, b) => b.i - a.i);
   const f = document.getElementById('sigFilter').value;
   const list = SIGS.filter(s => f === 'all' || s.src === f).slice(0, 60);
@@ -1982,6 +2263,30 @@ async function loadSymbol(input, force){
   }
 }
 
+/* ═════════════ 籌碼（嵌入籌碼頁的個股區塊） ═════════════ */
+let chipCode = null, chipTheme = null;
+function syncChips(){
+  const sec = document.getElementById('chipSec'), fr = document.getElementById('chipFrame'), note = document.getElementById('chipNote');
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
+  sec.hidden = !id;
+  document.getElementById('togChips').setAttribute('aria-pressed', String(!!UI.showChips));
+  if (!id) return;
+  if (!stock){ fr.hidden = true; note.hidden = false; note.textContent = '大戶散戶、內部人買賣只有個股才有；台指期的籌碼請看「總覽」或「選擇權」頁。'; document.getElementById('chipLink').href = 'holders.html?v=3'; return; }
+  document.getElementById('chipLink').href = 'holders.html?v=3&s=' + encodeURIComponent(id);
+  note.hidden = true; fr.hidden = !UI.showChips;
+  if (!UI.showChips) return;
+  if (chipCode === id && chipTheme === UI.theme) return;
+  if (fr.dataset.ready === '1' && chipTheme === UI.theme){ try { fr.contentWindow.postMessage({ holdersOpen:id }, location.origin); chipCode = id; return; } catch (e){} }
+  chipCode = id; chipTheme = UI.theme; fr.dataset.ready = '';
+  fr.src = 'holders.html?embed=1&v=3&theme=' + UI.theme + '&s=' + encodeURIComponent(id);
+  fr.onload = () => { fr.dataset.ready = '1'; };
+}
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || !e.data.holdersHeight) return;
+  document.getElementById('chipFrame').style.height = Math.max(240, e.data.holdersHeight + 8) + 'px';
+});
+document.getElementById('togChips').onclick = () => { UI.showChips = !UI.showChips; saveUI(); syncChips(); };
+
 /* ═════════════ toolbar ═════════════ */
 document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); document.getElementById('symInput').blur(); loadSymbol(document.getElementById('symInput').value); });
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
@@ -2002,6 +2307,9 @@ function syncToolbar(){
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
   document.getElementById('togZ').setAttribute('aria-pressed', String(!!UI.showZ));
   document.getElementById('togD').setAttribute('aria-pressed', String(!!UI.showD));
+  document.getElementById('togBB').setAttribute('aria-pressed', String(!!UI.showBB));
+  document.getElementById('togVL').setAttribute('aria-pressed', String(!!UI.showVL));
+  sizeChart();
 }
 seg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -2019,11 +2327,15 @@ function applyTheme(){
   document.documentElement.dataset.theme = UI.theme;
   CC = PAL[UI.theme] || PAL.dark;
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = CC.bg;
-  syncToolbar(); schedule();
+  syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips();
 }
 document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && !FUTS[RAW.id]) loadSymbol(RAW.id); };
 document.getElementById('togZ').onclick = () => { UI.showZ = !UI.showZ; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togD').onclick = () => { UI.showD = !UI.showD; saveUI(); syncToolbar(); schedule(); };
+document.getElementById('togBB').onclick = () => { UI.showBB = !UI.showBB; saveUI(); syncToolbar(); schedule(); };
+document.getElementById('togVL').onclick = () => { UI.showVL = !UI.showVL; saveUI(); syncToolbar(); recompute(); };
+// 副圖越多，圖表越高，主圖不會被擠扁
+function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
 
 /* ═════════════ settings drawer ═════════════ */
@@ -2041,7 +2353,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }

@@ -123,7 +123,7 @@ if (EMBED) document.documentElement.classList.add('embed');
 /* ───────── 設定：沿用看盤頁的 FinMind 憑證與深淺色 ───────── */
 let SET = {};
 try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
-if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+{ const tq = new URLSearchParams(location.search).get('theme'); if (tq ? tq === 'light' : SET.themeName === 'light') document.documentElement.dataset.theme = 'light'; }
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 const $ = s => document.querySelector(s);

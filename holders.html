@@ -16,6 +16,9 @@
     --big:#3987e5; --small:#d95926; --price:#d6dbe6; --ppl:#59627a;
     color-scheme:dark;
   }
+  html.embed header,html.embed .tabs,html.embed #chips,html.embed footer,html.embed #tabScreen,html.embed #tabLayout,html.embed #tabWarrant,html.embed #tabBranch{display:none!important}
+  html.embed main{padding:0;max-width:none}
+  html.embed,html.embed body{background:transparent}
   :root[data-theme="light"]{
     --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#eef0f4;
     --text:#1f2430; --muted:#667085; --up:#e53935; --down:#089981;
@@ -204,7 +207,9 @@
 'use strict';
 let SET = {};
 try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
-if (SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1', THEMEQ = new URLSearchParams(location.search).get('theme');
+if (EMBED) document.documentElement.classList.add('embed');
+if (THEMEQ ? THEMEQ === 'light' : SET.themeName === 'light') document.documentElement.dataset.theme = 'light';
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -302,7 +307,7 @@ let CUR = null, RANGE = +(store.get('holders.range') || 26);
 async function open(code){
   code = resolve(code); if (!code) return;
   showTab('stock');
-  $('#q').value = code; history.replaceState(null, '', '?s=' + code); store.set('holders.last', code);
+  $('#q').value = code; if (!EMBED){ history.replaceState(null, '', '?s=' + code); store.set('holders.last', code); }
   document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.c === code));
   const out = $('#out');
   out.innerHTML = '<div class="msg">讀取 ' + esc(code) + ' 的集保資料…</div>';
@@ -362,7 +367,7 @@ function insLine(code){
 function showInsider(code){
   const w = $('#insWrap'), f = $('#insFrame'); w.hidden = false;
   if (f.dataset.ready === '1'){ try { f.contentWindow.postMessage({ insiderOpen: code }, location.origin); return; } catch(e){} }
-  f.src = 'insider.html?embed=1&v=3&s=' + encodeURIComponent(code);
+  f.src = 'insider.html?embed=1&v=3&s=' + encodeURIComponent(code) + (THEMEQ ? '&theme=' + THEMEQ : '');
   f.onload = () => { f.dataset.ready = '1'; };
 }
 addEventListener('message', e => {
@@ -903,6 +908,13 @@ $('#q').onkeydown = e => { if (e.key === 'Enter') open($('#q').value); };
 $('#q').onchange = () => { if (/^[0-9]{4}[0-9A-Z]{0,2} /.test($('#q').value)) open($('#q').value); };
 $('#back').href = innerWidth < 700 ? 'mobile.html' : './';
 let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (CUR && !$('#tabStock').hidden){ draw(); drawWarrant(); } }, 200); });
+// 嵌在戰神看盤裡：把內容高度告訴外層頁面，外層切換股票時直接換，不重新載入
+if (EMBED){
+  const post = () => { try { const m = document.querySelector('main'); parent.postMessage({ holdersHeight: Math.ceil(m.getBoundingClientRect().bottom + scrollY) }, location.origin); } catch(e){} };
+  try { new ResizeObserver(post).observe(document.querySelector('main')); } catch(e){}
+  addEventListener('load', post);
+  addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.holdersOpen) open(e.data.holdersOpen); });
+}
 (async () => {
   await loadIndex();
   const p = new URLSearchParams(location.search);
