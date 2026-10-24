@@ -1,2 +1,2 @@
-10-24 01:50:58 本小時 FinMind 已用 8 ／上限 6000
-10-24 01:51:00 retail targets 225 todo 0
+10-24 12:25:26 本小時 FinMind 已用 0 ／上限 6000
+10-24 12:25:28 retail targets 225 todo 0
