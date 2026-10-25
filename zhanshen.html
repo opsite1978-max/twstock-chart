@@ -213,6 +213,14 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 .help{font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.6}
 .err-inline{font-size:12px;color:var(--err);margin:8px 0}
 .dfoot{display:flex;gap:8px;padding-top:16px}
+.ordl{list-style:none;margin:10px 0 0;padding:0;counter-reset:o}
+.ordl li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);counter-increment:o}
+.ordl li::before{content:counter(o);width:18px;text-align:right;font:12px var(--mono);color:var(--dim)}
+.ordl label{flex:1;font-size:14px;min-width:0}
+.ordl label small{color:var(--dim);margin-left:4px}
+.ordl button{border:1px solid var(--line2);background:var(--panel2);border-radius:5px;padding:4px 9px;font-size:13px;min-width:34px}
+.ordl button:disabled{opacity:.35;cursor:default}
+.ordl input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 .dfoot button{border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:7px 12px;font-size:13px}
 .dfoot button.danger{color:#f2b3ad}
 </style>
@@ -257,6 +265,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
+    <button class="iconbtn" id="btnOrder" title="調整副圖由上到下的順序">副圖順序</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
   </div>
 
@@ -2346,7 +2355,14 @@ const PANES = [   // 畫的順序（由上到下）
 ];
 const STRIP_TOP = 18, STRIP_ROW = 13, STRIP_LABEL = 74;
 const paneOk = pp => !(pp.id === 'in' && R.intent && R.intent.na === '主力意圖只適用個股');
-function shownPanes(){ return PANES.filter(pp => UI[pp.flag] && paneOk(pp)); }
+// 副圖順序：存在 UI.paneSeq（沒列到的照預設順序排在後面）
+function orderedPanes(){ const seq = Array.isArray(UI.paneSeq) ? UI.paneSeq : []; const ix = id => { const k = seq.indexOf(id); return k < 0 ? 100 + PANES.findIndex(x => x.id === id) : k; }; return PANES.slice().sort((a, b) => ix(a.id) - ix(b.id)); }
+function shownPanes(){ return orderedPanes().filter(pp => UI[pp.flag] && paneOk(pp)); }
+function movePane(id, d){
+  const seq = orderedPanes().map(x => x.id), k = seq.indexOf(id), j = d === 'top' ? 0 : d === 'bottom' ? seq.length - 1 : k + d;
+  if (k < 0 || j < 0 || j >= seq.length || j === k) return;
+  seq.splice(k, 1); seq.splice(j, 0, id); UI.paneSeq = seq; saveUI(); syncToolbar(); schedule();
+}
 function stripRows(){ return PANES.filter(pp => paneOk(pp) && R[pp.r] && R[pp.r].sig && R[pp.r].sig.length); }
 // 顯示某個副圖；有「同時顯示」上限時，關掉最早打開的那個
 function showPane(id, on){
@@ -3570,7 +3586,8 @@ function syncToolbar(){
   togNight.setAttribute('aria-pressed', String(!!UI.night));
   document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol];
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
-  for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.setAttribute('aria-pressed', String(!!UI[pp.flag])); }
+  { let after = document.getElementById('togAdj');
+    for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
   sizeChart();
 }
 seg.addEventListener('click', e => {
@@ -3604,6 +3621,7 @@ let activeTab = 'vwb';
 function openDrawer(){ drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); scrim.hidden = false; }
 function closeDrawer(){ drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); scrim.hidden = true; }
 document.getElementById('btnSettings').onclick = openDrawer;
+document.getElementById('btnOrder').onclick = () => { activeTab = 'order'; buildTabs(); buildBody(); openDrawer(); };
 document.getElementById('btnClose').onclick = closeDrawer;
 scrim.onclick = closeDrawer;
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
@@ -3613,7 +3631,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
@@ -3628,6 +3646,7 @@ function ctrlHTML(ind, it){
 function buildBody(){
   const body = document.getElementById('dbody');
   if (activeTab === 'app'){ body.innerHTML = appHTML(); bindApp(); return; }
+  if (activeTab === 'order'){ renderOrder(); return; }
   const sc = SCHEMA[activeTab];
   let h = '<p class="help">' + esc(sc.title) + '。改動會立即重算並自動記住。</p>';
   for (const g of sc.groups){
@@ -3659,6 +3678,19 @@ function buildBody(){
     if (it.t === 'int' || it.t === 'float') el.addEventListener('change', () => { apply(); el.value = P[ind][it.k]; });
   }
   document.getElementById('btnReset').onclick = () => { P[ind] = defaults(ind); LS.set(PFX + 'p:' + ind, P[ind]); buildBody(); recompute(); };
+}
+function renderOrder(){
+  const body = document.getElementById('dbody'), list = orderedPanes();
+  body.innerHTML = '<p class="help">由上到下就是圖表上副圖的順序（主圖永遠在最上面）。用箭頭調整，勾選＝顯示。改了馬上生效、自動記住。</p>' +
+    '<ol class="ordl">' + list.map((pp, k) => '<li><input type="checkbox" id="o-' + pp.id + '"' + (UI[pp.flag] ? ' checked' : '') + ' aria-label="顯示 ' + pp.name + '">' +
+      '<label for="o-' + pp.id + '">' + pp.name + (paneOk(pp) ? '' : '<small>（這個商品不適用）</small>') + '</label>' +
+      '<button data-m="top" data-id="' + pp.id + '"' + (k ? '' : ' disabled') + ' aria-label="移到最上面">置頂</button>' +
+      '<button data-m="-1" data-id="' + pp.id + '"' + (k ? '' : ' disabled') + ' aria-label="往上">↑</button>' +
+      '<button data-m="1" data-id="' + pp.id + '"' + (k < list.length - 1 ? '' : ' disabled') + ' aria-label="往下">↓</button></li>').join('') + '</ol>' +
+    '<div class="dfoot"><button id="o-reset">恢復預設順序</button></div>';
+  body.querySelector('.ordl').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; const m = b.dataset.m; movePane(b.dataset.id, m === 'top' ? 'top' : +m); renderOrder(); });
+  body.querySelector('.ordl').addEventListener('change', e => { const id = e.target.id.slice(2), pp = PANES.find(x => x.id === id); if (!pp) return; UI[pp.flag] = e.target.checked; saveUI(); syncToolbar(); if (pp.reload) recompute(); else schedule(); });
+  document.getElementById('o-reset').onclick = () => { UI.paneSeq = []; saveUI(); syncToolbar(); schedule(); renderOrder(); };
 }
 function appHTML(){
   return '<fieldset><legend>FinMind 資料</legend>' +
