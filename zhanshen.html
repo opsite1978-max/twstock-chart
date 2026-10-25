@@ -244,14 +244,23 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <select id="periodSel" class="selp" title="分 K 要載入的交易日數（第一次每天用 1 個 FinMind 額度，之後存在這台裝置）" aria-label="分 K 載入天數" hidden></select>
     <button class="tog" id="togNight" aria-pressed="false" title="分 K 加上台指期夜盤（15:00 到隔天 05:00）" hidden>含夜盤</button>
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
+    <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
+    <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
+    <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
+    <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
+    <button class="tog" id="togTG" aria-pressed="true" title="龜苓膏：權證買方溫度計（時間價值、波動）">龜苓膏</button>
+    <button class="tog" id="togDK" aria-pressed="true" title="多空趨勢（通達信公式＋回測優化的底、頂）">多空趨勢</button>
+    <button class="tog" id="togZX" aria-pressed="true" title="庄現趨勢（通達信公式）：離 40 日均線、庄現柱、入市／機會／底">庄現趨勢</button>
+    <button class="tog" id="togCP" aria-pressed="true" title="抄底預警（通達信公式）：趨勢方塊柱、多空柱、預警線、抄底與進場標記">抄底預警</button>
+    <button class="tog" id="togJP" aria-pressed="true" title="極品反彈（通達信公式）：主線、K／D、買賣訊號">極品反彈</button>
+    <button class="tog" id="togDX" aria-pressed="true" title="MultiColor DegenX：鎖碼／浮動／獲利三層，加上回測過的找底訊號">DegenX</button>
+    <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
   </div>
 
   <div class="msg ok" id="msg" role="status"><span class="dot"></span><span id="msgText">準備中…</span></div>
-
-  <div class="tools ptabs" id="paneTabs" role="toolbar" aria-label="副圖"></div>
 
   <div class="tools" id="tools" role="toolbar" aria-label="畫圖工具">
     <button data-tool="cursor" aria-pressed="true" title="選取、移動畫好的線；拖曳圖面平移">游標</button>
@@ -652,12 +661,12 @@ const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:false, showStrip:true, paneMax:2, paneOrder:[], wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
-if (!UI.viewV2){ UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = false; UI.showDK = true; UI.showZ = true; UI.paneOrder = ['z', 'dk']; UI.paneMax = 2; UI.showStrip = true; }
+if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
 UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
@@ -2124,11 +2133,9 @@ function draw(){
   const i0 = Math.max(0, Math.floor(idxAt(0)) - 1), i1 = Math.min(B.n - 1, Math.ceil(idxAt(W)) + 1);
   const ci = cross ? Math.max(0, Math.min(B.n - 1, cross.i)) : B.n - 1;
 
-  // pane layout：主圖 →（訊號總覽）→ 目前打開的副圖
+  // pane layout
   const Wt0 = UI.weights;
   const panes = [{ id:'main', w:Wt0.main }];
-  const rows = stripRows();
-  if (UI.showStrip && rows.length) panes.push({ id:'sg', fixed:STRIP_TOP + rows.length * STRIP_ROW + 4, rows });
   for (const pp of shownPanes()) panes.push({ id:pp.id, w:Wt0[pp.id] || 1.3 });
   const avail = Ht - TIME_H, fixedH = panes.reduce((s, p) => s + (p.fixed || 0), 0), tw = panes.reduce((s, p) => s + (p.fixed ? 0 : p.w), 0);
   let top = 0;
@@ -2324,18 +2331,18 @@ function drawZ(p, i0, i1, ci){
 }
 
 /* ───── 副圖清單、看盤模式、訊號總覽 ───── */
-const PANES = [
-  { id:'z',  flag:'showZ',  name:'VW Z',     r:'vwz' },
-  { id:'d',  flag:'showD',  name:'VWD',      r:'vwd' },
-  { id:'dk', flag:'showDK', name:'多空趨勢', r:'dk' },
-  { id:'zx', flag:'showZXP', name:'庄現趨勢', r:'zx' },
-  { id:'cp', flag:'showCP', name:'抄底預警', r:'cp', reload:true },
-  { id:'jp', flag:'showJP', name:'極品反彈', r:'jp' },
-  { id:'dx', flag:'showDX', name:'DegenX',   r:'degen' },
-  { id:'bb', flag:'showBB', name:'布林大底', r:'bbot' },
-  { id:'vl', flag:'showVL', name:'布林谷底線', r:'valley', reload:true },
-  { id:'tg', flag:'showTG', name:'龜苓膏',   r:'turtle' },
-  { id:'in', flag:'showIN', name:'主力意圖', r:'intent', reload:true }
+const PANES = [   // 畫的順序（由上到下）
+  { id:'z',  flag:'showZ',  btn:'Z',  name:'VW Z',     r:'vwz' },
+  { id:'d',  flag:'showD',  btn:'D',  name:'VWD',      r:'vwd' },
+  { id:'bb', flag:'showBB', btn:'BB', name:'布林大底', r:'bbot' },
+  { id:'vl', flag:'showVL', btn:'VL', name:'布林谷底線', r:'valley', reload:true },
+  { id:'tg', flag:'showTG', btn:'TG', name:'龜苓膏',   r:'turtle' },
+  { id:'in', flag:'showIN', btn:'IN', name:'主力意圖', r:'intent', reload:true },
+  { id:'dx', flag:'showDX', btn:'DX', name:'DegenX',   r:'degen' },
+  { id:'jp', flag:'showJP', btn:'JP', name:'極品反彈', r:'jp' },
+  { id:'cp', flag:'showCP', btn:'CP', name:'抄底預警', r:'cp', reload:true },
+  { id:'dk', flag:'showDK', btn:'DK', name:'多空趨勢', r:'dk' },
+  { id:'zx', flag:'showZXP', btn:'ZX', name:'庄現趨勢', r:'zx' }
 ];
 const STRIP_TOP = 18, STRIP_ROW = 13, STRIP_LABEL = 74;
 const paneOk = pp => !(pp.id === 'in' && R.intent && R.intent.na === '主力意圖只適用個股');
@@ -3563,7 +3570,8 @@ function syncToolbar(){
   togNight.setAttribute('aria-pressed', String(!!UI.night));
   document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol];
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
-  sizeChart(); syncPaneTabs();
+  for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.setAttribute('aria-pressed', String(!!UI[pp.flag])); }
+  sizeChart();
 }
 seg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -3585,18 +3593,9 @@ function applyTheme(){
 }
 document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && !FUTS[RAW.id]) loadSymbol(RAW.id); };
 // 副圖越多，圖表越高，主圖不會被擠扁
-function sizeChart(){
-  const k = PANES.filter(pp => UI[pp.flag]).length, strip = UI.showStrip ? STRIP_TOP + PANES.length * STRIP_ROW : 0;
-  document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + (Math.max(0, k - 2) * 130 + Math.round(strip * 0.6)) + 'px)';
-}
-{ const box = document.getElementById('paneTabs');
-  box.innerHTML = '<span class="lbl">副圖</span>' + PANES.map(pp => '<button data-pane="' + pp.id + '" aria-pressed="false">' + pp.name + '</button>').join('') +
-    '<span class="vsep"></span><button id="togStrip" aria-pressed="true" title="主圖下方一行一個指標，只畫訊號點">訊號總覽</button>' +
-    '<label class="mx">同時顯示<select id="paneMax" aria-label="同時顯示幾個副圖"><option value="1">1 個</option><option value="2">2 個</option><option value="3">3 個</option><option value="0">不限</option></select></label>';
-  box.addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (b) showPane(b.dataset.pane); });
-  document.getElementById('togStrip').onclick = () => { UI.showStrip = !UI.showStrip; saveUI(); syncPaneTabs(); sizeChart(); schedule(); };
-  document.getElementById('paneMax').onchange = e => { UI.paneMax = +e.target.value; enforcePaneMax(); saveUI(); syncPaneTabs(); sizeChart(); recompute(); };
-}
+// 副圖越多，圖表越高，主圖不會被擠扁
+function sizeChart(){ const k = PANES.filter(pp => UI[pp.flag]).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
+for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.onclick = () => { UI[pp.flag] = !UI[pp.flag]; saveUI(); syncToolbar(); if (pp.reload) recompute(); else schedule(); }; }
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
 
 /* ═════════════ settings drawer ═════════════ */
