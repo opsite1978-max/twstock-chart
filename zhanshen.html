@@ -368,9 +368,22 @@ const SCHEMA = {
       {k:'showOuter', l:'顯示 3／6／9 倍外通道', t:'bool', d:true},
       {k:'cloudAlpha', l:'雲帶透明度', t:'int', d:85, min:0, max:100},
       {k:'trendWidth', l:'趨勢線粗細', t:'int', d:4, min:1, max:5},
-      {k:'bullColor', l:'多方顏色', t:'color', d:'#5CF0D7'},
-      {k:'bearColor', l:'空方顏色', t:'color', d:'#B32AC3'},
+      {k:'bullColor', l:'多方顏色（K 棒、標記）', t:'color', d:'#5CF0D7'},
+      {k:'bearColor', l:'空方顏色（K 棒、標記）', t:'color', d:'#B32AC3'},
       {k:'neutralColor', l:'中性顏色', t:'color', d:'#808080'}
+    ]},
+    { name:'②-1 軌道顏色', items:[
+      {k:'bandFollow', l:'軌道顏色跟著上面的多空顏色', t:'bool', d:true},
+      {k:'trendBull', l:'趨勢中線：多方', t:'color', d:'#5CF0D7'},
+      {k:'trendBear', l:'趨勢中線：空方', t:'color', d:'#B32AC3'},
+      {k:'bandBull', l:'內通道（1 倍）：多方', t:'color', d:'#5CF0D7'},
+      {k:'bandBear', l:'內通道（1 倍）：空方', t:'color', d:'#B32AC3'},
+      {k:'outerBull', l:'外通道（3／6／9 倍）：多方', t:'color', d:'#5CF0D7'},
+      {k:'outerBear', l:'外通道（3／6／9 倍）：空方', t:'color', d:'#B32AC3'},
+      {k:'bandWidth', l:'內通道線粗細', t:'int', d:2, min:1, max:5},
+      {k:'outerWidth', l:'外通道線粗細', t:'int', d:1, min:1, max:5},
+      {k:'outerLineAlpha', l:'外通道線透明度', t:'int', d:20, min:0, max:100},
+      {k:'outerCloudAlpha', l:'外通道雲帶透明度', t:'int', d:85, min:0, max:100}
     ]},
     { name:'③ Up／Down 訊號', items:[
       {k:'closeOnly', l:'趨勢切換與訊號只在收盤確認', t:'bool', d:true},
@@ -1789,17 +1802,21 @@ function drawMain(p, i0, i1, ci){
   }
 
   const colOf = i => !ok || !r.ready[i] ? q.neutralColor : r.state[i] === 1 ? q.bullColor : r.state[i] === -1 ? q.bearColor : q.neutralColor;
-  const fillOf = i => ok && r.ready[i] && r.state[i] !== 0 ? rgba(r.state[i] === 1 ? q.bullColor : q.bearColor, q.cloudAlpha) : null;
+  // 軌道各自的顏色（關掉「跟著多空顏色」時使用）
+  const pick = (bk, sk) => i => q.bandFollow ? colOf(i) : (!ok || !r.ready[i] || r.state[i] === 0 ? q.neutralColor : r.state[i] === 1 ? q[bk] : q[sk]);
+  const trendOf = pick('trendBull', 'trendBear'), bandOf = pick('bandBull', 'bandBear'), outerOf = pick('outerBull', 'outerBear');
+  const fillOf = i => ok && r.ready[i] && r.state[i] !== 0 ? rgba(bandOf(i), q.cloudAlpha) : null;
+  const ofillOf = i => ok && r.ready[i] && r.state[i] !== 0 ? rgba(outerOf(i), q.outerCloudAlpha ?? q.cloudAlpha) : null;
   if (ok){
     if (cloud){
       fillBetween(i => r.u1[i], i => r.l1[i], fillOf, i0, i1);
       if (q.showOuter){
-        fillBetween(i => r.u9[i], i => r.u6[i], fillOf, i0, i1);
-        fillBetween(i => r.l6[i], i => r.l9[i], fillOf, i0, i1);
+        fillBetween(i => r.u9[i], i => r.u6[i], ofillOf, i0, i1);
+        fillBetween(i => r.l6[i], i => r.l9[i], ofillOf, i0, i1);
       }
     } else if (single){
       const sb = i => r.state[i] === 1 ? r.l1[i] : r.state[i] === -1 ? r.u1[i] : NaN;
-      fillBetween(i => B.c[i], sb, i => r.ready[i] ? rgba(B.c[i] >= sb(i) ? q.bullColor : q.bearColor, q.cloudAlpha) : null, i0, i1);
+      fillBetween(i => B.c[i], sb, i => r.ready[i] ? rgba(q.bandFollow ? (B.c[i] >= sb(i) ? q.bullColor : q.bearColor) : (B.c[i] >= sb(i) ? q.bandBull : q.bandBear), q.cloudAlpha) : null, i0, i1);
     }
   }
 
@@ -1823,16 +1840,17 @@ function drawMain(p, i0, i1, ci){
   if (ok){
     if (cloud){
       if (q.showOuter){
-        for (const [a, t] of [[r.u3, 20], [r.l3, 20], [r.u6, 30], [r.l6, 30], [r.u9, 20], [r.l9, 20]])
-          strokeSeries(i => a[i], i => rgba(colOf(i), t), i0, i1, 1);
+        const oa = q.outerLineAlpha ?? 20;
+        for (const [a, t] of [[r.u3, oa], [r.l3, oa], [r.u6, Math.min(100, oa + 10)], [r.l6, Math.min(100, oa + 10)], [r.u9, oa], [r.l9, oa]])
+          strokeSeries(i => a[i], i => rgba(outerOf(i), t), i0, i1, q.outerWidth || 1);
       }
-      strokeSeries(i => r.u1[i], colOf, i0, i1, 2);
-      strokeSeries(i => r.l1[i], colOf, i0, i1, 2);
+      strokeSeries(i => r.u1[i], bandOf, i0, i1, q.bandWidth || 2);
+      strokeSeries(i => r.l1[i], bandOf, i0, i1, q.bandWidth || 2);
     }
     if (single){
       const sb = i => r.state[i] === 1 ? r.l1[i] : r.state[i] === -1 ? r.u1[i] : NaN;
-      strokeSeries(sb, i => (r.state[i] === r.state[i - 1]) ? colOf(i) : null, i0, i1, 2);
-    } else strokeSeries(i => r.trend[i], colOf, i0, i1, q.trendWidth);
+      strokeSeries(sb, i => (r.state[i] === r.state[i - 1]) ? bandOf(i) : null, i0, i1, q.bandWidth || 2);
+    } else strokeSeries(i => r.trend[i], trendOf, i0, i1, q.trendWidth);
     visibleMarkers(r.ev, i0, i1);
     if (R.mainExtra) visibleMarkers(R.mainExtra, i0, i1);
     axisTag(B.c[B.n - 1], B.c[B.n - 1] >= B.o[B.n - 1] ? CC.up : CC.down, '#fff', fmtP);
@@ -1848,7 +1866,7 @@ function drawMain(p, i0, i1, ci){
   const vol = isF || B.intra ? B.v[ci] : isIdx ? B.v[ci] / 1e8 : B.v[ci] / 1000;
   const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
   const line2 = ok
-    ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), colOf(ci)], ['上 ' + fmtP(r.u1[ci]), colOf(ci)], ['下 ' + fmtP(r.l1[ci]), colOf(ci)]]
+    ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), trendOf(ci)], ['上 ' + fmtP(r.u1[ci]), bandOf(ci)], ['下 ' + fmtP(r.l1[ci]), bandOf(ci)]]
     : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
   legend([line1, line2], p.top);
 }
@@ -2994,7 +3012,10 @@ function buildBody(){
         if (it.min != null) v = Math.max(it.min, v);
         if (it.max != null) v = Math.min(it.max, v);
       }
-      P[ind][it.k] = v; LS.set('zs:p:' + ind, P[ind]); queueRecompute();
+      P[ind][it.k] = v;
+      // 改了任何一個軌道顏色，就自動關掉「跟著多空顏色」，改的顏色馬上看得到
+      if (ind === 'vwb' && /^(trend|band|outer)(Bull|Bear)$/.test(it.k) && P.vwb.bandFollow){ P.vwb.bandFollow = false; const cb = document.getElementById('p-vwb-bandFollow'); if (cb) cb.checked = false; }
+      LS.set('zs:p:' + ind, P[ind]); queueRecompute();
     };
     el.addEventListener(it.t === 'bool' || it.t === 'select' ? 'change' : 'input', apply);
     if (it.t === 'int' || it.t === 'float') el.addEventListener('change', () => { apply(); el.value = P[ind][it.k]; });
