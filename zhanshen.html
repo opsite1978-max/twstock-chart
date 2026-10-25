@@ -3138,6 +3138,7 @@ function appHTML(){
     '<p class="help">' + (siteToken() ? '目前沿用看盤頁「⚙ 設定」裡的 FinMind 憑證，這裡不用另外填。' : '看盤頁還沒有設定 FinMind 憑證；可以在這裡填，或到看盤頁「⚙ 設定」填一次全站共用。') + '</p>' +
     '<div class="row"><label for="a-start">資料起始日</label><input type="date" id="a-start" value="' + esc(UI.start) + '"></div>' +
     '<div class="row"><label for="a-adj">還原權息價格</label><input type="checkbox" id="a-adj"' + (UI.adj ? ' checked' : '') + '></div>' +
+    '<div class="dfoot" style="padding-top:8px"><button id="a-check">檢查憑證</button></div><div class="help" id="a-checkOut" style="white-space:pre-line"></div>' +
     '<p class="help">憑證只存在這台裝置的瀏覽器裡，請求時直接送到 FinMind。每個代號第一次載入抓一次完整日資料，之後只補最新幾天；週 K、月 K 由日資料在本機合成，不另外消耗額度。台指期從 2008 年起依年份分段抓取。</p></fieldset>' +
     '<fieldset><legend>圖表</legend>' +
     '<div class="row"><label for="a-vol">主圖底部顯示成交量</label><input type="checkbox" id="a-vol"' + (UI.showVolume ? ' checked' : '') + '></div>' +
@@ -3152,10 +3153,37 @@ function bindApp(){
   document.getElementById('a-token').onchange = e => { UI.token = e.target.value.trim(); saveUI(); };
   document.getElementById('a-start').onchange = e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ UI.start = e.target.value; saveUI(); } };
   document.getElementById('a-apply').onclick = () => { UI.token = document.getElementById('a-token').value.trim(); saveUI(); closeDrawer(); loadSymbol(UI.symbol, true); };
+  document.getElementById('a-check').onclick = () => { const t = document.getElementById('a-token'); t.dispatchEvent(new Event('change')); checkToken(); };
   document.getElementById('a-clear').onclick = e => {
     for (const k of LS.keys()) if (k.startsWith('zs:d:') || k === 'zs:names') LS.del(k);
     e.target.textContent = '已清除';
   };
+}
+/* 檢查憑證：日 K、分 K 各試抓一次，順便讀本小時已用額度 */
+async function checkToken(){
+  const out = document.getElementById('a-checkOut'); if (!out) return;
+  const tk = getToken(), lines = [];
+  out.textContent = '檢查中…';
+  if (!tk) lines.push('這台裝置還沒有存 FinMind 憑證（沒有憑證也能抓，但額度很少）。');
+  try {
+    const d = await finmind({ dataset:'TaiwanStockPrice', data_id:'2330', start_date:isoDay(dayMs(tpNow().date) - 12 * 864e5) });
+    const l = d[d.length - 1];
+    lines.push(l ? '日 K：可以用（台積電 ' + l.date.replace(/-/g, '/') + ' 收盤 ' + l.close + '）' : '日 K：連得上，但沒有資料');
+  } catch (e){ lines.push('日 K：不能用。' + e.message); }
+  try {
+    const ds = await tradingDates(5); let ok = null;
+    for (let k = ds.length - 1; k >= Math.max(0, ds.length - 3) && ok == null; k--){
+      const d = await finmind({ dataset:'TaiwanStockKBar', data_id:'2330', start_date:ds[k] });
+      if (d.length) ok = ds[k];
+    }
+    lines.push(ok ? '分 K（5 分到 4 小時）：可以用（' + ok.replace(/-/g, '/') + '）' : '分 K：沒有錯誤，但最近幾天抓不到資料');
+  } catch (e){ lines.push('分 K（5 分到 4 小時）：不能用。' + e.message + (/會員|level|sponsor/i.test(e.message) ? ' 這個方案不含分 K，日 K 以上都能正常用。' : '')); }
+  try {
+    const r = await fetch('https://api.web.finmindtrade.com/v2/user_info?token=' + encodeURIComponent(tk));
+    const j = await r.json();
+    if (j && j.user_count != null) lines.push('額度：這一小時已用 ' + j.user_count + '／' + j.api_request_limit + ' 次' + (j.level_title ? '（' + j.level_title + '）' : ''));
+  } catch (e){ lines.push('額度：讀不到（不影響使用；可到 FinMind 網站的帳號頁看）'); }
+  out.textContent = lines.join('\n');
 }
 function syncAppForm(){ const el = document.getElementById('a-adj'); if (el) el.checked = !!UI.adj; }
 
