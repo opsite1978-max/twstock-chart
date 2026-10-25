@@ -124,6 +124,42 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .gr.g2{background:rgba(217,168,92,.18);color:var(--accent)}
 .gr.g3{background:rgba(239,106,95,.16);color:var(--err)}
 .wtable td.why{font-family:var(--sans);text-align:left;color:var(--muted);white-space:normal;min-width:180px;font-size:12px}
+.wtable tbody tr[data-code]{cursor:pointer}
+.wtable tr[data-code]:hover td{background:var(--panel2)}
+.wpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.wpick:empty{display:none}
+.pk{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.pk:hover{border-color:var(--accent)}
+.pk .t{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:14px}
+.pk .t small{font:500 11.5px var(--mono);color:var(--dim)}
+.pk .big{font-size:13px;color:var(--muted)}
+.pk .big b{font:600 18px var(--mono);color:var(--fg)}
+.pk .m{font:12px var(--mono);color:var(--muted)}
+.pk .go{font-size:12px;color:var(--accent)}
+.wmodal{position:fixed;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 16px));max-height:calc(100vh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.wm-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.wm-head h2{font-size:16px;margin:0;margin-right:auto;min-width:0}
+.wm-head h2 small{font:500 12px var(--mono);color:var(--dim);margin-left:6px}
+.wm-body{overflow:auto;padding:12px 14px 18px;display:flex;flex-direction:column;gap:12px}
+.wm-meta{display:flex;flex-wrap:wrap;gap:6px}
+.wm-meta span{font-size:12.5px;border:1px solid var(--line2);border-radius:999px;padding:2px 9px;color:var(--muted)}
+.wm-meta b{color:var(--fg);font-family:var(--mono);font-weight:500}
+.wm-in{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px}
+.wm-in label{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.wm-in input[type=number],.wm-in select{background:var(--bg);border:1px solid var(--line2);border-radius:5px;padding:5px 8px;font-family:var(--mono);font-size:13px;width:110px}
+.wm-in select{font-family:var(--sans);width:auto}
+.wm-hero{border:1px solid var(--line2);border-radius:6px;padding:12px 14px;background:var(--bg);font-size:14px;line-height:1.7}
+.wm-hero b{font:700 22px var(--mono)}
+.wm-hero .u{color:var(--up)} .wm-hero .d{color:var(--down)}
+.wm-t{width:100%;border-collapse:collapse;font-size:13px}
+.wm-t th{color:var(--muted);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wm-t td{text-align:right;padding:6px 8px;border-top:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wm-t th:first-child,.wm-t td:first-child{text-align:left;font-family:var(--sans);white-space:normal}
+.wm-t td small{display:block;color:var(--dim);font-size:11.5px}
+.wm-scroll{overflow-x:auto}
+.wm-heat td{padding:6px 6px;text-align:center}
+.wm-body h3{font-size:13.5px;margin:4px 0 0;color:var(--fg)}
+.wm-body .help{margin:0}
 .wtable tr.empty td{text-align:center;color:var(--dim);font-family:var(--sans)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
 .card h3{margin:0 0 2px;font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
@@ -274,8 +310,9 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <div class="seg" id="wSeg" role="group" aria-label="權證類型"><button data-v="C">認購</button><button data-v="P">認售</button><button data-v="A">全部</button></div>
     </div>
     <div class="wsum" id="wSum"></div>
+    <div class="wpick" id="wPick"></div>
     <div class="wtable"><table id="wTable"></table></div>
-    <p class="help" id="wNote">價格用近 20 個交易日成交最多的 60 檔權證、各自最新一天的收盤價，不是即時買賣價；隱含波動率用 Black–Scholes 從收盤價反推（無風險利率 1.6%、不計股利）。「放 10 天不動」＝股價和隱含波動率都不變，10 天後權證剩多少。「打平每天要動」＝每天至少要往有利方向動這麼多，才抵得掉時間價值。評等：<b>甜</b>＝剩 60 天以上、價外 15% 以內、隱含波動率不超過實際波動 1.3 倍、槓桿 3～9 倍、20 天成交 500 萬以上；<b>苦</b>＝剩不到 30 天、隱含波動率貴 1.6 倍以上、價外超過 25%、槓桿超過 12 倍、成交太少，或收盤價低於內含價值；其餘為<b>可</b>。這是篩選參考，不是買進建議。</p>
+    <p class="help" id="wNote">價格用近 20 個交易日成交最多的 60 檔權證、各自最新一天的收盤價，不是即時買賣價；隱含波動率用 Black–Scholes 從收盤價反推（無風險利率 1.6%、不計股利）。「放 10 天不動」＝股價和隱含波動率都不變，10 天後權證剩多少。「抱 5 天要漲」＝今天用收盤價買、5 個交易日後賣，股價至少要往有利方向動這麼多才開始賺（已含買賣手續費 0.1425% 與權證交易稅 0.1%，隱含波動率假設不變）。點任一列可以打開試算，看不同持有天數要漲多少、漲多少賺多少。建議權證＝評等最好的幾檔裡，抱 5 天要漲最少的前 3 檔。評等：<b>甜</b>＝剩 60 天以上、價外 15% 以內、隱含波動率不超過實際波動 1.3 倍、槓桿 3～9 倍、20 天成交 500 萬以上；<b>苦</b>＝剩不到 30 天、隱含波動率貴 1.6 倍以上、價外超過 25%、槓桿超過 12 倍、成交太少，或收盤價低於內含價值；其餘為<b>可</b>。這是篩選參考，不是買進建議。</p>
   </section>
 
   <section class="chipsec" id="chipSec" hidden>
@@ -297,6 +334,11 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
   </footer>
 </div>
 
+<div class="scrim" id="wScrim" hidden></div>
+<div class="wmodal" id="wModal" role="dialog" aria-modal="true" aria-labelledby="wmTitle" hidden>
+  <div class="wm-head"><h2 id="wmTitle"></h2><button class="iconbtn" id="wmClose">關閉</button></div>
+  <div class="wm-body" id="wmBody"></div>
+</div>
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" aria-label="指標設定" aria-hidden="true">
   <div class="dh"><h2>指標設定 Settings</h2><button class="iconbtn" id="btnClose">關閉</button></div>
@@ -2465,12 +2507,34 @@ function buildWarrants(d, rows){
       if (val < 500) meh.push('成交偏少');
     }
     const grade = bad.length ? 3 : meh.length ? 2 : 1;
-    out.push({ code, name, call, val, px, K, days, ratio, issuer, iv, ivr, otm, lev, burn, after10, be, grade, why: bad.length ? bad : meh });
+    const be5 = isFinite(iv) ? needMove({ call, K, ratio, iv, days }, S, px, 5, 0, true) : NaN;
+    out.push({ code, name, call, val, px, K, days, ratio, issuer, iv, ivr, otm, lev, burn, after10, be, be5, last, grade, why: bad.length ? bad : meh });
   }
   WSTATE.rows = out;
   WSTATE.ivC = median(out.filter(r => r.call && r.grade < 3).map(r => r.iv));
   WSTATE.ivP = median(out.filter(r => !r.call && r.grade < 3).map(r => r.iv));
 }
+/* 試算：持有 h 個交易日後賣，股價要到多少才打平（含費用），iv 可加減 dIv */
+const FEE = 0.001425, TAX = 0.001;
+const calDays = h => h * 7 / 5;
+function warrantValue(w, S, h, dIv){
+  const T = Math.max(0, (w.days - calDays(h)) / 365), sg = Math.max(0.02, w.iv + (dIv || 0));
+  return bsm(S, w.K, T, sg, w.call).p * w.ratio;
+}
+function breakevenS(w, S0, buy, h, dIv, fees){
+  const target = fees ? buy * (1 + FEE) / (1 - FEE - TAX) : buy;
+  if (calDays(h) >= w.days){                                 // 到期：內含價值
+    const need = target / w.ratio;
+    return w.call ? w.K + need : w.K - need;
+  }
+  let lo = S0 * 0.2, hi = S0 * 5;
+  const f = x => warrantValue(w, x, h, dIv) - target;
+  if (w.call){ if (f(hi) < 0) return NaN; if (f(lo) > 0) return lo; }
+  else { if (f(lo) < 0) return NaN; if (f(hi) > 0) return hi; }
+  for (let k = 0; k < 60; k++){ const m = (lo + hi) / 2, v = f(m); if ((v > 0) === w.call) hi = m; else lo = m; }
+  return (lo + hi) / 2;
+}
+function needMove(w, S0, buy, h, dIv, fees){ const x = breakevenS(w, S0, buy, h, dIv, fees); return isFinite(x) ? x / S0 - 1 : NaN; }
 const pctS = (v, d = 1) => isFinite(v) ? (v * 100).toFixed(d) + '%' : '—';
 function renderWarrants(){
   const sec = document.getElementById('wSec'), W = WSTATE;
@@ -2490,15 +2554,87 @@ function renderWarrants(){
     '<span>認售 <b>' + pctS(W.ivP, 0) + '</b></span>' +
     (isFinite(mBurn) ? '<span>認購每天時間價值流失中位數 <b>' + pctS(mBurn, 2) + '</b>，股價每天要漲 <b>' + pctS(mBe, 2) + '</b> 才打平</span>' : '') +
     '<span>龜苓膏：<b>' + (z === 0 ? '龜速區，先別急著買' : z === 1 ? '認購有利' : z === -1 ? '認售有利' : isFinite(g) ? (g > 0 ? '偏多但還不夠快' : '偏空但還不夠快') : '—') + '</b></span>';
-  const head = '<tr><th>權證</th><th>評等</th><th>收盤</th><th>剩餘天數</th><th>價內外</th><th>隱含波動率</th><th>貴不貴</th><th>實質槓桿</th><th>每天流失</th><th>放 10 天不動</th><th>打平每天要動</th><th>20 日成交</th><th>說明</th></tr>';
+  const head = '<tr><th>權證</th><th>評等</th><th>收盤</th><th>剩餘天數</th><th>價內外</th><th>隱含波動率</th><th>貴不貴</th><th>實質槓桿</th><th>每天流失</th><th>放 10 天不動</th><th>抱 5 天要漲</th><th>20 日成交</th><th>說明</th></tr>';
   const gt = ['', '甜', '可', '苦'];
-  const body = list.slice(0, 30).map(r => '<tr><td class="nm">' + esc(r.name || r.code) + '<small>' + esc(r.code) + '・' + (r.call ? '認購' : '認售') + '・履約 ' + fmtPx(r.K) + '</small></td>' +
+  const body = list.slice(0, 30).map(r => '<tr data-code="' + esc(r.code) + '" tabindex="0" title="點開試算要漲多少才賺"><td class="nm">' + esc(r.name || r.code) + '<small>' + esc(r.code) + '・' + (r.call ? '認購' : '認售') + '・履約 ' + fmtPx(r.K) + '</small></td>' +
     '<td><span class="gr g' + r.grade + '">' + gt[r.grade] + '</span></td><td>' + fmtPx(r.px) + '</td><td>' + r.days + '</td>' +
     '<td>' + (r.otm >= 0 ? '價外 ' : '價內 ') + pctS(Math.abs(r.otm)) + '</td><td>' + pctS(r.iv, 0) + '</td><td>' + (isFinite(r.ivr) ? fmtNum(r.ivr, 2) + ' 倍' : '—') + '</td>' +
-    '<td>' + (isFinite(r.lev) ? fmtNum(r.lev, 1) + ' 倍' : '—') + '</td><td>' + pctS(r.burn, 2) + '</td><td>' + pctS(r.after10) + '</td><td>' + pctS(r.be, 2) + '</td>' +
+    '<td>' + (isFinite(r.lev) ? fmtNum(r.lev, 1) + ' 倍' : '—') + '</td><td>' + pctS(r.burn, 2) + '</td><td>' + pctS(r.after10) + '</td><td>' + (isFinite(r.be5) ? (r.call ? (r.be5 >= 0 ? '漲 ' : '跌 ') : (r.be5 <= 0 ? '跌 ' : '漲 ')) + pctS(Math.abs(r.be5), 2) : '—') + '</td>' +
     '<td>' + fmtNum(r.val, 0) + ' 萬</td><td class="why">' + esc(r.why.join('、') || '條件都符合') + '</td></tr>').join('');
-  document.getElementById('wTable').innerHTML = head + (body || '<tr class="empty"><td colspan="13">這一類沒有活絡的權證。</td></tr>');
+  document.getElementById('wTable').innerHTML = '<thead>' + head + '</thead><tbody>' + (body || '<tr class="empty"><td colspan="13">這一類沒有活絡的權證。</td></tr>') + '</tbody>';
+  // 建議權證：評等最好的幾檔裡，抱 5 天要漲（跌）最少的前 3 檔；全部模式下依龜苓膏方向挑
+  const dir = f === 'A' ? (g < 0 ? 'P' : 'C') : f;
+  const pool = W.rows.filter(r => (dir === 'C') === r.call && isFinite(r.be5) && r.days >= 30);
+  let best = pool.filter(r => r.grade === 1);
+  if (best.length < 3) best = best.concat(pool.filter(r => r.grade === 2));
+  const mv = r => r.call ? r.be5 : -r.be5;
+  best = best.sort((a, b) => (a.grade - b.grade) || (mv(a) - mv(b))).slice(0, 3);
+  document.getElementById('wPick').innerHTML = best.length ? best.map((r, k) => '<button class="pk" data-code="' + esc(r.code) + '">' +
+    '<span class="t"><span>' + (k === 0 ? '★ ' : '') + esc(r.name || r.code) + '</span><small>' + esc(r.code) + '</small></span>' +
+    '<span class="big">抱 5 天，股價要' + (r.call ? '漲' : '跌') + ' <b>' + pctS(Math.abs(r.be5), 2) + '</b> 才開始賺</span>' +
+    '<span class="m">' + ['', '甜', '可', '苦'][r.grade] + '・收盤 ' + fmtPx(r.px) + '・剩 ' + r.days + ' 天・槓桿 ' + fmtNum(r.lev, 1) + ' 倍・隱含波動率 ' + pctS(r.iv, 0) + '</span>' +
+    '<span class="go">點開試算 ›</span></button>').join('') : '';
 }
+/* ── 試算視窗 ── */
+let WM = null;
+function openWM(code){
+  const r = (WSTATE.rows || []).find(x => x.code === code); if (!r) return;
+  WM = { r, S:WSTATE.S, buy:r.px, dIv:0, fees:true };
+  document.getElementById('wmTitle').innerHTML = esc(r.name || r.code) + '<small>' + esc(r.code) + '</small>';
+  renderWM();
+  document.getElementById('wModal').hidden = false; document.getElementById('wScrim').hidden = false;
+  setTimeout(() => { const el = document.getElementById('wmBuy'); if (el && matchMedia('(pointer:fine)').matches) el.focus(); }, 0);
+}
+function closeWM(){ document.getElementById('wModal').hidden = true; document.getElementById('wScrim').hidden = true; WM = null; }
+document.getElementById('wmClose').onclick = closeWM;
+document.getElementById('wScrim').onclick = closeWM;
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && WM) closeWM(); });
+function renderWM(keepInputs){
+  const { r, S, buy, dIv, fees } = WM, up = r.call, word = up ? '漲' : '跌';
+  const w = r;
+  const holds = [[0, '今天買、今天賣'], [1, '抱 1 天'], [3, '抱 3 天'], [5, '抱 5 天'], [10, '抱 10 天'], [20, '抱 20 天'], [60, '抱 60 天']].filter(([h]) => calDays(h) < w.days);
+  holds.push([Math.ceil(w.days * 5 / 7) + 1, '抱到到期<small>最後交易日 ' + (w.last || '').replace(/-/g, '/') + '</small>']);
+  const rows = holds.map(([h, lab]) => { const x = breakevenS(w, S, buy, h, dIv, fees); const m = x / S - 1;
+    return '<tr><td>' + lab + '</td><td>' + (isFinite(x) ? fmtPx(Math.round(x * 100) / 100) : '—') + '</td><td style="color:' + (isFinite(m) ? (m >= 0 ? 'var(--up)' : 'var(--down)') : 'inherit') + '">' + (isFinite(m) ? (m >= 0 ? '+' : '') + pctS(m, 2) : '到不了') + '</td></tr>'; }).join('');
+  const x1 = breakevenS(w, S, buy, 1, dIv, fees), m1 = x1 / S - 1, x5 = breakevenS(w, S, buy, 5, dIv, fees), m5 = x5 / S - 1;
+  // 熱圖：股價變動 × 持有天數 → 權證損益（含費用）
+  const moves = up ? [-5, -3, -1, 0, 1, 2, 3, 5, 8, 10, 15] : [5, 3, 1, 0, -1, -2, -3, -5, -8, -10, -15];
+  const hs = [1, 5, 10, 20].filter(h => calDays(h) < w.days);
+  const cost = fees ? buy * (1 + FEE) : buy;
+  const cell = v => { const a = Math.min(1, Math.abs(v) / 0.6), col = v >= 0 ? '229,72,77' : '47,182,124'; return '<td style="background:rgba(' + col + ',' + (0.08 + a * 0.5).toFixed(2) + ')">' + (v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%</td>'; };
+  const heat = moves.map(mv => '<tr><td>股價' + (mv === 0 ? '不動' : (mv > 0 ? '漲 ' : '跌 ') + Math.abs(mv) + '%') + '</td>' +
+    hs.map(h => { const v = warrantValue(w, S * (1 + mv / 100), h, dIv) * (fees ? (1 - FEE - TAX) : 1); return cell(v / cost - 1); }).join('') + '</tr>').join('');
+  const body = document.getElementById('wmBody');
+  const inputs = keepInputs ? null : '<div class="wm-in">' +
+    '<label for="wmBuy">買進價<input type="number" id="wmBuy" step="0.01" min="0.01" value="' + buy + '"></label>' +
+    '<label for="wmS">現在股價<input type="number" id="wmS" step="0.01" min="0.01" value="' + Math.round(S * 100) / 100 + '"></label>' +
+    '<label for="wmIv">之後的隱含波動率<select id="wmIv"><option value="0">不變</option><option value="-0.03">降 3 個百分點</option><option value="-0.05">降 5 個百分點</option><option value="-0.1">降 10 個百分點</option><option value="0.03">升 3 個百分點</option></select></label>' +
+    '<label for="wmFee"><input type="checkbox" id="wmFee"' + (fees ? ' checked' : '') + '>含手續費與交易稅</label></div>';
+  const rest = '<div class="wm-hero">' +
+      (isFinite(m1) ? '明天賣：股價要' + (m1 >= 0 ? '漲' : '跌') + '到 <b class="' + (m1 >= 0 ? 'u' : 'd') + '">' + fmtPx(Math.round(x1 * 100) / 100) + '</b>（' + (m1 >= 0 ? '+' : '') + pctS(m1, 2) + '）才開始賺' : '明天賣：在合理範圍內到不了打平價') +
+      (isFinite(m5) ? '<br>抱 5 天：要' + (m5 >= 0 ? '漲' : '跌') + '到 <b class="' + (m5 >= 0 ? 'u' : 'd') + '">' + fmtPx(Math.round(x5 * 100) / 100) + '</b>（' + (m5 >= 0 ? '+' : '') + pctS(m5, 2) + '）' : '') +
+      '<br><span style="font-size:12.5px;color:var(--muted)">抱越久，時間價值掉越多，要' + word + '的幅度就越大。</span></div>' +
+    '<h3>不同持有天數，股價要到多少才打平</h3><div class="wm-scroll"><table class="wm-t"><tr><th>持有</th><th>股價要到</th><th>相對現在</th></tr>' + rows + '</table></div>' +
+    '<h3>股價' + word + '多少、抱幾天 → 權證賺賠（' + (fees ? '已扣費用' : '未扣費用') + '）</h3><div class="wm-scroll"><table class="wm-t wm-heat"><tr><th></th>' + hs.map(h => '<th>抱 ' + h + ' 天</th>').join('') + '</tr>' + heat + '</table></div>' +
+    '<p class="help">假設：用 Black–Scholes 從收盤價反推的隱含波動率 ' + pctS(w.iv, 1) + (dIv ? '（之後' + (dIv > 0 ? '升' : '降') + ' ' + Math.abs(dIv * 100) + ' 個百分點）' : '，之後不變') + '，無風險利率 1.6%、不計股利；天數是交易日，換算日曆天 × 7／5。實際買賣用的是委買委賣價，價差越大要' + word + '越多；發行商也可能調降隱含波動率（看「之後的隱含波動率」那一格的影響）。這是試算，不是買進建議。</p>';
+  const meta = '<div class="wm-meta"><span>' + (w.call ? '認購' : '認售') + '</span><span>履約 <b>' + fmtPx(w.K) + '</b></span><span>行使比例 <b>' + w.ratio + '</b></span><span>剩 <b>' + w.days + '</b> 天</span><span>' + (w.otm >= 0 ? '價外 ' : '價內 ') + '<b>' + pctS(Math.abs(w.otm)) + '</b></span><span>隱含波動率 <b>' + pctS(w.iv, 0) + '</b></span><span>實質槓桿 <b>' + fmtNum(w.lev, 1) + '</b> 倍</span><span>每天流失 <b>' + pctS(w.burn, 2) + '</b></span>' + (w.issuer ? '<span>' + esc(w.issuer) + '</span>' : '') + '</div>';
+  if (inputs){
+    body.innerHTML = meta + inputs + '<div id="wmRest">' + rest + '</div>';
+    document.getElementById('wmIv').value = String(dIv);
+    const upd = () => {
+      const b = parseFloat(document.getElementById('wmBuy').value), s0 = parseFloat(document.getElementById('wmS').value);
+      if (b > 0) WM.buy = b; if (s0 > 0) WM.S = s0;
+      WM.dIv = parseFloat(document.getElementById('wmIv').value) || 0; WM.fees = document.getElementById('wmFee').checked;
+      renderWM(true);
+    };
+    for (const id of ['wmBuy', 'wmS']) document.getElementById(id).addEventListener('input', upd);
+    for (const id of ['wmIv', 'wmFee']) document.getElementById(id).addEventListener('change', upd);
+  } else document.getElementById('wmRest').innerHTML = rest;
+}
+document.getElementById('wTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-code]'); if (tr) openWM(tr.dataset.code); });
+document.getElementById('wTable').addEventListener('keydown', e => { if (e.key === 'Enter'){ const tr = e.target.closest('tr[data-code]'); if (tr) openWM(tr.dataset.code); } });
+document.getElementById('wPick').addEventListener('click', e => { const b = e.target.closest('[data-code]'); if (b) openWM(b.dataset.code); });
+
 document.getElementById('wSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.wFilter = b.dataset.v; saveUI(); renderWarrants(); });
 
 /* ═════════════ 籌碼（嵌入籌碼頁的個股區塊） ═════════════ */
