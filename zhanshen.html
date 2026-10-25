@@ -158,6 +158,15 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .wm-t td small{display:block;color:var(--dim);font-size:11.5px}
 .wm-scroll{overflow-x:auto}
 .wm-heat td{padding:6px 6px;text-align:center}
+.wm-chart{position:relative;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.wm-chart canvas{display:block;width:100%;height:270px;touch-action:pan-y;cursor:crosshair}
+@media (max-width:560px){.wm-chart canvas{height:230px}}
+.wm-read{display:flex;flex-wrap:wrap;gap:4px 14px;padding:8px 10px;border-top:1px solid var(--line);font-size:13px}
+.wm-read .x{width:100%;color:var(--fg);font-weight:600}
+.wm-read .x b{font-family:var(--mono)}
+.wm-read span{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.wm-read span i{width:12px;height:3px;border-radius:2px}
+.wm-read span b{font-family:var(--mono);font-weight:600}
 .wm-body h3{font-size:13.5px;margin:4px 0 0;color:var(--fg)}
 .wm-body .help{margin:0}
 .wtable tr.empty td{text-align:center;color:var(--dim);font-family:var(--sans)}
@@ -285,23 +294,6 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="loading" id="loading" hidden>資料載入中…</div>
   </div>
 
-  <section class="below">
-    <div class="card" id="cardVWB"></div>
-    <div class="card" id="cardVWZ"></div>
-    <div class="card" id="cardVWD"></div>
-    <div class="card" id="cardBB"></div>
-    <div class="card" id="cardVL"></div>
-    <div class="card" id="cardTG"></div>
-    <div class="card sigs">
-      <div class="head">
-        <h3>近期訊號 <span>Signal log</span></h3>
-        <select id="sigFilter" aria-label="篩選訊號來源">
-          <option value="all">全部</option><option value="VWB">VWB</option><option value="VW Z">VW Z</option><option value="VWD">VWD</option><option value="布林大底">布林大底</option><option value="布林谷底線">布林谷底線</option><option value="龜苓膏">龜苓膏</option>
-        </select>
-      </div>
-      <ul class="siglist" id="sigList"></ul>
-    </div>
-  </section>
 
   <section class="chipsec" id="wSec" hidden>
     <div class="head">
@@ -2262,6 +2254,7 @@ function kv(rows){ return '<dl class="kv">' + rows.map(([k, v, num, col]) => '<d
 function warmNote(need, have){ return have < need ? '<div class="note">目前只有 ' + have + ' 根 K 棒，這個設定約需 ' + need + ' 根才算得出來，可在「指標設定」縮短統計長度，或改看日 K。</div>' : ''; }
 
 function updateCards(){
+  if (!document.getElementById('cardVWB')) return;   // 狀態卡已移除
   if (!B || !B.n) return;
   const i = cross ? cross.i : B.n - 1;
   const when = B.d[i].replace(/-/g, '/') + (B.conf[i] ? '' : ' · 尚未收盤');
@@ -2369,21 +2362,22 @@ function renderSignals(){
   SIGS = [];
   for (const k of ['vwb', 'vwz', 'vwd', 'bbot', 'valley', 'turtle']) if (R[k] && R[k].sig) SIGS.push(...R[k].sig);
   SIGS.sort((a, b) => b.i - a.i);
+  if (!document.getElementById('sigList')) return;   // 訊號紀錄已移除
   const f = document.getElementById('sigFilter').value;
   const list = SIGS.filter(s => f === 'all' || s.src === f).slice(0, 60);
   const ul = document.getElementById('sigList');
   if (!list.length){ ul.innerHTML = '<li class="empty" style="cursor:default">目前範圍內沒有訊號。</li>'; return; }
   ul.innerHTML = list.map(s => '<li data-i="' + s.i + '" tabindex="0"><span class="d">' + B.d[s.i].replace(/-/g, '/') + '</span><span class="s">' + esc(s.src) + '</span><span class="t"><i style="background:' + s.col + '"></i>' + esc(s.text) + '</span></li>').join('');
 }
-document.getElementById('sigFilter').onchange = renderSignals;
+document.getElementById('sigFilter')?.addEventListener('change', renderSignals);
 function jumpTo(i){
   const span = plotW() / view.barW;
   view.right = Math.min(B.n - 1 + span * 0.1, i + span * 0.35);
   cross = { i, y:cv.clientHeight * 0.3 }; pinned = true; schedule();
   document.getElementById('chartWrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
-document.getElementById('sigList').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); });
-document.getElementById('sigList').addEventListener('keydown', e => { if (e.key === 'Enter'){ const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); } });
+document.getElementById('sigList')?.addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); });
+document.getElementById('sigList')?.addEventListener('keydown', e => { if (e.key === 'Enter'){ const li = e.target.closest('li[data-i]'); if (li) jumpTo(+li.dataset.i); } });
 
 /* ═════════════ messages & loading ═════════════ */
 let lastMsg = null;
@@ -2614,6 +2608,7 @@ function renderWM(keepInputs){
       (isFinite(m1) ? '明天賣：股價要' + (m1 >= 0 ? '漲' : '跌') + '到 <b class="' + (m1 >= 0 ? 'u' : 'd') + '">' + fmtPx(Math.round(x1 * 100) / 100) + '</b>（' + (m1 >= 0 ? '+' : '') + pctS(m1, 2) + '）才開始賺' : '明天賣：在合理範圍內到不了打平價') +
       (isFinite(m5) ? '<br>抱 5 天：要' + (m5 >= 0 ? '漲' : '跌') + '到 <b class="' + (m5 >= 0 ? 'u' : 'd') + '">' + fmtPx(Math.round(x5 * 100) / 100) + '</b>（' + (m5 >= 0 ? '+' : '') + pctS(m5, 2) + '）' : '') +
       '<br><span style="font-size:12.5px;color:var(--muted)">抱越久，時間價值掉越多，要' + word + '的幅度就越大。</span></div>' +
+    '<h3>股價' + word + '多少 → 權證賺賠多少（左右拖曳查看）</h3><div class="wm-chart"><canvas id="wmCv" aria-label="權證損益圖：橫軸股價漲跌、縱軸權證賺賠"></canvas><div class="wm-read" id="wmRead"></div></div>' +
     '<h3>不同持有天數，股價要到多少才打平</h3><div class="wm-scroll"><table class="wm-t"><tr><th>持有</th><th>股價要到</th><th>相對現在</th></tr>' + rows + '</table></div>' +
     '<h3>股價' + word + '多少、抱幾天 → 權證賺賠（' + (fees ? '已扣費用' : '未扣費用') + '）</h3><div class="wm-scroll"><table class="wm-t wm-heat"><tr><th></th>' + hs.map(h => '<th>抱 ' + h + ' 天</th>').join('') + '</tr>' + heat + '</table></div>' +
     '<p class="help">假設：用 Black–Scholes 從收盤價反推的隱含波動率 ' + pctS(w.iv, 1) + (dIv ? '（之後' + (dIv > 0 ? '升' : '降') + ' ' + Math.abs(dIv * 100) + ' 個百分點）' : '，之後不變') + '，無風險利率 1.6%、不計股利；天數是交易日，換算日曆天 × 7／5。實際買賣用的是委買委賣價，價差越大要' + word + '越多；發行商也可能調降隱含波動率（看「之後的隱含波動率」那一格的影響）。這是試算，不是買進建議。</p>';
@@ -2630,7 +2625,80 @@ function renderWM(keepInputs){
     for (const id of ['wmBuy', 'wmS']) document.getElementById(id).addEventListener('input', upd);
     for (const id of ['wmIv', 'wmFee']) document.getElementById(id).addEventListener('change', upd);
   } else document.getElementById('wmRest').innerHTML = rest;
+  bindPayoff(); drawPayoff();
 }
+/* 權證損益圖：橫軸＝股價相對現在漲跌幾 %，縱軸＝權證賺賠幾 %（含費用），每條線一個持有天數 */
+const PAY_COL = ['#f5a623', '#4c8dff', '#c77dff', '#ff7a59', '#9aa3b2'];
+function payoffData(){
+  const { r:w, S, buy, dIv, fees } = WM;
+  const R = Math.min(30, Math.max(6, Math.round(w.iv * Math.sqrt(20 / 252) * 2.5 * 100)));
+  const xs = []; for (let k = 0; k <= 160; k++) xs.push(-R + 2 * R * k / 160);
+  const hs = [[1, '抱 1 天'], [5, '抱 5 天'], [10, '抱 10 天'], [20, '抱 20 天']].filter(([h]) => calDays(h) < w.days);
+  if (w.days <= 150) hs.push([Math.ceil(w.days * 5 / 7) + 1, '抱到到期']);
+  const cost = fees ? buy * (1 + FEE) : buy, net = fees ? 1 - FEE - TAX : 1;
+  const val = (h, m) => warrantValue(w, S * (1 + m / 100), h, dIv) * net / cost - 1;
+  return { xs, R, val, lines:hs.map(([h, lab], k) => ({ h, lab, col:PAY_COL[k % PAY_COL.length], dash:lab === '抱到到期', ys:xs.map(m => val(h, m)) })) };
+}
+function bindPayoff(){
+  const cv2 = document.getElementById('wmCv'); if (!cv2 || cv2._b) return; cv2._b = 1;
+  const set = e => { const r = cv2.getBoundingClientRect(), L = 46, Rm = 12, D = WM && WM._pd; if (!D) return;
+    const t = Math.max(0, Math.min(1, (e.clientX - r.left - L) / (r.width - L - Rm))); WM.cx = -D.R + 2 * D.R * t; drawPayoff(); };
+  let down = false;
+  cv2.addEventListener('pointerdown', e => { down = true; set(e); });
+  cv2.addEventListener('pointermove', e => { if (down || e.pointerType === 'mouse') set(e); });
+  addEventListener('pointerup', () => { down = false; });
+}
+function drawPayoff(){
+  const c2 = document.getElementById('wmCv'); if (!c2 || !WM) return;
+  const D = WM._pd = payoffData(), w = WM.r, up = w.call;
+  if (WM.cx == null) WM.cx = up ? Math.min(5, D.R) : -Math.min(5, D.R);
+  WM.cx = Math.max(-D.R, Math.min(D.R, WM.cx));
+  const dpr = window.devicePixelRatio || 1, Wd = c2.clientWidth, Hd = c2.clientHeight;
+  c2.width = Math.round(Wd * dpr); c2.height = Math.round(Hd * dpr);
+  const g = c2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.fillStyle = CC.bg; g.fillRect(0, 0, Wd, Hd);
+  const L = 46, Rm = 12, T = 12, Bm = 26, pw = Wd - L - Rm, ph = Hd - T - Bm;
+  let mn = 0, mx = 0; for (const l of D.lines) for (const y of l.ys){ if (y < mn) mn = y; if (y > mx) mx = y; }
+  mn = Math.max(-1, mn); mx = Math.min(Math.max(mx, 0.2), 6);
+  const pad = (mx - mn) * 0.06; mn -= pad; mx += pad;
+  const X2 = m => L + (m + D.R) / (2 * D.R) * pw, Y2 = v => T + (mx - Math.max(mn, Math.min(mx, v))) / (mx - mn) * ph;
+  // 賺的區域淡紅、賠的區域淡綠（台股習慣）
+  g.fillStyle = rgba('#e5484d', 93); g.fillRect(L, T, pw, Y2(0) - T);
+  g.fillStyle = rgba('#2fb67c', 93); g.fillRect(L, Y2(0), pw, T + ph - Y2(0));
+  g.font = '11px "IBM Plex Mono", ui-monospace, monospace'; g.fillStyle = CC.axis; g.strokeStyle = CC.grid; g.lineWidth = 1;
+  const ys = niceStep(mx - mn, 5);
+  g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let v = Math.ceil(mn / ys) * ys; v <= mx + 1e-9; v += ys){ const y = Math.round(Y2(v)) + 0.5; g.beginPath(); g.moveTo(L, y); g.lineTo(L + pw, y); g.stroke(); g.fillText((v > 0 ? '+' : '') + Math.round(v * 100) + '%', L - 5, y); }
+  const xsStep = niceStep(2 * D.R, 6);
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let m = Math.ceil(-D.R / xsStep) * xsStep; m <= D.R + 1e-9; m += xsStep){ const x = Math.round(X2(m)) + 0.5; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); g.fillText((m > 0 ? '+' : '') + Math.round(m) + '%', x, T + ph + 6); }
+  g.strokeStyle = CC.axis; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(L, Math.round(Y2(0)) + 0.5); g.lineTo(L + pw, Math.round(Y2(0)) + 0.5); g.stroke();
+  g.beginPath(); g.moveTo(Math.round(X2(0)) + 0.5, T); g.lineTo(Math.round(X2(0)) + 0.5, T + ph); g.stroke(); g.setLineDash([]);
+  // 損益線與打平點
+  for (const l of D.lines){
+    g.strokeStyle = l.col; g.lineWidth = 2.2; g.setLineDash(l.dash ? [5, 4] : []);
+    g.beginPath(); D.xs.forEach((m, k) => { const x = X2(m), y = Y2(l.ys[k]); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]);
+    for (let k = 1; k < D.xs.length; k++){
+      const a = l.ys[k - 1], b = l.ys[k];
+      if ((a < 0 && b >= 0) || (a >= 0 && b < 0)){ const m = D.xs[k - 1] + (D.xs[k] - D.xs[k - 1]) * (-a) / (b - a);
+        g.fillStyle = CC.bg; g.beginPath(); g.arc(X2(m), Y2(0), 4.2, 0, 7); g.fill(); g.strokeStyle = l.col; g.lineWidth = 2; g.stroke(); l.be = m; break; }
+    }
+  }
+  // 游標
+  const cx = X2(WM.cx);
+  g.strokeStyle = CC.text; g.lineWidth = 1; g.beginPath(); g.moveTo(Math.round(cx) + 0.5, T); g.lineTo(Math.round(cx) + 0.5, T + ph); g.stroke();
+  for (const l of D.lines){ const v = D.val(l.h, WM.cx); g.fillStyle = l.col; g.beginPath(); g.arc(cx, Y2(v), 3.6, 0, 7); g.fill(); }
+  g.fillStyle = CC.tag; const lab = (WM.cx > 0 ? '+' : '') + WM.cx.toFixed(1) + '%'; g.font = '600 11px "IBM Plex Mono", monospace';
+  const lw = g.measureText(lab).width + 10; roundRectOn(g, Math.max(L, Math.min(L + pw - lw, cx - lw / 2)), T + ph + 3, lw, 18, 3); g.fill();
+  g.fillStyle = CC.tagText; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lab, Math.max(L + lw / 2, Math.min(L + pw - lw / 2, cx)), T + ph + 12);
+  // 讀數
+  const px = WM.S * (1 + WM.cx / 100);
+  document.getElementById('wmRead').innerHTML = '<div class="x">股價' + (WM.cx >= 0 ? '漲 ' : '跌 ') + '<b>' + Math.abs(WM.cx).toFixed(1) + '%</b> → <b>' + fmtPx(Math.round(px * 100) / 100) + '</b></div>' +
+    D.lines.map(l => { const v = D.val(l.h, WM.cx); return '<span><i style="background:' + l.col + '"></i>' + l.lab + ' <b style="color:' + (v >= 0 ? 'var(--up)' : 'var(--down)') + '">' + (v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%</b>' +
+      (isFinite(l.be) ? '<small style="color:var(--dim)">（' + (l.be >= 0 ? '漲' : '跌') + ' ' + Math.abs(l.be).toFixed(1) + '% 打平）</small>' : '') + '</span>'; }).join('');
+}
+function roundRectOn(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+addEventListener('resize', () => { if (WM) drawPayoff(); });
 document.getElementById('wTable').addEventListener('click', e => { const tr = e.target.closest('tr[data-code]'); if (tr) openWM(tr.dataset.code); });
 document.getElementById('wTable').addEventListener('keydown', e => { if (e.key === 'Enter'){ const tr = e.target.closest('tr[data-code]'); if (tr) openWM(tr.dataset.code); } });
 document.getElementById('wPick').addEventListener('click', e => { const b = e.target.closest('[data-code]'); if (b) openWM(b.dataset.code); });
