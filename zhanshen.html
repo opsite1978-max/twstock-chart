@@ -601,8 +601,8 @@ const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
   '15': { P:15,  days:[20, 40, 80],    def:40 },
   '30': { P:30,  days:[60, 120, 200],  def:120 },
-  '60': { P:60,  days:[120, 150, 250], def:150 },
-  '240':{ P:240, days:[150, 300, 400], def:300 }
+  '60': { P:60,  days:[150, 300, 600], def:300 },
+  '240':{ P:240, days:[300, 600, 1000, 1500], def:600 }
 };
 const IVN = { '5':'5分K', '15':'15分K', '30':'30分K', '60':'60分K', '240':'4小時K', D:'日K', W:'週K', M:'月K' };
 const isIntra = iv => !!INTRA[iv];
@@ -1484,6 +1484,43 @@ function compactK(rows, fut){
   return { c:cs, r:out };
 }
 const kMem = new Map();
+/* 30 分 K 以上用的精簡快取：一天的一分 K 先合成 30 分鐘一格（一天約 10 格），存在自己的資料庫（zs-k30），
+   長天數（4 小時 K 一千多天）也存得下，不會把看盤頁共用的一分 K 快取塞滿 */
+const k30db = (() => { let p = null; return () => p || (p = new Promise(res => {
+  try { const r = indexedDB.open('zs-k30', 1); r.onupgradeneeded = () => r.result.createObjectStore('d'); r.onsuccess = () => res(r.result); r.onerror = r.onblocked = () => res(null); }
+  catch (e){ res(null); }
+})); })();
+async function k30Get(k){ const db = await k30db(); if (!db) return null; return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e){ res(null); } }); }
+async function k30Put(k, v){ const db = await k30db(); if (!db) return; try { db.transaction('d', 'readwrite').objectStore('d').put(v, k); } catch (e){} }
+function compact30(v, fut){
+  const map = new Map();
+  for (const r of v.r){
+    const m = r[0], anchor = !fut ? 540 : m < 300 ? 0 : m >= 900 ? 900 : 525;   // 股票 09:00、期貨日盤 08:45、夜盤 15:00（過午夜從 00:00 接續）
+    const b = anchor + Math.floor((m - anchor) / 30) * 30, key = b + ':' + r[6];
+    let x = map.get(key);
+    if (!x){ x = [b, r[1], r[2], r[3], r[4], r[5], r[6]]; map.set(key, x); }
+    else { x[2] = Math.max(x[2], r[2]); x[3] = Math.min(x[3], r[3]); x[4] = r[4]; x[5] += r[5]; }
+  }
+  return { c:v.c, r:[...map.values()].sort((a, b) => a[0] - b[0] || a[6] - b[6]) };
+}
+const k30Mem = new Map();
+function kbarDay30(sym, date){
+  const fut = sym.kind === 'fut', key = (fut ? 'F:' : 'S:') + sym.id + ':' + date;
+  if (k30Mem.has(key)) return k30Mem.get(key);
+  const today = tpNow().date, stable = fut ? date <= shiftDay(today, -2) : date < today;
+  const p = (async () => {
+    if (stable){
+      const v = await k30Get(key); if (v && v.r) return v;
+      const v1 = await kGet(key); if (v1 && v1.r){ const c = compact30(v1, fut); k30Put(key, c); return c; }   // 看盤頁抓過的一分 K 直接拿來用
+    }
+    const rows = await finmind({ dataset: fut ? 'TaiwanFuturesKBar' : 'TaiwanStockKBar', data_id:sym.id, start_date:date });
+    const v = compact30(compactK(rows, fut), fut);
+    if (stable && v.r.length) k30Put(key, v);
+    return v;
+  })();
+  k30Mem.set(key, p); p.catch(() => k30Mem.delete(key));
+  return p;
+}
 function kbarDay(sym, date){
   const fut = sym.kind === 'fut', key = (fut ? 'F:' : 'S:') + sym.id + ':' + date;
   if (kMem.has(key)) return kMem.get(key);
@@ -1561,11 +1598,12 @@ async function fetchIntraday(id, iv, isStale){
   }
   const sym = { kind: fut ? 'fut' : 'stock', id };
   const fatal = e => /會員|權限|level|sponsor|額度|憑證|token/i.test(e.message);
-  try { await kbarDay(sym, list[list.length - 1]); }   // 先試一天，沒有權限就不浪費額度
+  const fetchDay = c.P >= 30 ? kbarDay30 : kbarDay;
+  try { await fetchDay(sym, list[list.length - 1]); }   // 先試一天，沒有權限就不浪費額度
   catch (e){ if (fatal(e)) throw e; }
   let fails = 0, firstErr = null;
   // 一次 3 個、個別失敗的日子先略過（成功的日子已存在這台裝置，下次只補缺的）
-  const perDay = await pool(list, 3, d => kbarDay(sym, d).catch(e => { if (fatal(e)) throw e; fails++; firstErr = firstErr || e; return null; }),
+  const perDay = await pool(list, 3, d => fetchDay(sym, d).catch(e => { if (fatal(e)) throw e; fails++; firstErr = firstErr || e; return null; }),
     (k, m) => { if (!isStale()) setLoading('讀取分 K ' + k + '／' + m + ' 天…' + (fails ? '（' + fails + ' 天暫時讀不到）' : '')); }, isStale);
   if (fails > list.length * 0.3) throw new Error('分 K 有 ' + fails + '／' + list.length + ' 天讀不到（' + (firstErr ? firstErr.message : '') + '）。已讀到的天數存在這台裝置，稍等一下再按「重新整理」會從斷掉的地方接著抓。');
   INTRA_FAILS = fails;
@@ -3121,7 +3159,7 @@ function syncToolbar(){
   periodSel.hidden = !intra;
   if (intra){
     const c = INTRA[UI.interval], cur = curDays(UI.interval);
-    periodSel.innerHTML = c.days.map(d => '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>近 ' + d + ' 天</option>').join('');
+    periodSel.innerHTML = c.days.map(d => '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>近 ' + d + ' 天' + (d >= 600 ? '（第一次較久）' : '') + '</option>').join('');
   }
   togNight.hidden = !(intra && FUTS[UI.symbol]);
   togNight.setAttribute('aria-pressed', String(!!UI.night));
