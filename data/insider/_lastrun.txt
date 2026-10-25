@@ -1,0 +1,9 @@
+10-25 14:31:08 shard 0 / 8 stocks 263 months 2023-10 ~ 2026-09
+10-25 14:31:08 result shard 0 done requests 1 ok 0 none 1 files 1 in 0 s
+10-25 14:31:06 shard 1 / 8 stocks 266 months 2023-10 ~ 2026-09
+10-25 14:31:09 result shard 1 done requests 2 ok 0 none 2 files 1 in 3 s
+10-25 14:31:07 shard 2 / 8 stocks 269 months 2023-10 ~ 2026-09
+10-25 14:31:08 result shard 2 done requests 1 ok 0 none 1 files 1 in 1 s
+10-25 14:31:08 shard 3 / 8 stocks 270 months 2023-10 ~ 2026-09
+10-25 14:31:10   retry query6_1 6452 115 08 HTTPError HTTP Error 502: Bad Gateway
+10-25 14:31:21 result shard 3 done requests 2 ok 0 none 2 files 1 in 13 s
