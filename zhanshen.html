@@ -1309,6 +1309,8 @@ async function finmind(params, tries = 3){
   catch (e){
     // 一次送太多請求時 FinMind 會暫時擋掉（瀏覽器只看到「連不上」）：等一下再試
     if (tries > 1){ await sleep(tries === 3 ? 1500 : 4000); return finmind(params, tries - 1); }
+    // FinMind 拒絕憑證時回應不帶跨網站標頭，瀏覽器只看到「連不上」：不帶憑證再試一次，通了就是憑證的問題
+    if (tk){ try { const r2 = await fetch(API + '?' + new URLSearchParams(params).toString()); if (r2.ok) throw new Error('TOKEN_BAD'); } catch (e2){ if (e2.message === 'TOKEN_BAD') throw new Error('FinMind 拒絕這組憑證（可能已按過「更新 token」而換了新的，或貼錯）。請到 FinMind 帳號頁按「複製」，貼到「指標設定 → 資料與顯示」的 FinMind 憑證欄，再按「檢查憑證」。'); } }
     throw new Error('連不到 FinMind（網路中斷、一次請求太多被暫時擋下，或憑證已失效）。請稍等一下再按「重新整理」；一直這樣的話，到看盤頁「⚙ 設定」確認 FinMind 憑證。');
   }
   if ((r.status === 429 || r.status >= 500) && tries > 1){ await sleep(tries === 3 ? 2000 : 5000); return finmind(params, tries - 1); }
@@ -3260,7 +3262,7 @@ async function checkToken(){
   const out = document.getElementById('a-checkOut'); if (!out) return;
   const tk = getToken(), lines = [];
   out.textContent = '檢查中…';
-  if (!tk) lines.push('這台裝置還沒有存 FinMind 憑證（沒有憑證也能抓，但額度很少）。');
+  lines.push(tk ? '這台裝置存的憑證：' + tk.slice(0, 6) + '…' + tk.slice(-6) + '（共 ' + tk.length + ' 字）' : '這台裝置還沒有存 FinMind 憑證（沒有憑證也能抓，但額度很少）。');
   try {
     const d = await finmind({ dataset:'TaiwanStockPrice', data_id:'2330', start_date:isoDay(dayMs(tpNow().date) - 12 * 864e5) });
     const l = d[d.length - 1];
