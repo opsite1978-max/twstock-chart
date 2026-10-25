@@ -258,6 +258,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
     <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
     <button class="tog" id="togTG" aria-pressed="true" title="龜苓膏：權證買方溫度計（時間價值、波動）">龜苓膏</button>
+    <button class="tog" id="togDX" aria-pressed="true" title="MultiColor DegenX：鎖碼／浮動／獲利三層，加上回測過的找底訊號">DegenX</button>
     <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
@@ -546,18 +547,46 @@ SCHEMA.intent = { tab:'主力意圖', title:'主力意圖（個股）：把六�
     {k:'cDn', l:'主力偏空', t:'color', d:'#26a69a'}
   ]}
 ]};
+SCHEMA.degen = { tab:'DegenX', title:'MultiColor DegenX（照你提供的 ThinkScript 移植）：銀行家＝1.5 ×（50 根相對強弱指標 − 50），熱錢＝0.7 ×（40 根相對強弱指標 − 30），都限制在 0～20。底下青／綠＝鎖碼（散戶套牢）、中間灰／黃＝浮動（熱錢）、上面紅／粉＝獲利（主力）；顏色變淡＝那一層的數值跌破 10 根指數平均、轉弱。找底（優化）＝熱錢剛往上穿過自己的 10 根平均、熱錢還在 8 以下、近 10 根曾跌到 1 以下（接近冰點）、銀行家還是 0，而且收盤突破前一根高點（★＝突破前 3 根高點），同一檔 10 根內只標一次。回測（上市櫃全部普通股，2025/6～2026/10；大低點＝前後 20 根的最低點、而且從 40 根內高點跌超過 12%）：原版 ACCUM 只有 11% 落在大低點後 5 根內，跟隨便挑一天（7.7%）差不多；找底 40%、★ 45%，抓轉折時間準很多。但這段是多頭，找到的底之後 20 天平均 −1.2%（全部日子 +2.0%），20 天內沒再破底約一半：時間點準，不保證反彈幅度。', groups:[
+  { name:'計算（原版參數）', items:[
+    {k:'bankerBase', l:'銀行家基準（banker_base）', t:'float', d:50, min:0, max:100},
+    {k:'bankerPeriod', l:'銀行家相對強弱長度', t:'int', d:50, min:2, max:300},
+    {k:'hotBase', l:'熱錢基準（hotmoney_base）', t:'float', d:30, min:0, max:100},
+    {k:'hotPeriod', l:'熱錢相對強弱長度', t:'int', d:40, min:2, max:300},
+    {k:'bankerSens', l:'銀行家靈敏度', t:'float', d:1.5, min:0.1, max:5, step:0.1},
+    {k:'hotSens', l:'熱錢靈敏度', t:'float', d:0.7, min:0.1, max:5, step:0.1}
+  ]},
+  { name:'訊號', items:[
+    {k:'showBottom', l:'標出找底（優化）', t:'bool', d:true},
+    {k:'mainSig', l:'主圖也標找底', t:'bool', d:true},
+    {k:'showAccum', l:'標出原版 ACCUM', t:'bool', d:false},
+    {k:'showTrap', l:'標出原版 TRAP（散戶陷阱）', t:'bool', d:false}
+  ]},
+  { name:'顯示', items:[
+    {k:'showPMA', l:'獲利平均線（show_pma）', t:'bool', d:true},
+    {k:'showFMA', l:'浮動平均線（show_fma）', t:'bool', d:false},
+    {k:'showLMA', l:'鎖碼平均線（show_lma）', t:'bool', d:true},
+    {k:'strongProfit', l:'獲利：強', t:'color', d:'#ff0000'},
+    {k:'weakProfit', l:'獲利：弱', t:'color', d:'#ffc0c0'},
+    {k:'strongFloat', l:'浮動：強', t:'color', d:'#c0c0c0'},
+    {k:'weakFloat', l:'浮動：弱', t:'color', d:'#ffff00'},
+    {k:'strongLocked', l:'鎖碼：強', t:'color', d:'#00ffff'},
+    {k:'weakLocked', l:'鎖碼：弱', t:'color', d:'#90ee90'},
+    {k:'cBottom', l:'找底標記', t:'color', d:'#00c853'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -1003,6 +1032,38 @@ function calcINTENT(B, p){
     if (p.mainSig) main.push({ i, text:up ? '吸' : '出', col:up ? p.cUp : p.cDn });
   }
   return { I, z, ev, sig, main, has:CHIP.data.has, fcode:CHIP.data.fcode };
+}
+
+/* ═════════════ MultiColor DegenX（ThinkScript 移植＋找底優化） ═════════════ */
+function emaFirst(a, n){ const k = 2 / (n + 1), o = nanArr(a.length); let e = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)) continue; e = isNaN(e) ? x : e + k * (x - e); o[i] = e; } return o; }
+function calcDEGEN(B, p){
+  const n = B.n, BASE = 20, cap = x => isNaN(x) ? NaN : Math.max(0, Math.min(20, x));
+  const r1 = rsi(B.c, p.bankerPeriod), r2 = rsi(B.c, p.hotPeriod);
+  const pc = new F(n), fc = new F(n), fl = new F(n), lk = new F(n);
+  for (let i = 0; i < n; i++){ pc[i] = cap(p.bankerSens * (r1[i] - p.bankerBase)); fc[i] = cap(p.hotSens * (r2[i] - p.hotBase)); fl[i] = fc[i] - pc[i]; lk[i] = BASE - fc[i]; }
+  const spc = emaFirst(pc, 10), sfl = emaFirst(fl, 10), slk = emaFirst(lk, 10), sfc = emaFirst(fc, 10);
+  const ev = [], sig = [], main = []; let last = -99;
+  const st = { accum:new Uint8Array(n), pump:new Uint8Array(n), dist:new Uint8Array(n), trap:new Uint8Array(n), bot:new Uint8Array(n) };
+  for (let i = 1; i < n; i++){
+    if (isNaN(pc[i]) || isNaN(pc[i - 1])) continue;
+    const up = B.c[i] > B.o[i];
+    st.accum[i] = pc[i] > 0 && pc[i] > spc[i] && pc[i - 1] === 0 && up ? 1 : 0;
+    st.pump[i] = spc[i] > 0 && pc[i] > spc[i] && up ? 1 : 0;
+    st.dist[i] = pc[i] < spc[i] && pc[i - 1] > pc[i] ? 1 : 0;
+    st.trap[i] = pc[i] === 0 && B.c[i] < B.o[i] ? 1 : 0;
+    // 找底（優化，回測過）
+    let mn = Infinity; for (let k = Math.max(0, i - 9); k <= i; k++) if (!isNaN(fc[k])) mn = Math.min(mn, fc[k]);
+    if (i - last > 10 && fc[i] > sfc[i] && fc[i - 1] <= sfc[i - 1] && fc[i] < 8 && mn <= 1 && pc[i] === 0 && B.c[i] > B.h[i - 1]){
+      last = i; const star = i >= 3 && B.c[i] > Math.max(B.h[i - 1], B.h[i - 2], B.h[i - 3]);
+      st.bot[i] = star ? 2 : 1;
+      sig.push({ i, src:'DegenX', text:'找底' + (star ? '★' : ''), col:p.cBottom });
+      if (p.showBottom) ev.push({ i, y:fc[i], shape:'labelUp', dy:8, text:'底' + (star ? '★' : ''), col:p.cBottom, tcol:'#fff', size:0.9 });
+      if (p.mainSig) main.push({ i, text:'底' + (star ? '★' : ''), col:p.cBottom });
+    }
+    if (p.showAccum && st.accum[i]) ev.push({ i, y:pc[i], shape:'labelDown', dy:-4, text:'ACCUM', col:'#00bcd4', tcol:'#000', size:0.7 });
+    if (p.showTrap && st.trap[i] && !(st.trap[i - 1])) ev.push({ i, y:0, shape:'circle', dy:-3, col:'#e040fb', size:0.7 });
+  }
+  return { pc, fc, fl, lk, spc, sfl, slk, st, ev, sig, main };
 }
 
 /* ═════════════ 權證定價（Black–Scholes 近似；台股權證多為美式，認購不發股利時與歐式相同） ═════════════ */
@@ -1500,12 +1561,12 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  for (const k of ['bbot', 'valley', 'turtle', 'intent']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
+  for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
   syncChips(); syncWarrants();
   schedule(); renderSignals();
 }
@@ -1719,6 +1780,7 @@ function draw(){
   if (UI.showVL) panes.push({ id:'vl', w:Wt0.vl });
   if (UI.showTG) panes.push({ id:'tg', w:Wt0.tg });
   if (UI.showIN && !(R.intent && R.intent.na === '主力意圖只適用個股')) panes.push({ id:'in', w:Wt0.in });
+  if (UI.showDX) panes.push({ id:'dx', w:Wt0.dx });
   const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
   let top = 0;
   for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
@@ -1740,7 +1802,8 @@ function draw(){
     else if (p.id === 'bb') drawBB(p, i0, i1, ci);
     else if (p.id === 'vl') drawVL(p, i0, i1, ci);
     else if (p.id === 'tg') drawTG(p, i0, i1, ci);
-    else drawIN(p, i0, i1, ci);
+    else if (p.id === 'in') drawIN(p, i0, i1, ci);
+    else drawDX(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
     if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
@@ -1904,6 +1967,37 @@ function drawZ(p, i0, i1, ci){
   visibleMarkers(r.ev, i0, i1);
   const zl = r.z[B.n - 1]; if (!isNaN(zl)) axisTag(zl, st(B.n - 1), '#0d1016', v => fmtNum(v, 2));
   legend([[['VW Z PRO', CC.axis], [r.enh ? '平滑優化' : '原版邏輯', CC.axis], ['Z ' + fmtNum(r.z[ci], 2), st(ci)], ['未平滑 ' + fmtNum(r.zRaw[ci], 2), CC.axis]]], p.top);
+}
+
+function drawDX(p, i0, i1, ci){
+  const r = R.degen, q = P.degen;
+  if (!r || r.error){ S = makeScale(p.top, p.h, 0, 20, 26, 6); legend([[['DegenX  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  S = makeScale(p.top, p.h, ...rng('dx', -1, 21.5), 28, 16);
+  gridAndAxis(0);
+  // 方塊柱：底層 20（鎖碼）→ 熱錢 → 銀行家，後畫的蓋前面
+  const bw = view.barW + 0.6, y0 = S.y(0);
+  const bar = (v, col) => (i) => { const x = X(i) - view.barW / 2, y = S.y(v(i)); ctx.fillStyle = col(i); ctx.fillRect(x, Math.min(y, y0), bw, Math.abs(y0 - y)); };
+  const lockedCol = i => (r.lk[i] >= r.slk[i]) ? q.strongLocked : q.weakLocked;
+  const floatCol = i => (r.fl[i] >= r.sfl[i]) ? q.strongFloat : q.weakFloat;
+  const profitCol = i => (r.pc[i] >= r.spc[i]) ? q.strongProfit : q.weakProfit;
+  const dB = bar(() => 20, lockedCol), dF = bar(i => r.fc[i], floatCol), dP = bar(i => r.pc[i], profitCol);
+  for (let i = i0; i <= i1; i++){ if (isNaN(r.fc[i])) continue; dB(i); if (r.fc[i] > 0) dF(i); if (r.pc[i] > 0) dP(i); }
+  const W = plotW();
+  for (const v of [5, 10, 15]){ const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = 'rgba(80,80,80,.85)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); }
+  if (q.showPMA) strokeSeries(i => r.spc[i], () => '#2962ff', i0, i1, 2);
+  if (q.showFMA) strokeSeries(i => r.sfl[i], () => '#808080', i0, i1, 2);
+  if (q.showLMA) strokeSeries(i => r.slk[i], () => '#ff00ff', i0, i1, 2);
+  visibleMarkers(r.ev, i0, i1);
+  const pc = r.pc[ci], fc = r.fc[ci];
+  if (isNaN(fc)){ legend([[['DegenX', CC.axis], ['資料不足（約需 ' + Math.max(q.bankerPeriod, q.hotPeriod) + ' 根）', CC.axis]]], p.top); return; }
+  const lockedP = (20 - fc) / 20 * 100, floatP = (fc - pc) / 20 * 100, profitP = pc / 20 * 100;
+  const tags = []; const s = r.st;
+  if (s.bot[ci]) tags.push(['找底' + (s.bot[ci] === 2 ? '★' : ''), q.cBottom]);
+  if (s.accum[ci]) tags.push(['ACCUM', '#00bcd4']);
+  if (s.pump[ci]) tags.push(['PUMP', '#c9a400']);
+  if (s.dist[ci]) tags.push(['DIST', '#e53935']);
+  if (s.trap[ci]) tags.push(['TRAP', '#c51162']);
+  legend([[['DegenX', CC.axis], ['鎖碼 ' + lockedP.toFixed(1) + '%', r.lk[ci] >= r.slk[ci] ? '#00acc1' : '#43a047'], ['浮動 ' + floatP.toFixed(1) + '%', r.fl[ci] >= r.sfl[ci] ? '#8d8d8d' : '#c9a400'], ['獲利 ' + profitP.toFixed(1) + '%', pc >= r.spc[ci] ? '#e53935' : '#f48fb1']].concat(tags)], p.top);
 }
 
 function drawIN(p, i0, i1, ci){
@@ -2221,7 +2315,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -2941,6 +3035,7 @@ function syncToolbar(){
   document.getElementById('togVL').setAttribute('aria-pressed', String(!!UI.showVL));
   document.getElementById('togTG').setAttribute('aria-pressed', String(!!UI.showTG));
   document.getElementById('togIN').setAttribute('aria-pressed', String(!!UI.showIN));
+  document.getElementById('togDX').setAttribute('aria-pressed', String(!!UI.showDX));
   sizeChart();
 }
 seg.addEventListener('click', e => {
@@ -2968,8 +3063,9 @@ document.getElementById('togBB').onclick = () => { UI.showBB = !UI.showBB; saveU
 document.getElementById('togVL').onclick = () => { UI.showVL = !UI.showVL; saveUI(); syncToolbar(); recompute(); };
 document.getElementById('togTG').onclick = () => { UI.showTG = !UI.showTG; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togIN').onclick = () => { UI.showIN = !UI.showIN; saveUI(); syncToolbar(); recompute(); };
+document.getElementById('togDX').onclick = () => { UI.showDX = !UI.showDX; saveUI(); syncToolbar(); schedule(); };
 // 副圖越多，圖表越高，主圖不會被擠扁
-function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL, UI.showTG, UI.showIN].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
+function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL, UI.showTG, UI.showIN, UI.showDX].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
 
 /* ═════════════ settings drawer ═════════════ */
@@ -2987,7 +3083,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
