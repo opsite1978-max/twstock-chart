@@ -258,6 +258,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
     <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
     <button class="tog" id="togTG" aria-pressed="true" title="龜苓膏：權證買方溫度計（時間價值、波動）">龜苓膏</button>
+    <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
@@ -500,18 +501,38 @@ SCHEMA.turtle = { tab:'龜苓膏', title:'龜苓膏（權證買方溫度計）�
     {k:'cTurtle', l:'龜速區（龜苓膏色）', t:'color', d:'#6b4a35'}
   ]}
 ]};
+SCHEMA.intent = { tab:'主力意圖', title:'主力意圖（個股）：把六種籌碼各自跟自己過去 120 個交易日比（幾個標準差），平均後換成 −100～+100。法人現股＝外資＋投信＋自營商自行買賣的 5 日買賣超（不含避險）；融資＝5 日餘額減少加分（散戶退場、籌碼沉澱）；空方＝融券＋借券賣出餘額 5 日增加扣分；權證＝認購追價減認售追價（5 日）；股期＝股期價格方向 × 未平倉變化（5 日）；集保＝大戶（400 張以上）比例週變化減散戶（50 張以下）比例週變化。吸＝主力意圖往上穿過門檻、但股價近 10 天沒漲（主力買、股價還沒反應）；出＝反過來。這是籌碼合成指標，還沒有回測過，請搭配其他資訊判斷。每檔股票第一次打開約用 4～5 個 FinMind 額度，6 小時內再看不重抓；權證、集保用網站每天整理的資料，不用額度。', groups:[
+  { name:'計算', items:[
+    {k:'zLen', l:'跟過去幾天比（標準化天數）', t:'int', d:120, min:40, max:300},
+    {k:'th', l:'吸籌／出貨門檻', t:'float', d:40, min:10, max:90, step:5}
+  ]},
+  { name:'各項權重（0＝不算）', items:[
+    {k:'wInst', l:'法人現股', t:'float', d:1, min:0, max:3, step:0.5},
+    {k:'wMargin', l:'融資（減少加分）', t:'float', d:1, min:0, max:3, step:0.5},
+    {k:'wShort', l:'融券＋借券賣出（增加扣分）', t:'float', d:1, min:0, max:3, step:0.5},
+    {k:'wWarrant', l:'權證追價', t:'float', d:1, min:0, max:3, step:0.5},
+    {k:'wFut', l:'股期未平倉', t:'float', d:1, min:0, max:3, step:0.5},
+    {k:'wHold', l:'集保大戶－散戶', t:'float', d:1, min:0, max:3, step:0.5}
+  ]},
+  { name:'顯示', items:[
+    {k:'showParts', l:'畫出各項細線', t:'bool', d:false},
+    {k:'mainSig', l:'主圖也標吸／出', t:'bool', d:true},
+    {k:'cUp', l:'主力偏多', t:'color', d:'#ef5350'},
+    {k:'cDn', l:'主力偏空', t:'color', d:'#26a69a'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get('zs:p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get('zs:ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -849,6 +870,114 @@ function calcTURTLE(B, p){
     wasSlow = slow;
   }
   return { G, E, hv, zone, ev, sig, main };
+}
+
+/* ═════════════ 主力意圖：籌碼資料（每檔快取 6 小時） ═════════════ */
+const CHIP = { id:null, data:null, pend:null, err:null };
+const PARTS = [['inst', '法人', 'wInst', '#ffb74d'], ['margin', '融資', 'wMargin', '#64b5f6'], ['short', '空方', 'wShort', '#ba68c8'], ['warrant', '權證', 'wWarrant', '#f06292'], ['fut', '股期', 'wFut', '#4db6ac'], ['hold', '集保', 'wHold', '#aed581']];
+async function futCodeOf(id){
+  let c = LS.get('zs:futmap', null);
+  if (!c || Date.now() - c.t > 7 * 864e5){
+    const [info, fo] = await Promise.all([finmind({ dataset:'TaiwanStockInfo' }), finmind({ dataset:'TaiwanFutOptDailyInfo' })]);
+    const byName = new Map();
+    for (const r of fo) if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) byName.set(r.name.replace(/期貨$/, ''), r.code);
+    const m = {}; for (const r of info) if (r.stock_id && !m[r.stock_id] && byName.has(r.stock_name)) m[r.stock_id] = byName.get(r.stock_name);
+    c = { t:Date.now(), m }; LS.set('zs:futmap', c);
+  }
+  return c.m[id] || null;
+}
+async function chipLoad(id){
+  const key = 'zs:chip:' + id, c = LS.get(key, null);
+  if (c && Date.now() - c.t < 6 * 3600e3) return c;
+  const today = tpNow().date, start = isoDay(dayMs(today) - 430 * 864e5);
+  const opt = p => finmind(p).catch(() => null);
+  const [px, inst, mg, sbl, fcode] = await Promise.all([
+    finmind({ dataset:'TaiwanStockPrice', data_id:id, start_date:start, end_date:today }),
+    opt({ dataset:'TaiwanStockInstitutionalInvestorsBuySell', data_id:id, start_date:start }),
+    opt({ dataset:'TaiwanStockMarginPurchaseShortSale', data_id:id, start_date:start }),
+    opt({ dataset:'TaiwanDailyShortSaleBalances', data_id:id, start_date:start }),
+    futCodeOf(id).catch(() => null)
+  ]);
+  const fut = fcode ? await opt({ dataset:'TaiwanFuturesDaily', data_id:fcode, start_date:start }) : null;
+  const v = Math.floor(Date.now() / 600000), site = p => fetch(p + '?v=' + v).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [wj, hj] = await Promise.all([site('data/warrant/u/' + id + '.json'), site('data/holders/' + id + '.json')]);
+  const rows = stockRows(px || []);
+  if (rows.length < 60) throw new Error('股價資料太少');
+  const D = rows.map(r => r[0]), ix = new Map(D.map((d, i) => [d, i])), n = D.length, arr = () => new Array(n).fill(null);
+  const out = { t:Date.now(), id, fcode, d:D, c:rows.map(r => r[4]), inst:arr(), mg:arr(), sh:arr(), sbl:arr(), w:arr(), fo:arr(), oi:arr(), hold:[], has:{} };
+  if (inst){ for (const r of inst){ const i = ix.get(r.date); if (i == null || r.name === 'Dealer_Hedging') continue; out.inst[i] = (out.inst[i] || 0) + ((+r.buy || 0) - (+r.sell || 0)) / 1000; } out.has.inst = inst.length > 0; }
+  if (mg){ for (const r of mg){ const i = ix.get(r.date); if (i == null) continue; out.mg[i] = +r.MarginPurchaseTodayBalance; out.sh[i] = +r.ShortSaleTodayBalance; } out.has.margin = mg.length > 0; }
+  if (sbl){ for (const r of sbl){ const i = ix.get(r.date); if (i == null) continue; out.sbl[i] = (+r.SBLShortSalesCurrentDayBalance || 0) / 1000; } out.has.sbl = sbl.length > 0; }
+  if (fut){ const per = new Map();
+    for (const r of fut){ if (r.trading_session && r.trading_session !== 'position') continue; const cd = String(r.contract_date || '').trim(); if (!/^\d{6}$/.test(cd)) continue;
+      let e = per.get(r.date); if (!e){ e = { oi:0, best:null }; per.set(r.date, e); } e.oi += +r.open_interest || 0; if (+r.close > 0 && (!e.best || (+r.volume || 0) > (+e.best.volume || 0))) e.best = r; }
+    for (const [d, e] of per){ const i = ix.get(d); if (i == null || !e.best) continue; out.fo[i] = +e.best.close; out.oi[i] = e.oi; }
+    out.has.fut = per.size > 0; }
+  if (wj && wj.days){ for (const r of wj.days){ const i = ix.get(r[0]); if (i == null) continue; out.w[i] = (r[2] - r[3]) - (r[5] - r[6]); } out.has.warrant = true; }
+  if (hj && hj.w){ const pct = (rec, a, b) => { let t = 0; for (let k = a; k < b; k++) t += rec[17 + k]; return t / 1e4; };
+    out.hold = Object.keys(hj.w).sort().map(d => { const r = hj.w[d]; return [d, pct(r, 11, 15), pct(r, 0, 8), r[1]]; }); out.has.hold = out.hold.length > 2; }
+  LS.set(key, out);
+  return out;
+}
+function intentDaily(C, p){
+  const n = C.d.length, nan = () => new Array(n).fill(NaN);
+  const sum5 = a => { const o = nan(); for (let i = 4; i < n; i++){ let t = 0, k = 0; for (let j = i - 4; j <= i; j++) if (a[j] != null){ t += a[j]; k++; } if (k >= 3) o[i] = t; } return o; };
+  const d5 = a => { const o = nan(); for (let i = 5; i < n; i++) if (a[i] != null && a[i - 5] != null) o[i] = a[i] - a[i - 5]; return o; };
+  const raw = {};
+  raw.inst = C.has.inst ? sum5(C.inst) : nan();
+  raw.margin = C.has.margin ? d5(C.mg).map(x => -x) : nan();
+  { const tot = C.d.map((_, i) => C.sh[i] == null && C.sbl[i] == null ? null : (C.sh[i] || 0) + (C.sbl[i] || 0)); raw.short = C.has.margin || C.has.sbl ? d5(tot).map(x => -x) : nan(); }
+  raw.warrant = C.has.warrant ? sum5(C.w) : nan();
+  { const o = nan(); if (C.has.fut) for (let i = 5; i < n; i++) if (C.fo[i] != null && C.fo[i - 5] != null && C.oi[i] != null && C.oi[i - 5] != null) o[i] = Math.sign(C.fo[i] - C.fo[i - 5]) * (C.oi[i] - C.oi[i - 5]); raw.fut = o; }
+  { const o = nan(); if (C.has.hold){ let k = -1;
+      for (let i = 0; i < n; i++){ while (k + 1 < C.hold.length && C.hold[k + 1][0] <= C.d[i]) k++;
+        if (k >= 1){ const a = C.hold[k], b = C.hold[k - 1]; o[i] = (a[1] - b[1]) - (a[2] - b[2]); } } }
+    raw.hold = o; }
+  const L = p.zLen, z = {};
+  for (const [k] of PARTS){ const a = raw[k], o = nan();
+    for (let i = 0; i < n; i++){ if (isNaN(a[i])) continue; let s = 0, s2 = 0, m = 0;
+      for (let j = Math.max(0, i - L + 1); j <= i; j++) if (!isNaN(a[j])){ s += a[j]; s2 += a[j] * a[j]; m++; }
+      if (m < 40) continue; const mu = s / m, sd = Math.sqrt(Math.max(0, s2 / m - mu * mu)); o[i] = sd > 0 ? Math.max(-4, Math.min(4, (a[i] - mu) / sd)) : 0; }
+    z[k] = o; }
+  const I = nan(); let e = NaN;
+  for (let i = 0; i < n; i++){ let t = 0, wsum = 0;
+    for (const [k, , wk] of PARTS){ const w = +p[wk] || 0; if (w > 0 && !isNaN(z[k][i])){ t += w * z[k][i]; wsum += w; } }
+    if (wsum <= 0){ e = NaN; continue; }
+    const v = 100 * Math.tanh(0.8 * t / wsum); e = isNaN(e) ? v : e + 0.5 * (v - e); I[i] = e; }
+  const sig = new Array(n).fill(0);
+  for (let i = 10; i < n; i++){ if (isNaN(I[i]) || isNaN(I[i - 1])) continue; const r10 = C.c[i] / C.c[i - 10] - 1;
+    if (I[i] > p.th && I[i - 1] <= p.th && r10 <= 0) sig[i] = 1;
+    if (I[i] < -p.th && I[i - 1] >= -p.th && r10 >= 0) sig[i] = -1; }
+  return { d:C.d, I, z, sig };
+}
+function idxLE(ds, s, strict){ let lo = 0, hi = ds.length - 1, r = -1; while (lo <= hi){ const m = (lo + hi) >> 1; if (strict ? ds[m] < s : ds[m] <= s){ r = m; lo = m + 1; } else hi = m - 1; } return r; }
+function calcINTENT(B, p){
+  const id = RAW && !RAW.sample ? RAW.id : null;
+  if (!id || FUTS[id] || id === 'TAIEX') return { na:'主力意圖只適用個股' };
+  if (!UI.showIN) return { na:'' };
+  if (CHIP.id !== id){ CHIP.id = id; CHIP.data = null; CHIP.err = null;
+    const my = CHIP.pend = chipLoad(id).then(d => { if (CHIP.pend === my){ CHIP.data = d; CHIP.pend = null; recompute(); } })
+      .catch(e => { if (CHIP.pend === my){ CHIP.err = e.message; CHIP.pend = null; recompute(); } }); }
+  if (CHIP.err) return { na:'主力意圖：' + CHIP.err };
+  if (!CHIP.data) return { na:'主力意圖讀取籌碼資料中…' };
+  const Dd = intentDaily(CHIP.data, p), n = B.n, I = nanArr(n), z = {}, map = new Int32Array(n).fill(-1);
+  for (const [k] of PARTS) z[k] = nanArr(n);
+  for (let i = 0; i < n; i++){
+    const day = B.d[i].slice(0, 10);
+    const j = B.intra ? idxLE(Dd.d, day, true) : (B.iv === 'D' ? idxLE(Dd.d, day, false) : (i < n - 1 ? idxLE(Dd.d, B.d[i + 1].slice(0, 10), true) : Dd.d.length - 1));
+    if (j < 0) continue; map[i] = j; I[i] = Dd.I[j]; for (const [k] of PARTS) z[k][i] = Dd.z[k][j];
+  }
+  const ev = [], sig = [], main = [], seen = new Set();
+  for (let i = 0; i < n; i++){ const j = map[i]; if (j < 0 || seen.has(j) || !Dd.sig[j]) continue;
+    if (!B.intra && B.iv === 'D' && Dd.d[j] !== B.d[i]) continue;
+    if (B.intra && (i + 1 < n && map[i + 1] === j)) { /* 只在當天第一根標 */ }
+    seen.add(j);
+    const up = Dd.sig[j] > 0;
+    sig.push({ i, src:'主力意圖', text:up ? '吸籌（主力買、股價還沒漲）' : '出貨（主力賣、股價還沒跌）', col:up ? p.cUp : p.cDn });
+    ev.push({ i, y:I[i], shape:up ? 'labelUp' : 'labelDown', dy:up ? 6 : -6, text:up ? '吸' : '出', col:up ? p.cUp : p.cDn, tcol:'#fff', size:0.85 });
+    if (p.mainSig) main.push({ i, text:up ? '吸' : '出', col:up ? p.cUp : p.cDn });
+  }
+  return { I, z, ev, sig, main, has:CHIP.data.has, fcode:CHIP.data.fcode };
 }
 
 /* ═════════════ 權證定價（Black–Scholes 近似；台股權證多為美式，認購不發股利時與歐式相同） ═════════════ */
@@ -1346,12 +1475,12 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  for (const k of ['bbot', 'valley', 'turtle']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
+  for (const k of ['bbot', 'valley', 'turtle', 'intent']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
   syncChips(); syncWarrants();
   schedule(); renderSignals();
 }
@@ -1564,6 +1693,7 @@ function draw(){
   if (UI.showBB) panes.push({ id:'bb', w:Wt0.bb });
   if (UI.showVL) panes.push({ id:'vl', w:Wt0.vl });
   if (UI.showTG) panes.push({ id:'tg', w:Wt0.tg });
+  if (UI.showIN && !(R.intent && R.intent.na === '主力意圖只適用個股')) panes.push({ id:'in', w:Wt0.in });
   const avail = Ht - TIME_H, tw = panes.reduce((s, p) => s + p.w, 0);
   let top = 0;
   for (const p of panes){ p.top = top; p.h = Math.round(avail * p.w / tw); top += p.h; }
@@ -1584,7 +1714,8 @@ function draw(){
     else if (p.id === 'd') drawD(p, i0, i1, ci);
     else if (p.id === 'bb') drawBB(p, i0, i1, ci);
     else if (p.id === 'vl') drawVL(p, i0, i1, ci);
-    else drawTG(p, i0, i1, ci);
+    else if (p.id === 'tg') drawTG(p, i0, i1, ci);
+    else drawIN(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
     if (yS[p.id]){ ctx.font = '10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = CC.bg; ctx.fillRect(W + 1, p.top + p.h - 18, AXIS_W - 1, 16); ctx.fillStyle = CC.hint; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText('手動縮放', W + 6, p.top + p.h - 4); }
@@ -1743,6 +1874,33 @@ function drawZ(p, i0, i1, ci){
   visibleMarkers(r.ev, i0, i1);
   const zl = r.z[B.n - 1]; if (!isNaN(zl)) axisTag(zl, st(B.n - 1), '#0d1016', v => fmtNum(v, 2));
   legend([[['VW Z PRO', CC.axis], [r.enh ? '平滑優化' : '原版邏輯', CC.axis], ['Z ' + fmtNum(r.z[ci], 2), st(ci)], ['未平滑 ' + fmtNum(r.zRaw[ci], 2), CC.axis]]], p.top);
+}
+
+function drawIN(p, i0, i1, ci){
+  const r = R.intent, q = P.intent;
+  if (!r || r.na != null || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 8); gridAndAxis(0); legend([[['主力意圖', CC.axis], [r ? (r.error || r.na) : '', CC.axis]]], p.top); return; }
+  const [mn, mx] = extent([r.I], i0, i1, [-100, 100]);
+  S = makeScale(p.top, p.h, ...rng('in', mn - 4, mx + 4), 26, 8);
+  gridAndAxis(0);
+  const K = v => () => v, W = plotW();
+  fillBetween(i => Math.max(0, r.I[i]), K(0), () => rgba(q.cUp, 80), i0, i1);
+  fillBetween(i => Math.min(0, r.I[i]), K(0), () => rgba(q.cDn, 80), i0, i1);
+  const hl = (v, col, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(q.th, rgba(q.cUp, 25), [4, 3], 1); hl(-q.th, rgba(q.cDn, 25), [4, 3], 1); hl(0, rgba(CC.axis, 50), [2, 3], 1);
+  if (q.showParts) for (const [k, , wk, col] of PARTS) if (+q[wk] > 0) strokeSeries(i => r.z[k][i] * 25, () => rgba(col, 35), i0, i1, 1);
+  strokeSeries(i => r.I[i], i => r.I[i] >= 0 ? q.cUp : q.cDn, i0, i1, 2.6);
+  visibleMarkers(r.ev, i0, i1);
+  for (const [v, c] of [[q.th, q.cUp], [-q.th, q.cDn]]) axisTag(v, c, '#fff', x => fmtNum(x, 0));
+  const lv = r.I[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= 0 ? q.cUp : q.cDn, '#fff', v => fmtNum(v, 0));
+  const x = r.I[ci];
+  const st = isNaN(x) ? '資料不足（約需 50 個交易日）' : x >= q.th ? '主力明顯偏多' : x <= -q.th ? '主力明顯偏空' : x >= 15 ? '偏多' : x <= -15 ? '偏空' : '中性';
+  const parts = [['主力意圖', CC.axis], [isNaN(x) ? '—' : fmtNum(x, 0), isNaN(x) ? CC.text : x >= 0 ? q.cUp : q.cDn], [st, CC.axis]];
+  for (const [k, lab, wk, col] of PARTS){
+    if (!(+q[wk] > 0)) continue;
+    const zv = r.z[k][ci], has = k === 'short' ? (r.has.margin || r.has.sbl) : r.has[k];
+    parts.push([lab + ' ' + (!has ? '無' : isNaN(zv) ? '—' : (zv > 0 ? '+' : '') + zv.toFixed(1)), q.showParts ? col : (isNaN(zv) ? CC.axis : zv > 0.5 ? q.cUp : zv < -0.5 ? q.cDn : CC.axis)]);
+  }
+  legend([parts], p.top);
 }
 
 function drawTG(p, i0, i1, ci){
@@ -2033,7 +2191,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -2752,6 +2910,7 @@ function syncToolbar(){
   document.getElementById('togBB').setAttribute('aria-pressed', String(!!UI.showBB));
   document.getElementById('togVL').setAttribute('aria-pressed', String(!!UI.showVL));
   document.getElementById('togTG').setAttribute('aria-pressed', String(!!UI.showTG));
+  document.getElementById('togIN').setAttribute('aria-pressed', String(!!UI.showIN));
   sizeChart();
 }
 seg.addEventListener('click', e => {
@@ -2778,8 +2937,9 @@ document.getElementById('togD').onclick = () => { UI.showD = !UI.showD; saveUI()
 document.getElementById('togBB').onclick = () => { UI.showBB = !UI.showBB; saveUI(); syncToolbar(); schedule(); };
 document.getElementById('togVL').onclick = () => { UI.showVL = !UI.showVL; saveUI(); syncToolbar(); recompute(); };
 document.getElementById('togTG').onclick = () => { UI.showTG = !UI.showTG; saveUI(); syncToolbar(); schedule(); };
+document.getElementById('togIN').onclick = () => { UI.showIN = !UI.showIN; saveUI(); syncToolbar(); recompute(); };
 // 副圖越多，圖表越高，主圖不會被擠扁
-function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL, UI.showTG].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
+function sizeChart(){ const k = [UI.showZ, UI.showD, UI.showBB, UI.showVL, UI.showTG, UI.showIN].filter(Boolean).length; document.getElementById('chartWrap').style.height = 'calc(clamp(480px, 74vh, 920px) + ' + Math.max(0, k - 2) * 130 + 'px)'; }
 document.getElementById('btnRefresh').onclick = () => loadSymbol(UI.symbol, true);
 
 /* ═════════════ settings drawer ═════════════ */
@@ -2797,7 +2957,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
