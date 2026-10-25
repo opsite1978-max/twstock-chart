@@ -218,7 +218,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <div class="wrap">
   <header class="top">
     <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">VWB · VW Z · VWD</span></div>
-    <nav class="chips"><a class="chip" id="otherPage" href="goutou.html">狗頭看盤</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
@@ -331,8 +331,10 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <script>
 "use strict";
 /* ═════════════ storage ═════════════ */
-/* 同一份程式兩個頁面：戰神看盤（zs）、狗頭看盤（?p=gt，goutou.html 會轉到這裡）；設定、畫線各自存，行情快取共用 */
+/* 戰神看盤（zs）；另一個獨立網站 zhanshen 用同一份程式（tools/build.py 產生，zx）。設定、畫線各自存，行情快取共用 */
 const PAGE = new URLSearchParams(location.search).get('p') === 'gt' ? { key:'gt', name:'狗頭看盤' } : { key:'zs', name:'戰神看盤' };
+// 狗頭看盤已停用：清掉這台裝置裡它留下的設定
+if (PAGE.key === 'zs'){ try { for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('gt:')) localStorage.removeItem(k); } } catch (e){} }
 const PFX = PAGE.key + ':';
 const NO_INTRA = false;   // 只看日／週／月的網站設成 true（不用分 K 資料）
 document.title = PAGE.name;
