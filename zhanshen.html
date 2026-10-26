@@ -228,7 +228,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/26 15:10</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 00:30</span></div>
     <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -269,6 +269,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togJJ" aria-pressed="true" title="均價成本：均價線紅綠柱、成本乖離、動態上中下界、回測優化的底與頂">均價成本</button>
     <button class="tog" id="togQJ" aria-pressed="true" title="主力全景：主力持倉／散戶線、吸籌建倉軌道、拉升出貨軌道、回測優化的底與頂">主力全景</button>
     <button class="tog" id="togCD" aria-pressed="true" title="主力抄底：抄底區、築底、起漲★（目前最準的底部訊號）">主力抄底</button>
+    <button class="tog" id="togSMI" aria-pressed="true" title="聰明錢量能指數（AlgoAlpha）：分層柱、高買氣／高賣氣區、動態上中下界、環境底色">聰明錢</button>
     <button class="tog" id="togMD" aria-pressed="true" title="量化 MACD 頂底背離＋動態上下界">量化MACD</button>
     <button class="tog" id="togLS" aria-pressed="true" title="拉升機會（通達信公式＋優化）：主線低檔、拉升、機會、ABC">拉升機會</button>
     <button class="tog" id="togZX" aria-pressed="true" title="庄現趨勢（通達信公式）：離 40 日均線、庄現柱、入市／機會／底">庄現趨勢</button>
@@ -1065,12 +1066,41 @@ SCHEMA.bz = { tab:'標準抄底', title:'標準抄底主圖（照你提供的通
     {k:'cEnd', l:'行情結束', t:'color', d:'#b0bec5'}
   ]}
 ]};
+SCHEMA.smi = { tab:'聰明錢', title:'聰明錢量能指數（AlgoAlpha「Smart Money Volume Index」移植＋回測＋動態上中下界）：散戶線＝正量指標（只在成交量比前一天大時跟著股價變動），聰明錢＝負量指標（只在量縮那天跟著變動）；兩者各減掉自己 255 日指數平均、再算 14 日強弱指標。買方比＝聰明錢強弱÷散戶強弱，賣方比＝(100−聰明錢)÷(100−散戶)；各加總 25 根、除以過去 500 根的最高值，得到買方指數、賣方指數（0～1），淨值＝買方−賣方（−1～1）。畫法照原版的「分層柱」（越靠近 0 軸越濃），上下 0.9～1 是高買氣／高賣氣區，超過 0.7 時區塊變亮。顏色改成台股習慣：買方紅、賣方綠（設定裡可換回原版青綠／紅）。動態上中下界＝淨值過去 120 根的 90%／50%／10% 百分位。【回測】全市場、分三段時間（2025/12～2026/4、2026/4～7、2026/7～10）。這個指標加總 25 根、又用 500 根正規化，非常慢，原版的提示（淨值上穿 0、買方上穿 0.9、賣方上穿 0.9…）落在大低點／大高點附近只有 10%～24%，跟隨便挑一天（13%／5%／3%）差不多，所以不當進出場訊號；試過各種勾頭、加動態下界的底也一樣（10%～37%，不穩定）。比較有用的是「環境」：淨值在動態上界之上時，之後 20 天上漲的比例 50%／46%／53%、平均 +4.4%／+1.5%／+3.6%；全部平均是 47%／44%／49%、+3.5%／+0.7%／+2.8%；在動態下界之下時較差（45%／42%／43%）。三段方向一致但幅度小，適合當背景參考。唯一穩定的訊號是【頂★】＝淨值在上界之上後連 2 根往下、收盤跌破前一根低點、近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 35%／41%／32%、之後 20 天沒再創新高 56%／59%／74%（訊號不多）。', groups:[
+  { name:'畫面', items:[
+    {k:'mode', l:'顯示方式', t:'select', d:'淨值（分層柱）', o:['淨值（分層柱）', '買賣分開比較']},
+    {k:'showZones', l:'高買氣／高賣氣區（±0.9～1）', t:'bool', d:true},
+    {k:'showRegime', l:'環境底色（淨值在上界之上／下界之下）', t:'bool', d:true},
+    {k:'showBand', l:'顯示動態上中下界', t:'bool', d:true},
+    {k:'bandLen', l:'比較的根數', t:'int', d:120, min:60, max:1000},
+    {k:'bandPct', l:'上下界百分位（上界＝100 − 這個數）', t:'float', d:10, min:1, max:30, step:1}
+  ]},
+  { name:'參數（照原版）', items:[
+    {k:'sumLen', l:'加總根數', t:'int', d:25, min:5, max:100},
+    {k:'rsiLen', l:'強弱指標根數', t:'int', d:14, min:3, max:50},
+    {k:'peakLen', l:'正規化回看根數', t:'int', d:500, min:100, max:2000},
+    {k:'thr', l:'高買氣／高賣氣門檻', t:'float', d:0.9, min:0.5, max:0.99, step:0.05}
+  ]},
+  { name:'訊號', items:[
+    {k:'showTop', l:'頂★（上界之上轉弱＋急漲爆量）', t:'bool', d:true},
+    {k:'showOrig', l:'原版提示：淨值穿過 0（小三角，較不準）', t:'bool', d:false},
+    {k:'mainTop', l:'主圖標頂★（要打開「副圖標記」）', t:'bool', d:true}
+  ]},
+  { name:'顏色', items:[
+    {k:'cBuy', l:'買方', t:'color', d:'#ff1744'},
+    {k:'cBuy2', l:'買方（分層）', t:'color', d:'#b71c1c'},
+    {k:'cSell', l:'賣方', t:'color', d:'#00e676'},
+    {k:'cSell2', l:'賣方（分層）', t:'color', d:'#00695c'},
+    {k:'cBand', l:'上中下界', t:'color', d:'#b388ff'},
+    {k:'cTop', l:'頂★', t:'color', d:'#00c853'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showYM:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, subMarks:false, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showYM:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, subMarks:false, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
@@ -1078,7 +1108,7 @@ if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settin
 if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, ym:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, ym:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -2342,6 +2372,39 @@ function drawBZOverlay(i0, i1){
   if (q.showFloor) strokeSeries(i => r.floor[i], i => r.floor[i] === r.floor[i - 1] ? rgba(q.cBase, 20) : null, i0, i1, 1.2, [2, 3]);
 }
 
+/* ═════════════ 聰明錢量能指數（AlgoAlpha Smart Money Volume Index 移植） ═════════════ */
+function pineRsi(a, N){ const n = a.length, o = nanArr(n); let up = NaN, dn = NaN; for (let i = 1; i < n; i++){ if (isNaN(a[i]) || isNaN(a[i - 1])) continue; const ch = a[i] - a[i - 1], u = Math.max(ch, 0), d = Math.max(-ch, 0); if (isNaN(up)){ up = u; dn = d; } else { up = (up * (N - 1) + u) / N; dn = (dn * (N - 1) + d) / N; } o[i] = dn === 0 ? 100 : up === 0 ? 0 : 100 - 100 / (1 + up / dn); } return o; }
+function calcSMI(B, p){
+  const n = B.n, C = B.c, H = B.h, L = B.l, V = B.v;
+  if (!V) return { error:'沒有成交量資料' };
+  const pvi = new F(n).fill(1), nvi = new F(n).fill(1);
+  for (let i = 1; i < n; i++){ const r = (C[i] - C[i - 1]) / C[i - 1]; pvi[i] = V[i] > V[i - 1] ? pvi[i - 1] * (1 + r) : pvi[i - 1]; nvi[i] = V[i] < V[i - 1] ? nvi[i - 1] * (1 + r) : nvi[i - 1]; }
+  const ep = tdxEMA(pvi, 255), en = tdxEMA(nvi, 255), dumb = nanArr(n), smart = nanArr(n); for (let i = 0; i < n; i++){ dumb[i] = pvi[i] - ep[i]; smart[i] = nvi[i] - en[i]; }
+  const rl = Math.max(3, p.rsiLen | 0), dr = pineRsi(dumb, rl), sr = pineRsi(smart, rl), rb = nanArr(n), rs = nanArr(n);
+  for (let i = 0; i < n; i++){ if (isNaN(dr[i]) || isNaN(sr[i])) continue; if (dr[i] > 0.5) rb[i] = Math.min(20, sr[i] / dr[i]); if (dr[i] < 99.5) rs[i] = Math.min(20, (100 - sr[i]) / (100 - dr[i])); }
+  const X = Math.max(5, p.sumLen | 0), sb = nanArr(n), ss = nanArr(n);
+  for (let i = X - 1; i < n; i++){ let a = 0, b = 0, ca = 0, cb = 0; for (let k = i - X + 1; k <= i; k++){ if (!isNaN(rb[k])){ a += rb[k]; ca++; } if (!isNaN(rs[k])){ b += rs[k]; cb++; } } if (ca >= X * 0.8 && cb >= X * 0.8){ sb[i] = a * X / ca; ss[i] = b * X / cb; } }
+  const PK = Math.max(100, p.peakLen | 0), IB = nanArr(n), IS = nanArr(n), NET = nanArr(n);
+  for (let i = 0; i < n; i++){ if (isNaN(sb[i])) continue; let pk = 0; for (let k = Math.max(0, i - PK + 1); k <= i; k++) if (!isNaN(sb[k])) pk = Math.max(pk, sb[k], ss[k]); if (pk > 0){ IB[i] = sb[i] / pk; IS[i] = ss[i] / pk; NET[i] = IB[i] - IS[i]; } }
+  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, LB = rollPct(NET, N, q), MB = rollPct(NET, N, 0.5), UB = rollPct(NET, N, 1 - q);
+  const Vm = sma(V, 20), ev = [], sig = [], main = [], tag = new Array(n).fill(null); let lt = -99;
+  for (let i = 4; i < n; i++){
+    if (isNaN(NET[i - 3])) continue;
+    if (p.showOrig){ if (NET[i - 1] < 0 && NET[i] >= 0) ev.push({ i, y:NET[i], shape:'triUp', dy:6, col:p.cBuy, size:0.5 }); if (NET[i - 1] > 0 && NET[i] <= 0) ev.push({ i, y:NET[i], shape:'triDown', dy:-6, col:p.cSell, size:0.5 }); }
+    if (isNaN(UB[i])) continue;
+    let mx = -Infinity; for (let k = i - 9; k <= i; k++) if (NET[k] > mx) mx = NET[k];
+    if (p.showTop && NET[i] < NET[i - 1] && NET[i - 1] < NET[i - 2] && NET[i - 2] >= NET[i - 3] && mx > UB[i] && C[i] < L[i - 1] && i - lt > 10 && !isNaN(Vm[i])){
+      let vx = 0; for (let k = i - 4; k <= i; k++) if (V[k] > vx) vx = V[k];
+      if ((hhv(H, 10, i) / llv(L, 20, i) - 1) * 100 > 15 && vx > 2 * Vm[i]){
+        lt = i; (tag[i] = tag[i] || []).push(['頂★', p.cTop]); sig.push({ i, src:'聰明錢', text:'頂★（聰明錢偏多後轉弱＋急漲爆量）', col:p.cTop });
+        ev.push({ i, y:Math.max(NET[i], 0), shape:'labelDown', dy:-10, text:'頂★', col:p.cTop, tcol:'#fff', size:0.95 });
+        if (p.mainTop) main.push({ i, text:'聰明錢頂★', col:p.cTop });
+      }
+    }
+  }
+  return { IB, IS, NET, LB, MB, UB, tag, ev, sig, main };
+}
+
 /* ═════════════ 一舉奪魁（主圖，通達信公式移植） ═════════════ */
 function barsLastCount(a){ const o = new Int32Array(a.length); for (let i = 0; i < a.length; i++) o[i] = a[i] ? (i ? o[i - 1] : 0) + 1 : 0; return o; }
 // 通達信 HHV／LLV：天數 0＝從第一根算起
@@ -2952,12 +3015,12 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['bz', calcBZ], ['kui', calcKUI]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['bz', calcBZ], ['kui', calcKUI]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci', 'kp', 'jj', 'qj', 'cd']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = (k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd') && m.text.includes('頂'); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
+  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = (k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi') && m.text.includes('頂'); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
   // 標準抄底：主升啟動★／行情結束
   if (R.bz && R.bz.mk && P.bz.on) for (const m of R.bz.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.dy || 0) + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
@@ -3216,6 +3279,7 @@ function draw(){
     else if (p.id === 'jj') drawJJ(p, i0, i1, ci);
     else if (p.id === 'qj') drawQJ(p, i0, i1, ci);
     else if (p.id === 'cd') drawCD(p, i0, i1, ci);
+    else if (p.id === 'smi') drawSMI(p, i0, i1, ci);
     else drawStrip(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
@@ -3407,7 +3471,8 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'kp', flag:'showKP', btn:'KP', name:'主力控盤', r:'kp' },
   { id:'jj', flag:'showJJ', btn:'JJ', name:'均價成本', r:'jj' },
   { id:'qj', flag:'showQJ', btn:'QJ', name:'主力全景', r:'qj' },
-  { id:'cd', flag:'showCD', btn:'CD', name:'主力抄底', r:'cd' }
+  { id:'cd', flag:'showCD', btn:'CD', name:'主力抄底', r:'cd' },
+  { id:'smi', flag:'showSMI', btn:'SMI', name:'聰明錢', r:'smi' }
 ];
 const STRIP_TOP = 18, STRIP_ROW = 13, STRIP_LABEL = 74;
 const paneOk = pp => !(pp.id === 'in' && R.intent && R.intent.na === '主力意圖只適用個股');
@@ -3749,6 +3814,48 @@ function drawCD(p, i0, i1, ci){
   const k = r.K[ci];
   const stage = !isNaN(r.LB[ci]) && k < r.LB[ci] ? ['抄底區（低於下界）', q.cZone] : r.up[ci] ? ['築底第 ' + r.up[ci] + ' 根（0 下往上）', q.cBot] : r.hi[ci] && q.showHigh ? ['最強主力抄底（近似）', q.cHigh] : r.st[ci] === 1 ? ['拉升第 ' + r.cCtrl[ci] + ' 天', q.cCtrl] : r.st[ci] === -1 ? ['出貨第 ' + r.cOut[ci] + ' 天', q.cOut] : ['底部洗盤', q.cWash];
   const parts = [['主力抄底', CC.axis], ['控盤 ' + fmtNum(k, 2), stage[1]], stage];
+  for (const tg of r.tag[ci] || []) parts.push(tg);
+  legend([parts], p.top);
+}
+
+function drawSMI(p, i0, i1, ci){
+  const r = R.smi, q = P.smi;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['聰明錢  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  let mA = 0; for (let i = i0; i <= i1; i++){ const v = Math.max(Math.abs(r.NET[i] || 0), String(q.mode).startsWith('買賣') ? Math.max(r.IB[i] || 0, r.IS[i] || 0) : 0); if (v > mA) mA = v; }
+  const lim = Math.min(1.08, Math.max(0.45, mA * 1.25));   // 依畫面內的數值自動放大，靠近 ±0.9 才把高買氣／賣氣區納入
+  S = makeScale(p.top, p.h, ...rng('smi', -lim, lim), 26, 6);
+  gridAndAxis(1);
+  const W = plotW(), y0 = S.y(0), bw = Math.max(1, Math.min(view.barW * 0.7, 10)), cmp = String(q.mode).startsWith('買賣');
+  const band = (a, b, col) => { const ya = S.y(a), yb = S.y(b); ctx.fillStyle = col; ctx.fillRect(0, Math.min(ya, yb), W, Math.abs(ya - yb)); };
+  // 環境底色：淨值在上界之上（聰明錢偏多）、下界之下（偏空）
+  if (q.showRegime){ const yt = p.top + 22, hh = p.h - 26; for (let i = i0; i <= i1; i++){ const v = r.NET[i]; if (isNaN(v) || isNaN(r.UB[i])) continue; if (v > r.UB[i]){ ctx.fillStyle = rgba(q.cBuy, 93); ctx.fillRect(X(i) - view.barW / 2, yt, view.barW + 0.5, hh); } else if (v < r.LB[i]){ ctx.fillStyle = rgba(q.cSell, 93); ctx.fillRect(X(i) - view.barW / 2, yt, view.barW + 0.5, hh); } } }
+  // 高買氣／高賣氣區：超過 0.7 時變亮
+  if (q.showZones && lim > q.thr){ const v = r.NET[ci], th = q.thr; const upOn = cmp ? r.IB[ci] > 0.7 : v > 0.7, dnOn = cmp ? r.IS[ci] > 0.7 : v < -0.7;
+    band(th, 1, rgba(CC.text, upOn ? 70 : 92)); band(-th, -1, rgba(CC.text, dnOn ? 70 : 92)); }
+  const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(0, rgba(CC.axis, 30), []);
+  if (cmp){
+    fillBetween(i => r.IB[i], () => 0, () => rgba(q.cBuy, 70), i0, i1); fillBetween(() => 0, i => -r.IS[i], () => rgba(q.cSell, 70), i0, i1);
+    strokeSeries(i => r.IB[i], () => q.cBuy, i0, i1, 1.6); strokeSeries(i => -r.IS[i], () => q.cSell, i0, i1, 1.6);
+  } else {
+    // 分層柱：越靠近 0 軸越濃
+    const layers = [[1, 80], [0.8, 75], [0.6, 65], [0.4, 50], [0.2, 45]];
+    for (let i = i0; i <= i1; i++){ const v = r.NET[i]; if (isNaN(v) || v === 0) continue; const c2 = v > 0 ? q.cBuy2 : q.cSell2;
+      for (const [f, t] of layers){ const y = S.y(v * f); ctx.fillStyle = rgba(c2, t); ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); } }
+    strokeSeries(i => r.NET[i] > 0 ? r.NET[i] : NaN, () => rgba(q.cBuy, 20), i0, i1, 1.8);
+    strokeSeries(i => r.NET[i] < 0 ? r.NET[i] : NaN, () => rgba(q.cSell, 20), i0, i1, 1.8);
+  }
+  if (q.showBand){
+    strokeSeries(i => r.UB[i], () => rgba(q.cBand, 25), i0, i1, 1.2, [5, 4]);
+    strokeSeries(i => r.MB[i], () => rgba(q.cBand, 55), i0, i1, 1, [2, 3]);
+    strokeSeries(i => r.LB[i], () => rgba(q.cBand, 25), i0, i1, 1.2, [5, 4]);
+  }
+  visibleMarkers(r.ev, i0, i1);
+  const lv = r.NET[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= 0 ? q.cBuy : q.cSell, '#fff', v => fmtNum(v, 2));
+  const v = r.NET[ci], env = isNaN(r.UB[ci]) ? '' : v > r.UB[ci] ? '聰明錢偏多（上界之上）' : v < r.LB[ci] ? '聰明錢偏空（下界之下）' : '中性';
+  const parts = [['聰明錢', CC.axis], ['淨值 ' + (v >= 0 ? '+' : '') + fmtNum(v, 2), v >= 0 ? q.cBuy : q.cSell], ['買方 ' + fmtNum(r.IB[ci], 2), q.cBuy], ['賣方 ' + fmtNum(r.IS[ci], 2), q.cSell]];
+  if (env) parts.push([env, env.includes('偏多') ? q.cBuy : env.includes('偏空') ? q.cSell : CC.axis]);
+  if (r.IB[ci] > q.thr) parts.push(['高買氣', q.cBuy]); if (r.IS[ci] > q.thr) parts.push(['高賣氣', q.cSell]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
 }
@@ -4266,7 +4373,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, ym:null, cci:null, kp:null, jj:null, qj:null, cd:null, sg:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, ym:null, cci:null, kp:null, jj:null, qj:null, cd:null, smi:null, sg:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -5037,7 +5144,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
