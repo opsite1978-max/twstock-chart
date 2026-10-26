@@ -250,7 +250,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <button data-v="5">5分</button><button data-v="15">15分</button><button data-v="30">30分</button><button data-v="60">60分</button><button data-v="240">4時</button><button data-v="D">日</button><button data-v="W">週</button><button data-v="M">月</button>
     </div>
     <select id="periodSel" class="selp" title="分 K 要載入的交易日數（第一次每天用 1 個 FinMind 額度，之後存在這台裝置）" aria-label="分 K 載入天數" hidden></select>
-    <button class="tog" id="togNight" aria-pressed="false" title="分 K 加上台指期夜盤（15:00 到隔天 05:00）" hidden>含夜盤</button>
+    <div class="seg" id="nightSeg" role="group" aria-label="台指期日盤／含夜盤" hidden><button data-v="1" title="台指期近月，日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒">近全（含夜盤）</button><button data-v="0" title="台指期近月，只看日盤（08:45～13:45）">近月（日盤）</button></div>
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
     <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
@@ -839,6 +839,7 @@ const UI = Object.assign({
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
+if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
 UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, ym:1.4 }, UI.weights);
@@ -2080,24 +2081,36 @@ function stockRows(data){
   }
   return out.sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
-function futuresRows(data){
-  const best = new Map();
+// 台指期日 K：每天取日盤成交量最大的月份合約；近全（含夜盤）時，把同一合約前一晚的夜盤併進來（開盤用夜盤開盤、高低一起算、量相加）
+function futuresRows(data, night){
+  const best = new Map(), ah = new Map();
   for (const r of data){
-    if (r.trading_session && r.trading_session !== 'position') continue;
-    if (!/^\d{6}$/.test(String(r.contract_date || '').trim())) continue;
+    const cd = String(r.contract_date || '').trim(); if (!/^\d{6}$/.test(cd)) continue;
     const c = +r.close, v = +r.volume || 0; if (!(c > 0)) continue;
+    if (r.trading_session && r.trading_session !== 'position'){ if (night && r.trading_session === 'after_market') ah.set(r.date + '|' + cd, r); continue; }
     const cur = best.get(r.date);
     if (!cur || v > cur[5]){
       const o = +r.open > 0 ? +r.open : c;
-      best.set(r.date, [r.date, o, +r.max > 0 ? +r.max : Math.max(o, c), +r.min > 0 ? +r.min : Math.min(o, c), c, v]);
+      best.set(r.date, [r.date, o, +r.max > 0 ? +r.max : Math.max(o, c), +r.min > 0 ? +r.min : Math.min(o, c), c, v, cd]);
     }
   }
-  return [...best.values()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  if (night){
+    for (const [date, b] of best){
+      const a = ah.get(date + '|' + b[6]); if (!a || !(+a.open > 0)) continue;
+      b[1] = +a.open; if (+a.max > 0) b[2] = Math.max(b[2], +a.max); if (+a.min > 0) b[3] = Math.min(b[3], +a.min); b[5] += +a.volume || 0;
+    }
+    // 日盤還沒出來、只有前一晚夜盤的那天：用量最大的夜盤合約先畫一根
+    const last = [...best.keys()].sort().pop() || '';
+    const only = new Map();
+    for (const [k, a] of ah){ const date = k.split('|')[0]; if (best.has(date) || date <= last || !(+a.open > 0)) continue; const v = +a.volume || 0; const cur = only.get(date); if (!cur || v > cur[5]) only.set(date, [date, +a.open, +a.max, +a.min, +a.close, v, k.split('|')[1]]); }
+    for (const [d, b] of only) best.set(d, b);
+  }
+  return [...best.values()].map(b => b.slice(0, 6)).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
 
 async function fetchSymbol(id, force){
   const isTX = !!FUTS[id];
-  const kind = isTX ? 'TXF' : (UI.adj ? 'ADJ' : 'RAW');
+  const kind = isTX ? (UI.night ? 'TXFN' : 'TXF') : (UI.adj ? 'ADJ' : 'RAW');
   const cached = readCache(id, kind);
   const fresh = cached && Date.now() - cached.t < 30 * 60e3 && cached.start === UI.start;
   if (cached && fresh && !force) return { rows:cached.rows, from:'cache' };
@@ -2118,7 +2131,7 @@ async function fetchSymbol(id, force){
       }));
       for (const p of part) chunks.push(...p);
     }
-    rows = mergeRows(rows, futuresRows(chunks));
+    rows = mergeRows(rows, futuresRows(chunks, !!UI.night));
     if (!rows.length) throw new Error('查不到台指期資料。');
     writeCache(id, kind, { rows, t:Date.now(), start:UI.start });
     return { rows, from:'api' };
@@ -2781,7 +2794,7 @@ function drawMain(p, i0, i1, ci){
 
   // legend
   const name = RAW ? (RAW.sample ? '範例資料' : RAW.id + ' ' + (RAW.name || '')) : '';
-  const ivName = IVN[B.iv] + (B.intra && RAW && FUTS[RAW.id] ? (RAW.night ? '・含夜盤' : '・日盤') : '');
+  const ivName = IVN[B.iv] + (RAW && FUTS[RAW.id] ? (RAW.night ? '・近全含夜盤' : '・日盤') : '');
   const chg = ci > 0 ? (B.c[ci] - B.c[ci - 1]) / B.c[ci - 1] * 100 : NaN;
   const cc = chg >= 0 ? CC.up : CC.down;
   const isF = RAW && FUTS[RAW.id], isIdx = RAW && RAW.id === 'TAIEX';
@@ -3901,14 +3914,14 @@ async function loadSymbol(input, force){
     if (intra) res = { rows:await fetchIntraday(id, iv, () => seq !== loadSeq), from:'api' };
     else res = await fetchSymbol(id, force);
     if (seq !== loadSeq) return;
-    const tf = intra ? iv : 'D', night = intra && !!FUTS[id] && !!UI.night;
+    const tf = intra ? iv : 'D', night = !!FUTS[id] && !!UI.night;
     const keepView = RAW && RAW.id === id && !RAW.sample && RAW.tf === tf;
     RAW = { id, name:nameOf(id), rows:res.rows, sample:false, tf, night };
     if (!keepView){ view.right = NaN; cross = null; pinned = false; resetY(); }
     recompute();
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
     if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日' + (INTRA_FAILS ? '（' + INTRA_FAILS + ' 天暫時讀不到已略過，按「重新整理」補抓）' : '') + ' · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
-    else setMsg((FUTS[id] ? nameOf(id) + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
+    else setMsg((FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
     if (!Object.keys(NAMES).length) loadNames();
   } catch (e){
     if (seq !== loadSeq) return;
@@ -4216,7 +4229,7 @@ document.getElementById('symForm').addEventListener('submit', e => { e.preventDe
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
 const seg = document.getElementById('intervalSeg');
 if (NO_INTRA) for (const b of seg.querySelectorAll('button')) if (isIntra(b.dataset.v)) b.remove();
-const periodSel = document.getElementById('periodSel'), togNight = document.getElementById('togNight'), themeSeg = document.getElementById('themeSeg');
+const periodSel = document.getElementById('periodSel'), nightSeg = document.getElementById('nightSeg'), themeSeg = document.getElementById('themeSeg');
 function syncToolbar(){
   for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.interval));
   for (const b of themeSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.theme));
@@ -4226,8 +4239,8 @@ function syncToolbar(){
     const c = INTRA[UI.interval], cur = curDays(UI.interval);
     periodSel.innerHTML = c.days.map(d => '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>近 ' + d + ' 天' + (d >= 600 ? '（第一次較久）' : '') + '</option>').join('');
   }
-  togNight.hidden = !(intra && FUTS[UI.symbol]);
-  togNight.setAttribute('aria-pressed', String(!!UI.night));
+  nightSeg.hidden = !FUTS[UI.symbol];
+  for (const b of nightSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String((b.dataset.v === '1') === !!UI.night));
   document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol];
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
   { let after = document.getElementById('togAdj');
@@ -4244,7 +4257,7 @@ seg.addEventListener('click', e => {
   else loadSymbol(UI.symbol);
 });
 periodSel.onchange = () => { UI.days = Object.assign({}, UI.days, { [UI.interval]:+periodSel.value }); saveUI(); loadSymbol(UI.symbol); };
-togNight.onclick = () => { UI.night = !UI.night; saveUI(); syncToolbar(); loadSymbol(UI.symbol); };
+nightSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const nv = b.dataset.v === '1'; if (nv === !!UI.night) return; UI.night = nv; saveUI(); syncToolbar(); loadSymbol(UI.symbol); });
 themeSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.theme = b.dataset.v; saveUI(); applyTheme(); });
 function applyTheme(){
   document.documentElement.dataset.theme = UI.theme;
