@@ -228,7 +228,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/26 13:55</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/26 15:10</span></div>
     <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -253,6 +253,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="seg" id="nightSeg" role="group" aria-label="台指期日盤／含夜盤" hidden><button data-v="1" title="台指期近月，日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒">近全（含夜盤）</button><button data-v="0" title="台指期近月，只看日盤（08:45～13:45）">近月（日盤）</button></div>
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
     <button class="tog" id="togFZ" aria-pressed="true" title="反轉抄底（主圖）：轉折底、轉折頂★；其他功能在「指標設定 → 反轉抄底」打開">反轉抄底</button>
+    <button class="tog" id="togBZ" aria-pressed="true" title="標準抄底（主圖）：紅藍 K、主升趨勢、主升安全、底部形態、主升啟動★／行情結束">標準抄底</button>
     <button class="tog" id="togSM" aria-pressed="false" title="把各副圖的底／頂（黃柱底、控盤底、CCI底、拉升…）也標在主圖上">副圖標記</button>
     <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
@@ -1034,6 +1035,34 @@ SCHEMA.cd = { tab:'主力抄底', title:'主力抄底（你提供的主力抄底
     {k:'cBot', l:'抄底', t:'color', d:'#ff1744'},
     {k:'cRise', l:'起漲★', t:'color', d:'#ffc400'},
     {k:'cTop', l:'頂★', t:'color', d:'#00c853'}
+  ]}
+]};
+SCHEMA.bz = { tab:'標準抄底', title:'標準抄底主圖（照你提供的通達信公式移植＋回測優化）：K 棒顏色＝6 日線在 20 日線上紅、下藍（原公式「火」：主升安全上的紅 K 持股、藍 K 持幣）；主升趨勢＝6 日線（5 根內上升超過 0.1% 紅、持平藍、下降綠；原公式拿「主升安全的價格」當天數比較，不合理，改成和 5 根前比）；主升安全＝(3×收+低+開+高)÷6 的 21 根加權平均（和紅線股起相同）再取 11 日平均，灰線；底部形態＝原式化簡後約等於 90 日線，黃色點線（原式把成交量當成平滑係數，通達信會當成 1）。原公式的五句口訣：金＝主升趨勢上穿主升安全（魚身行情）、木＝主升趨勢下穿主升安全（行情結束）、水＝收盤跌破主升安全（提前結束）、火＝紅 K 持股藍 K 持幣、土＝K 線上穿底部形態（強勢區）。今日阻力／支撐要用成交金額，資料沒有；底部線用到「最後一根往回算」會事後改變，改成簡化版（最近一次 9 日新低那根 K 棒的最高價）可選。【回測方式】這是順勢指標，用「進場到出場」模擬交易，全市場、分三段時間（2025/12～2026/4、2026/4～7、2026/7～10）。隨便哪天買、木出場：每筆平均 +5.7%／+1.2%／+1.6%、勝率 41%／37%／39%。原版：金→木 平均 +4.0%／+0.5%／+0.3%、勝率 29%／27%／28%；主升啟動（6 日上穿 20 日）→行情結束 +3.9%／+0.5%／+0.5%、勝率 30%／28%／29%；土（上穿 90 日線）→行情結束 +5.5%／+0.6%／+0.7%——原版都沒有比隨便買好。【主升啟動★】＝6 日線站上 20 日線第 2 天、20 日線往上、收盤在主升安全上、90 日線往上且收盤在 90 日線上；【行情結束】＝之後 6 日線跌回 20 日線下：平均 +8.0%／+2.8%／+1.7%，三段都比隨便買好，但勝率只有 36%／33%／36%、中位數是負的（−2.3%／−3.7%／−1.6%）——典型順勢做法：多數小賠出場、少數大段賺回來，一定要照「行情結束」停損。', groups:[
+  { name:'主圖', items:[
+    {k:'on', l:'啟用標準抄底', t:'bool', d:true},
+    {k:'colorBars', l:'K 棒紅藍（6 日線在 20 日線上紅、下藍）', t:'bool', d:true},
+    {k:'showTrend', l:'主升趨勢（6 日線，紅藍綠）', t:'bool', d:true},
+    {k:'showSafe', l:'主升安全（灰線）', t:'bool', d:true},
+    {k:'showBase', l:'底部形態（約 90 日線，黃點線）', t:'bool', d:true}
+  ]},
+  { name:'訊號', items:[
+    {k:'showStar', l:'主升啟動★（優化進場）＋行情結束（出場）', t:'bool', d:true},
+    {k:'showOrigStart', l:'原版主升啟動（6 日上穿 20 日，較雜）', t:'bool', d:false},
+    {k:'showOrigEnd', l:'原版行情結束（全部）', t:'bool', d:false},
+    {k:'showOrigBase', l:'原版土（收盤上穿底部形態）', t:'bool', d:false},
+    {k:'showTP', l:'止盈價（最高價 × 0.95，紅線）', t:'bool', d:false},
+    {k:'showFloor', l:'底部線（簡化版）', t:'bool', d:false}
+  ]},
+  { name:'顏色', items:[
+    {k:'cBull', l:'紅 K（持股）', t:'color', d:'#ff1744'},
+    {k:'cBear', l:'藍 K（持幣）', t:'color', d:'#2979ff'},
+    {k:'cUp', l:'主升趨勢上升', t:'color', d:'#ff1744'},
+    {k:'cFlat', l:'主升趨勢持平', t:'color', d:'#2979ff'},
+    {k:'cDn', l:'主升趨勢下降', t:'color', d:'#00c853'},
+    {k:'cSafe', l:'主升安全', t:'color', d:'#9e9e9e'},
+    {k:'cBase', l:'底部形態', t:'color', d:'#ffd600'},
+    {k:'cStart', l:'主升啟動★', t:'color', d:'#ffc400'},
+    {k:'cEnd', l:'行情結束', t:'color', d:'#b0bec5'}
   ]}
 ]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
@@ -2281,6 +2310,38 @@ function calcCD(B, p){
   return Object.assign({}, base, { up, ev, sig, main, tag });
 }
 
+/* ═════════════ 標準抄底主圖（通達信公式移植＋回測優化） ═════════════ */
+function calcBZ(B, p){
+  const n = B.n, O = B.o, H = B.h, L = B.l, C = B.c;
+  const mid = nanArr(n); for (let i = 0; i < n; i++) mid[i] = (3 * C[i] + L[i] + O[i] + H[i]) / 6;
+  const pj = nanArr(n); for (let i = 20; i < n; i++){ let sm = mid[i - 20]; for (let k = 0; k <= 18; k++) sm += (20 - k) * mid[i - k]; pj[i] = sm / 210; }
+  const safe = sma(pj, 11), m6 = sma(C, 6), m20 = sma(C, 20), m90 = sma(C, 90);
+  const base = nanArr(n); { const t = nanArr(n); for (let i = 5; i < n; i++) t[i] = C[i] + C[i - 5] / C[i] * 0.098; const mt = sma(t, 90); for (let i = 0; i < n; i++) base[i] = mt[i]; }
+  const tcol = new Int8Array(n); for (let i = 5; i < n; i++){ const r = m6[i] / m6[i - 5]; tcol[i] = r > 1.001 ? 1 : r > 0.997 ? 0 : -1; }
+  const floor = nanArr(n); { let lastLowBar = -1; for (let i = 0; i < n; i++){ if (L[i] <= llv(L, 9, i)) lastLowBar = i; floor[i] = lastLowBar >= 0 ? H[lastLowBar] : NaN; } }
+  const mk = [], sig = []; let inPos = false;
+  const X2 = (a, b, i) => a[i - 1] < b[i - 1] && a[i] > b[i];
+  for (let i = 95; i < n; i++){
+    if (isNaN(m90[i - 5]) || isNaN(safe[i])) continue;
+    if (p.showOrigStart && X2(m6, m20, i)) mk.push({ i, y:L[i], shape:'triUp', dy:8, col:p.cStart, size:0.6 });
+    if (p.showOrigEnd && X2(m20, m6, i)) mk.push({ i, y:H[i], shape:'triDown', dy:-8, col:p.cEnd, size:0.6 });
+    if (p.showOrigBase && C[i - 1] < base[i - 1] && C[i] > base[i]) mk.push({ i, y:L[i], shape:'text', text:'土', col:p.cBase, size:0.8, dy:14 });
+    const start = m6[i] > m20[i] && m6[i - 1] > m20[i - 1] && m6[i - 2] <= m20[i - 2] && m20[i] > m20[i - 1] && C[i] > safe[i] && m90[i] > m90[i - 5] && C[i] > m90[i];
+    if (!inPos && start){ inPos = true; sig.push({ i, src:'標準抄底', text:'主升啟動★', col:p.cStart }); if (p.showStar) mk.push({ i, y:L[i], shape:'labelUp', text:'主升啟動★', col:p.cStart, tcol:'#000', size:0.9, dy:4 }); }
+    else if (inPos && X2(m20, m6, i)){ inPos = false; sig.push({ i, src:'標準抄底', text:'行情結束', col:p.cEnd }); if (p.showStar) mk.push({ i, y:H[i], shape:'labelDown', text:'行情結束', col:p.cEnd, tcol:'#000', size:0.8, dy:-4 }); }
+  }
+  return { safe, m6, m20, base, tcol, floor, mk, sig };
+}
+function bzBarColor(i){ const r = R.bz, q = P.bz; if (!r || !q.on || !q.colorBars || isNaN(r.m20[i])) return null; return r.m6[i] >= r.m20[i] ? q.cBull : q.cBear; }
+function drawBZOverlay(i0, i1){
+  const r = R.bz, q = P.bz; if (!r || r.error || !q.on) return;
+  if (q.showBase) strokeSeries(i => r.base[i], () => q.cBase, i0, i1, 1.6, [1, 4]);
+  if (q.showSafe) strokeSeries(i => r.safe[i], () => q.cSafe, i0, i1, 1.6);
+  if (q.showTrend) strokeSeries(i => r.m6[i], i => r.tcol[i] === 1 ? q.cUp : r.tcol[i] === 0 ? q.cFlat : q.cDn, i0, i1, 2.4);
+  if (q.showTP) strokeSeries(i => B.h[i] * 0.95, () => rgba('#ff1744', 40), i0, i1, 1, [3, 3]);
+  if (q.showFloor) strokeSeries(i => r.floor[i], i => r.floor[i] === r.floor[i - 1] ? rgba(q.cBase, 20) : null, i0, i1, 1.2, [2, 3]);
+}
+
 /* ═════════════ 一舉奪魁（主圖，通達信公式移植） ═════════════ */
 function barsLastCount(a){ const o = new Int32Array(a.length); for (let i = 0; i < a.length; i++) o[i] = a[i] ? (i ? o[i - 1] : 0) + 1 : 0; return o; }
 // 通達信 HHV／LLV：天數 0＝從第一根算起
@@ -2891,13 +2952,15 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['kui', calcKUI]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['bz', calcBZ], ['kui', calcKUI]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
   if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci', 'kp', 'jj', 'qj', 'cd']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = (k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd') && m.text.includes('頂'); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
+  // 標準抄底：主升啟動★／行情結束
+  if (R.bz && R.bz.mk && P.bz.on) for (const m of R.bz.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.dy || 0) + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
   // 反轉抄底：轉折點直接畫在主圖
   if (R.fz && R.fz.mk && P.fz.on) for (const m of R.fz.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:m.dy + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
   // 一舉奪魁：K 棒下方金色「魁」
@@ -3253,6 +3316,7 @@ function drawMain(p, i0, i1, ci){
     let col = upBar ? CC.up : CC.down;
     const painted = ok && q.colorBars && r.ready[i] && r.state[i] !== 0;
     if (painted) col = r.state[i] === 1 ? q.bullColor : q.bearColor;
+    const bzc = bzBarColor(i); if (bzc) col = bzc;
     ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
     const yo = S.y(o), yc = S.y(c), yh = S.y(h), yl = S.y(l);
     if (bw < 2.5){ ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yl); ctx.stroke(); continue; }
@@ -3262,6 +3326,7 @@ function drawMain(p, i0, i1, ci){
     else ctx.fillRect(x - bw / 2, yt, bw, hb);
   }
 
+  drawBZOverlay(i0, i1);
   drawFZOverlay(i0, i1);
   if (ok){
     if (cloud){
@@ -4925,10 +4990,11 @@ function syncToolbar(){
   { let after = document.getElementById('togAdj');
     for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
   { const sb = document.getElementById('togSM'); sb.setAttribute('aria-pressed', String(!!UI.subMarks)); }
-  { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); fb.after(document.getElementById('togSM')); }
+  { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); const bb = document.getElementById('togBZ'); bb.setAttribute('aria-pressed', String(!!P.bz.on)); fb.after(bb); bb.after(document.getElementById('togSM')); }
   sizeChart();
 }
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
+document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
 seg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -4971,7 +5037,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
