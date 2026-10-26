@@ -252,6 +252,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <select id="periodSel" class="selp" title="分 K 要載入的交易日數（第一次每天用 1 個 FinMind 額度，之後存在這台裝置）" aria-label="分 K 載入天數" hidden></select>
     <div class="seg" id="nightSeg" role="group" aria-label="台指期日盤／含夜盤" hidden><button data-v="1" title="台指期近月，日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒">近全（含夜盤）</button><button data-v="0" title="台指期近月，只看日盤（08:45～13:45）">近月（日盤）</button></div>
     <button class="tog" id="togAdj" aria-pressed="false" title="使用還原權息價格（FinMind 調整後股價）">還原權息</button>
+    <button class="tog" id="togFZ" aria-pressed="true" title="反轉抄底（主圖）：轉折底、轉折頂★；其他功能在「指標設定 → 反轉抄底」打開">反轉抄底</button>
     <button class="tog" id="togZ" aria-pressed="true">VW Z 副圖</button>
     <button class="tog" id="togD" aria-pressed="true">VWD 副圖</button>
     <button class="tog" id="togBB" aria-pressed="true">布林大底</button>
@@ -4454,8 +4455,10 @@ function syncToolbar(){
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
   { let after = document.getElementById('togAdj');
     for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
+  { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); }
   sizeChart();
 }
+document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
 seg.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const prev = UI.interval; UI.interval = b.dataset.v; saveUI(); syncToolbar();
