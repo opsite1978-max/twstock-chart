@@ -258,6 +258,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togVL" aria-pressed="true">布林谷底線</button>
     <button class="tog" id="togTG" aria-pressed="true" title="龜苓膏：權證買方溫度計（時間價值、波動）">龜苓膏</button>
     <button class="tog" id="togDK" aria-pressed="true" title="多空趨勢（通達信公式＋回測優化的底、頂）">多空趨勢</button>
+    <button class="tog" id="togMD" aria-pressed="true" title="量化 MACD 頂底背離＋動態上下界">量化MACD</button>
     <button class="tog" id="togLS" aria-pressed="true" title="拉升機會（通達信公式＋優化）：主線低檔、拉升、機會、ABC">拉升機會</button>
     <button class="tog" id="togZX" aria-pressed="true" title="庄現趨勢（通達信公式）：離 40 日均線、庄現柱、入市／機會／底">庄現趨勢</button>
     <button class="tog" id="togCP" aria-pressed="true" title="抄底預警（通達信公式）：趨勢方塊柱、多空柱、預警線、抄底與進場標記">抄底預警</button>
@@ -684,19 +685,48 @@ SCHEMA.ls = { tab:'拉升機會', title:'拉升機會（照你提供的通達信
     {k:'cABC', l:'ABC', t:'color', d:'#ff2d55'}
   ]}
 ]};
+SCHEMA.md = { tab:'量化MACD', title:'量化 MACD 頂底背離（照你提供的通達信公式移植＋優化＋動態上下界）：快線＝12／26 指數平均差，慢線＝快線 9 根指數平均，柱體＝2×(快線−慢線)。快線依狀態變色：雙升（快慢線都往上）紫、築底（快線上、慢線下）金、做頭（快線下、慢線上）藍、雙降綠；柱體紅綠，變短時變淡。動態上下界＝快線在過去 N 根裡的上、下百分位（預設 250 根的 95%／5%），價格越貴的股票快線越大，固定數字的界線不適用，所以改用跟自己的歷史比。回測（上市櫃全部普通股，2025/6～2026/10；落在大低點／大高點後 5 根內的比例，隨便挑一天 7.7%／7.4%）：原版【底背離】35%、【下跌鈍化】10.5%（只是還在跌，預設不顯示）；優化【背離★】＝0 軸下金叉時，這一段的低點比上一段低、快線低點卻比上一段高，而且收盤突破前一根高點：40%，之後 20 天沒再破底 65%；【下界回升】＝快線從動態下界下方回到下界之上：34%，20 天沒再破底 71%；【上界回落】＝快線從上界上方跌回：頂 24%，20 天沒再過高 68%（0 軸上死叉只有 15%）。', groups:[
+  { name:'動態上下界', items:[
+    {k:'showBand', l:'顯示動態上下界', t:'bool', d:true},
+    {k:'bandLen', l:'比較的根數', t:'int', d:250, min:60, max:1000},
+    {k:'bandPct', l:'上下界百分位（上界＝100 − 這個數）', t:'float', d:5, min:1, max:30, step:1}
+  ]},
+  { name:'訊號', items:[
+    {k:'showOptBot', l:'背離★（優化底背離）', t:'bool', d:true},
+    {k:'showBot', l:'底背離（原版）', t:'bool', d:true},
+    {k:'showTop', l:'頂背離（原版）', t:'bool', d:true},
+    {k:'showLB', l:'下界回升', t:'bool', d:true},
+    {k:'showUB', l:'上界回落', t:'bool', d:true},
+    {k:'showDun', l:'下跌鈍化／上漲鈍化（原版）', t:'bool', d:false},
+    {k:'showGone', l:'背離消失（原版）', t:'bool', d:false},
+    {k:'showCross', l:'金叉／死叉箭頭', t:'bool', d:false},
+    {k:'mainSig', l:'主圖也標「背離★」', t:'bool', d:true}
+  ]},
+  { name:'顏色', items:[
+    {k:'cUpUp', l:'快線：雙升', t:'color', d:'#e040fb'},
+    {k:'cBase', l:'快線：築底', t:'color', d:'#ffb300'},
+    {k:'cTop', l:'快線：做頭', t:'color', d:'#2979ff'},
+    {k:'cDnDn', l:'快線：雙降', t:'color', d:'#00c853'},
+    {k:'cSlow', l:'慢線', t:'color', d:'#9aa3b2'},
+    {k:'cHistUp', l:'紅柱', t:'color', d:'#ef5350'},
+    {k:'cHistDn', l:'綠柱', t:'color', d:'#26a69a'},
+    {k:'cUB', l:'上界', t:'color', d:'#ff9100'},
+    {k:'cLB', l:'下界', t:'color', d:'#00b8d4'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -1422,6 +1452,87 @@ function calcLS(B, p){
   return { MU1, MU4, zone, cde, tag, ev, sig, main };
 }
 
+/* ═════════════ 量化 MACD 頂底背離（通達信公式移植＋優化＋動態上下界） ═════════════ */
+function barsLast(a){ const o = new Array(a.length).fill(null); let last = -1; for (let i = 0; i < a.length; i++){ if (a[i]) last = i; o[i] = last < 0 ? null : i - last; } return o; }
+function tFilter(A, Bc){ const o = new Uint8Array(A.length); let armed = true; for (let i = 0; i < A.length; i++){ if (armed && A[i]){ o[i] = 1; armed = false; } if (Bc[i]) armed = true; } return o; }
+const qOrder = v => (v == null || !isFinite(v) || v === 0) ? null : Math.trunc(Math.log10(Math.abs(v))) - 1;
+const qInt = (x, od) => od == null || !isFinite(x) ? null : Math.trunc(x / Math.pow(10, od));
+function calcMD(B, p){
+  const n = B.n, C = B.c, H = B.h, L = B.l;
+  const e12 = tdxEMA(C, 12), e26 = tdxEMA(C, 26), D = nanArr(n); for (let i = 0; i < n; i++) D[i] = e12[i] - e26[i];
+  const E = tdxEMA(D, 9), M = nanArr(n); for (let i = 0; i < n; i++) M[i] = 2 * (D[i] - E[i]);
+  const gold = new Uint8Array(n), dead = new Uint8Array(n);
+  for (let i = 1; i < n; i++){ gold[i] = D[i - 1] < E[i - 1] && D[i] > E[i] ? 1 : 0; dead[i] = D[i - 1] > E[i - 1] && D[i] < E[i] ? 1 : 0; }
+  const sd = barsLast(dead), sg = barsLast(gold), ref = (a, i, k) => k == null || i - k < 0 ? null : a[i - k];
+  const BP = new Array(n).fill(null), BD = new Array(n).fill(null), TP = new Array(n).fill(null), TD = new Array(n).fill(null);
+  for (let i = 0; i < n; i++){
+    if (sd[i] != null){ let a = Infinity, b = Infinity; for (let k = i - sd[i]; k <= i; k++){ if (C[k] < a) a = C[k]; if (D[k] < b) b = D[k]; } BP[i] = a; BD[i] = b; }
+    if (sg[i] != null){ let a = -Infinity, b = -Infinity; for (let k = i - sg[i]; k <= i; k++){ if (C[k] > a) a = C[k]; if (D[k] > b) b = D[k]; } TP[i] = a; TD[i] = b; }
+  }
+  // 底：前底＝REF(底谷, 死叉周期+1)，再前底＝REF(前底, 死叉周期+1)
+  const pBP = [], pBD = [], ppBP = [], ppBD = [];
+  for (let i = 0; i < n; i++){ const k = sd[i] == null ? null : sd[i] + 1; pBP[i] = ref(BP, i, k); pBD[i] = ref(BD, i, k); }
+  for (let i = 0; i < n; i++){ const k = sd[i] == null ? null : sd[i] + 1; ppBP[i] = ref(pBP, i, k); ppBD[i] = ref(pBD, i, k); }
+  const cq = [], pq = [], f1 = [], f2 = [];
+  for (let i = 0; i < n; i++){ const o1 = qOrder(pBD[i]), o2 = qOrder(ppBD[i]); f1[i] = qInt(pBD[i], o1); cq[i] = qInt(D[i], o1); f2[i] = qInt(ppBD[i], o2); pq[i] = qInt(D[i], o2); }
+  const dd = new Uint8Array(n), gd = new Uint8Array(n), rise = new Uint8Array(n), gone = new Uint8Array(n);
+  for (let i = 1; i < n; i++){
+    if (BP[i] != null && pBP[i] != null && cq[i] != null && f1[i] != null && cq[i - 1] != null) dd[i] = BP[i] < pBP[i] && cq[i] > f1[i] && M[i] < 0 && M[i - 1] < 0 && cq[i] <= cq[i - 1] ? 1 : 0;
+    if (BP[i] != null && ppBP[i] != null && pBP[i] != null && pq[i] != null && f2[i] != null && pq[i - 1] != null) gd[i] = BP[i] < ppBP[i] && ppBP[i] < pBP[i] && pq[i] > f2[i] && M[i] < 0 && M[i - 1] < 0 && pq[i] <= pq[i - 1] ? 1 : 0;
+    rise[i] = (cq[i] != null && cq[i - 1] != null && cq[i] > cq[i - 1] && dd[i - 1]) || (pq[i] != null && pq[i - 1] != null && pq[i] > pq[i - 1] && gd[i - 1]) ? 1 : 0;
+    gone[i] = (dd[i - 1] && BD[i] != null && pBD[i] != null && BD[i] <= pBD[i]) || (gd[i - 1] && BD[i] != null && ppBD[i] != null && BD[i] <= ppBD[i]) ? 1 : 0;
+  }
+  // 頂：前頂＝REF(頂谷, 10)（原公式寫死 10 根）
+  const pTP = [], pTD = [], ppTP = [], ppTD = [];
+  for (let i = 0; i < n; i++){ pTP[i] = ref(TP, i, 10); pTD[i] = ref(TD, i, 10); }
+  for (let i = 0; i < n; i++){ ppTP[i] = ref(pTP, i, 10); ppTD[i] = ref(pTD, i, 10); }
+  const tq = [], tpq = [], t1 = [], t2 = [];
+  for (let i = 0; i < n; i++){ const o1 = qOrder(pTD[i]), o2 = qOrder(ppTD[i]); t1[i] = qInt(pTD[i], o1); tq[i] = qInt(D[i], o1); t2[i] = qInt(ppTD[i], o2); tpq[i] = qInt(D[i], o2); }
+  const td = new Uint8Array(n), tg2 = new Uint8Array(n), fall = new Uint8Array(n), tgone = new Uint8Array(n);
+  for (let i = 1; i < n; i++){
+    if (TP[i] != null && pTP[i] != null && tq[i] != null && t1[i] != null && tq[i - 1] != null) td[i] = TP[i] > pTP[i] && tq[i] < t1[i] && M[i] > 0 && M[i - 1] > 0 && tq[i] >= tq[i - 1] ? 1 : 0;
+    if (TP[i] != null && ppTP[i] != null && pTP[i] != null && tpq[i] != null && t2[i] != null && tpq[i - 1] != null) tg2[i] = TP[i] > ppTP[i] && ppTP[i] > pTP[i] && tpq[i] < t2[i] && M[i] > 0 && M[i - 1] > 0 && tpq[i] >= tpq[i - 1] ? 1 : 0;
+    fall[i] = (tq[i] != null && tq[i - 1] != null && tq[i] < tq[i - 1] && td[i - 1]) || (tpq[i] != null && tpq[i - 1] != null && tpq[i] < tpq[i - 1] && tg2[i - 1]) ? 1 : 0;
+    tgone[i] = (td[i - 1] && TD[i] != null && pTD[i] != null && TD[i] >= pTD[i]) || (tg2[i - 1] && TD[i] != null && ppTD[i] != null && TD[i] >= ppTD[i]) ? 1 : 0;
+  }
+  const pos = Array.from(M, x => x > 0), neg = Array.from(M, x => x < 0);
+  const bdiv = Array.from(dd, (x, i) => x || gd[i]), tdiv = Array.from(td, (x, i) => x || tg2[i]);
+  const S_dun = tFilter(bdiv, pos), S_gone = tFilter(gone, bdiv), S_rise = tFilter(rise, pos);
+  const S_tdun = tFilter(tdiv, neg), S_tgone = tFilter(tgone, tdiv), S_fall = tFilter(fall, neg);
+  // 優化底背離：0 軸下金叉時，這一段（上次死叉到現在）的低點比上一段低、快線低點比上一段高；★＝收盤突破前一根高點
+  const opt = new Uint8Array(n), deads = [], golds = [];
+  for (let i = 0; i < n; i++){ if (dead[i]) deads.push(i); if (gold[i]) golds.push(i); }
+  for (const g of golds){
+    if (!(D[g] < 0)) continue;
+    let k = -1; for (let j = deads.length - 1; j >= 0; j--) if (deads[j] < g){ k = j; break; }
+    if (k < 1) continue;
+    const d1 = deads[k], d0 = deads[k - 1]; let g0 = -1; for (const x of golds) if (x > d0 && x < d1) g0 = x;
+    if (g0 < 0 || g - d1 < 3 || g0 - d0 < 3) continue;
+    let lo1 = Infinity, lo0 = Infinity, m1 = Infinity, m0 = Infinity;
+    for (let j = d1; j <= g; j++){ if (L[j] < lo1) lo1 = L[j]; if (D[j] < m1) m1 = D[j]; }
+    for (let j = d0; j <= g0; j++){ if (L[j] < lo0) lo0 = L[j]; if (D[j] < m0) m0 = D[j]; }
+    if (lo1 < lo0 && m1 > m0) opt[g] = C[g] > H[g - 1] ? 2 : 1;
+  }
+  // 動態上下界：快線在過去 N 根的百分位
+  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, UB = nanArr(n), LB = nanArr(n);
+  for (let i = N - 1; i < n; i++){ const w = Array.from(D.subarray(i - N + 1, i + 1)).filter(x => !isNaN(x)).sort((a, b) => a - b); if (w.length < N * 0.8) continue; LB[i] = w[Math.floor(w.length * q)]; UB[i] = w[Math.min(w.length - 1, Math.floor(w.length * (1 - q)))]; }
+  const ev = [], sig = [], main = [], tag = new Array(n).fill(null);
+  const add = (i, txt, col, show, y, shape, dy, size) => { (tag[i] = tag[i] || []).push([txt, col]); sig.push({ i, src:'量化MACD', text:txt, col }); if (show) ev.push({ i, y, shape, dy, text:txt, col, tcol:'#fff', size:size || 0.8 }); };
+  for (let i = 1; i < n; i++){
+    if (opt[i] === 2){ add(i, '背離★', '#ff1744', p.showOptBot, D[i], 'labelUp', 12, 0.9); if (p.mainSig) main.push({ i, text:'背離★', col:'#ff1744' }); }
+    if (S_rise[i]) add(i, '底背離', '#ff5252', p.showBot, D[i], 'labelUp', 10);
+    if (S_fall[i]) add(i, '頂背離', '#d500f9', p.showTop, D[i], 'labelDown', -10);
+    if (S_dun[i]) add(i, '下跌鈍化', '#ff8a80', p.showDun, D[i] + M[i], 'text', 0);
+    if (S_tdun[i]) add(i, '上漲鈍化', '#69f0ae', p.showDun, D[i] + M[i], 'text', 0);
+    if (S_gone[i] || S_tgone[i]) add(i, '消失', '#ffd600', p.showGone, D[i] + M[i], 'text', 0);
+    if (!isNaN(LB[i - 1]) && D[i - 1] < LB[i - 1] && D[i] > LB[i]) add(i, '回升', p.cLB, p.showLB, LB[i], 'triUp', 6, 0.75);
+    if (!isNaN(UB[i - 1]) && D[i - 1] > UB[i - 1] && D[i] < UB[i]) add(i, '回落', p.cUB, p.showUB, UB[i], 'triDown', -6, 0.75);
+    if (p.showCross && gold[i]) ev.push({ i, y:D[i], shape:'arrowUp', dy:8, col:'#ff5252', size:0.7 });
+    if (p.showCross && dead[i]) ev.push({ i, y:D[i], shape:'arrowDown', dy:-8, col:'#26a69a', size:0.7 });
+  }
+  return { D, E, M, UB, LB, tag, ev, sig, main };
+}
+
 /* ═════════════ 權證定價（Black–Scholes 近似；台股權證多為美式，認購不發股利時與歐式相同） ═════════════ */
 function erf(x){ const t = 1 / (1 + 0.3275911 * Math.abs(x)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; }
 const ncdf = x => 0.5 * (1 + erf(x / Math.SQRT2));
@@ -1971,12 +2082,12 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
+  for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md']) if (R[k] && R[k].main) for (const m of R[k].main) R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 });
   syncChips(); syncWarrants();
   schedule(); renderSignals();
 }
@@ -2218,6 +2329,7 @@ function draw(){
     else if (p.id === 'dk') drawDK(p, i0, i1, ci);
     else if (p.id === 'zx') drawZX(p, i0, i1, ci);
     else if (p.id === 'ls') drawLS(p, i0, i1, ci);
+    else if (p.id === 'md') drawMD(p, i0, i1, ci);
     else drawStrip(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
@@ -2397,7 +2509,8 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'cp', flag:'showCP', btn:'CP', name:'抄底預警', r:'cp', reload:true },
   { id:'dk', flag:'showDK', btn:'DK', name:'多空趨勢', r:'dk' },
   { id:'zx', flag:'showZXP', btn:'ZX', name:'庄現趨勢', r:'zx' },
-  { id:'ls', flag:'showLS', btn:'LS', name:'拉升機會', r:'ls' }
+  { id:'ls', flag:'showLS', btn:'LS', name:'拉升機會', r:'ls' },
+  { id:'md', flag:'showMD', btn:'MD', name:'量化MACD', r:'md' }
 ];
 const STRIP_TOP = 18, STRIP_ROW = 13, STRIP_LABEL = 74;
 const paneOk = pp => !(pp.id === 'in' && R.intent && R.intent.na === '主力意圖只適用個股');
@@ -2453,6 +2566,40 @@ function drawStrip(p, i0, i1, ci){
   const hits = []; for (const pp of p.rows) for (const sg of R[pp.r].sig) if (sg.i === ci) hits.push([pp.name + '：' + sg.text, sg.col]);
   if (hits.length && cross){ ctx.font = '600 10.5px "Noto Sans TC", sans-serif'; let x = plotW() - 6; ctx.textAlign = 'right';
     for (const [t, c] of hits.reverse()){ const w = ctx.measureText(t).width; ctx.fillStyle = CC.legendBg; ctx.fillRect(x - w - 4, p.top + 2, w + 6, 14); ctx.fillStyle = ink(c); ctx.fillText(t, x, p.top + 9); x -= w + 10; if (x < 160) break; } }
+}
+
+function drawMD(p, i0, i1, ci){
+  const r = R.md, q = P.md;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['量化MACD  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const arrs = [r.D, r.E, r.M]; if (q.showBand) arrs.push(r.UB, r.LB);
+  const [mn, mx] = extent(arrs, i0, i1, markerExtra(r.ev, i0, i1)), pad = (mx - mn) * 0.06;
+  S = makeScale(p.top, p.h, ...rng('md', mn - pad, mx + pad), 26, 8);
+  const dec = Math.abs(mx) >= 100 ? 0 : Math.abs(mx) >= 1 ? 1 : 2;
+  gridAndAxis(dec);
+  const W = plotW(), y0 = S.y(0), bw = Math.max(1, Math.min(view.barW * 0.6, 9));
+  // 柱體：紅綠，比前一根短就變淡
+  for (let i = Math.max(1, i0); i <= i1; i++){ const m = r.M[i]; if (isNaN(m)) continue;
+    const grow = Math.abs(m) >= Math.abs(r.M[i - 1]), col = m >= 0 ? q.cHistUp : q.cHistDn;
+    const y = S.y(m); ctx.fillStyle = rgba(col, grow ? 35 : 68); ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); }
+  const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(0, rgba(CC.axis, 45), [3, 3]);
+  if (q.showBand){
+    fillBetween(i => r.UB[i], i => Math.max(r.UB[i], r.D[i]), () => rgba(q.cUB, 70), i0, i1);
+    fillBetween(i => Math.min(r.LB[i], r.D[i]), i => r.LB[i], () => rgba(q.cLB, 70), i0, i1);
+    strokeSeries(i => r.UB[i], () => rgba(q.cUB, 25), i0, i1, 1.2, [5, 4]);
+    strokeSeries(i => r.LB[i], () => rgba(q.cLB, 25), i0, i1, 1.2, [5, 4]);
+  }
+  strokeSeries(i => r.E[i], () => q.cSlow, i0, i1, 1.2);
+  const stCol = i => { const du = r.D[i] >= r.D[i - 1], eu = r.E[i] > r.E[i - 1]; return du && eu ? q.cUpUp : du ? q.cBase : eu ? q.cTop : q.cDnDn; };
+  strokeSeries(i => r.D[i], stCol, i0, i1, 2.4);
+  visibleMarkers(r.ev, i0, i1);
+  const fmt = v => fmtNum(v, dec);
+  const lv = r.D[B.n - 1]; if (!isNaN(lv)) axisTag(lv, stCol(B.n - 1), '#fff', fmt);
+  const d = r.D[ci], st = ci > 0 ? (r.D[ci] >= r.D[ci - 1] ? (r.E[ci] > r.E[ci - 1] ? '雙升' : '築底') : (r.E[ci] > r.E[ci - 1] ? '做頭' : '雙降')) : '';
+  const zone = !isNaN(r.UB[ci]) && d > r.UB[ci] ? '超過上界' : !isNaN(r.LB[ci]) && d < r.LB[ci] ? '低於下界' : '';
+  const parts = [['量化MACD', CC.axis], ['快線 ' + fmt(d), ci > 0 ? stCol(ci) : CC.text], ['慢線 ' + fmt(r.E[ci]), q.cSlow], ['柱 ' + fmt(r.M[ci]), r.M[ci] >= 0 ? q.cHistUp : q.cHistDn], [st + (zone ? '・' + zone : ''), CC.axis]];
+  for (const tg of r.tag[ci] || []) parts.push(tg);
+  legend([parts], p.top);
 }
 
 function drawLS(p, i0, i1, ci){
@@ -2934,7 +3081,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, sg:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, sg:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -3700,7 +3847,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
