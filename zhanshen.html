@@ -868,6 +868,36 @@ SCHEMA.cci = { tab:'龍頭CCI', title:'龍頭 CCI（照你提供的通達信公�
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
 ]};
+SCHEMA.fz = { tab:'反轉抄底', title:'反轉抄底主圖（照你提供的通達信公式移植＋回測優化）：原公式真正畫在主圖的只有幾樣——紅線股起（(3×收+低+開+高)÷6 的 21 根加權平均，越近權重越大，照原式少了第 19 根）、綠線股出（紅線的 6 日平均）、反轉啟動（13 日指數平均上穿它自己的 8 日指數平均）、強弱指標 RSI6 從 82 以上跌下來的賣點、倍量 K 棒的低點（黃色支撐）、30 日線（底部階段）、漲停／跌停 K 棒。板塊、股本、本益比、大盤資金這些文字要用到中國 A 股的資料，台股抓不到，所以拿掉。主圖只標轉折點，其他全部改成下面可開可關（預設關，保持乾淨）。乖離＝收盤對紅線的距離（%），動態上下界＝過去 120 根的 90%／10% 百分位。【回測】全市場、分三段時間（2025/12～2026/4、2026/4～7、2026/7～10），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 13%／5%／3%、守住 36%／30%／24%。原版反轉啟動：命中 16%／15%／11%（太慢，多半已經漲一段）、守住 54%／48%／64%。【轉折底】＝收盤站上紅線、近 10 根乖離曾低於動態下界、近 10 根 RSI6 曾低於 25、收盤突破前一根高點：命中 35%／35%／54%、守住 51%／49%／80%。原版 RSI6 跌破 82：命中 36%／34%／20%、守住 40%／37%／45%。【轉折頂】＝收盤跌破紅線、近 10 根乖離曾高於動態上界、收盤跌破前一根低點：命中 28%／33%／20%、守住 51%／55%／63%。【轉折頂★】＝轉折頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 51%／59%／39%、守住 57%／66%／70%（目前所有指標裡最準的頂）。【確認底】（可選）＝紅線上穿綠線、近 15 根乖離曾低於下界、收盤突破前一根高點：比較晚，命中只有 22%／16%／15%，但守住 68%／54%／78%。【提醒】轉折底在下跌段（2026/4～7）之後 20 天報酬中位數仍是 −1.8%，代表「接近波段低點」，不保證會漲。', groups:[
+  { name:'轉折點（主圖）', items:[
+    {k:'on', l:'啟用反轉抄底', t:'bool', d:true},
+    {k:'showBot', l:'轉折底', t:'bool', d:true},
+    {k:'showTop', l:'轉折頂', t:'bool', d:true},
+    {k:'starTop', l:'轉折頂★（急漲爆量）', t:'bool', d:true},
+    {k:'starRise', l:'頂★：近 20 根漲幅超過（%）', t:'float', d:15, min:5, max:60, step:1},
+    {k:'starVol', l:'頂★：近 5 根量大於 20 日均量幾倍', t:'float', d:2, min:1, max:5, step:0.1},
+    {k:'showConfirm', l:'確認底（紅線上穿綠線，較晚較穩）', t:'bool', d:false},
+    {k:'bandLen', l:'乖離比較的根數', t:'int', d:120, min:60, max:1000},
+    {k:'bandPct', l:'乖離上下界百分位', t:'float', d:10, min:1, max:30, step:1}
+  ]},
+  { name:'其他功能（可開可關）', items:[
+    {k:'showLines', l:'紅線股起／綠線股出', t:'bool', d:false},
+    {k:'showMA30', l:'30 日線（底部階段）', t:'bool', d:false},
+    {k:'showVolLow', l:'倍量 K 棒低點（黃色支撐線）', t:'bool', d:false},
+    {k:'showLimit', l:'漲停／跌停 K 棒框起來', t:'bool', d:false},
+    {k:'showOrigStart', l:'原版反轉啟動', t:'bool', d:false},
+    {k:'showOrigRsi', l:'原版 RSI6 跌破 82 賣點', t:'bool', d:false}
+  ]},
+  { name:'顏色', items:[
+    {k:'cRed', l:'紅線股起', t:'color', d:'#ff1744'},
+    {k:'cGrn', l:'綠線股出', t:'color', d:'#00c853'},
+    {k:'cMA30', l:'30 日線', t:'color', d:'#ff5252'},
+    {k:'cVolLow', l:'倍量低點', t:'color', d:'#ffd600'},
+    {k:'cBot', l:'轉折底', t:'color', d:'#ff1744'},
+    {k:'cTop', l:'轉折頂', t:'color', d:'#00c853'},
+    {k:'cConfirm', l:'確認底', t:'color', d:'#ff6d00'}
+  ]}
+]};
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
@@ -1881,6 +1911,53 @@ function calcCCI(B, p){
   return { X, T, LB, MB, UB, tag, ev, sig, main };
 }
 
+/* ═════════════ 反轉抄底主圖（通達信公式移植＋回測優化） ═════════════ */
+function calcFZ(B, p){
+  const n = B.n, O = B.o, H = B.h, L = B.l, C = B.c, V = B.v;
+  const red = nanArr(n), mid = nanArr(n); for (let i = 0; i < n; i++) mid[i] = (3 * C[i] + L[i] + O[i] + H[i]) / 6;
+  for (let i = 20; i < n; i++){ let sm = mid[i - 20]; for (let k = 0; k <= 18; k++) sm += (20 - k) * mid[i - k]; red[i] = sm / 210; }
+  const grn = sma(red, 6), ma30 = sma(C, 30), e13 = tdxEMA(C, 13), hz2 = tdxEMA(e13, 8);
+  const up = nanArr(n), ab = nanArr(n); for (let i = 1; i < n; i++){ up[i] = Math.max(C[i] - C[i - 1], 0); ab[i] = Math.abs(C[i] - C[i - 1]); }
+  const su = tdxSMA(up, 6, 1), sa = tdxSMA(ab, 6, 1), rsi = nanArr(n); for (let i = 1; i < n; i++) rsi[i] = sa[i] > 0 ? su[i] / sa[i] * 100 : 50;
+  const bias = nanArr(n); for (let i = 0; i < n; i++) bias[i] = C[i] / red[i] - 1;
+  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, bL = rollPct(bias, N, q), bH = rollPct(bias, N, 1 - q);
+  const vlow = nanArr(n); let lv = NaN; if (V) for (let i = 1; i < n; i++){ if (V[i - 1] > 0 && V[i] / V[i - 1] >= 2) lv = L[i]; vlow[i] = lv; }
+  const Vm = V ? sma(V, 20) : null;
+  const mk = [], sig = []; let lb = -99, lt = -99, lc = -99;
+  for (let i = 21; i < n; i++){
+    if (p.showOrigStart && e13[i - 1] < hz2[i - 1] && e13[i] > hz2[i]) mk.push({ i, y:L[i], shape:'triUp', dy:8, col:'#ffd600', size:0.7 });
+    if (p.showOrigRsi && rsi[i - 1] > 82 && rsi[i] <= 82) mk.push({ i, y:H[i], shape:'triDown', dy:-8, col:'#00e5ff', size:0.7 });
+    if (isNaN(bL[i]) || isNaN(red[i - 1])) continue;
+    let mnB = Infinity, mxB = -Infinity, mnR = Infinity, mnB15 = Infinity;
+    for (let k = i - 9; k <= i; k++){ if (bias[k] < mnB) mnB = bias[k]; if (bias[k] > mxB) mxB = bias[k]; if (rsi[k] < mnR) mnR = rsi[k]; }
+    for (let k = i - 14; k <= i; k++) if (bias[k] < mnB15) mnB15 = bias[k];
+    if (C[i - 1] < red[i - 1] && C[i] > red[i] && mnB < bL[i] && mnR < 25 && C[i] > H[i - 1] && i - lb > 10){
+      lb = i; sig.push({ i, src:'反轉抄底', text:'轉折底', col:p.cBot });
+      if (p.showBot) mk.push({ i, y:L[i], shape:'labelUp', text:'轉折底', col:p.cBot, tcol:'#fff', size:0.9, dy:4 });
+    }
+    if (p.showConfirm && red[i - 1] < grn[i - 1] && red[i] > grn[i] && mnB15 < bL[i] && C[i] > H[i - 1] && i - lc > 10){
+      lc = i; sig.push({ i, src:'反轉抄底', text:'確認底（紅線上穿綠線）', col:p.cConfirm });
+      mk.push({ i, y:L[i], shape:'labelUp', text:'確認底', col:p.cConfirm, tcol:'#fff', size:0.8, dy:4 });
+    }
+    if (C[i - 1] > red[i - 1] && C[i] < red[i] && mxB > bH[i] && C[i] < L[i - 1] && i - lt > 10){
+      lt = i; let star = false;
+      if (p.starTop && Vm && !isNaN(Vm[i])){ let vx = 0; for (let k = i - 4; k <= i; k++) if (V[k] > vx) vx = V[k]; star = (hhv(H, 10, i) / llv(L, 20, i) - 1) * 100 > p.starRise && vx > p.starVol * Vm[i]; }
+      sig.push({ i, src:'反轉抄底', text:star ? '轉折頂★（急漲爆量後跌破紅線）' : '轉折頂（跌破紅線）', col:p.cTop });
+      if (p.showTop || star) mk.push({ i, y:H[i], shape:'labelDown', text:star ? '轉折頂★' : '轉折頂', col:p.cTop, tcol:'#fff', size:star ? 0.95 : 0.85, dy:-4 });
+    }
+  }
+  return { red, grn, ma30, vlow, mk, sig };
+}
+function drawFZOverlay(i0, i1){
+  const r = R.fz, q = P.fz; if (!r || r.error || !q.on) return;
+  if (q.showMA30) strokeSeries(i => r.ma30[i], () => rgba(q.cMA30, 20), i0, i1, 1.4, [1, 4]);
+  if (q.showLines){ strokeSeries(i => r.grn[i], () => q.cGrn, i0, i1, 1.6); strokeSeries(i => r.red[i], () => q.cRed, i0, i1, 2); }
+  if (q.showVolLow) strokeSeries(i => r.vlow[i], i => r.vlow[i] === r.vlow[i - 1] ? q.cVolLow : null, i0, i1, 1.6);
+  if (q.showLimit){ const bw = Math.max(3, Math.min(view.barW * 0.7, view.barW - 1)) + 4;
+    for (let i = Math.max(1, i0); i <= i1; i++){ const ch = B.c[i] / B.c[i - 1] - 1; if (Math.abs(ch) < 0.095) continue;
+      const yt = S.y(B.h[i]) - 2, yb = S.y(B.l[i]) + 2; ctx.strokeStyle = ch > 0 ? '#ffd600' : '#00e676'; ctx.lineWidth = 1.5; ctx.strokeRect(X(i) - bw / 2, yt, bw, yb - yt); } }
+}
+
 /* ═════════════ 一舉奪魁（主圖，通達信公式移植） ═════════════ */
 function barsLastCount(a){ const o = new Int32Array(a.length); for (let i = 0; i < a.length; i++) o[i] = a[i] ? (i ? o[i - 1] : 0) + 1 : 0; return o; }
 // 通達信 HHV／LLV：天數 0＝從第一根算起
@@ -2491,13 +2568,15 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['kui', calcKUI]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kui', calcKUI]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
   for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = (k === 'bd' || k === 'km' || k === 'ym' || k === 'cci') && m.text.includes('頂'); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
+  // 反轉抄底：轉折點直接畫在主圖
+  if (R.fz && R.fz.mk && P.fz.on) for (const m of R.fz.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:m.dy + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
   // 一舉奪魁：K 棒下方金色「魁」
   if (R.kui && R.kui.main) for (const m of R.kui.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:'魁', col:m.col, tcol:'#3a2a00', size:1.15, dy:6 + k * 20 }); }
   if (R.bao && R.bao.main) for (const m of R.bao.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'arrowUp', text:m.text, col:m.col, tcol:m.col, size:1.3, dy:24 + k * 18 }); }
@@ -2856,6 +2935,7 @@ function drawMain(p, i0, i1, ci){
     else ctx.fillRect(x - bw / 2, yt, bw, hb);
   }
 
+  drawFZOverlay(i0, i1);
   if (ok){
     if (cloud){
       if (q.showOuter){
@@ -4417,7 +4497,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
