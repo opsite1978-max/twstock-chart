@@ -228,8 +228,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 12:45</span></div>
-    <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 13:10</span></div>
+    <nav class="chips"><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
@@ -5345,6 +5345,7 @@ function syncToolbar(){
 }
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
+document.getElementById('calcLink').addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
 document.getElementById('togLive').onclick = () => { UI.live = !UI.live; saveUI(); syncToolbar(); LIVE.t = ''; liveApply(false); if (UI.live) livePoll(); };
 document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
 seg.addEventListener('click', e => {

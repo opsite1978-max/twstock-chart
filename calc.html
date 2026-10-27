@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>獲利計算器</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.14);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.12);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:880px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.card h2{font-size:13px;color:var(--muted);font-weight:500;margin:0 0 10px;letter-spacing:.04em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input[type=text],input[type=number],select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:8px 10px;width:100%;font-family:var(--mono);font-size:15px}
+select{font-family:var(--sans);font-size:14px}
+.btn{background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.btn.sm{padding:4px 9px;font-size:13px}
+.stepper{display:flex;gap:4px}
+.stepper input{flex:1;min-width:0}
+.stepper .btn{padding:6px 10px;font-family:var(--mono)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:7px 12px;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+.quote{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;margin-top:10px;font-family:var(--mono)}
+.quote .nm{font-family:var(--sans);font-weight:700;font-size:16px}
+.quote .px{font-size:22px;font-weight:600}
+.quote .k{color:var(--muted);font-family:var(--sans);font-size:12px;margin-right:4px}
+.big{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.big .pl{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:-.01em}
+.big .pct{font-family:var(--mono);font-size:20px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px 18px;margin-top:12px}
+.kv div{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0}
+.kv span:last-child{font-family:var(--mono)}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+th{font-family:var(--sans);font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel)}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--line)}
+tr.be td{background:var(--hl)}
+tr.cur td{outline:1px solid var(--accent);outline-offset:-1px}
+.tag{font-family:var(--sans);font-size:11px;padding:1px 6px;border-radius:4px;margin-left:6px;background:var(--panel2);color:var(--muted)}
+.tblwrap{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.msg{font-size:13px;color:var(--muted);margin-top:8px}
+.msg.err{color:var(--err)}
+@media (max-width:520px){ .big .pl{font-size:28px} .quote .px{font-size:19px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>獲利計算器</h1><span class="sub">千金股・整張零股・手續費證交稅一次算</span>
+  <nav><a class="chip" href="zhanshen.html">戰神看盤</a><a class="chip" href="./">看盤</a></nav>
+</header>
+
+<section class="card">
+  <h2>股票</h2>
+  <div class="row">
+    <input type="text" id="sym" list="symList" placeholder="代號或名稱，例如 2454 或 聯發科" style="flex:1;min-width:180px" autocomplete="off">
+    <datalist id="symList"></datalist>
+    <button class="btn primary" id="load">帶入現價</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="chip qs" data-s="2454">2454 聯發科</button><button class="chip qs" data-s="2330">2330 台積電</button><button class="chip qs" data-s="3008">3008 大立光</button><button class="chip qs" data-s="5274">5274 信驊</button><button class="chip qs" data-s="0050">0050</button>
+  </div>
+  <div class="quote" id="quote" hidden></div>
+  <div class="msg" id="msg">輸入代號後按「帶入現價」會自動填入最新價格（盤中用即時報價、收盤後用收盤價）；也可以直接在下面手動輸入價格。</div>
+</section>
+
+<section class="card">
+  <h2>交易</h2>
+  <div class="grid">
+    <label class="f">買進價
+      <div class="stepper"><button class="btn" data-step="buy" data-d="-1" aria-label="買進價下一檔">−</button><input type="number" id="buy" inputmode="decimal" step="any" value="1000"><button class="btn" data-step="buy" data-d="1" aria-label="買進價上一檔">＋</button></div>
+    </label>
+    <label class="f">賣出價
+      <div class="stepper"><button class="btn" data-step="sell" data-d="-1" aria-label="賣出價下一檔">−</button><input type="number" id="sell" inputmode="decimal" step="any" value="1050"><button class="btn" data-step="sell" data-d="1" aria-label="賣出價上一檔">＋</button></div>
+    </label>
+    <label class="f">張數（1 張＝1000 股）<input type="number" id="lots" inputmode="numeric" min="0" step="1" value="1"></label>
+    <label class="f">另加零股（股）<input type="number" id="odd" inputmode="numeric" min="0" max="999" step="1" value="0"></label>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <span class="muted" style="font-size:12px">賣出價快選</span>
+    <button class="btn sm" data-tgt="be">損益兩平</button>
+    <button class="btn sm" data-tgt="3">+3%</button><button class="btn sm" data-tgt="5">+5%</button><button class="btn sm" data-tgt="10">+10%</button><button class="btn sm" data-tgt="-5">−5%</button><button class="btn sm" data-tgt="lu">漲停</button><button class="btn sm" data-tgt="ld">跌停</button>
+    <span class="muted" style="font-size:12px;margin-left:8px">股數快選</span>
+    <button class="btn sm" data-qty="0:100">100 股</button><button class="btn sm" data-qty="0:500">500 股</button><button class="btn sm" data-qty="1:0">1 張</button><button class="btn sm" data-qty="5:0">5 張</button>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <label class="f">交易方式
+      <div class="seg" id="mode" role="group" aria-label="交易方式"><button data-v="cash" aria-pressed="true">現股</button><button data-v="dt" aria-pressed="false">當沖</button></div>
+    </label>
+    <label class="f">商品
+      <div class="seg" id="kind" role="group" aria-label="商品種類"><button data-v="stock" aria-pressed="true">股票</button><button data-v="etf" aria-pressed="false">ETF</button></div>
+    </label>
+    <label class="f">手續費折扣
+      <select id="disc"><option value="1">無折扣（0.1425%）</option><option value="0.6">6 折</option><option value="0.5">5 折</option><option value="0.38">3.8 折</option><option value="0.3">3 折</option><option value="0.28">2.8 折</option><option value="0.2">2 折</option><option value="0.18">1.8 折</option></select>
+    </label>
+    <label class="f">最低手續費（元）<input type="number" id="minfee" inputmode="numeric" min="0" step="1" value="20"></label>
+  </div>
+</section>
+
+<section class="card" aria-live="polite">
+  <h2>結果</h2>
+  <div class="big"><span class="pl" id="pl">—</span><span class="pct" id="pct"></span></div>
+  <div class="kv" id="kv"></div>
+</section>
+
+<section class="card">
+  <h2>想賺多少？</h2>
+  <div class="grid">
+    <label class="f">想賺（元，扣完費用）<input type="number" id="wantAmt" inputmode="numeric" step="1" placeholder="例如 10000"></label>
+    <label class="f">想賺（%，扣完費用）<input type="number" id="wantPct" inputmode="decimal" step="any" placeholder="例如 5"></label>
+  </div>
+  <div class="msg" id="wantOut"></div>
+</section>
+
+<section class="card">
+  <h2>價位表（以買進價為中心，每列一個價位）</h2>
+  <div class="row" style="margin-bottom:8px">
+    <span class="muted" style="font-size:12px">每列間隔</span>
+    <div class="seg" id="gap" role="group" aria-label="價位表間隔"><button data-v="1" aria-pressed="false">1 檔</button><button data-v="2" aria-pressed="false">2 檔</button><button data-v="5" aria-pressed="true">5 檔</button><button data-v="10" aria-pressed="false">10 檔</button></div>
+  </div>
+  <div class="tblwrap"><table><thead><tr><th>賣出價</th><th>漲跌</th><th>淨損益</th><th>報酬率</th></tr></thead><tbody id="tbody"></tbody></table></div>
+</section>
+
+<section class="card note">
+  <b>計算方式</b>：手續費＝成交金額 × 0.1425% × 折扣，未滿最低手續費以最低計（多數券商整股 20 元、零股 1 元，請依你的券商填）；證交稅（賣出時）股票 0.3%、現股當沖 0.15%、ETF 0.1%；手續費與稅都是元以下捨去。升降單位（一檔）：股票 10 元以下 0.01、10～50 元 0.05、50～100 元 0.1、100～500 元 0.5、500～1000 元 1、1000 元以上 5；ETF 50 元以下 0.01、以上 0.05。漲跌停＝昨收 ±10%，取到升降單位。實際金額以券商對帳單為準。
+</section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => (isFinite(v) ? v : 0).toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const S = { mode:'cash', kind:'stock', gap:5, ref:NaN, id:'' };
+const PREF = 'calc:prefs';
+try { const p = JSON.parse(localStorage.getItem(PREF) || '{}'); if (p.disc) $('disc').value = p.disc; if (p.minfee != null) $('minfee').value = p.minfee; if (p.gap) S.gap = p.gap; } catch (e){}
+// 主題跟著戰神看盤
+try { const ui = JSON.parse(localStorage.getItem('zs:ui') || localStorage.getItem('zx:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+function savePrefs(){ try { localStorage.setItem(PREF, JSON.stringify({ disc:$('disc').value, minfee:+$('minfee').value, gap:S.gap })); } catch (e){} }
+
+// ── 升降單位、漲跌停 ──
+function tick(p, kind){ if (kind === 'etf') return p < 50 ? 0.01 : 0.05; return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5; }
+const r2 = v => Math.round(v * 100) / 100;
+function snap(p, kind, dir){ const t = tick(p, kind); const k = p / t; return r2((dir > 0 ? Math.ceil(k - 1e-9) : dir < 0 ? Math.floor(k + 1e-9) : Math.round(k)) * t); }
+function stepPx(p, n, kind){ let x = snap(p, kind, 0); const s = Math.sign(n); for (let i = 0; i < Math.abs(n); i++){ x = s > 0 ? r2(x + tick(x, kind)) : r2(x - tick(r2(x - 0.001), kind)); if (x <= 0) return 0.01; } return x; }
+function limits(ref, kind){ if (!(ref > 0)) return null; return { up:snap(ref * 1.1, kind, -1), dn:snap(ref * 0.9, kind, 1) }; }
+
+// ── 費用 ──
+function fee(amount){ if (!(amount > 0)) return 0; const d = +$('disc').value || 1, mn = Math.max(0, +$('minfee').value || 0); return Math.max(mn, Math.floor(amount * 0.001425 * d)); }
+function taxRate(){ return S.kind === 'etf' ? 0.001 : S.mode === 'dt' ? 0.0015 : 0.003; }
+function shares(){ return Math.max(0, Math.floor(+$('lots').value || 0)) * 1000 + Math.max(0, Math.min(999, Math.floor(+$('odd').value || 0))); }
+function calc(buy, sell, q){
+  const ba = buy * q, sa = sell * q, bf = fee(ba), sf = fee(sa), tax = Math.floor(sa * taxRate());
+  const cost = ba + bf, net = sa - sf - tax, pl = net - cost;
+  return { ba, sa, bf, sf, tax, cost, net, pl, pct:cost > 0 ? pl / cost * 100 : 0 };
+}
+function breakeven(buy, q){ let p = snap(buy, S.kind, 1); for (let i = 0; i < 400; i++){ if (calc(buy, p, q).pl >= 0) return p; p = r2(p + tick(p, S.kind)); } return NaN; }
+function priceFor(buy, q, test){ let p = snap(buy, S.kind, 1); for (let i = 0; i < 3000; i++){ if (test(calc(buy, p, q))) return p; p = r2(p + tick(p, S.kind)); } return NaN; }
+
+// ── 畫面 ──
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+const sign = v => v > 0 ? '+' : '';
+function render(){
+  const buy = +$('buy').value, sell = +$('sell').value, q = shares();
+  if (!(buy > 0) || !(sell > 0) || !(q > 0)){ $('pl').textContent = '—'; $('pct').textContent = ''; $('kv').innerHTML = '<div class="muted">請輸入買進價、賣出價與股數</div>'; $('tbody').innerHTML = ''; $('wantOut').textContent = ''; return; }
+  const r = calc(buy, sell, q), be = breakeven(buy, q), t = tick(buy, S.kind), lim = limits(S.ref, S.kind);
+  const oneTick = calc(buy, r2(buy + t), q).pl - calc(buy, buy, q).pl;
+  $('pl').className = 'pl ' + cls(r.pl); $('pl').textContent = sign(r.pl) + fmt(r.pl) + ' 元';
+  $('pct').className = 'pct ' + cls(r.pl); $('pct').textContent = sign(r.pct) + fmt(r.pct, 2) + '%';
+  const rows = [
+    ['股數', fmt(q) + ' 股' + (q % 1000 ? '（含零股 ' + (q % 1000) + '）' : '')],
+    ['買進價金', fmt(r.ba)], ['買進手續費', fmt(r.bf)], ['買進總成本', fmt(r.cost)],
+    ['賣出價金', fmt(r.sa)], ['賣出手續費', fmt(r.sf)], ['證交稅（' + (taxRate() * 100).toFixed(2).replace(/0$/, '') + '%）', fmt(r.tax)], ['賣出實收', fmt(r.net)],
+    ['總費用（手續費＋稅）', fmt(r.bf + r.sf + r.tax)],
+    ['損益兩平賣價', isFinite(be) ? fmt(be, be % 1 ? 2 : 0) + '（' + sign(be - buy) + fmt((be / buy - 1) * 100, 2) + '%）' : '—'],
+    ['一檔（' + t + ' 元）約', sign(oneTick) + fmt(oneTick) + ' 元'],
+  ];
+  if (lim) rows.push(['今日漲停／跌停', fmt(lim.up, lim.up % 1 ? 2 : 0) + '／' + fmt(lim.dn, lim.dn % 1 ? 2 : 0)]);
+  $('kv').innerHTML = rows.map(([k, v]) => '<div><span>' + k + '</span><span>' + v + '</span></div>').join('');
+  // 價位表
+  const N = 15, out = [], seen = new Set();
+  for (let k = N; k >= -N; k--){
+    const p = k === 0 ? snap(buy, S.kind, 0) : stepPx(buy, k * S.gap, S.kind); if (p <= 0 || seen.has(p)) continue; seen.add(p);
+    const c = calc(buy, p, q), tags = [];
+    if (p === be) tags.push('兩平'); if (p === snap(buy, S.kind, 0)) tags.push('買價');
+    if (lim && p === lim.up) tags.push('漲停'); if (lim && p === lim.dn) tags.push('跌停');
+    out.push('<tr class="' + (p === be ? 'be' : '') + (p === snap(sell, S.kind, 0) ? ' cur' : '') + '"><td>' + fmt(p, p % 1 ? 2 : 0) + tags.map(x => '<span class="tag">' + x + '</span>').join('') + '</td><td class="' + cls(p - buy) + '">' + sign(p - buy) + fmt((p / buy - 1) * 100, 2) + '%</td><td class="' + cls(c.pl) + '">' + sign(c.pl) + fmt(c.pl) + '</td><td class="' + cls(c.pl) + '">' + sign(c.pct) + fmt(c.pct, 2) + '%</td></tr>');
+  }
+  $('tbody').innerHTML = out.join('');
+  // 價位表捲到買進價那一列
+  const wrap = document.querySelector('.tblwrap'), mid = [...$('tbody').rows].find(tr => tr.textContent.includes('買價'));
+  if (mid && wrap.dataset.buy !== String(buy) + ':' + S.gap){ wrap.dataset.buy = String(buy) + ':' + S.gap; wrap.scrollTop = mid.offsetTop - wrap.clientHeight / 2; }
+  // 想賺多少
+  const wa = parseFloat($('wantAmt').value), wp = parseFloat($('wantPct').value), msgs = [];
+  if (isFinite(wa)){ const p = priceFor(buy, q, c => c.pl >= wa); msgs.push('要淨賺 ' + fmt(wa) + ' 元，至少賣在 <b>' + (isFinite(p) ? fmt(p, p % 1 ? 2 : 0) : '—') + '</b>' + (isFinite(p) ? '（' + sign(p - buy) + fmt((p / buy - 1) * 100, 2) + '%' + (lim && p > lim.up ? '，超過今日漲停' : '') + '）' : '')); }
+  if (isFinite(wp)){ const p = priceFor(buy, q, c => c.pct >= wp); msgs.push('要淨賺 ' + fmt(wp, 2) + '%，至少賣在 <b>' + (isFinite(p) ? fmt(p, p % 1 ? 2 : 0) : '—') + '</b>' + (isFinite(p) ? '（股價要漲 ' + fmt((p / buy - 1) * 100, 2) + '%' + (lim && p > lim.up ? '，超過今日漲停' : '') + '）' : '')); }
+  $('wantOut').innerHTML = msgs.join('<br>');
+}
+
+// ── 互動 ──
+for (const id of ['buy', 'sell', 'lots', 'odd', 'minfee', 'wantAmt', 'wantPct']) $(id).addEventListener('input', () => { if (id === 'minfee') savePrefs(); render(); });
+$('disc').addEventListener('change', () => { savePrefs(); render(); });
+document.querySelectorAll('[data-step]').forEach(b => b.onclick = e => { e.preventDefault(); const el = $(b.dataset.step); const v = +el.value; if (!(v > 0)) return; el.value = stepPx(v, +b.dataset.d, S.kind); render(); });
+document.querySelectorAll('[data-tgt]').forEach(b => b.onclick = () => {
+  const buy = +$('buy').value, q = shares(), t = b.dataset.tgt; if (!(buy > 0)) return;
+  let p;
+  if (t === 'be') p = breakeven(buy, q);
+  else if (t === 'lu' || t === 'ld'){ const lim = limits(S.ref > 0 ? S.ref : buy, S.kind); p = t === 'lu' ? lim.up : lim.dn; }
+  else p = snap(buy * (1 + t / 100), S.kind, t > 0 ? 1 : -1);
+  if (isFinite(p)) $('sell').value = p; render();
+});
+document.querySelectorAll('[data-qty]').forEach(b => b.onclick = () => { const [l, o] = b.dataset.qty.split(':'); $('lots').value = l; $('odd').value = o; if (+l === 0 && +o > 0 && +$('minfee').value >= 20) $('minfee').value = 1; else if (+l > 0 && +$('minfee').value < 20) $('minfee').value = 20; savePrefs(); render(); });
+function segBind(id, key, cb){ $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = key === 'gap' ? +b.dataset.v : b.dataset.v; for (const x of $(id).querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); cb && cb(); render(); }); }
+segBind('mode', 'mode'); segBind('kind', 'kind'); segBind('gap', 'gap', savePrefs);
+for (const x of $('gap').querySelectorAll('button')) x.setAttribute('aria-pressed', String(+x.dataset.v === S.gap));
+function setKind(k){ S.kind = k; for (const x of $('kind').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === k)); }
+
+// ── 股票資料（FinMind，用這台裝置已存的憑證） ──
+function token(){
+  for (const k of ['twchart.settings', 'zs:ui', 'zx:ui']){ try { const t = (JSON.parse(localStorage.getItem(k) || '{}').token || '').trim(); if (t) return t; } catch (e){} }
+  return '';
+}
+async function fm(path, params){
+  const q = new URLSearchParams(params); const t = token(); if (t) q.set('token', t);
+  const r = await fetch('https://api.finmindtrade.com/api/v4/' + path + '?' + q, { cache:'no-store' });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || j.status !== 200) throw new Error((j && j.msg) || ('FinMind ' + r.status));
+  return j.data || [];
+}
+let NAMES = {};
+function loadNames(){
+  try { const sl = JSON.parse(localStorage.getItem('twchart.stocklist') || 'null'); if (sl && sl.list) NAMES = Object.fromEntries(sl.list); } catch (e){}
+  if (!Object.keys(NAMES).length){ try { const c = JSON.parse(localStorage.getItem('zs:names') || 'null'); if (c && c.m) NAMES = c.m; } catch (e){} }
+  if (Object.keys(NAMES).length){ $('symList').innerHTML = Object.entries(NAMES).filter(([k]) => /^\d{4,6}[A-Z]?$/.test(k)).map(([k, v]) => '<option value="' + k + ' ' + v + '">').join(''); return; }
+  fm('data', { dataset:'TaiwanStockInfo' }).then(d => { for (const r of d) if (r.stock_id && !NAMES[r.stock_id]) NAMES[r.stock_id] = r.stock_name; try { localStorage.setItem('zs:names', JSON.stringify({ m:NAMES, t:Date.now() })); } catch (e){} loadNames(); }).catch(() => {});
+}
+function resolve(s){
+  s = String(s || '').trim(); const m = s.match(/^(\d{4,6}[A-Z]?)/i); if (m) return m[1].toUpperCase();
+  const hit = Object.entries(NAMES).find(([, v]) => v === s) || Object.entries(NAMES).find(([, v]) => v.includes(s)); return hit ? hit[0] : '';
+}
+const tpNow = () => { const d = new Date(Date.now() + 8 * 3600e3); return { date:d.toISOString().slice(0, 10), mins:d.getUTCHours() * 60 + d.getUTCMinutes(), dow:d.getUTCDay() }; };
+async function loadQuote(input){
+  const id = resolve(input); const msg = $('msg');
+  if (!id){ msg.className = 'msg err'; msg.textContent = '找不到「' + input + '」，請輸入代號（例如 2454）或名稱（例如 聯發科）。'; return; }
+  msg.className = 'msg'; msg.textContent = '讀取 ' + id + ' 的價格中…';
+  $('sym').value = id + (NAMES[id] ? ' ' + NAMES[id] : '');
+  setKind(/^00/.test(id) ? 'etf' : 'stock');
+  try {
+    const from = new Date(Date.now() - 20 * 864e5).toISOString().slice(0, 10);
+    const daily = (await fm('data', { dataset:'TaiwanStockPrice', data_id:id, start_date:from })).filter(r => r.close > 0).sort((a, b) => a.date.localeCompare(b.date));
+    if (!daily.length) throw new Error('查不到 ' + id + ' 的價格');
+    const t = tpNow(); let px = daily[daily.length - 1].close, src = '收盤 ' + daily[daily.length - 1].date.slice(5).replace('-', '/'), ref = daily[daily.length - 1].close;
+    if (daily[daily.length - 1].date === t.date && daily.length > 1) ref = daily[daily.length - 2].close;
+    // 盤中：用即時報價
+    if (t.dow >= 1 && t.dow <= 5 && t.mins >= 540 && t.mins <= 820){
+      try { const s = (await fm('taiwan_stock_tick_snapshot', { data_id:id }))[0]; if (s && s.close > 0 && String(s.date).slice(0, 10) === t.date){ px = +s.close; src = '即時 ' + String(s.date).slice(11, 16); if (daily[daily.length - 1].date < t.date) ref = daily[daily.length - 1].close; } } catch (e){}
+    }
+    S.ref = ref; S.id = id;
+    const lim = limits(ref, S.kind), chg = px - ref;
+    $('quote').hidden = false;
+    $('quote').innerHTML = '<span class="nm">' + id + ' ' + (NAMES[id] || '') + '</span><span><span class="k">' + src + '</span><span class="px ' + cls(chg) + '">' + fmt(px, px % 1 ? 2 : 0) + '</span> <span class="' + cls(chg) + '">' + sign(chg) + fmt(chg, chg % 1 ? 2 : 0) + '（' + sign(chg) + fmt(chg / ref * 100, 2) + '%）</span></span><span><span class="k">昨收</span>' + fmt(ref, ref % 1 ? 2 : 0) + '</span>' + (lim ? '<span><span class="k">漲停</span><span class="up">' + fmt(lim.up, lim.up % 1 ? 2 : 0) + '</span></span><span><span class="k">跌停</span><span class="down">' + fmt(lim.dn, lim.dn % 1 ? 2 : 0) + '</span></span>' : '') + '<span><span class="k">一檔</span>' + tick(px, S.kind) + ' 元</span>';
+    $('buy').value = snap(px, S.kind, 0);
+    $('sell').value = snap(px * 1.05, S.kind, 1);
+    msg.textContent = '已帶入現價當買進價、+5% 當賣出價，可以自己改。';
+    history.replaceState(null, '', '?s=' + id + location.hash);
+    render();
+  } catch (e){
+    msg.className = 'msg err';
+    msg.textContent = e.message + (token() ? '' : '（這台裝置還沒存 FinMind 憑證：先到戰神看盤或看盤頁的設定填一次）') + '。也可以直接手動輸入價格。';
+  }
+}
+$('load').onclick = () => loadQuote($('sym').value);
+$('sym').addEventListener('keydown', e => { if (e.key === 'Enter') loadQuote($('sym').value); });
+document.querySelectorAll('.qs').forEach(b => b.onclick = () => loadQuote(b.dataset.s));
+
+loadNames(); render();
+const qs = new URLSearchParams(location.search).get('s');
+loadQuote(qs || '2454');
+</script>
+</body>
+</html>
