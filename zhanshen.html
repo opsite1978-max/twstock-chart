@@ -228,7 +228,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 12:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 12:45</span></div>
     <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -3096,7 +3096,40 @@ function intradayBars(dates, perDay, sym, P, night, firstDate){
   }
   return out.sort((x, y) => x[7] - y[7]);
 }
-let INTRA_FAILS = 0;
+let INTRA_FAILS = 0, INTRA_BG = null;
+// 背景補齊較早的分 K：每補 60 天就重畫一次（畫面位置不跳），額度用完就停，下次打開從斷掉的地方接
+async function intraBgFill(seq){
+  const t = INTRA_BG; if (!t) return;
+  INTRA_BG = null;
+  const stale = () => seq !== loadSeq || !RAW || RAW.id !== t.id || RAW.tf !== t.iv;
+  const todo = t.missing.slice().reverse();   // 從近的往遠的補
+  let done = 0, fails = 0;
+  const rebuild = async () => {
+    const perDay = await Promise.all(t.full.map(d => t.fetchDay(t.sym, d).catch(() => null)));
+    if (stale()) return;
+    let firstOk = t.full.find((d, k) => perDay[k] && perDay[k].r && perDay[k].r.length) || t.first;
+    const rows = intradayBars(t.full, perDay, t.sym, t.P, t.night, firstOk);
+    if (!rows.length || stale()) return;
+    const add = rows.length - RAW.base.length;
+    RAW.base = rows; liveApply(false);
+    if (add > 0 && !isNaN(view.right)) { view.right += add; schedule(); }
+  };
+  try {
+    for (let k = 0; k < todo.length; k += 30){
+      if (stale()) return;
+      const part = todo.slice(k, k + 30);
+      await pool(part, 3, d => t.fetchDay(t.sym, d).catch(e => { if (t.fatal(e)) throw e; fails++; return null; }), null, stale);
+      done += part.length;
+      setMsg(IVN[t.iv] + ' · 已畫出最近資料，背景補齊較早的日子 ' + done + '／' + todo.length + ' 天' + (fails ? '（' + fails + ' 天暫時讀不到）' : '') + '…', 'ok');
+      if (done % 60 === 0 || done >= todo.length) await rebuild();
+    }
+    if (!stale()) setMsg(IVN[t.iv] + ' · ' + RAW.base.length + ' 根 K 棒 · 較早的日子已補齊，存在這台裝置，下次不再用額度', 'ok');
+  } catch (e){
+    if (e.message === 'stale' || stale()) return;
+    await rebuild().catch(() => {});
+    setMsg('較早的分 K 補到 ' + done + '／' + todo.length + ' 天就停了（' + e.message + '）。已補的存在這台裝置，過一陣子再打開會從斷掉的地方接著補。', 'err');
+  }
+}
 async function fetchIntraday(id, iv, isStale){
   if (id === 'TAIEX') throw new Error('加權指數沒有分 K 資料，請改看台指期 TX 或個股。');
   if (id === 'SAMPLE') throw new Error('範例資料沒有分 K。');
@@ -3112,6 +3145,14 @@ async function fetchIntraday(id, iv, isStale){
   const sym = { kind: fut ? 'fut' : 'stock', id };
   const fatal = e => /會員|權限|level|sponsor|額度|憑證|token/i.test(e.message);
   const fetchDay = c.P >= 30 ? kbarDay30 : kbarDay;
+  // 新股票、天數又多：先載最近 60 天馬上畫出來，較早的日子在背景慢慢補（不必等一千次請求）
+  INTRA_BG = null;
+  if (list.length > 90){
+    const older = list.slice(0, -60), keyOf = d => (fut ? 'F:' : 'S:') + id + ':' + d;
+    const have = await Promise.all(older.map(d => (c.P >= 30 ? k30Get(keyOf(d)).then(v => v || kGet(keyOf(d))) : kGet(keyOf(d))).then(v => !!(v && v.r)).catch(() => false)));
+    const missing = older.filter((d, k) => !have[k]);
+    if (missing.length > 20){ INTRA_BG = { id, iv, sym, fetchDay, fatal, full:list, missing, night, first:dates[0], P:c.P }; list = list.slice(-60); }
+  }
   try { await fetchDay(sym, list[list.length - 1]); }   // 先試一天，沒有權限就不浪費額度
   catch (e){ if (fatal(e)) throw e; }
   let fails = 0, firstErr = null;
@@ -3120,7 +3161,7 @@ async function fetchIntraday(id, iv, isStale){
     (k, m) => { if (!isStale()) setLoading('讀取分 K ' + k + '／' + m + ' 天…' + (fails ? '（' + fails + ' 天暫時讀不到）' : '')); }, isStale);
   if (fails > list.length * 0.3) throw new Error('分 K 有 ' + fails + '／' + list.length + ' 天讀不到（' + (firstErr ? firstErr.message : '') + '）。已讀到的天數存在這台裝置，稍等一下再按「重新整理」會從斷掉的地方接著抓。');
   INTRA_FAILS = fails;
-  const rows = intradayBars(list, perDay, sym, c.P, night, dates[0]);
+  const rows = intradayBars(list, perDay, sym, c.P, night, INTRA_BG ? list[0] : dates[0]);
   if (!rows.length) throw new Error('查不到 ' + id + ' 的分 K 資料（當天分 K 約在收盤後 15:50–16:30 才會更新）。');
   return rows;
 }
@@ -4971,6 +5012,7 @@ async function loadSymbol(input, force){
     if (!keepView){ view.right = NaN; cross = null; pinned = false; resetY(); }
     recompute();
     liveApply(true); setTimeout(() => livePoll(), 300);
+    if (intra && INTRA_BG) setTimeout(() => intraBgFill(seq), 50);
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
     if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日' + (INTRA_FAILS ? '（' + INTRA_FAILS + ' 天暫時讀不到已略過，按「重新整理」補抓）' : '') + ' · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
     else setMsg((FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
