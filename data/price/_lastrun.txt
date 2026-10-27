@@ -1,4 +1,4 @@
-10-26 23:29:06 2026-10-26 no data (holiday?)
-10-26 23:29:10 2026-10-23 no data (holiday?)
-10-26 23:29:10 fetched days 0
-10-26 23:29:16 build 1912 stocks 327 days backtest {'quietMa20': 662, 'bullNew': 2541, 'break60': 6111, 'bottom': 215, 'pullback': 14497, 'firstVol': 224}
+10-27 22:55:49 2026-10-27 stocks 1954
+10-27 22:55:53 2026-10-26 no data (holiday?)
+10-27 22:55:53 fetched days 1
+10-27 22:55:58 build 1921 stocks 327 days backtest {'quietMa20': 664, 'bullNew': 2551, 'break60': 6136, 'bottom': 216, 'pullback': 14508, 'firstVol': 223}
