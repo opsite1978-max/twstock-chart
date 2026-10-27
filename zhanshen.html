@@ -228,7 +228,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 07:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/27 12:00</span></div>
     <nav class="chips"><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -2845,14 +2845,20 @@ function nameOf(id){
 async function tradingDates(n){
   const today = tpNow().date;
   let c = LS.get('zs:tdates', null);
-  if (!c || c.t !== today || c.ds.length < n){
+  // 交易日清單每小時重抓一次（早上打開時 FinMind 可能還沒把今天列進去）
+  if (!c || c.t !== today || c.ds.length < n || !c.at || Date.now() - c.at > 3600e3){
     try {
       const rows = await finmind({ dataset:'TaiwanStockTradingDate', start_date:isoDay(dayMs(today) - Math.ceil(n * 1.6 + 30) * 864e5) });
       const ds = [...new Set(rows.map(r => r.date))].filter(d => d <= today).sort();
-      if (ds.length >= Math.min(n, 10)){ c = { t:today, ds }; LS.set('zs:tdates', c); }
+      if (ds.length >= Math.min(n, 10)){ c = { t:today, at:Date.now(), ds }; LS.set('zs:tdates', c); }
     } catch (e){}
   }
-  if (c && c.ds.length) return c.ds.slice(-n);
+  if (c && c.ds.length){
+    // 平日 09:00 以後一律把今天加進去：收盤後 FinMind 一公布就抓得到，不必等隔天
+    const ds = c.ds.slice(), w = new Date(dayMs(today)).getUTCDay(), now = tpNow();
+    if (w > 0 && w < 6 && ds[ds.length - 1] < today && now.mins >= 540) ds.push(today);
+    return ds.slice(-n);
+  }
   const ds = []; let t = dayMs(today);
   while (ds.length < n){ const w = new Date(t).getUTCDay(); if (w > 0 && w < 6) ds.unshift(isoDay(t)); t -= 864e5; }
   return ds;
