@@ -3,6 +3,10 @@ on:
   schedule:
     - cron: '23 16-23 * * *'   # 台灣時間 00:23～07:23 每小時一批（夜間，不跟白天看盤搶額度）
   workflow_dispatch:
+    inputs:
+      batch:
+        description: '這一批抓幾檔'
+        default: '270'
 permissions:
   contents: write
 concurrency:
@@ -28,7 +32,7 @@ jobs:
         if: steps.chk.outputs.left != '0'
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
-        run: python3 scripts/long_hist.py run 270
+        run: python3 scripts/long_hist.py run ${{ github.event.inputs.batch || '270' }}
       - name: 重算布林大底選股
         if: steps.chk.outputs.left != '0'
         run: python3 scripts/price_scrape.py bbot
