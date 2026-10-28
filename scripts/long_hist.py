@@ -15,7 +15,7 @@ DAYS = os.path.join(ROOT, 'data', 'price', 'days')
 LONG = os.path.join(ROOT, 'data', 'price', 'long')
 UNIV = os.path.join(ROOT, 'insider', 'universe.json')
 TW = datetime.timezone(datetime.timedelta(hours=8))
-START = '2004-01-01'
+START = '2000-01-01'           # 和戰神看盤預設的資料起點相同
 KEEP_DAILY = 300            # 每日行情檔前面再留幾個交易日（布林大底日 K 要 750＋60 根）
 API = 'https://api.finmindtrade.com/api/v4/data'
 
