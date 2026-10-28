@@ -352,9 +352,17 @@ def build_vwb(days, info):
                 round(sum(V[-20:]) / min(20, len(V)))]
         trend, atr = vwb_calc(H, L, C, V)
         i = len(C) - 1
+        # 一天漲跌超過漲跌停（±10%）＝分割、減資、面額變更等：未還原價格會讓通道失真
+        # 記成「日期:倍數」（取變動最大的一次），網頁用倍數判斷嚴重程度
+        split, worst = '', 0.0
+        for j in range(max(1, i - VWB_ATR - 120), i + 1):
+            if C[j - 1]:
+                r = C[j] / C[j - 1]
+                if not (0.88 <= r <= 1.12) and abs(math.log(r)) > worst:
+                    worst = abs(math.log(r)); split = D[j] + ':' + str(round(r, 3))
         if trend[i] is None or atr[i] is None or i < 1 or atr[i - 1] is None:
             short += 1
-            rows.append(base + [None] * 12); continue
+            rows.append(base + [None] * 13 + [split]); continue
         band = lambda k, j: trend[j] - atr[j] * k
         l1, l3, l6, l9 = (band(m, i) for m in VWB_MULTS)
         u1, u9 = trend[i] + atr[i] * VWB_MULTS[0], trend[i] + atr[i] * VWB_MULTS[3]
@@ -372,10 +380,10 @@ def build_vwb(days, info):
             return n_
         bd = [below_days(m) for m in VWB_MULTS]   # 連續幾天收在 −1／−3／−6／−9 倍下方
         r2 = lambda v: round(v, 2) if abs(v) < 1000 else round(v, 1)
-        rows.append(base + [r2(trend[i]), r2(l1), r2(l3), r2(l6), r2(l9), r2(u1), r2(u9), st] + bd + [round(atr[i] / C[i] * 100, 2)])
+        rows.append(base + [r2(trend[i]), r2(l1), r2(l3), r2(l6), r2(l9), r2(u1), r2(u9), st] + bd + [round(atr[i] / C[i] * 100, 2), split])
     out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1] if dates else '', 'days': nd,
            'from': dates[0] if dates else '', 'params': {'length': VWB_LEN, 'smooth': VWB_SMOOTH, 'atr': VWB_ATR, 'mults': VWB_MULTS},
-           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'trend', 'l1', 'l3', 'l6', 'l9', 'u1', 'u9', 'state', 'b1', 'b3', 'b6', 'b9', 'atrPct'],
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'trend', 'l1', 'l3', 'l6', 'l9', 'u1', 'u9', 'state', 'b1', 'b3', 'b6', 'b9', 'atrPct', 'split'],
            'rows': rows}
     with open(os.path.join(OUT, 'vwb.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))

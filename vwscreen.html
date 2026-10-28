@@ -101,6 +101,7 @@ h3 .cnt{font-family:var(--mono);color:var(--accent)}
     <div class="row">
       <span class="lbl">20 日均量至少</span><input type="number" id="minv" min="0" step="50" value="100"><span class="lbl">張</span>
       <label class="ck"><input type="checkbox" id="onlyNew"> 只看今天剛跌破</label>
+      <label class="ck" title="一天漲跌超過 25%（分割、面額變更、大幅減資）：未還原價格會讓通道整個失真，預設不列"><input type="checkbox" id="incSplit"> 包含近期分割／面額變更的股票</label>
       <input type="search" id="q" placeholder="篩選代號／名稱／產業">
     </div>
   </div>
@@ -109,7 +110,7 @@ h3 .cnt{font-family:var(--mono);color:var(--accent)}
   <div class="tblwrap"><table id="tScr"><thead><tr>
     <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="c">收盤</th><th data-k="chg">漲跌</th><th data-k="dist" aria-sort="ascending">離軌道</th><th data-k="days">連續天數</th><th data-k="tdist">離趨勢線</th><th data-k="v20">20 日均量</th><th class="l" data-k="state">主圖多空</th>
   </tr></thead><tbody></tbody></table></div>
-  <p class="note">條件：收盤價 &lt; 戰神看盤主圖 VWB PRO 的下軌道（趨勢線 − 倍數 × 500 日平均真實波幅），用主圖預設參數（成交量加權長度 50、平滑 50、平均真實波幅 500 根；通道 1／3／6／9 倍）和日 K 未還原價格，和你在戰神看盤看到的一樣。「離軌道」＝收盤低於軌道多少 %；「連續天數」＝已經連續幾天收在那條軌道下面（1＝今天剛跌破）；「主圖多空」＝主圖 K 棒的多空狀態。每個交易日收盤後（約 16:40、18:40、21:40）自動更新。點一列會用戰神看盤打開那檔股票。</p>
+  <p class="note">條件：收盤價 &lt; 戰神看盤主圖 VWB PRO 的下軌道（趨勢線 − 倍數 × 500 日平均真實波幅），用主圖預設參數（成交量加權長度 50、平滑 50、平均真實波幅 500 根；通道 1／3／6／9 倍）和日 K 未還原價格，和你在戰神看盤看到的一樣。「離軌道」＝收盤低於軌道多少 %；「連續天數」＝已經連續幾天收在那條軌道下面（1＝今天剛跌破）；「主圖多空」＝主圖 K 棒的多空狀態。價格沒有還原權息：近兩年一天漲跌超過 25% 的（分割、面額變更）通道會整個失真，預設不列；標「除權」的是一天漲跌 12%～25%（除權、減資），通道略有偏差，建議在戰神看盤打開「還原權息」再確認。每個交易日收盤後（約 16:40、18:40、21:40）自動更新。點一列會用戰神看盤打開那檔股票。</p>
 </section>
 
 <section id="paneList" hidden>
@@ -141,7 +142,9 @@ function seg(id, key, conv){
 }
 seg('band', 'band', v => +v); seg('px', 'px');
 for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); renderScr(); });
-$('onlyNew').addEventListener('change', renderScr);
+$('onlyNew').addEventListener('change', renderScr); $('incSplit').addEventListener('change', renderScr);
+const splitInfo = r => { if (!r.split) return null; const [d, x] = r.split.split(':'); const k = +x; return { d, k, severe:!(k >= 0.75 && k <= 1.33) }; };
+const splitTag = r => { const s = splitInfo(r); if (!s) return ''; return ' <span class="pill' + (s.severe ? ' bear' : '') + '" title="' + s.d + ' 一天' + (s.k < 1 ? '跌' : '漲') + ' ' + Math.abs((s.k - 1) * 100).toFixed(0) + '%（' + (s.severe ? '分割或面額變更' : '除權或減資') + '），價格未還原，通道會失真；建議在戰神看盤打開「還原權息」確認">' + (s.severe ? '分割' : '除權') + ' ' + s.d.slice(2).replace(/-/g, '/') + '</span>'; };
 $('q2').addEventListener('input', renderLists);
 function tab(which){ const scr = which === 'scr'; $('tabScr').setAttribute('aria-selected', String(scr)); $('tabList').setAttribute('aria-selected', String(!scr)); $('paneScr').hidden = !scr; $('paneList').hidden = scr; history.replaceState(null, '', scr ? location.pathname : '#list'); }
 $('tabScr').onclick = () => tab('scr'); $('tabList').onclick = () => tab('list');
@@ -150,21 +153,21 @@ if (location.hash === '#list') tab('list');
 const inPx = (c, px) => px === 'all' ? true : px === '1000' ? c >= 1000 : px === '500' ? c >= 500 && c < 1000 : px === '100' ? c >= 100 && c < 500 : c < 100;
 function renderScr(){
   if (!S.data) return;
-  const k = S.band, minv = +$('minv').value || 0, q = $('q').value.trim(), onlyNew = $('onlyNew').checked;
+  const k = S.band, minv = +$('minv').value || 0, q = $('q').value.trim(), onlyNew = $('onlyNew').checked, incSplit = $('incSplit').checked;
   const ready = S.rows.filter(r => r.trend != null);
   const warn = $('warn');
   if (ready.length < S.rows.length * 0.5){
     warn.hidden = false;
     warn.innerHTML = '主圖的通道要用到 500 個交易日的平均波幅，選股資料正在自動補齊較早的日子（目前有 ' + S.data.days + ' 個交易日，' + ready.length + '／' + S.rows.length + ' 檔已能計算）。<b>今天收盤後的自動更新會補完</b>，晚上再打開就會是完整結果。';
   } else warn.hidden = true;
-  const list = ready.filter(r => r['b' + k] > 0 && inPx(r.c, S.px) && r.v20 >= minv && (!onlyNew || r['b' + k] === 1) && (!q || (r.code + r.name + r.ind).includes(q)))
+  const list = ready.filter(r => r['b' + k] > 0 && inPx(r.c, S.px) && r.v20 >= minv && (!onlyNew || r['b' + k] === 1) && (incSplit || !(splitInfo(r) || {}).severe) && (!q || (r.code + r.name + r.ind).includes(q)))
     .map(r => Object.assign({}, r, { dist:(r.c / r['l' + k] - 1) * 100, days:r['b' + k], tdist:(r.c / r.trend - 1) * 100 }));
   const key = S.sortK, dir = S.sortAsc ? 1 : -1;
   list.sort((a, b) => { const x = a[key], y = b[key]; return (typeof x === 'string' ? x.localeCompare(y) : (x ?? -1e18) - (y ?? -1e18)) * dir; });
   $('cnt').textContent = list.length;
   $('cntTxt').textContent = '檔收盤跌破' + { 9:'最下端（−9 倍）', 6:'第三條（−6 倍）', 3:'第二條（−3 倍）', 1:'內通道下緣（−1 倍）' }[k] + '軌道' + (S.px === 'all' ? '' : '・股價 ' + { '1000':'1000 以上', '500':'500～1000', '100':'100～500', '0':'100 以下' }[S.px]) + (onlyNew ? '・今天剛跌破' : '');
   const maxd = Math.max(1, ...list.map(r => -r.dist));
-  $('tScr').querySelector('tbody').innerHTML = list.length ? list.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td><td class="down">' + fmt(r.dist, 2) + '%<span class="bar" style="width:' + Math.round(-r.dist / maxd * 40) + 'px"></span></td><td>' + (r.days === 1 ? '<span class="pill new">今天</span>' : r.days + ' 天') + '</td><td class="' + cls(r.tdist) + '">' + sgn(r.tdist) + fmt(r.tdist, 1) + '%</td><td>' + fmt(r.v20) + '</td><td class="l">' + (r.state === 1 ? '<span class="pill bull">多</span>' : r.state === -1 ? '<span class="pill bear">空</span>' : '<span class="pill">—</span>') + '</td></tr>').join('')
+  $('tScr').querySelector('tbody').innerHTML = list.length ? list.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + splitTag(r) + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td><td class="down">' + fmt(r.dist, 2) + '%<span class="bar" style="width:' + Math.round(-r.dist / maxd * 40) + 'px"></span></td><td>' + (r.days === 1 ? '<span class="pill new">今天</span>' : r.days + ' 天') + '</td><td class="' + cls(r.tdist) + '">' + sgn(r.tdist) + fmt(r.tdist, 1) + '%</td><td>' + fmt(r.v20) + '</td><td class="l">' + (r.state === 1 ? '<span class="pill bull">多</span>' : r.state === -1 ? '<span class="pill bear">空</span>' : '<span class="pill">—</span>') + '</td></tr>').join('')
     : '<tr><td colspan="9" class="empty">' + (ready.length ? '目前沒有股票符合條件' + (k >= 6 ? '（最下端軌道離趨勢線很遠，平常很少有股票跌破；可以改看第二條或內通道下緣）' : '') : '資料補齊中…') + '</td></tr>';
   for (const th of $('tScr').querySelectorAll('th')) th.toggleAttribute('aria-sort', th.dataset.k === key), th.dataset.k === key && th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending');
 }
