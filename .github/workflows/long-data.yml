@@ -1,0 +1,47 @@
+name: 布林大底長期收盤（FinMind 分批）
+on:
+  schedule:
+    - cron: '23 16-23 * * *'   # 台灣時間 00:23～07:23 每小時一批（夜間，不跟白天看盤搶額度）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: long-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: 檢查是否已經抓完
+        id: chk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          u = json.load(open('insider/universe.json', encoding='utf-8'))['stocks']
+          d = 'data/price/long'
+          left = sum(1 for s in u if not os.path.exists(os.path.join(d, s['code'] + '.json')))
+          print('left=%d' % left)
+          PY
+      - name: 向 FinMind 抓一批長期收盤（每批 270 檔）
+        if: steps.chk.outputs.left != '0'
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: python3 scripts/long_hist.py run 270
+      - name: 重算布林大底選股
+        if: steps.chk.outputs.left != '0'
+        run: python3 scripts/price_scrape.py bbot
+      - name: 存回專案
+        if: steps.chk.outputs.left != '0'
+        run: |
+          git add data/price/long data/price/bbot.json
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="long-bot" -c user.email="long-bot@users.noreply.github.com" commit -qm "布林大底長期收盤 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if out=$(git pull --rebase origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi
+            echo "第 $i 次推送失敗：$out"; git rebase --abort 2>/dev/null || true; sleep $((RANDOM % 10 + 5))
+          done
+          if [ $ok != 1 ]; then echo "::error::推送失敗：$(echo "$out" | tail -5 | tr '\n' ' ')"; exit 1; fi
+          echo "::notice::$(cat data/price/long/_status.json)"

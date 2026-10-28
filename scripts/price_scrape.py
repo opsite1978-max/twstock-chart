@@ -3,6 +3,7 @@
 全市場每日股價與成交量（證交所 MI_INDEX、櫃買中心每日收盤行情）→ data/price/days/<日期>.json
 並計算技術面選股指標與策略回測 → data/price/screen.json
 另算戰神看盤主圖 VWB PRO 通道（全市場） → data/price/vwb.json（戰神選股用）
+另算布林大底（日／週／月，接 data/price/long 的長期收盤） → data/price/bbot.json（布林大底選股用）
 在 GitHub Actions 上執行，只用標準函式庫。
 
   python3 scripts/price_scrape.py update     補抓缺少的交易日，然後 build
@@ -133,9 +134,10 @@ def cmd_update():
     with open(nonef, 'w') as f:
         json.dump(sorted(none), f)
     cutoff = (today - datetime.timedelta(days=LOOKBACK_CAL_DAYS + 10)).isoformat()
-    for fn in os.listdir(DAYS):
-        if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn) and fn[:10] < cutoff:
-            os.remove(os.path.join(DAYS, fn))
+    old = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn) and fn[:10] < cutoff)
+    roll_long(old)          # 要刪的日子先併進長期收盤檔，才不會斷掉
+    for fn in old:
+        os.remove(os.path.join(DAYS, fn))
     log('fetched days', got)
     build()
     with open(os.path.join(OUT, '_lastrun.txt'), 'w', encoding='utf-8') as f:
@@ -229,6 +231,7 @@ def build():
     files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
     days_all = [json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files]
     build_vwb(days_all, info)
+    build_bbot(days_all, info)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -389,6 +392,120 @@ def build_vwb(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('vwb', len(rows), 'stocks', short, 'need more history', nd, 'days')
 
+# ───────── 布林大底（和網頁 calcBBOT 同一套：深度 × 帶寬百分位） ─────────
+LONG = os.path.join(ROOT, 'data', 'price', 'long')
+KEEP_DAILY = 300
+
+def _monday(d):
+    x = datetime.date.fromisoformat(d)
+    return (x - datetime.timedelta(days=x.weekday())).isoformat()
+
+def roll_long(old_files):
+    """把即將刪掉的每日行情併進 data/price/long/<代號>.json（日收盤只留最後 KEEP_DAILY 個）"""
+    if not old_files or not os.path.isdir(LONG):
+        return
+    days = [json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in old_files]
+    for fn in os.listdir(LONG):
+        if not fn.endswith('.json') or fn.startswith('_'):
+            continue
+        p = os.path.join(LONG, fn); code = fn[:-5]
+        L = json.load(open(p, encoding='utf-8'))
+        changed = False
+        for d in days:
+            r = d['r'].get(code); dd = d['d']
+            if not r or not r[3] or dd <= L.get('cut', ''):
+                continue
+            if 'd' not in L:
+                L.update({'d0': dd, 'dd': [], 'd': [], 'w0': _monday(dd), 'w': [], 'wk': [], 'm0': dd[:7], 'm': [], 'mk': []})
+            L['dd'].append(dd); L['d'].append(r[3])
+            wk, mo = _monday(dd), dd[:7]
+            if L['wk'] and L['wk'][-1] == wk: L['w'][-1] = r[3]
+            else: L['wk'].append(wk); L['w'].append(r[3])
+            if L['mk'] and L['mk'][-1] == mo: L['m'][-1] = r[3]
+            else: L['mk'].append(mo); L['m'].append(r[3])
+            L['cut'] = dd; changed = True
+        if changed:
+            L['dd'], L['d'] = L['dd'][-KEEP_DAILY:], L['d'][-KEEP_DAILY:]
+            L['d0'] = L['dd'][0]
+            with open(p, 'w', encoding='utf-8') as f:
+                json.dump(L, f, separators=(',', ':'))
+
+def bbot_series(C, last_n=8):
+    """回傳最後 last_n 根的布林大底值（不夠資料的是 None）"""
+    n = len(C); bw = [None] * n
+    for i in range(19, n):
+        w = C[i - 19:i + 1]; m = sum(w) / 20
+        if m: bw[i] = 4 * math.sqrt(sum((x - m) ** 2 for x in w) / 20) / m
+    out = []
+    for i in range(max(59, n - last_n), n):
+        w = C[i - 59:i + 1]; m = sum(w) / 60; sd = math.sqrt(sum((x - m) ** 2 for x in w) / 60)
+        depth = max(0.0, min(3.0, (m - C[i]) / sd)) / 3 if sd > 0 else 0.0
+        win = [x for x in bw[max(19, i - 749):i + 1] if x is not None]
+        if len(win) < 100 or bw[i] is None:
+            out.append(None); continue
+        below = sum(1 for x in win if x < bw[i])
+        out.append(depth * below / len(win) * 100)
+    return [None] * (last_n - len(out)) + out
+
+def build_bbot(days, info):
+    dates = [d['d'] for d in days]
+    if not dates:
+        return
+    codes = sorted(set(c for d in days[-3:] for c in d['r']))
+    st = {}
+    try: st = json.load(open(os.path.join(LONG, '_status.json'), encoding='utf-8'))
+    except Exception: pass
+    rows = []; full = 0
+    def summ(v):
+        cur = v[-1]
+        if cur is None:
+            return [None, None, None, 0]
+        prev = v[-2]
+        mx5 = max([x for x in v[-5:] if x is not None] or [None]) if any(x is not None for x in v[-5:]) else None
+        run = 0
+        for x in reversed(v):
+            if x is not None and x >= 50: run += 1
+            else: break
+        r1 = lambda x: None if x is None else round(x, 1)
+        return [r1(cur), r1(prev), r1(mx5), run]
+    for c in codes:
+        C, D, V = [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3]:
+                C.append(r[3]); D.append(d['d']); V.append(r[4] or 0)
+        if not C or D[-1] != dates[-1]:
+            continue
+        L = None
+        p = os.path.join(LONG, c + '.json')
+        if os.path.exists(p):
+            try: L = json.load(open(p, encoding='utf-8'))
+            except Exception: L = None
+        has = bool(L and L.get('d'))
+        dC = (L['d'] if has else []) + C
+        wk, wc = (list(L['wk']), list(L['w'])) if has else ([], [])
+        mk, mc = (list(L['mk']), list(L['m'])) if has else ([], [])
+        for dd, x in zip(D, C):
+            k = _monday(dd)
+            if wk and wk[-1] == k: wc[-1] = x
+            else: wk.append(k); wc.append(x)
+            k = dd[:7]
+            if mk and mk[-1] == k: mc[-1] = x
+            else: mk.append(k); mc.append(x)
+        u = info.get(c, {})
+        row = [c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+               round((C[-1] / C[-2] - 1) * 100, 2) if len(C) > 1 and C[-2] else 0, round(sum(V[-20:]) / min(20, len(V))), 1 if L is not None else 0]
+        for ser in (dC, wc, mc):
+            row += summ(bbot_series(ser)) if len(ser) >= 60 else [None, None, None, 0]
+        rows.append(row); full += 1 if L is not None else 0
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'long': st,
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'long',
+                    'd', 'dPrev', 'dMax5', 'dRun', 'w', 'wPrev', 'wMax5', 'wRun', 'm', 'mPrev', 'mMax5', 'mRun'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'bbot.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('bbot', len(rows), 'stocks', full, 'with long history')
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     os.makedirs(OUT, exist_ok=True)
@@ -396,6 +513,10 @@ if __name__ == '__main__':
         cmd_update()
     elif a[0] == 'build':
         build()
+    elif a[0] == 'bbot':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_bbot([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'vwb':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))

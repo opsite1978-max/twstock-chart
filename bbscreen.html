@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>布林大底選股</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.12);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line2);margin:6px 0 12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+input[type=number],input[type=search]{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;font-family:var(--mono);width:110px}
+input[type=search]{font-family:var(--sans);width:180px}
+label.ck{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:4px 0 2px}
+.summary .n{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--accent)}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.warn{background:rgba(230,193,77,.10);border:1px solid rgba(230,193,77,.35);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);cursor:pointer;white-space:nowrap;user-select:none}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴"}
+td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+td.l{font-family:var(--sans)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hl)}
+.code{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.pill{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.pill.new{border-color:var(--up);color:var(--up)}
+.pill.bull{border-color:var(--up);color:var(--up)} .pill.bear{border-color:var(--down);color:var(--down)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.7}
+h3{font-size:14px;margin:4px 0 8px;display:flex;gap:8px;align-items:baseline}
+h3 .cnt{font-family:var(--mono);color:var(--accent)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.v{display:inline-block;min-width:44px;padding:1px 6px;border-radius:5px;text-align:right}
+.v.hot{background:rgba(255,145,0,.22);color:#ff9100;font-weight:600}
+.v.warm{background:rgba(255,214,0,.16);color:#e6c14d;font-weight:600}
+.v.cold{color:var(--dim)}
+.run{font-size:11px;color:var(--muted);margin-left:3px;font-family:var(--sans)}
+details.grp{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+details.grp>summary{cursor:pointer;padding:11px 14px;display:flex;gap:10px;align-items:baseline;list-style:none}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::before{content:"▸";color:var(--muted);width:10px}
+details.grp[open]>summary::before{content:"▾"}
+details.grp .gname{font-weight:700}
+details.grp .gcnt{font-family:var(--mono);color:var(--muted);font-size:12px}
+details.grp .ghot{margin-left:auto;font-size:12px}
+details.grp .tblwrap{border:0;border-top:1px solid var(--line);border-radius:0 0 10px 10px;max-height:60vh}
+select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;max-width:200px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>布林大底選股</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" href="vwscreen.html">戰神選股</a><a class="chip" href="zhanshen.html">戰神看盤</a><a class="chip" href="./">看盤</a></nav>
+</header>
+<div class="tabs" role="tablist">
+  <button role="tab" id="tabScr" aria-selected="true">選股</button>
+  <button role="tab" id="tabInd" aria-selected="false">產業分類</button>
+</div>
+
+<section id="paneScr">
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <span class="lbl">週期</span>
+      <div class="seg" id="tf"><button data-v="d" aria-pressed="true">日 K</button><button data-v="w" aria-pressed="false">週 K</button><button data-v="m" aria-pressed="false">月 K</button><button data-v="any" aria-pressed="false">任一週期</button><button data-v="all" aria-pressed="false">三週期都符合</button></div>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <span class="lbl">條件</span>
+      <div class="seg" id="cond"><button data-v="5080" aria-pressed="true">50～80（黃線到橘線）</button><button data-v="80" aria-pressed="false">80 以上（超過橘線）</button><button data-v="50" aria-pressed="false">50 以上</button><button data-v="touch" aria-pressed="false">近 5 根碰過 50</button></div>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <span class="lbl">市場</span>
+      <div class="seg" id="mkt"><button data-v="all" aria-pressed="true">全部</button><button data-v="上市" aria-pressed="false">上市</button><button data-v="上櫃" aria-pressed="false">上櫃</button></div>
+      <span class="lbl">產業</span><select id="ind"><option value="">全部產業</option></select>
+    </div>
+    <div class="row">
+      <span class="lbl">股價</span>
+      <div class="seg" id="px"><button data-v="all" aria-pressed="true">全部</button><button data-v="1000" aria-pressed="false">1000 以上</button><button data-v="500" aria-pressed="false">500～1000</button><button data-v="100" aria-pressed="false">100～500</button><button data-v="0" aria-pressed="false">100 以下</button></div>
+      <span class="lbl">20 日均量至少</span><input type="number" id="minv" min="0" step="50" value="100"><span class="lbl">張</span>
+      <input type="search" id="q" placeholder="篩選代號／名稱">
+    </div>
+  </div>
+  <div id="warn" class="warn" hidden></div>
+  <div class="summary"><span class="n" id="cnt">—</span><span class="muted" id="cntTxt"></span></div>
+  <div class="tblwrap"><table id="tScr"><thead><tr>
+    <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="c">收盤</th><th data-k="chg">漲跌</th><th data-k="d">日 K</th><th data-k="w">週 K</th><th data-k="m">月 K</th><th data-k="v20">20 日均量</th>
+  </tr></thead><tbody></tbody></table></div>
+  <p class="note">布林大底＝收盤低於 60 根平均的深度（標準差，最多 3）÷3 × 布林帶寬（20 根、±2 標準差）在過去 750 根裡的百分位 × 100，和戰神看盤副圖「布林大底」同一套算法（未還原價格）。50（黃線）以上＝進入大底區，80（橘線）以上＝很深的大底區。數字旁的「n 根」＝已經連續幾根在 50 以上。日 K 要 810 根、週 K 要 810 週、月 K 至少要 119 個月的收盤，較早的收盤由夜間排程分批向 FinMind 抓（每小時 270 檔、只在 00:00～07:00），之後每天收盤後（約 16:40、18:40、21:40）用證交所、櫃買中心的每日行情接上，不再用 FinMind 額度。點一列用戰神看盤打開。</p>
+</section>
+
+<section id="paneInd" hidden>
+  <div class="card row">
+    <input type="search" id="q2" placeholder="篩選代號／名稱／產業">
+    <div class="seg" id="mkt2"><button data-v="all" aria-pressed="true">全部</button><button data-v="上市" aria-pressed="false">上市</button><button data-v="上櫃" aria-pressed="false">上櫃</button></div>
+    <button class="chip" id="openAll">全部展開</button>
+  </div>
+  <div id="groups"></div>
+</section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const pxf = v => v == null ? '—' : fmt(v, v % 1 ? 2 : 0);
+const sgn = v => v > 0 ? '+' : '';
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+try { const ui = JSON.parse(localStorage.getItem('zs:ui') || localStorage.getItem('zx:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+const S = { tf:'d', cond:'5080', mkt:'all', px:'all', mkt2:'all', sortK:null, sortAsc:false, data:null, rows:[] };
+try { const p = JSON.parse(localStorage.getItem('bbscreen:prefs') || '{}'); for (const k of ['tf', 'cond', 'mkt', 'px']) if (p[k]) S[k] = p[k]; if (p.minv != null) $('minv').value = p.minv; } catch (e){}
+const save = () => { try { localStorage.setItem('bbscreen:prefs', JSON.stringify({ tf:S.tf, cond:S.cond, mkt:S.mkt, px:S.px, minv:+$('minv').value })); } catch (e){} };
+function seg(id, key, cb){ const el = $(id); for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[key] === b.dataset.v));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); save(); cb(); }); }
+seg('tf', 'tf', renderScr); seg('cond', 'cond', renderScr); seg('mkt', 'mkt', renderScr); seg('px', 'px', renderScr); seg('mkt2', 'mkt2', renderInd);
+for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); renderScr(); });
+$('ind').addEventListener('change', renderScr); $('q2').addEventListener('input', renderInd);
+$('openAll').onclick = () => { const all = [...document.querySelectorAll('details.grp')]; const open = !all.every(d => d.open); all.forEach(d => d.open = open); $('openAll').textContent = open ? '全部收起' : '全部展開'; };
+function tab(w){ const s = w === 'scr'; $('tabScr').setAttribute('aria-selected', String(s)); $('tabInd').setAttribute('aria-selected', String(!s)); $('paneScr').hidden = !s; $('paneInd').hidden = s; history.replaceState(null, '', s ? location.pathname : '#ind'); }
+$('tabScr').onclick = () => tab('scr'); $('tabInd').onclick = () => tab('ind'); if (location.hash === '#ind') tab('ind');
+document.addEventListener('click', e => { const tr = e.target.closest('tbody tr[data-c]'); if (tr) location.href = 'zhanshen.html?s=' + encodeURIComponent(tr.dataset.c); });
+
+const inPx = (c, px) => px === 'all' ? true : px === '1000' ? c >= 1000 : px === '500' ? c >= 500 && c < 1000 : px === '100' ? c >= 100 && c < 500 : c < 100;
+function hit(r, t){
+  const v = r[t]; if (v == null) return false;
+  return S.cond === '5080' ? v >= 50 && v < 80 : S.cond === '80' ? v >= 80 : S.cond === '50' ? v >= 50 : (r[t + 'Max5'] ?? -1) >= 50;
+}
+function cell(r, t){
+  const v = r[t]; if (v == null) return '<span class="v cold">—</span>';
+  const c = v >= 80 ? 'hot' : v >= 50 ? 'warm' : 'cold', run = r[t + 'Run'];
+  return '<span class="v ' + c + '">' + fmt(v, 0) + '</span>' + (run ? '<span class="run">' + run + ' 根</span>' : '');
+}
+function renderScr(){
+  if (!S.data) return;
+  const minv = +$('minv').value || 0, q = $('q').value.trim(), ind = $('ind').value;
+  const tfs = S.tf === 'any' || S.tf === 'all' ? ['d', 'w', 'm'] : [S.tf];
+  const list = S.rows.filter(r => (S.tf === 'all' ? tfs.every(t => hit(r, t)) : tfs.some(t => hit(r, t))) && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && inPx(r.c, S.px) && r.v20 >= minv && (!q || (r.code + r.name).includes(q)));
+  const key = S.sortK || (tfs.length === 1 ? tfs[0] : 'd'), dir = S.sortAsc ? 1 : -1;
+  list.sort((a, b) => { const x = a[key], y = b[key]; return (typeof x === 'string' ? x.localeCompare(y) : (x ?? -1e18) - (y ?? -1e18)) * dir; });
+  const tfName = { d:'日 K', w:'週 K', m:'月 K', any:'任一週期', all:'日週月三週期都' }[S.tf];
+  const cName = { '5080':'在 50～80（黃線到橘線）', '80':'在 80 以上（超過橘線）', '50':'在 50 以上', 'touch':'近 5 根碰過 50' }[S.cond];
+  $('cnt').textContent = list.length; $('cntTxt').textContent = '檔：' + tfName + '布林大底' + cName;
+  $('tScr').querySelector('tbody').innerHTML = list.length ? list.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td><td>' + cell(r, 'd') + '</td><td>' + cell(r, 'w') + '</td><td>' + cell(r, 'm') + '</td><td>' + fmt(r.v20) + '</td></tr>').join('')
+    : '<tr><td colspan="8" class="empty">目前沒有股票符合條件' + (S.tf === 'm' || S.tf === 'all' ? (S.longDone < S.longTotal ? '（月 K 要等長期收盤抓完）' : '') : '') + '</td></tr>';
+  for (const th of $('tScr').querySelectorAll('th')){ th.removeAttribute('aria-sort'); if (th.dataset.k === key) th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending'); }
+}
+$('tScr').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name' || k === 'ind'; } renderScr(); });
+
+function renderInd(){
+  if (!S.data) return;
+  const q = $('q2').value.trim(), groups = new Map();
+  for (const r of S.rows){ if (S.mkt2 !== 'all' && r.market !== S.mkt2) continue; if (q && !(r.code + r.name + r.ind).includes(q)) continue; const k = r.ind || '其他'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  const gs = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  $('groups').innerHTML = gs.map(([g, rs]) => {
+    rs.sort((a, b) => (b.d ?? -1) - (a.d ?? -1));
+    const hot = rs.filter(r => (r.d ?? 0) >= 50 || (r.w ?? 0) >= 50 || (r.m ?? 0) >= 50).length;
+    return '<details class="grp"' + (q ? ' open' : '') + '><summary><span class="gname">' + g + '</span><span class="gcnt">' + rs.length + ' 檔</span>' + (hot ? '<span class="ghot v warm">' + hot + ' 檔在大底區</span>' : '') + '</summary><div class="tblwrap"><table><thead><tr><th class="l">股票</th><th class="l">市場</th><th>收盤</th><th>漲跌</th><th>日 K</th><th>週 K</th><th>月 K</th></tr></thead><tbody>' +
+      rs.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + r.market + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td><td>' + cell(r, 'd') + '</td><td>' + cell(r, 'w') + '</td><td>' + cell(r, 'm') + '</td></tr>').join('') + '</tbody></table></div></details>';
+  }).join('');
+}
+
+fetch('data/price/bbot.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(d => {
+  S.data = d; const ci = d.cols; S.rows = d.rows.map(a => Object.fromEntries(ci.map((k, i) => [k, a[i]])));
+  const lg = d.long || {}; S.longDone = lg.done || 0; S.longTotal = lg.total || S.rows.length;
+  $('upd').textContent = '資料日期 ' + d.latest.replace(/-/g, '/') + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
+  const inds = [...new Set(S.rows.map(r => r.ind).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  $('ind').innerHTML = '<option value="">全部產業（' + inds.length + '）</option>' + inds.map(x => '<option>' + x + '</option>').join('');
+  if (S.longDone < S.longTotal){ $('warn').hidden = false; $('warn').innerHTML = '長期收盤正在夜間分批抓取（目前 ' + S.longDone + '／' + S.longTotal + ' 檔，每小時 270 檔、只在 00:00～07:00 跑，避免白天看盤搶 FinMind 額度）。<b>月 K 要等抓完才有</b>；日 K、週 K 現在就能用，抓完後會更準（日 K 用滿 750 根、週 K 用滿 750 週）。'; }
+  renderScr(); renderInd();
+}).catch(e => { $('upd').textContent = '讀不到選股資料：' + e.message; });
+</script>
+</body>
+</html>
