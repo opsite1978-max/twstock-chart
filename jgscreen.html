@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>機構牛選股</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.12);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line2);margin:6px 0 12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+input[type=number],input[type=search]{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;font-family:var(--mono);width:110px}
+input[type=search]{font-family:var(--sans);width:180px}
+label.ck{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:4px 0 2px}
+.summary .n{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--accent)}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.warn{background:rgba(230,193,77,.10);border:1px solid rgba(230,193,77,.35);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);cursor:pointer;white-space:nowrap;user-select:none}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴"}
+td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+td.l{font-family:var(--sans)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hl)}
+.code{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.pill{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.pill.new{border-color:var(--up);color:var(--up)}
+.pill.bull{border-color:var(--up);color:var(--up)} .pill.bear{border-color:var(--down);color:var(--down)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.7}
+h3{font-size:14px;margin:4px 0 8px;display:flex;gap:8px;align-items:baseline}
+h3 .cnt{font-family:var(--mono);color:var(--accent)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;max-width:200px}
+.star{color:#ffc400}
+.pill.hot{border-color:#ff9100;color:#ff9100}
+.pill.hold{border-color:var(--up);color:var(--up)}
+.hero{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.hero .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:120px}
+.hero .k{font-size:12px;color:var(--muted)} .hero .val{font-family:var(--mono);font-size:22px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span class="star">★</span>機構牛選股</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" href="bbscreen.html">大底選股</a><a class="chip" href="vwscreen.html">戰神選股</a><a class="chip" href="zhanshen.html">戰神看盤</a></nav>
+</header>
+<div class="hero" id="hero"></div>
+<div class="card">
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">訊號出現在</span>
+    <div class="seg" id="ago"><button data-v="0" aria-pressed="true">今天</button><button data-v="2" aria-pressed="false">近 3 天</button><button data-v="4" aria-pressed="false">近 5 天</button><button data-v="9" aria-pressed="false">近 10 天</button><button data-v="19" aria-pressed="false">近 20 天</button></div>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">狀態</span>
+    <div class="seg" id="st"><button data-v="all" aria-pressed="true">全部</button><button data-v="hold" aria-pressed="false">還沒出場</button><button data-v="exit" aria-pressed="false">已出場</button></div>
+    <label class="ck"><input type="checkbox" id="noHot"> 排除過熱</label>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">市場</span>
+    <div class="seg" id="mkt"><button data-v="all" aria-pressed="true">全部</button><button data-v="上市" aria-pressed="false">上市</button><button data-v="上櫃" aria-pressed="false">上櫃</button></div>
+    <span class="lbl">產業</span><select id="ind"><option value="">全部產業</option></select>
+  </div>
+  <div class="row">
+    <span class="lbl">股價</span>
+    <div class="seg" id="px"><button data-v="all" aria-pressed="true">全部</button><button data-v="1000" aria-pressed="false">1000 以上</button><button data-v="500" aria-pressed="false">500～1000</button><button data-v="100" aria-pressed="false">100～500</button><button data-v="0" aria-pressed="false">100 以下</button></div>
+    <span class="lbl">20 日均量至少</span><input type="number" id="minv" min="0" step="50" value="300"><span class="lbl">張</span>
+    <input type="search" id="q" placeholder="篩選代號／名稱">
+  </div>
+</div>
+<div class="summary"><span class="n" id="cnt">—</span><span class="muted" id="cntTxt"></span></div>
+<div class="tblwrap"><table id="t"><thead><tr>
+  <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="sigDate" aria-sort="descending">訊號日</th><th data-k="sigC">訊號價</th><th data-k="c">現價</th><th data-k="since">訊號後</th><th data-k="volX">量倍數</th><th data-k="sigUp">當天漲幅</th><th data-k="vsLvl">離突破價</th><th class="l" data-k="exit">狀態</th>
+</tr></thead><tbody></tbody></table></div>
+<p class="note">★機構牛＝收盤突破前 60 日最高價、成交量至少 20 日均量 2 倍、當天漲超過 4%、收在最高價 1.5% 以內（和戰神看盤主圖「機構牛」同一套）。「出場」＝訊號後牛線（(3×收+低+開+高)÷6 的 21 根加權平均）跌破馬線（牛線 6 日平均）；「離突破價」＝現價比被突破的 60 日最高價高或低多少，跌回突破價以下要小心。「過熱」＝收盤高於年線 60% 以上或高於月線 25% 以上（回測沒有比較差，只是提醒）。全市場 2.4 年分四段回測：訊號後 20 天平均 +4.3%／+5.4%／+5.6%／+2.2%（全市場 +0.8%／+2.8%／+1.8%／+1.6%）；照出場訊號走每筆平均 +4.7%／+8.9%／+6.6%／+1.8%、勝率約 34%～40%（賺在少數大段），固定抱 20 天勝率約 44%～49%。每個交易日收盤後（約 16:40、18:40、21:40）用證交所、櫃買中心的每日行情自動更新，不用 FinMind 額度。點一列用戰神看盤打開。</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const pxf = v => v == null ? '—' : fmt(v, v % 1 ? 2 : 0);
+const sgn = v => v > 0 ? '+' : '';
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+const md = d => d ? d.slice(5).replace('-', '/') : '';
+try { const ui = JSON.parse(localStorage.getItem('zs:ui') || localStorage.getItem('zx:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+const S = { ago:'0', st:'all', mkt:'all', px:'all', sortK:'sigDate', sortAsc:false, rows:[] };
+try { const p = JSON.parse(localStorage.getItem('jgscreen:prefs') || '{}'); for (const k of ['ago', 'st', 'mkt', 'px']) if (p[k]) S[k] = p[k]; if (p.minv != null) $('minv').value = p.minv; if (p.noHot) $('noHot').checked = true; } catch (e){}
+const save = () => { try { localStorage.setItem('jgscreen:prefs', JSON.stringify({ ago:S.ago, st:S.st, mkt:S.mkt, px:S.px, minv:+$('minv').value, noHot:$('noHot').checked })); } catch (e){} };
+function seg(id, key){ const el = $(id); for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[key] === b.dataset.v));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); save(); render(); }); }
+for (const [id, k] of [['ago', 'ago'], ['st', 'st'], ['mkt', 'mkt'], ['px', 'px']]) seg(id, k);
+for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); render(); });
+$('noHot').addEventListener('change', () => { save(); render(); }); $('ind').addEventListener('change', render);
+document.addEventListener('click', e => { const tr = e.target.closest('tbody tr[data-c]'); if (tr) location.href = 'zhanshen.html?s=' + encodeURIComponent(tr.dataset.c); });
+$('t').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name' || k === 'ind'; } render(); });
+const inPx = (c, px) => px === 'all' ? true : px === '1000' ? c >= 1000 : px === '500' ? c >= 500 && c < 1000 : px === '100' ? c >= 100 && c < 500 : c < 100;
+function render(){
+  const maxAgo = +S.ago, minv = +$('minv').value || 0, q = $('q').value.trim(), ind = $('ind').value, noHot = $('noHot').checked;
+  const list = S.rows.filter(r => r.ago <= maxAgo && (S.st === 'all' || (S.st === 'hold' ? !r.exit : !!r.exit)) && (!noHot || !r.hot) && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && inPx(r.c, S.px) && r.v20 >= minv && (!q || (r.code + r.name).includes(q)));
+  const k = S.sortK, dir = S.sortAsc ? 1 : -1;
+  list.sort((a, b) => { const x = a[k], y = b[k]; const c = (typeof x === 'string' ? (x || '').localeCompare(y || '') : (x ?? -1e18) - (y ?? -1e18)) * dir; return c || b.volX - a.volX; });
+  $('cnt').textContent = list.length;
+  $('cntTxt').textContent = '檔 ' + { '0':'今天', '2':'近 3 個交易日', '4':'近 5 個交易日', '9':'近 10 個交易日', '19':'近 20 個交易日' }[S.ago] + '出現★機構牛' + (S.st === 'hold' ? '・還沒出場' : S.st === 'exit' ? '・已出場' : '');
+  $('t').querySelector('tbody').innerHTML = list.length ? list.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + (r.hot ? ' <span class="pill hot">過熱</span>' : '') + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + md(r.sigDate) + (r.ago === 0 ? ' <span class="pill new">今天</span>' : '<span class="muted" style="font-size:11px"> ' + r.ago + ' 天前</span>') + '</td><td>' + pxf(r.sigC) + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.since) + '">' + sgn(r.since) + fmt(r.since, 1) + '%</td><td>' + fmt(r.volX, 1) + ' 倍</td><td class="up">+' + fmt(r.sigUp, 1) + '%</td><td class="' + cls(r.vsLvl) + '">' + sgn(r.vsLvl) + fmt(r.vsLvl, 1) + '%</td><td class="l">' + (r.exit ? '<span class="pill">' + md(r.exit) + ' 出場</span>' : '<span class="pill hold">持有中</span>') + '</td></tr>').join('')
+    : '<tr><td colspan="10" class="empty">目前沒有股票符合條件</td></tr>';
+  for (const th of $('t').querySelectorAll('th')){ th.removeAttribute('aria-sort'); if (th.dataset.k === k) th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending'); }
+}
+fetch('data/price/jgn.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(d => {
+  const ci = d.cols; S.rows = d.rows.map(a => Object.fromEntries(ci.map((k, i) => [k, a[i]])));
+  $('upd').textContent = '資料日期 ' + d.latest.replace(/-/g, '/') + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
+  const inds = [...new Set(S.rows.map(r => r.ind).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  $('ind').innerHTML = '<option value="">全部產業</option>' + inds.map(x => '<option>' + x + '</option>').join('');
+  const c = a => S.rows.filter(r => r.ago <= a).length, hold = S.rows.filter(r => !r.exit).length;
+  $('hero').innerHTML = [['今天出現', c(0)], ['近 5 天', c(4)], ['近 20 天', S.rows.length], ['還沒出場', hold]].map(([k, v]) => '<div class="box"><div class="k">' + k + '</div><div class="val">' + v + '</div></div>').join('');
+  render();
+}).catch(e => { $('upd').textContent = '讀不到選股資料：' + e.message; });
+</script>
+</body>
+</html>

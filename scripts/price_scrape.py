@@ -232,6 +232,7 @@ def build():
     days_all = [json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files]
     build_vwb(days_all, info)
     build_bbot(days_all, info)
+    build_jgn(days_all, info)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -506,6 +507,63 @@ def build_bbot(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('bbot', len(rows), 'stocks', full, 'with long history')
 
+# ───────── ★機構牛（和網頁 calcJGN 同一套預設） ─────────
+JGN_BRK, JGN_VOL, JGN_UP, JGN_NEAR, JGN_LOOK = 60, 2.0, 4.0, 1.5, 20
+
+def build_jgn(days, info):
+    dates = [d['d'] for d in days]
+    if not dates:
+        return
+    codes = sorted(set(c for d in days[-3:] for c in d['r']))
+    rows = []
+    for c in codes:
+        O, H, L, C, V, D = [], [], [], [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3]:
+                O.append(r[0]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
+        n = len(C)
+        if n < JGN_BRK + 30 or D[-1] != dates[-1]:
+            continue
+        mid = [(3 * C[i] + L[i] + O[i] + H[i]) / 6 for i in range(n)]
+        NL = [None] * n
+        for i in range(20, n):
+            NL[i] = (mid[i - 20] + sum((20 - k) * mid[i - k] for k in range(19))) / 210
+        ML = [None] * n
+        for i in range(25, n):
+            ML[i] = sum(NL[i - 5:i + 1]) / 6
+        vm = rolling_mean([float(x) for x in V], 20); m20 = rolling_mean(C, 20); m250 = rolling_mean(C, 250)
+        sig = None; last = -99
+        for i in range(max(JGN_BRK + 1, n - JGN_LOOK - 6), n):
+            if not C[i - 1] or C[i] / C[i - 1] > 1.12:     # 超過漲停＝分割合併等，不算
+                continue
+            star = (C[i] > max(H[i - JGN_BRK:i]) and vm[i - 1] and V[i] >= JGN_VOL * vm[i - 1]
+                    and (C[i] / C[i - 1] - 1) * 100 > JGN_UP and (H[i] / C[i] - 1) * 100 <= JGN_NEAR and i - last > 5)
+            if star:
+                last = i
+                if i >= n - JGN_LOOK:
+                    hot = (m250[i] is not None and C[i] > m250[i] * 1.6) or C[i] > m20[i] * 1.25
+                    sig = (i, hot, V[i] / vm[i - 1], max(H[i - JGN_BRK:i]))
+        if not sig:
+            continue
+        i, hot, vr, lvl = sig
+        ex = ''
+        for j in range(i + 1, n):
+            if NL[j - 1] is not None and ML[j - 1] is not None and NL[j - 1] >= ML[j - 1] and NL[j] < ML[j]:
+                ex = D[j]; break
+        u = info.get(c, {})
+        rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+                     round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(sum(V[-20:]) / 20),
+                     D[i], n - 1 - i, C[i], round((C[-1] / C[i] - 1) * 100, 2), round(vr, 1), lvl,
+                     round((C[i] / C[i - 1] - 1) * 100, 2), 1 if hot else 0, ex, round((C[-1] / lvl - 1) * 100, 2)])
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1],
+           'params': {'brk': JGN_BRK, 'vol': JGN_VOL, 'up': JGN_UP, 'near': JGN_NEAR, 'look': JGN_LOOK},
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'sigDate', 'ago', 'sigC', 'since', 'volX', 'lvl', 'sigUp', 'hot', 'exit', 'vsLvl'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'jgn.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('jgn', len(rows), 'stocks with signal in last', JGN_LOOK, 'days')
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     os.makedirs(OUT, exist_ok=True)
@@ -517,6 +575,10 @@ if __name__ == '__main__':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
         build_bbot([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
+    elif a[0] == 'jgn':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_jgn([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'vwb':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
