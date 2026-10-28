@@ -2,6 +2,7 @@
 """
 全市場每日股價與成交量（證交所 MI_INDEX、櫃買中心每日收盤行情）→ data/price/days/<日期>.json
 並計算技術面選股指標與策略回測 → data/price/screen.json
+另算戰神看盤主圖 VWB PRO 通道（全市場） → data/price/vwb.json（戰神選股用）
 在 GitHub Actions 上執行，只用標準函式庫。
 
   python3 scripts/price_scrape.py update     補抓缺少的交易日，然後 build
@@ -17,7 +18,8 @@ OUT = os.path.join(ROOT, 'data', 'price')
 UNIV = os.path.join(ROOT, 'insider', 'universe.json')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36'
 TW = datetime.timezone(datetime.timedelta(hours=8))
-LOOKBACK_CAL_DAYS = 480     # 約 330 個交易日
+LOOKBACK_CAL_DAYS = 900     # 約 610 個交易日（VWB PRO 的 ATR 要 500 根）
+SCREEN_DAYS = 335           # 技術選股與回測只用最近這麼多天（和原本一樣）
 GAP = 3.2
 LOG = []
 
@@ -225,7 +227,9 @@ MIN_V20 = 300   # 回測只看 20 日均量 300 張以上，避免冷門股
 def build():
     want, info = universe()
     files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
-    days = [json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files]
+    days_all = [json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files]
+    build_vwb(days_all, info)
+    days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
         log('not enough days for indicators', n)
@@ -290,6 +294,93 @@ def build():
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('build', len(rows), 'stocks', n, 'days', 'backtest', {k: (bt[k]['10'] or {}).get('n') for k, _ in STRATS})
 
+# ───────── 戰神看盤 VWB PRO 通道（和網頁 calcVWB 同一套算法，預設參數） ─────────
+VWB_LEN, VWB_SMOOTH, VWB_ATR = 50, 50, 500
+VWB_MULTS = (1.0, 3.0, 6.0, 9.0)
+
+def _sma(a, n):
+    out = [None] * len(a); s = 0.0; bad = 0
+    for i, x in enumerate(a):
+        if x is None: bad += 1
+        else: s += x
+        if i >= n:
+            y = a[i - n]
+            if y is None: bad -= 1
+            else: s -= y
+        if i >= n - 1 and bad == 0:
+            out[i] = s / n
+    return out
+
+def _ema(a, n):
+    """Pine 的 ta.ema：先用 SMA 起頭"""
+    al = 2 / (n + 1); sm = _sma(a, n); out = [None] * len(a); prev = None
+    for i, x in enumerate(a):
+        v = sm[i] if prev is None else (None if x is None else al * x + (1 - al) * prev)
+        out[i] = v; prev = v
+    return out
+
+def vwb_calc(H, L, C, V):
+    n = len(C)
+    pv = [C[i] * V[i] for i in range(n)]
+    avgV, avgPV, emaB = _sma([float(v) for v in V], VWB_LEN), _sma(pv, VWB_LEN), _ema(C, VWB_LEN)
+    raw = [None] * n
+    for i in range(n):
+        if avgV[i] is not None and avgV[i] > 0 and emaB[i] is not None:
+            raw[i] = (avgPV[i] / avgV[i] + emaB[i]) / 2
+        else:
+            raw[i] = emaB[i]
+    tE = _ema(raw, VWB_SMOOTH)
+    trend = [None if raw[i] is None else tE[i] for i in range(n)]
+    tr = [H[0] - L[0]] + [max(H[i] - L[i], abs(H[i] - C[i - 1]), abs(L[i] - C[i - 1])) for i in range(1, n)]
+    atr = _sma(tr, VWB_ATR)
+    return trend, atr
+
+def build_vwb(days, info):
+    dates = [d['d'] for d in days]; nd = len(days)
+    codes = sorted(set(c for d in days[-3:] for c in d['r']))
+    rows = []; short = 0
+    for c in codes:
+        H, L, C, V, D = [], [], [], [], []
+        for d in days:          # 停牌日不補（和 FinMind 日 K 一樣沒有那一天）
+            r = d['r'].get(c)
+            if r and r[3]:
+                H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
+        if not C or D[-1] != dates[-1]:
+            continue
+        u = info.get(c, {})
+        base = [c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1], round((C[-1] / C[-2] - 1) * 100, 2) if len(C) > 1 and C[-2] else 0,
+                round(sum(V[-20:]) / min(20, len(V)))]
+        trend, atr = vwb_calc(H, L, C, V)
+        i = len(C) - 1
+        if trend[i] is None or atr[i] is None or i < 1 or atr[i - 1] is None:
+            short += 1
+            rows.append(base + [None] * 12); continue
+        band = lambda k, j: trend[j] - atr[j] * k
+        l1, l3, l6, l9 = (band(m, i) for m in VWB_MULTS)
+        u1, u9 = trend[i] + atr[i] * VWB_MULTS[0], trend[i] + atr[i] * VWB_MULTS[3]
+        # 多空狀態：收盤站上內通道上緣＝多、跌破下緣＝空（和主圖 K 棒顏色一樣）
+        st = 0
+        for j in range(len(C)):
+            if trend[j] is None or atr[j] is None: continue
+            if C[j] > trend[j] + atr[j]: st = 1
+            elif C[j] < trend[j] - atr[j]: st = -1
+        def below_days(k):
+            n_ = 0
+            for j in range(i, -1, -1):
+                if trend[j] is None or atr[j] is None or C[j] >= band(k, j): break
+                n_ += 1
+            return n_
+        bd = [below_days(m) for m in VWB_MULTS]   # 連續幾天收在 −1／−3／−6／−9 倍下方
+        r2 = lambda v: round(v, 2) if abs(v) < 1000 else round(v, 1)
+        rows.append(base + [r2(trend[i]), r2(l1), r2(l3), r2(l6), r2(l9), r2(u1), r2(u9), st] + bd + [round(atr[i] / C[i] * 100, 2)])
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1] if dates else '', 'days': nd,
+           'from': dates[0] if dates else '', 'params': {'length': VWB_LEN, 'smooth': VWB_SMOOTH, 'atr': VWB_ATR, 'mults': VWB_MULTS},
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'trend', 'l1', 'l3', 'l6', 'l9', 'u1', 'u9', 'state', 'b1', 'b3', 'b6', 'b9', 'atrPct'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'vwb.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('vwb', len(rows), 'stocks', short, 'need more history', nd, 'days')
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     os.makedirs(OUT, exist_ok=True)
@@ -297,3 +388,7 @@ if __name__ == '__main__':
         cmd_update()
     elif a[0] == 'build':
         build()
+    elif a[0] == 'vwb':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_vwb([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
