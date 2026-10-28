@@ -110,7 +110,7 @@ def cmd_update():
             continue
         if d == today and now.hour < 15:
             continue
-        if time.time() - t0 > 2400:
+        if time.time() - t0 > 1500:   # 一次最多抓 25 分鐘（存檔小一點、比較不會推送失敗），剩下的下一輪再補
             log('time budget reached'); break
         try:
             a = fetch_twse(d)

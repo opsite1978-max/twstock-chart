@@ -25,4 +25,10 @@ jobs:
           git add data/price
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="price-bot" -c user.email="price-bot@users.noreply.github.com" commit -qm "股價與技術選股更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
-          for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
+          ok=0
+          for i in 1 2 3 4 5; do
+            if out=$(git pull --rebase origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi
+            echo "第 $i 次推送失敗：$out"; git rebase --abort 2>/dev/null || true; sleep $((RANDOM % 10 + 5))
+          done
+          if [ $ok != 1 ]; then echo "::error::股價資料推送失敗：$(echo "$out" | tail -5 | tr '\n' ' ')"; exit 1; fi
+          echo "::notice::$(grep -E 'fetched days|vwb' data/price/_lastrun.txt | tail -2 | tr '\n' ' ')"
