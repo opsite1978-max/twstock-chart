@@ -61,6 +61,8 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
 .tog{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px;color:var(--muted)}
 .tog[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.tog.fav[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.tog[hidden],.iconbtn[hidden]{display:none}
 .iconbtn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px}
 .iconbtn:hover{border-color:var(--dim)}
 .spacer{flex:1}
@@ -228,7 +230,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 19:00</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 20:00</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -285,6 +287,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togDX" aria-pressed="true" title="MultiColor DegenX：鎖碼／浮動／獲利三層，加上回測過的找底訊號">DegenX</button>
     <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
+    <button class="tog fav" id="togFav" aria-pressed="false" title="只顯示常用的指標按鈕，並把指標開關恢復成你存的常用設定；再按一次回到全部指標（圖不會變）">只看常用</button>
+    <button class="iconbtn" id="btnFavSave" title="把現在開著的指標（副圖＋主圖的反轉抄底、機構牛、標準抄底）存成常用">設為常用</button>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnOrder" title="調整副圖由上到下的順序">副圖順序</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
@@ -5954,8 +5958,34 @@ function syncToolbar(){
     for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
   { const sb = document.getElementById('togSM'); sb.setAttribute('aria-pressed', String(!!UI.subMarks)); }
   { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); const jb = document.getElementById('togJGN'); jb.setAttribute('aria-pressed', String(!!UI.showJGN)); fb.after(jb); const bb = document.getElementById('togBZ'); bb.setAttribute('aria-pressed', String(!!P.bz.on)); jb.after(bb); bb.after(document.getElementById('togSM')); const lb = document.getElementById('togLive'); lb.setAttribute('aria-pressed', String(!!UI.live)); document.getElementById('togSM').after(lb); }
+  favApply();
   sizeChart();
 }
+/* 常用指標：存目前開著的指標；「只看常用」時其他按鈕藏起來 */
+var FAV_MAIN = [['fz', 'togFZ', () => !!P.fz.on, v => { P.fz.on = v; LS.set(PFX + 'p:fz', P.fz); }], ['jgn', 'togJGN', () => !!UI.showJGN, v => { UI.showJGN = v; }], ['bz', 'togBZ', () => !!P.bz.on, v => { P.bz.on = v; LS.set(PFX + 'p:bz', P.bz); }]];
+function favNow(){ return [...PANES.filter(pp => UI[pp.flag]).map(pp => pp.id), ...FAV_MAIN.filter(m => m[2]()).map(m => m[0])]; }
+function favApply(){
+  if (!FAV_MAIN) return;
+  const on = !!UI.favOnly && Array.isArray(UI.fav), set = new Set(UI.fav || []);
+  for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.hidden = on && !set.has(pp.id) && !UI[pp.flag]; }
+  for (const [k, id, isOn] of FAV_MAIN){ const b = document.getElementById(id); if (b) b.hidden = on && !set.has(k) && !isOn(); }
+  const fb = document.getElementById('togFav'); fb.setAttribute('aria-pressed', String(on)); fb.textContent = on ? '常用（' + set.size + '）' : '只看常用';
+  document.getElementById('btnFavSave').hidden = false;
+}
+function favSave(){
+  UI.fav = favNow(); UI.favOnly = true; saveUI(); syncToolbar();
+  setMsg('已把目前開著的 ' + UI.fav.length + ' 個指標存成常用；按「常用」可以切回全部指標', 'ok', true);
+}
+document.getElementById('btnFavSave').onclick = favSave;
+document.getElementById('togFav').onclick = () => {
+  if (!Array.isArray(UI.fav) || !UI.fav.length){ favSave(); return; }
+  if (UI.favOnly){ UI.favOnly = false; saveUI(); syncToolbar(); return; }
+  // 切回常用：照存的常用設定開關（不在常用裡的關掉）
+  const set = new Set(UI.fav);
+  for (const pp of PANES) UI[pp.flag] = set.has(pp.id);
+  for (const [k, , , setv] of FAV_MAIN) setv(set.has(k));
+  UI.favOnly = true; saveUI(); syncToolbar(); recompute(); schedule();
+};
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('calcLink').addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
