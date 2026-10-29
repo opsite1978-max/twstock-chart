@@ -6204,7 +6204,7 @@ document.getElementById('togFav').onclick = () => {
 };
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
-document.getElementById('calcLink').addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
+document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
 document.getElementById('togJGN').onclick = () => { UI.showJGN = !UI.showJGN; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togLive').onclick = () => { UI.live = !UI.live; saveUI(); syncToolbar(); LIVE.t = ''; liveApply(false); if (UI.live) livePoll(); };
 document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
