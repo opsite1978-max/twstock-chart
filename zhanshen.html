@@ -228,7 +228,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 09:00</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 19:00</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -276,6 +276,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togLBB" aria-pressed="true" title="L2 多空擺盪（blackcat）：主線、條件軌道、部位底色、儀表板（停利停損）、BUY★／SELL★">多空擺盪</button>
     <button class="tog" id="togWL" aria-pressed="true" title="鐵底風險：收盤離成本線多遠＋鐵底線、底線、價值線、風險線、S 線階梯、持倉／減倉／主力色帶、回測優化的底與頂">鐵底風險</button>
     <button class="tog" id="togSY" aria-pressed="true" title="資金三線：主力（柱）、游資、散戶三條線＋機構強弱條、三線共振、動態上中下界、回測優化的底與頂">資金三線</button>
+    <button class="tog" id="togHM" aria-pressed="true" title="黑馬：黑馬線、趨勢線、快線、底部／機會來臨紅柱、黑馬★、大黑馬、大勢已去、動態上中下界">黑馬</button>
     <button class="tog" id="togMD" aria-pressed="true" title="量化 MACD 頂底背離＋動態上下界">量化MACD</button>
     <button class="tog" id="togLS" aria-pressed="true" title="拉升機會（通達信公式＋優化）：主線低檔、拉升、機會、ABC">拉升機會</button>
     <button class="tog" id="togZX" aria-pressed="true" title="庄現趨勢（通達信公式）：離 40 日均線、庄現柱、入市／機會／底">庄現趨勢</button>
@@ -1229,6 +1230,43 @@ SCHEMA.sy = { tab:'資金三線', title:'資金三線（照你提供的通達信
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
 ]};
+SCHEMA.hm = { tab:'黑馬', title:'黑馬（照你提供的通達信「黑馬線／趨勢線」公式移植＋回測優化＋動態上中下界）：快線（白）＝收盤在 55 日高低區間的位置（%）5 日平滑（原公式寫成 3×平滑−2×平滑，兩項相同，所以就是平滑本身）；黑馬線（粉紅）＝快線的 5 日指數平均；趨勢線（黃）＝21 日區間位置的「3×6 日平滑−2×兩次 5 日平滑」再取 2 日平均。原版標記：【黑馬】快線上穿黑馬線、且黑馬線低於「離 60 日高點的距離」；【大黑馬】趨勢線上穿 0、黑馬線低於 40；【追漲】黑馬線上穿離高點距離、趨勢線低於 80；【跑】前一根黑馬線高於 90 後轉下；【大勢已去】黑馬線下穿快線、黑馬線高於 70、趨勢線高於 80；底部紅柱＝黑馬線單日跌超過 10% 後回升；紫柱＝機會來臨（前一天收盤低於 5 日線 4% 以上、5 日線又低於 10 日線 4% 以上）。動態上中下界＝黑馬線過去 120 根的 90%／50%／10% 百分位。【回測】全市場約 1,370 檔、分四段時間（2025/1～6、2025/7～12、2026/1～5、2026/6～9），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 16%／11%／11%／13%、守住 44%／32%／32%／31%，20 天後平均 +2.3%／+2.3%／+3.3%／+0.6%。原版黑馬：命中 42%／29%／29%／33%、守住 66%／45%／43%／50%，比隨便挑一天好。原版大黑馬：命中 57%／36%／31%／50%，但之後常再破底（守住 57%／35%／31%／49%）。原版底部紅柱：命中 56%／27%／21%／35%；機會來臨：命中 73%／19%／21%／30%，大跌後 20 天平均 +15.9%／+2.3%／+7.6%／+7.6%，但常常還會再跌。原版追漲：命中 10%／10%／8%／10%，比隨便挑一天還差；跑：之後 20 天平均反而 +0.2%／+5.5%／+8.2%／+1.7%（還在漲），兩個預設都不標（可打開）。【黑馬★】＝黑馬出現前 10 根內有「機會來臨」（先深跌再轉強）：命中 84%／56%／40%／60%、守住 95%／67%／52%／76%，20 天後平均 +10.4%／+2.0%／+5.3%／+6.2%，是這組裡最好的。另外試過加「收過前高」「黑馬線低於 20」「低於動態下界」「近期有大黑馬」，都不如加機會來臨。【大勢已去】原版：命中 48%／42%／36%／49%（隨便挑一天約 10%）。【大勢已去★】＝大勢已去 3 根內收盤跌破前一根低點、近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 69%／56%／48%／65%、守住 69%／56%／47%／64%。【提醒】黑馬★在 2025/7～2026/5 多頭盤整時命中只有一半左右，代表「接近波段低點」，不保證會漲。', groups:[
+  { name:'線與柱', items:[
+    {k:'showA1', l:'快線（白）', t:'bool', d:true},
+    {k:'showTrend', l:'趨勢線（黃）', t:'bool', d:true},
+    {k:'showFill', l:'快線和黑馬線之間塗色', t:'bool', d:true},
+    {k:'showBars', l:'底部紅柱、機會來臨紫柱', t:'bool', d:true},
+    {k:'showZone', l:'0～20、80～100 底色', t:'bool', d:true},
+    {k:'showBand', l:'顯示動態上中下界', t:'bool', d:true},
+    {k:'bandLen', l:'比較的根數', t:'int', d:120, min:60, max:1000},
+    {k:'bandPct', l:'上下界百分位（上界＝100 − 這個數）', t:'float', d:10, min:1, max:30, step:1}
+  ]},
+  { name:'訊號', items:[
+    {k:'showHM', l:'黑馬（原版）', t:'bool', d:true},
+    {k:'showHMS', l:'黑馬★（前 10 根有機會來臨）', t:'bool', d:true},
+    {k:'showBig', l:'大黑馬（原版）', t:'bool', d:true},
+    {k:'showGone', l:'大勢已去（原版）', t:'bool', d:true},
+    {k:'showGoneS', l:'大勢已去★（收破前低＋急漲爆量）', t:'bool', d:true},
+    {k:'starRise', l:'大勢已去★：近 20 根漲幅超過（%）', t:'float', d:15, min:5, max:60, step:1},
+    {k:'starVol', l:'大勢已去★：近 5 根量大於 20 日均量幾倍', t:'float', d:2, min:1, max:5, step:0.1},
+    {k:'showChase', l:'追漲（原版，回測普通）', t:'bool', d:false},
+    {k:'showRun', l:'跑（原版，回測普通）', t:'bool', d:false},
+    {k:'mainHMS', l:'主圖標黑馬★（要打開「副圖標記」）', t:'bool', d:true},
+    {k:'mainBig', l:'主圖標大黑馬', t:'bool', d:false},
+    {k:'mainGone', l:'主圖標大勢已去★', t:'bool', d:true}
+  ]},
+  { name:'顏色', items:[
+    {k:'cHM', l:'黑馬線', t:'color', d:'#ff2e7a'},
+    {k:'cA1', l:'快線', t:'color', d:'#e8edf4'},
+    {k:'cTrend', l:'趨勢線', t:'color', d:'#ffd600'},
+    {k:'cBotBar', l:'底部紅柱', t:'color', d:'#ff1744'},
+    {k:'cChance', l:'機會來臨紫柱', t:'color', d:'#d500f9'},
+    {k:'cBand', l:'上中下界', t:'color', d:'#b388ff'},
+    {k:'cBuy', l:'黑馬★', t:'color', d:'#ff1744'},
+    {k:'cBig', l:'大黑馬', t:'color', d:'#ff9100'},
+    {k:'cGone', l:'大勢已去', t:'color', d:'#00c853'}
+  ]}
+]};
 SCHEMA.jgn = { tab:'機構牛', title:'機構牛主圖（照你提供的通達信主圖公式移植＋回測後重新定義「★機構牛」）：K 棒照原公式依「收盤比昨收」上漲紅、下跌綠、平盤灰，並加上立體中心亮條；漲 5.8%～9.5% 紫色 K、漲停（9.8% 以上）金色 K。牛線＝(3×收+低+開+高)÷6 的 21 根加權平均（和紅線股起相同），馬線＝牛線 6 日平均；另有 5 日線、20 日布林標準上下軌（點線）、100 日布林超級上下軌（粗線）可開。原公式的「小心變盤」條件永遠成立（只是每 84 根印一次字），RSI 跌破 83 的文字是空的，所以沒有放。文章說的「★★★★★機構牛」選股公式沒有附在你給的原始碼裡，所以照文章描述（不過熱、蓄勢、突破壓力、放量）用全市場 2.4 年、分四段時間（2025/6～10、2025/11～2026/3、2026/4～7、2026/7～9）回測重新定義：照文章做「均線糾結＋窄幅整理＋量縮後突破」反而比較差（20 天後平均 +0.1%～+2.6%，比全市場平均還低）；最穩的是【★機構牛】＝收盤突破前 60 日最高價、成交量至少 20 日均量 2 倍、漲幅超過 4%、收在最高價 1.5% 以內：20 天後平均 +4.3%／+5.4%／+5.6%／+2.2%（全市場 +0.8%／+2.8%／+1.8%／+1.6%），四段都比較好。「過熱」（收盤高於年線 60% 以上，或高於月線 25% 以上）回測沒有比較差，所以只標註不剔除。【出場】＝之後牛線跌破馬線：每筆平均 +4.7%／+8.9%／+6.6%／+1.8%、勝率 40%／38%／40%／34%（順勢做法，賺在少數大段）；若改成固定抱 20 天：+4.3%／+5.5%／+5.5%／+2.4%、勝率 48%／49%／49%／44%。', groups:[
   { name:'主圖', items:[
     {k:'on', l:'啟用機構牛', t:'bool', d:true},
@@ -1264,7 +1302,7 @@ const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showYM:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showJGN:true, live:true, subMarks:false, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showYM:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showJGN:true, live:true, subMarks:false, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
@@ -1272,7 +1310,7 @@ if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settin
 if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, ym:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, ym:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
@@ -2802,6 +2840,44 @@ function calcSY(B, p){
   return { PJ, P6, SAN, YOU, ZHU, Z, Ys, Ss, G33, JG, LB, MB, UB, res, tag, ev, sig, main, capOk };
 }
 
+/* ═════════════ 黑馬（黑馬線／趨勢線） ═════════════ */
+function calcHM(B, p){
+  const n = B.n, H = B.h, L = B.l, C = B.c, V = B.v;
+  const pos = (N, inv) => { const o = nanArr(n); for (let i = 0; i < n; i++){ const lo = llv(L, N, i), hi = hhv(H, N, i); o[i] = hi > lo ? (inv ? hi - C[i] : C[i] - lo) / (hi - lo) * 100 : 50; } return o; };
+  const A1 = tdxSMA(pos(55), 5, 1), HM = tdxEMA(A1, 5), A2 = nanArr(n); for (let i = 1; i < n; i++) A2[i] = (HM[i] - HM[i - 1]) / HM[i - 1] * 100;
+  const A3 = tdxEMA(C, 5), A4 = pos(21), s6 = tdxSMA(A4, 6, 1), s55 = tdxSMA(tdxSMA(A4, 5, 1), 5, 1), tt = nanArr(n); for (let i = 0; i < n; i++) tt[i] = 3 * s6[i] - 2 * s55[i];
+  const TR = sma(tt, 2), A5 = pos(60, true), m5 = sma(C, 5), m10 = sma(C, 10);
+  const q = Math.min(30, Math.max(1, p.bandPct)) / 100, M = Math.max(60, p.bandLen | 0), LB = rollPct(HM, M, q), MB = rollPct(HM, M, 0.5), UB = rollPct(HM, M, 1 - q);
+  const bot = new Uint8Array(n), chance = new Uint8Array(n);
+  for (let i = 2; i < n; i++){ bot[i] = A2[i] < -10 && A2[i] > A2[i - 1] ? 1 : 0; const j = i - 1; chance[i] = (m5[j] - C[j]) / C[j] > 0.04 && (m10[j] - m5[j]) / m5[j] > 0.04 ? 1 : 0; }
+  const Vm = V ? sma(V, 20) : null;
+  const ev = [], sig = [], main = [], gone = [], tag = new Array(n).fill(null); let lch = -99, lhs = -99, lgo = -99, lgs = -99, lrun = -99;
+  const add = (i, t, col) => (tag[i] = tag[i] || []).push([t, col]);
+  for (let i = 1; i < n; i++){
+    if (chance[i]) lch = i;
+    if (isNaN(HM[i - 1]) || isNaN(TR[i - 1])) continue;
+    if (A1[i] > HM[i] && A1[i - 1] <= HM[i - 1] && HM[i] < A5[i]){
+      if (i - lch < 10 && i - lhs > 10){ lhs = i; add(i, '黑馬★', p.cBuy); sig.push({ i, src:'黑馬', text:'黑馬★（深跌後快線上穿黑馬線）', col:p.cBuy });
+        if (p.showHMS) ev.push({ i, y:Math.min(HM[i], A1[i], 0), shape:'labelUp', dy:4, text:'黑馬★', col:p.cBuy, tcol:'#fff', size:1 });
+        if (p.mainHMS) main.push({ i, text:'黑馬★', col:p.cBuy }); }
+      else { add(i, '黑馬', '#b388ff'); if (p.showHM) ev.push({ i, y:HM[i], shape:'text', text:'黑馬', col:'#b388ff', size:0.78, dy:12 }); }
+    }
+    if (TR[i] > 0 && TR[i - 1] <= 0 && HM[i] < 40){ add(i, '大黑馬', p.cBig); sig.push({ i, src:'黑馬', text:'大黑馬（趨勢線上穿 0）', col:p.cBig });
+      if (p.showBig) ev.push({ i, y:-6, shape:'text', text:'大黑馬', col:p.cBig, size:0.82 }); if (p.mainBig) main.push({ i, text:'大黑馬', col:p.cBig }); }
+    if (p.showChase && HM[i] > A5[i] && HM[i - 1] <= A5[i - 1] && TR[i] < 80) ev.push({ i, y:HM[i], shape:'text', text:'追漲', col:'#ffd600', size:0.75, dy:-10 });
+    if (HM[i - 1] > 90 && A2[i] < 0 && i - lrun > 7){ lrun = i; if (p.showRun) ev.push({ i, y:HM[i], shape:'text', text:'跑', col:'#00e676', size:0.8, dy:-10 }); }
+    if (HM[i] > A1[i] && HM[i - 1] <= A1[i - 1] && HM[i] > 70 && TR[i] > 80){ lgo = i; gone.push(i); add(i, '大勢已去', p.cGone); sig.push({ i, src:'黑馬', text:'大勢已去', col:p.cGone });
+      if (p.showGone) ev.push({ i, y:Math.max(HM[i], A1[i]), shape:'text', text:'大勢已去', col:p.cGone, size:0.78, dy:-14 }); }
+    if (i - lgo < 3 && C[i] < L[i - 1] && i - lgs > 10 && Vm && !isNaN(Vm[i])){
+      let vx = 0; for (let k = i - 4; k <= i; k++) if (V[k] > vx) vx = V[k];
+      if ((hhv(H, 10, i) / llv(L, 20, i) - 1) * 100 > p.starRise && vx > p.starVol * Vm[i]){ lgs = i; add(i, '大勢已去★', p.cGone); sig.push({ i, src:'黑馬', text:'大勢已去★（急漲爆量後收破前低）', col:p.cGone });
+        if (p.showGoneS) ev.push({ i, y:Math.max(HM[i], A1[i]), shape:'labelDown', dy:-10, text:'去★', col:p.cGone, tcol:'#fff', size:1 });
+        if (p.mainGone) main.push({ i, text:'大勢已去★', col:p.cGone }); }
+    }
+  }
+  return { A1, HM, TR, A5, LB, MB, UB, bot, chance, gone, tag, ev, sig, main };
+}
+
 function calcLBB(B, p){
   const n = B.n, C = B.c, H = B.h, L = B.l, V = B.v;
   const sto = nanArr(n), rs = nanArr(n);
@@ -3557,12 +3633,12 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['bz', calcBZ], ['jgn', calcJGN], ['kui', calcKUI]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['bz', calcBZ], ['jgn', calcJGN], ['kui', calcKUI]]){
     try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
-  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy') && m.text.includes('頂')) || (k === 'lbb' && m.text.startsWith('SELL')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
+  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy', 'hm']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy') && m.text.includes('頂')) || (k === 'hm' && m.text.includes('大勢')) || (k === 'lbb' && m.text.startsWith('SELL')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
   // 機構牛：★機構牛／出場
   if (UI.showJGN && R.jgn && R.jgn.mk && P.jgn.on) for (const m of R.jgn.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.dy || 0) + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
@@ -3828,6 +3904,7 @@ function draw(){
     else if (p.id === 'lbb') drawLBB(p, i0, i1, ci);
     else if (p.id === 'wl') drawWL(p, i0, i1, ci);
     else if (p.id === 'sy') drawSY(p, i0, i1, ci);
+    else if (p.id === 'hm') drawHM(p, i0, i1, ci);
     else drawStrip(p, i0, i1, ci);
     p.S = S;
     drawShapes(p);
@@ -4030,7 +4107,8 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'tp', flag:'showTP', btn:'TPB', name:'突破階梯', r:'tp' },
   { id:'lbb', flag:'showLBB', btn:'LBB', name:'多空擺盪', r:'lbb' },
   { id:'wl', flag:'showWL', btn:'WL', name:'鐵底風險', r:'wl' },
-  { id:'sy', flag:'showSY', btn:'SY', name:'資金三線', r:'sy' }
+  { id:'sy', flag:'showSY', btn:'SY', name:'資金三線', r:'sy' },
+  { id:'hm', flag:'showHM', btn:'HM', name:'黑馬', r:'hm' }
 ];
 const STRIP_TOP = 18, STRIP_ROW = 13, STRIP_LABEL = 74;
 const paneOk = pp => !(pp.id === 'in' && R.intent && R.intent.na === '主力意圖只適用個股');
@@ -4535,6 +4613,45 @@ function drawSY(p, i0, i1, ci){
     [r.G33[ci] ? '機構強' : '機構弱', r.G33[ci] ? q.cStrong : q.cWeak], ['收盤離機構線 ' + (r.JG[ci] >= 0 ? '+' : '') + fmtNum(r.JG[ci], 1) + '%', CC.axis]];
   if (zone) parts.push([zone, q.cBand]);
   if (!r.capOk) parts.push(['沒有股本資料，散戶線只看價格', CC.hint]);
+  for (const tg of r.tag[ci] || []) parts.push(tg);
+  legend(narrow ? [parts.slice(0, 4), parts.slice(4)] : [parts], p.top);
+}
+
+function drawHM(p, i0, i1, ci){
+  const r = R.hm, q = P.hm;
+  if (!r || r.error){ S = makeScale(p.top, p.h, 0, 100, 26, 6); legend([[['黑馬  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const narrow = plotW() < 620;
+  S = makeScale(p.top, p.h, ...rng('hm', q.showHMS || q.showBig ? -36 : -12, 112), narrow ? 50 : 34, 4);
+  const W = plotW(), bw = Math.max(1, Math.min(view.barW * 0.6, 8));
+  const band = (a, b2, col) => { const ya = S.y(a), yb = S.y(b2); ctx.fillStyle = col; ctx.fillRect(0, Math.min(ya, yb), W, Math.abs(ya - yb)); };
+  const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  if (q.showZone){ band(80, 100, rgba(q.cGone, 93)); band(0, 20, rgba(q.cBuy, 93)); }
+  hl(80, rgba(q.cGone, 55), [4, 3]); hl(50, rgba(CC.axis, 65), [1, 4]); hl(20, rgba(q.cBuy, 55), [4, 3]); hl(0, rgba(CC.axis, 75), [2, 4]); hl(100, rgba(CC.axis, 75), [2, 4]);
+  // 原版柱：機會來臨（0～30 紫）、底部（0～25 紅）
+  if (q.showBars) for (let i = i0; i <= i1; i++){ const x = X(i) - bw / 2;
+    if (r.chance[i]){ ctx.fillStyle = rgba(q.cChance, 35); ctx.fillRect(x, S.y(30), bw, S.y(0) - S.y(30)); }
+    if (r.bot[i]){ ctx.fillStyle = rgba(q.cBotBar, 20); ctx.fillRect(x + bw * 0.2, S.y(25), bw * 0.6, S.y(0) - S.y(25)); } }
+  // 大勢已去：原版在 100 往下刺到 90
+  for (const i of r.gone){ if (i < i0 || i > i1) continue; ctx.strokeStyle = q.cGone; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(i), S.y(100)); ctx.lineTo(X(i), S.y(88)); ctx.stroke(); }
+  if (q.showBand){
+    strokeSeries(i => r.UB[i], () => rgba(q.cBand, 40), i0, i1, 1, [5, 4]);
+    strokeSeries(i => r.MB[i], () => rgba(q.cBand, 60), i0, i1, 1, [2, 3]);
+    strokeSeries(i => r.LB[i], () => rgba(q.cBand, 40), i0, i1, 1, [5, 4]);
+  }
+  if (q.showFill) fillBetween(i => r.A1[i], i => r.HM[i], i => rgba(r.A1[i] >= r.HM[i] ? q.cBuy : q.cGone, 82), i0, i1);
+  if (q.showTrend) strokeSeries(i => r.TR[i], () => q.cTrend, i0, i1, 1.8);
+  if (q.showA1) strokeSeries(i => r.A1[i], () => rgba(UI.theme === 'light' && q.cA1 === '#e8edf4' ? '#2a3140' : q.cA1, 30), i0, i1, 1.1);
+  strokeSeries(i => r.HM[i], () => q.cHM, i0, i1, 2.4);
+  visibleMarkers(r.ev, i0, i1);
+  ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = CC.axis; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (const v of [0, 20, 50, 80, 100]) ctx.fillText(String(v), W + 6, S.y(v));
+  const lv = r.HM[B.n - 1]; if (!isNaN(lv)) axisTag(lv, q.cHM, '#fff', v => fmtNum(v, 1));
+  const hm = r.HM[ci], a1 = r.A1[ci], tr = r.TR[ci];
+  const zone = hm < 20 ? ['低檔', q.cBuy] : hm > 80 ? ['高檔', q.cGone] : null;
+  const parts = [['黑馬', CC.axis], ['黑馬線 ' + fmtNum(hm, 1), q.cHM], ['快線 ' + fmtNum(a1, 1) + (a1 >= hm ? ' 在上' : ' 在下'), a1 >= hm ? q.cBuy : q.cGone], ['趨勢線 ' + fmtNum(tr, 1), q.cTrend]];
+  if (zone) parts.push(zone);
+  if (!isNaN(r.UB[ci]) && hm > r.UB[ci]) parts.push(['高於上界', q.cBand]); else if (!isNaN(r.LB[ci]) && hm < r.LB[ci]) parts.push(['低於下界', q.cBand]);
+  if (r.chance[ci]) parts.push(['機會來臨', q.cChance]); if (r.bot[ci]) parts.push(['底部', q.cBotBar]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend(narrow ? [parts.slice(0, 4), parts.slice(4)] : [parts], p.top);
 }
@@ -5110,7 +5227,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, ym:null, cci:null, kp:null, jj:null, qj:null, cd:null, smi:null, tp:null, lbb:null, wl:null, sy:null, sg:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, ym:null, cci:null, kp:null, jj:null, qj:null, cd:null, smi:null, tp:null, lbb:null, wl:null, sy:null, hm:null, sg:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -5886,7 +6003,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['jgn', '機構牛'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['ym', '黃柱MACD'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['jgn', '機構牛'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
