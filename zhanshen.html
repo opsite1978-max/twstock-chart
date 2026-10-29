@@ -230,7 +230,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 22:00</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/29 22:30</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -244,7 +244,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <button class="chip" data-s="2330"><b>2330</b>台積電</button>
       <button class="chip" data-s="0050"><b>0050</b>元大台灣50</button>
       <button class="chip" data-s="2454"><b>2454</b>聯發科</button>
-      <button class="chip" data-s="TX"><b>TX</b>台指期近月</button>
+      <button class="chip" data-s="TX" data-night="0" title="台指期近月，只看日盤（08:45～13:45）"><b>TX</b>台指期近月</button>
+      <button class="chip" data-s="TX" data-night="1" title="台指期近月含夜盤：日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒"><b>TX</b>台指期全</button>
       <button class="chip" data-s="TAIEX"><b>TAIEX</b>加權指數</button>
     </div>
     <span class="spacer"></span>
@@ -6061,7 +6062,7 @@ document.getElementById('togChips').onclick = () => { UI.showChips = !UI.showChi
 
 /* ═════════════ toolbar ═════════════ */
 document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); document.getElementById('symInput').blur(); loadSymbol(document.getElementById('symInput').value); });
-document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) loadSymbol(b.dataset.s); });
+document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b) return; if (b.dataset.night){ UI.night = b.dataset.night === '1'; saveUI(); syncToolbar(); } loadSymbol(b.dataset.s); });
 const seg = document.getElementById('intervalSeg');
 if (NO_INTRA) for (const b of seg.querySelectorAll('button')) if (isIntra(b.dataset.v)) b.remove();
 const periodSel = document.getElementById('periodSel'), nightSeg = document.getElementById('nightSeg'), themeSeg = document.getElementById('themeSeg');
