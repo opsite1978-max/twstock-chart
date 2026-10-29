@@ -225,12 +225,41 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 .ordl input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 .dfoot button{border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:7px 12px;font-size:13px}
 .dfoot button.danger{color:#f2b3ad}
+/* 回測 */
+.bt-set{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;font-size:13px}
+@media (max-width:560px){.bt-set{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bt-set label{display:flex;flex-direction:column;gap:4px;color:var(--muted);min-width:0}
+.bt-set label.bt-wide{grid-column:1/-1}
+.bt-set label.bt-chk{flex-direction:row;align-items:center;gap:8px;grid-column:1/-1;color:var(--fg)}
+.bt-set label.bt-chk input{width:18px;height:18px;accent-color:var(--accent)}
+.bt-set label:not(.bt-wide):not(.bt-chk){flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}
+.bt-set input[type=number],.bt-set select{background:var(--bg);border:1px solid var(--line2);border-radius:5px;padding:6px 8px;font:13px var(--mono);color:var(--fg);min-width:0}
+.bt-set input[type=number]{width:72px}
+.bt-set select{font-family:var(--sans);width:100%}
+.bt-set label:not(.bt-wide) select{width:auto}
+.bt-tip{margin-top:-4px}
+.bt-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.bt-sub b{font:600 14px var(--mono);color:var(--fg)}
+.bt-verdict{margin-top:8px;font-size:13.5px;color:var(--fg)}
+.wm-hero b.u,.bt-sub b.u,.bt-grid b.u,.bt-t td.u{color:var(--up)}
+.wm-hero b.d,.bt-sub b.d,.bt-grid b.d,.bt-t td.d{color:var(--down)}
+.bt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.bt-grid div{border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--bg);display:flex;flex-direction:column;min-width:0}
+.bt-grid span{font-size:11.5px;color:var(--muted)}
+.bt-grid b{font:600 15px var(--mono);color:var(--fg)}
+.bt-t tbody tr{cursor:pointer}
+.bt-t tbody tr:hover td{background:var(--panel2)}
+.bt-t tr.on td{background:var(--panel2);box-shadow:inset 0 0 0 0 var(--accent)}
+.bt-t tr.on td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.bt-t tr.few td{opacity:.55}
+.bt-rank td:first-child{min-width:130px}
+#btModal .wm-chart canvas{height:220px;cursor:default}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/30 00:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/30 00:45</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -294,6 +323,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="iconbtn" id="btnFavSave" title="把現在開著的指標（副圖＋主圖的反轉抄底、機構牛、標準抄底）存成常用">設為常用</button>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnOrder" title="調整副圖由上到下的順序">副圖順序</button>
+    <button class="iconbtn" id="btnBT" title="用這檔股票、這個週期的歷史資料，測試指標訊號進場、出場的績效">回測</button>
     <button class="iconbtn" id="btnSettings">指標設定</button>
   </div>
 
@@ -364,6 +394,11 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <div class="wmodal" id="wModal" role="dialog" aria-modal="true" aria-labelledby="wmTitle" hidden>
   <div class="wm-head"><h2 id="wmTitle"></h2><button class="iconbtn" id="wmClose">關閉</button></div>
   <div class="wm-body" id="wmBody"></div>
+</div>
+<div class="scrim" id="btScrim" hidden></div>
+<div class="wmodal" id="btModal" role="dialog" aria-modal="true" aria-labelledby="btTitle" hidden>
+  <div class="wm-head"><h2 id="btTitle">回測</h2><button class="iconbtn" id="btClose">關閉</button></div>
+  <div class="wm-body" id="btBody"></div>
 </div>
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" aria-label="指標設定" aria-hidden="true">
@@ -3776,6 +3811,7 @@ function recompute(){
   // 一舉奪魁：K 棒下方金色「魁」
   if (R.kui && R.kui.main) for (const m of R.kui.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:'魁', col:m.col, tcol:'#3a2a00', size:1.15, dy:6 + k * 20 }); }
   if (R.bao && R.bao.main) for (const m of R.bao.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'arrowUp', text:m.text, col:m.col, tcol:m.col, size:1.3, dy:24 + k * 18 }); }
+  btOnRecompute();
   syncChips(); syncWarrants();
   schedule(); renderSignals();
 }
@@ -6328,6 +6364,304 @@ async function checkToken(){
   out.textContent = lines.join('\n');
 }
 function syncAppForm(){ const el = document.getElementById('a-adj'); if (el) el.checked = !!UI.adj; }
+
+/* ═════════════ 回測 backtest ═════════════
+   用目前載入的這檔股票、這個週期，把任何一個指標訊號當進場，照設定的出場規則一筆一筆模擬（同時只持有一筆）。
+   指標的訊號都是當根收盤就算得出來（2026/10 用 2330、2454、2408 日 K 逐筆比對過：只拿到當天為止的資料重算，488 個訊號全部一樣），不會事後補標。
+   成交：預設訊號隔天開盤買；停損、停利在盤中碰到就出（跳空就用開盤價）；出場訊號隔天開盤賣；持有到期用收盤賣。
+   股票日 K：開盤就鎖漲停（一字漲停）買不到、跳過；鎖跌停賣不掉，延到隔天開盤。 */
+const BT_DEF = { entry:'', exit:'', hold:20, sl:8, tp:0, at:'open', disc:6, tax:'', marks:true };
+let BTS = Object.assign({}, BT_DEF, LS.get(PFX + 'bt', {}));
+let BTRES = null;            // 目前這檔、這個週期的回測結果（主圖買賣點用）
+let BTRANK = null;           // 全部訊號排行
+const BT_NAME = { vwb:'VWB', vwz:'VW Z', vwd:'VWD' };
+const BT_UP = /下方|底|BUY|買|起漲|突破|啟動|機構牛|進場|轉強|黑馬★|爆|魁|Up|拉升|見底|回升|金叉|反轉|共振|甜點（往上|收回|大底區|W ?底/;
+const BT_DN = /上方|龜速|頂|SELL|出貨|賣|轉弱|Down|大勢已去|結束|降溫|鈍化|消失|回落|出場|逃|空方|認售/;
+const BT_PREF = ['cd|起漲★', 'cd|抄底', 'fz|轉折底', 'dk|底★', 'wl|底★', 'sy|底★', 'lbb|BUY★', 'bz|主升啟動★'];
+function btSave(){ LS.set(PFX + 'bt', BTS); }
+function btLabel(t){ return String(t || '').split('：')[0].trim(); }
+function btSrcName(k){ return BT_NAME[k] || (SCHEMA[k] && SCHEMA[k].tab) || k; }
+function btKind(){
+  const id = RAW ? RAW.id : '';
+  if (/^(TX|MTX|TMF|TAIEX)$/.test(id) || FUTS[id]) return 'fut';
+  return /^00/.test(id) ? 'etf' : 'stock';
+}
+function btCosts(){
+  const kind = btKind(), disc = Math.max(0, Math.min(10, +BTS.disc || 0)) / 10;
+  if (kind === 'fut') return { buy:0, sell:0, kind, tax:0, fee:0 };
+  const fee = 0.001425 * disc, tax = BTS.tax === '' || BTS.tax == null ? (kind === 'etf' ? 0.001 : 0.003) : Math.max(0, +BTS.tax) / 100;
+  return { buy:fee, sell:fee + tax, kind, tax, fee };
+}
+/* 這張圖上所有指標的訊號，依「指標｜訊號名稱」分類 */
+function btCatalog(){
+  const map = new Map();
+  for (const k of Object.keys(R)){
+    const r = R[k]; if (!r || !Array.isArray(r.sig)) continue;
+    for (const s of r.sig){
+      if (!(s.i >= 0 && s.i < B.n)) continue;
+      const lab = btLabel(s.text); if (!lab) continue;
+      const key = k + '|' + lab;
+      let e = map.get(key); if (!e){ e = { key, k, src:btSrcName(k), lab, set:new Set() }; map.set(key, e); }
+      e.set.add(s.i);
+    }
+  }
+  const out = [...map.values()];
+  for (const e of out){ e.up = BT_UP.test(e.lab) && !BT_DN.test(e.lab); e.dn = BT_DN.test(e.lab); e.n = e.set.size; }
+  return out;
+}
+/* 從訊號那根開始模擬一筆交易 */
+function btTrade(s, X, o, cost){
+  const n = B.n, O = B.o, H = B.h, L = B.l, C = B.c, lim = cost.kind !== 'fut' && B.iv === 'D';
+  const lockUp = t => lim && t > 0 && O[t] === H[t] && H[t] === L[t] && O[t] >= C[t - 1] * 1.095;
+  const lockDn = t => lim && t > 0 && O[t] === H[t] && H[t] === L[t] && O[t] <= C[t - 1] * 0.905;
+  const atOpen = o.at === 'open';
+  let ei, px;
+  if (atOpen){ ei = s + 1; if (ei >= n) return null; if (lockUp(ei)) return { skip:true, ei }; px = O[ei]; }
+  else { ei = s; px = C[s]; }
+  if (!(px > 0)) return null;
+  const stopPx = o.sl > 0 ? px * (1 - o.sl / 100) : NaN, tpPx = o.tp > 0 ? px * (1 + o.tp / 100) : NaN;
+  const done = (xi, xpx, why) => ({ ei, px, xi, xpx, why, bars:Math.max(1, xi - ei + (atOpen ? 1 : 0)), r:(xpx * (1 - cost.sell)) / (px * (1 + cost.buy)) - 1 });
+  let pend = null;
+  for (let t = ei; t < n; t++){
+    if (pend && t > ei){ if (!lockDn(t)) return done(t, O[t], pend); continue; }
+    if (!pend && (t > ei || atOpen)){
+      if (L[t] <= stopPx){ if (lockDn(t)) pend = '停損'; else return done(t, t > ei ? Math.min(O[t], stopPx) : stopPx, '停損'); }
+      else if (H[t] >= tpPx) return done(t, t > ei ? Math.max(O[t], tpPx) : tpPx, '停利');
+    }
+    if (pend) continue;
+    if (X && X.has(t) && (t > ei || atOpen)){
+      if (atOpen || lockDn(t)) pend = '出場訊號'; else return done(t, C[t], '出場訊號');
+      if (t + 1 >= n) break;
+      continue;
+    }
+    if (t - ei + (atOpen ? 1 : 0) >= o.hold){ if (lockDn(t)) pend = '持有到期'; else return done(t, C[t], '持有到期'); }
+  }
+  const t = done(n - 1, C[n - 1], '持有中'); t.open = true; return t;
+}
+function btOpts(){
+  return { hold:Math.max(1, Math.round(+BTS.hold || 20)), sl:Math.max(0, +BTS.sl || 0), tp:Math.max(0, +BTS.tp || 0), at:BTS.at === 'close' ? 'close' : 'open' };
+}
+function btStats(list){
+  const rs = list.map(t => t.r), n = rs.length;
+  if (!n) return { n:0 };
+  const w = rs.filter(r => r > 0), l = rs.filter(r => r <= 0), sum = a => a.reduce((x, y) => x + y, 0);
+  const sorted = rs.slice().sort((a, b) => a - b), med = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  return { n, win:w.length / n, avg:sum(rs) / n, med, avgW:w.length ? sum(w) / w.length : NaN, avgL:l.length ? sum(l) / l.length : NaN,
+    pf:l.length && sum(l) < 0 ? sum(w) / -sum(l) : (w.length ? Infinity : NaN), best:sorted[n - 1], worst:sorted[0],
+    bars:list.reduce((x, t) => x + t.bars, 0) / n };
+}
+/* 一個進場訊號的完整回測 */
+function btRun(entryKey, exitKey, withBase){
+  const cat = btCatalog(), E = cat.find(e => e.key === entryKey); if (!E) return null;
+  const Xe = exitKey ? cat.find(e => e.key === exitKey) : null, X = Xe ? Xe.set : null;
+  const o = btOpts(), cost = btCosts(), n = B.n;
+  const ent = [...E.set].sort((a, b) => a - b);
+  const trades = []; let last = -1, skipped = 0;
+  for (const s of ent){
+    if (o.at === 'open' ? s < last : s <= last) continue;
+    const t = btTrade(s, X, o, cost); if (!t) continue;
+    if (t.skip){ skipped++; continue; }
+    t.s = s; trades.push(t); last = t.xi;
+  }
+  const closed = trades.filter(t => !t.open), st = btStats(closed);
+  // 資產曲線（同時只持有一筆、每次全部投入）：持有中按收盤計值
+  const s0 = ent.length ? ent[0] : 0, eq = new Float64Array(n).fill(NaN);
+  let base = 1, k = 0;
+  for (let t = s0; t < n; t++){
+    const tr = trades[k];
+    if (tr && t >= tr.ei && t <= tr.xi){
+      eq[t] = t === tr.xi ? base * (1 + tr.r) : base * (B.c[t] * (1 - cost.sell)) / (tr.px * (1 + cost.buy));
+      if (t === tr.xi){ base *= 1 + tr.r; k++; }
+    } else eq[t] = base;
+  }
+  let peak = -Infinity, mdd = 0;
+  for (let t = s0; t < n; t++){ const v = eq[t]; if (!(v > 0)) continue; if (v > peak) peak = v; mdd = Math.min(mdd, v / peak - 1); }
+  st.total = closed.reduce((x, t) => x * (1 + t.r), 1) - 1;
+  st.mdd = mdd; st.skipped = skipped;
+  st.expo = trades.reduce((x, t) => x + t.bars, 0) / Math.max(1, n - s0);
+  const bh = B.c[n - 1] / B.c[s0] - 1;
+  const res = { key:entryKey, exit:exitKey || '', E, Xe, trades, st, eq, s0, bh, o, cost, sym:RAW.id, iv:B.iv, nBars:n, last:B.d[n - 1] };
+  if (withBase){
+    // 隨便挑一天：從第一個訊號那天起，每一天都當訊號、用一樣的出場規則（不互相排除），看平均
+    const rs = [];
+    for (let s = s0; s < n - 1; s++){ const t = btTrade(s, X, o, cost); if (t && !t.skip && !t.open) rs.push(t); }
+    res.base = btStats(rs);
+  }
+  return res;
+}
+function btPickDefault(cat){
+  if (cat.some(e => e.key === BTS.entry)) return BTS.entry;
+  for (const k of BT_PREF){ const e = cat.find(x => (x.key === k || x.key.startsWith(k + '（')) && x.n >= 5); if (e) return e.key; }
+  const ups = cat.filter(e => e.up).sort((a, b) => b.n - a.n);
+  return (ups[0] || cat[0] || {}).key || '';
+}
+/* recompute 之後：重算回測，主圖標出買賣點 */
+function btOnRecompute(){
+  BTRES = null;
+  if (!B || !B.n || !RAW || RAW.sample) return;
+  if (!BTS.marks && document.getElementById('btModal').hidden) return;
+  if (!BTS.entry) return;
+  try { BTRES = btRun(BTS.entry, BTS.exit, false); } catch (e){ BTRES = null; }
+  if (!BTRES || !BTS.marks) return;
+  const put = (i, up, text, col, tcol) => {
+    const k = R.mainExtra.filter(q => q.i === i && q.shape === (up ? 'labelUp' : 'labelDown')).length;
+    R.mainExtra.push(up ? { i, y:B.l[i], shape:'labelUp', text, col, tcol, size:0.95, dy:4 + k * 20 } : { i, y:B.h[i], shape:'labelDown', text, col, tcol, size:0.95, dy:-4 - k * 20 });
+  };
+  for (const t of BTRES.trades){
+    put(t.ei, true, '買', '#38bdf8', '#04131d');
+    if (!t.open) put(t.xi, false, '賣 ' + (t.r >= 0 ? '+' : '') + (t.r * 100).toFixed(1) + '%', t.r >= 0 ? '#e5484d' : '#2fb67c', '#fff');
+  }
+}
+
+/* ── 畫面 ── */
+const btPct = (x, d = 1) => !isFinite(x) ? '—' : (x > 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
+const btCls = x => !isFinite(x) || Math.abs(x) < 1e-9 ? '' : (x > 0 ? 'u' : 'd');
+function btIvName(iv){ return { '5':'5 分 K', '15':'15 分 K', '30':'30 分 K', '60':'60 分 K', '240':'4 小時 K', D:'日 K', W:'週 K', M:'月 K' }[iv] || iv; }
+function btBarUnit(){ return B.iv === 'D' ? '天' : '根'; }
+function openBT(){
+  document.getElementById('btModal').hidden = false; document.getElementById('btScrim').hidden = false;
+  renderBT(); recompute();
+}
+function closeBT(){ document.getElementById('btModal').hidden = true; document.getElementById('btScrim').hidden = true; }
+function btOptionHTML(cat, sel, withNone){
+  const grp = (title, list) => list.length ? '<optgroup label="' + esc(title) + '">' + list.map(e => '<option value="' + esc(e.key) + '"' + (e.key === sel ? ' selected' : '') + '>' + esc(e.src + '・' + e.lab) + '（' + e.n + ' 次）</option>').join('') + '</optgroup>' : '';
+  const by = (a, b) => a.src.localeCompare(b.src, 'zh-Hant') || b.n - a.n;
+  const up = cat.filter(e => e.up).sort(by), dn = cat.filter(e => !e.up && e.dn).sort(by), other = cat.filter(e => !e.up && !e.dn).sort(by);
+  return (withNone ? '<option value=""' + (!sel ? ' selected' : '') + '>不用（只看持有天數、停損、停利）</option>' : '') +
+    (withNone ? grp('看空／出場訊號', dn) + grp('看多訊號', up) : grp('看多訊號', up) + grp('看空訊號', dn)) + grp('其他訊號', other);
+}
+function renderBT(){
+  const body = document.getElementById('btBody');
+  document.getElementById('btTitle').innerHTML = '回測 Backtest<small>' + esc(RAW && !RAW.sample ? (RAW.id + ' ' + (RAW.name || '')) : '') + '・' + esc(B ? btIvName(B.iv) : '') + '</small>';
+  if (!B || !RAW || RAW.sample){ body.innerHTML = '<p class="help">資料還在載入，等圖出來再打開回測。</p>'; return; }
+  const cat = btCatalog();
+  if (!cat.length){ body.innerHTML = '<p class="help">這檔股票、這個週期目前沒有任何指標訊號可以回測。換個週期或股票試試。</p>'; return; }
+  if (!cat.some(e => e.key === BTS.entry)){ BTS.entry = btPickDefault(cat); btSave(); }
+  if (BTS.exit && !cat.some(e => e.key === BTS.exit)) BTS.exit = '';
+  const cost = btCosts();
+  let r = null; try { r = btRun(BTS.entry, BTS.exit, true); } catch (e){ body.innerHTML = '<p class="err-inline">回測計算錯誤：' + esc(e.message) + '</p>'; return; }
+  BTRES = r;
+  const st = r.st, bs = r.base || { n:0 }, U = btBarUnit();
+  let h = '';
+  // 設定
+  h += '<div class="bt-set">' +
+    '<label class="bt-wide">進場訊號<select id="btEntry">' + btOptionHTML(cat, BTS.entry, false) + '</select></label>' +
+    '<label class="bt-wide">出場訊號<select id="btExit">' + btOptionHTML(cat, BTS.exit, true) + '</select></label>' +
+    '<label>最多持有<input type="number" id="btHold" min="1" max="500" step="1" value="' + esc(BTS.hold) + '">' + U + '</label>' +
+    '<label>停損<input type="number" id="btSL" min="0" max="90" step="0.5" value="' + esc(BTS.sl) + '">%</label>' +
+    '<label>停利<input type="number" id="btTP" min="0" max="500" step="0.5" value="' + esc(BTS.tp) + '">%</label>' +
+    '<label>買進價<select id="btAt"><option value="open"' + (BTS.at !== 'close' ? ' selected' : '') + '>訊號隔天開盤</option><option value="close"' + (BTS.at === 'close' ? ' selected' : '') + '>訊號當根收盤</option></select></label>' +
+    (cost.kind === 'fut' ? '' :
+    '<label>手續費<input type="number" id="btDisc" min="0" max="10" step="0.1" value="' + esc(BTS.disc) + '">折</label>' +
+    '<label>證交稅<input type="number" id="btTax" min="0" max="1" step="0.05" placeholder="' + (cost.kind === 'etf' ? '0.1' : '0.3') + '" value="' + esc(BTS.tax) + '">%</label>') +
+    '<label class="bt-chk"><input type="checkbox" id="btMarks"' + (BTS.marks ? ' checked' : '') + '>在主圖標出買賣點</label>' +
+    '</div><p class="help bt-tip">停損、停利填 0＝不設。' + (cost.kind === 'fut' ? '期貨、指數不算手續費和稅。' : '證交稅空白＝自動（股票 0.3%、ETF 0.1%）；手續費 0.1425% 打折，最低 20 元不計。') + '</p>';
+  // 結論
+  const dateOf = i => B.intra ? B.d[i].slice(5, 16).replace('-', '/') : B.d[i].slice(0, 10).replace(/-/g, '/');
+  if (!st.n){
+    h += '<div class="wm-hero">這段期間還沒有完成的交易' + (r.trades.length ? '（有 1 筆持有中）' : '') + '。換一個訊號或拉長「最多持有」試試。</div>';
+  } else {
+    const edge = bs.n ? st.avg - bs.avg : NaN;
+    let verdict;
+    if (st.n < 5) verdict = '只有 ' + st.n + ' 筆，次數太少，參考就好。';
+    else if (!isFinite(edge)) verdict = '';
+    else if (edge > 0.005 && st.win >= bs.win) verdict = '比隨便挑一天進場好：每筆平均多 ' + (edge * 100).toFixed(1) + ' 個百分點，勝率也比較高。';
+    else if (edge > 0.005) verdict = '平均報酬比隨便挑一天好 ' + (edge * 100).toFixed(1) + ' 個百分點，但勝率沒有比較高，靠少數大賺撐起來。';
+    else if (edge < -0.005) verdict = '比隨便挑一天進場還差（每筆少 ' + (-edge * 100).toFixed(1) + ' 個百分點），這檔股票用這個訊號沒有優勢。';
+    else verdict = '跟隨便挑一天進場差不多，看不出優勢。';
+    if (st.n >= 5 && st.n < 10 && verdict) verdict += '（只有 ' + st.n + ' 筆，樣本少）';
+    h += '<div class="wm-hero">' +
+      '<div><b>' + st.n + '</b> 筆・勝率 <b>' + (st.win * 100).toFixed(0) + '%</b>・每筆平均 <b class="' + btCls(st.avg) + '">' + btPct(st.avg) + '</b></div>' +
+      '<div class="bt-sub">累積 <b class="' + btCls(st.total) + '">' + btPct(st.total, 0) + '</b>　同期買進持有 <b class="' + btCls(r.bh) + '">' + btPct(r.bh, 0) + '</b>　隨便挑一天進場：每筆平均 <b class="' + btCls(bs.avg) + '">' + btPct(bs.avg) + '</b>、勝率 ' + (bs.n ? (bs.win * 100).toFixed(0) + '%' : '—') + '</div>' +
+      (verdict ? '<div class="bt-verdict">' + esc(verdict) + '</div>' : '') + '</div>';
+    const cell = (k, v, c) => '<div><span>' + k + '</span><b class="' + (c || '') + '">' + v + '</b></div>';
+    h += '<div class="bt-grid">' +
+      cell('平均賺', btPct(st.avgW), 'u') + cell('平均賠', btPct(st.avgL), 'd') + cell('賺賠比', isFinite(st.pf) ? st.pf.toFixed(2) : (st.pf === Infinity ? '全賺' : '—')) +
+      cell('中位數', btPct(st.med), btCls(st.med)) + cell('最大回落', btPct(st.mdd, 0), 'd') + cell('平均持有', st.bars.toFixed(1) + ' ' + U) +
+      cell('最好一筆', btPct(st.best), btCls(st.best)) + cell('最差一筆', btPct(st.worst), btCls(st.worst)) + cell('持有時間佔', (st.expo * 100).toFixed(0) + '%') +
+      '</div>';
+  }
+  h += '<div class="wm-chart"><canvas id="btCv" aria-label="回測資產曲線"></canvas><div class="wm-read"><span><i style="background:var(--accent)"></i>回測資產</span><span><i style="background:var(--dim)"></i>買進持有</span><span class="when">' + dateOf(r.s0) + '～' + dateOf(B.n - 1) + '</span></div></div>';
+  // 交易明細
+  if (r.trades.length){
+    h += '<h3>交易明細 <span class="when">點一筆看圖</span></h3><div class="wm-scroll"><table class="wm-t bt-t"><thead><tr><th>進場</th><th>買進</th><th>出場</th><th>賣出</th><th>報酬</th><th>' + U + '數</th><th>原因</th></tr></thead><tbody>' +
+      r.trades.slice().reverse().map(t => '<tr data-i="' + t.ei + '"><td>' + dateOf(t.ei) + '</td><td>' + fmtP(t.px) + '</td><td>' + (t.open ? '—' : dateOf(t.xi)) + '</td><td>' + fmtP(t.xpx) + '</td><td class="' + btCls(t.r) + '">' + btPct(t.r) + '</td><td>' + t.bars + '</td><td>' + esc(t.why) + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+  // 排行
+  h += '<h3>這檔股票哪個訊號最好？</h3><p class="help">用上面同一組出場規則，把每個看多訊號都當進場跑一次。</p>';
+  h += '<div id="btRank">' + (BTRANK && BTRANK.sig === btRankSig() ? btRankHTML() : '<div class="dfoot" style="padding-top:4px"><button id="btRankGo">全部訊號排行</button></div>') + '</div>';
+  h += '<p class="help">說明：同時只持有一筆，前一筆賣掉才接下一個訊號；累積報酬是每次全部投入、複利計算。隨便挑一天＝從第一個訊號那天起，每天都進場一次、用一樣的出場規則，代表「不看訊號」的平均水準。' +
+    (r.cost.kind !== 'fut' && B.iv === 'D' ? '開盤就鎖漲停買不到的會跳過' + (st.skipped ? '（這次跳過 ' + st.skipped + ' 次）' : '') + '，鎖跌停賣不掉延到隔天。' : '') +
+    '指標訊號都是當根收盤就算得出來，不會事後補標。只用這檔股票、目前載入的 ' + B.n + ' 根 K 棒，過去的結果不代表未來。</p>';
+  body.innerHTML = h;
+  btDrawEq(r);
+  // 事件
+  const num = (id, key) => { const el = document.getElementById(id); if (el) el.onchange = () => { BTS[key] = el.value === '' ? (key === 'tax' ? '' : BT_DEF[key]) : +el.value; btSave(); btRefresh(); }; };
+  document.getElementById('btEntry').onchange = e => { BTS.entry = e.target.value; btSave(); btRefresh(); };
+  document.getElementById('btExit').onchange = e => { BTS.exit = e.target.value; btSave(); btRefresh(); };
+  document.getElementById('btAt').onchange = e => { BTS.at = e.target.value; btSave(); btRefresh(); };
+  num('btHold', 'hold'); num('btSL', 'sl'); num('btTP', 'tp'); num('btDisc', 'disc'); num('btTax', 'tax');
+  document.getElementById('btMarks').onchange = e => { BTS.marks = e.target.checked; btSave(); recompute(); };
+  body.querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { closeBT(); jumpTo(+tr.dataset.i); });
+  const rg = document.getElementById('btRankGo'); if (rg) rg.onclick = () => { rg.disabled = true; rg.textContent = '計算中…'; setTimeout(() => { btRank(); renderBT(); }, 20); };
+  btBindRank();
+}
+function btRefresh(){ BTRANK = null; recompute(); renderBT(); }
+function btRankSig(){ return [RAW && RAW.id, B && B.iv, B && B.n, B && B.d[B.n - 1], BTS.exit, BTS.hold, BTS.sl, BTS.tp, BTS.at, BTS.disc, BTS.tax].join('|'); }
+function btRank(){
+  const cat = btCatalog().filter(e => e.up || (!e.dn && e.n >= 2)), rows = [];
+  for (const e of cat){
+    if (e.key === BTS.exit) continue;
+    const r = btRun(e.key, BTS.exit, false); if (!r || !r.st.n) continue;
+    rows.push({ key:e.key, src:e.src, lab:e.lab, st:r.st });
+  }
+  const base = btRun(BTS.entry || (cat[0] && cat[0].key), BTS.exit, true);
+  const bavg = base && base.base && base.base.n ? base.base.avg : NaN;
+  rows.sort((a, b) => ((b.st.n >= 5) - (a.st.n >= 5)) || b.st.avg - a.st.avg);
+  BTRANK = { sig:btRankSig(), rows, bavg };
+}
+function btRankHTML(){
+  const R2 = BTRANK; if (!R2.rows.length) return '<p class="help">沒有可以排行的看多訊號。</p>';
+  return '<div class="wm-scroll"><table class="wm-t bt-t bt-rank"><thead><tr><th>訊號</th><th>筆數</th><th>勝率</th><th>每筆平均</th><th>比隨便挑一天</th><th>累積</th></tr></thead><tbody>' +
+    R2.rows.map(x => '<tr data-key="' + esc(x.key) + '" class="' + (x.key === BTS.entry ? 'on' : '') + (x.st.n < 5 ? ' few' : '') + '"><td>' + esc(x.lab) + '<small>' + esc(x.src) + '</small></td><td>' + x.st.n + '</td><td>' + (x.st.win * 100).toFixed(0) + '%</td><td class="' + btCls(x.st.avg) + '">' + btPct(x.st.avg) + '</td><td class="' + btCls(x.st.avg - R2.bavg) + '">' + (isFinite(R2.bavg) ? btPct(x.st.avg - R2.bavg) : '—') + '</td><td class="' + btCls(x.st.total) + '">' + btPct(x.st.total, 0) + '</td></tr>').join('') +
+    '</tbody></table></div><p class="help">灰色＝不到 5 筆，排在後面、參考就好。點一列就改用那個訊號進場。</p>';
+}
+function btBindRank(){
+  document.querySelectorAll('#btRank tr[data-key]').forEach(tr => tr.onclick = () => { BTS.entry = tr.dataset.key; btSave(); recompute(); renderBT(); document.getElementById('btBody').scrollTop = 0; });
+}
+function btDrawEq(r){
+  const cvs = document.getElementById('btCv'); if (!cvs) return;
+  const dpr = window.devicePixelRatio || 1, W = cvs.clientWidth, Hh = cvs.clientHeight;
+  cvs.width = Math.round(W * dpr); cvs.height = Math.round(Hh * dpr);
+  const g = cvs.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
+  const n = B.n, s0 = r.s0, cost = r.cost, bh = new Float64Array(n).fill(NaN);
+  for (let t = s0; t < n; t++) bh[t] = B.c[t] / B.c[s0];
+  let lo = Infinity, hi = -Infinity;
+  for (let t = s0; t < n; t++) for (const v of [r.eq[t], bh[t]]) if (v > 0){ lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  if (!(hi > lo)){ hi = lo * 1.1 + 0.01; lo = lo * 0.9; }
+  const lg = v => Math.log(v), pl = 8, pr = 48, pt = 10, pb = 18;
+  const X = t => pl + (t - s0) / Math.max(1, n - 1 - s0) * (W - pl - pr), Y = v => pt + (lg(hi) - lg(v)) / (lg(hi) - lg(lo)) * (Hh - pt - pb);
+  g.clearRect(0, 0, W, Hh);
+  g.font = '11px ' + (col('--mono') || 'monospace'); g.fillStyle = col('--dim') || '#888'; g.strokeStyle = col('--line') || '#333'; g.lineWidth = 1;
+  for (const v of [lo, Math.sqrt(lo * hi), hi]){ const y = Math.round(Y(v)) + 0.5; g.beginPath(); g.moveTo(pl, y); g.lineTo(W - pr, y); g.stroke(); g.fillText(btPct(v - 1, 0), W - pr + 4, y + 4); }
+  if (lo < 1 && hi > 1){ const y = Math.round(Y(1)) + 0.5; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(pl, y); g.lineTo(W - pr, y); g.stroke(); g.setLineDash([]); }
+  const line = (a, c, w) => { g.strokeStyle = c; g.lineWidth = w; g.beginPath(); let on = false; for (let t = s0; t < n; t++){ const v = a[t]; if (!(v > 0)){ on = false; continue; } const x = X(t), y = Y(v); if (on) g.lineTo(x, y); else { g.moveTo(x, y); on = true; } } g.stroke(); };
+  line(bh, col('--dim') || '#777', 1.2);
+  // 持有期間底色
+  g.fillStyle = 'rgba(56,189,248,.10)';
+  for (const t of r.trades){ const x0 = X(t.ei), x1 = X(t.xi); g.fillRect(x0, pt, Math.max(1, x1 - x0), Hh - pt - pb); }
+  line(r.eq, col('--accent') || '#d9a85c', 2);
+  g.fillStyle = col('--dim') || '#888';
+  g.fillText(B.d[s0].slice(0, 7), pl, Hh - 4);
+  const lt = B.d[n - 1].slice(0, 7), tw = g.measureText(lt).width; g.fillText(lt, W - pr - tw, Hh - 4);
+}
+document.getElementById('btnBT').onclick = openBT;
+document.getElementById('btClose').onclick = closeBT;
+document.getElementById('btScrim').onclick = closeBT;
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('btModal').hidden) closeBT(); });
+window.addEventListener('resize', () => { if (!document.getElementById('btModal').hidden && BTRES) btDrawEq(BTRES); });
 
 /* ═════════════ boot ═════════════ */
 buildTabs(); buildBody(); applyTheme();
