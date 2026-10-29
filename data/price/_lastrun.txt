@@ -1,5 +1,6 @@
-10-28 23:28:46 fetched days 0
-10-28 23:28:48 vwb 1954 stocks 164 need more history 598 days
-10-28 23:28:52 bbot 1954 stocks 0 with long history
-10-28 23:28:54 jgn 187 stocks with signal in last 20 days
-10-28 23:28:57 build 1922 stocks 335 days backtest {'quietMa20': 680, 'bullNew': 2641, 'break60': 6350, 'bottom': 227, 'pullback': 15043, 'firstVol': 240}
+10-29 23:33:47 2026-10-29 stocks 1946
+10-29 23:33:47 fetched days 1
+10-29 23:33:50 vwb 1946 stocks 165 need more history 599 days
+10-29 23:33:59 bbot 1946 stocks 487 with long history
+10-29 23:34:02 jgn 192 stocks with signal in last 20 days
+10-29 23:34:08 build 1914 stocks 335 days backtest {'quietMa20': 685, 'bullNew': 2651, 'break60': 6359, 'bottom': 225, 'pullback': 15019, 'firstVol': 235}
