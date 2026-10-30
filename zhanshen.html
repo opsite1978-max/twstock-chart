@@ -259,7 +259,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/30 22:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/30 23:30</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -1353,7 +1353,7 @@ SCHEMA.xg = { tab:'布林大底加強版', title:'布林大底加強版：兩個
     {k:'cStar', l:'反轉★顏色', t:'color', d:'#ff1744'}
   ]}
 ]};
-SCHEMA.camo = { tab:'宇宙動能', title:'宇宙自適應動能（CAMO，照你提供的 Pine「Cosmic Adaptive Momentum Oscillator」移植＋回測優化）：震盪線＝收盤對數報酬的 Z 分數＋MACD 柱（12／26／9）的 Z 分數，各用短／中／長三種長度（0.5 倍、1 倍、2 倍）以 1：2：1 加權，再 3 根平滑；中線＝震盪線的平均，上下界＝中線 ± 1.618 個標準差（黃金比例），中間藍色塗滿。長度以 15 分 K 為基準（50／20 根）照週期自動縮放：5 分 K 放大 3 倍、60 分 K 縮成 0.25 倍。【原版在日 K 的問題】原版把日 K 縮到最短（只看 10／5 根），全市場回測「上穿下界」命中只有 6%～10%、「下穿上界」7%～8%，比隨便挑一天（命中 11%～16%）還差，因為 5 根的上下界太窄，穿越幾乎都是雜訊。所以預設「最小縮放倍數」＝1（日 K 也用 50／20 根），原版是 0.1，可在設定改回。另外加上「平滑線」＝震盪線的 8 根平均（粗線），和長期上下界＝平滑線過去 120 根的 90%／10% 百分位（紫色虛線），訊號用平滑線判斷。【回測】全市場約 1,370 檔、分四段時間（2025/1～6、2025/7～12、2026/1～5、2026/6～9），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 16%／11%／11%／13%、守住 44%／32%／32%／31%。只用震盪線（不平滑）找底：命中 53%／27%／25%／32%；平滑 8 根後明顯變好。【底】＝近 10 根平滑線曾低於長期下界、連 2 根往上、收盤突破前一根高點：命中 81%／34%／31%／48%、守住 87%／50%／44%／53%。【底★】＝近 10 根收盤曾比 20 日高點低 15% 以上（跌深）：命中 91%／37%／31%／54%、守住 93%／51%／46%／56%，20 天後平均 +10.5%／+1.4%／+3.1%／+0.9%。【頂】＝近 10 根平滑線曾高於長期上界、連 2 根往下、收盤跌破前一根低點：命中 40%／40%／40%／47%。【頂★】＝頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 56%／55%／53%／64%、守住 59%／54%／51%／64%。【提醒】底在 2025/7～2026/5 多頭盤整時命中只有三成左右，代表「接近波段低點」，不保證會漲。', groups:[
+SCHEMA.camo = { tab:'宇宙動能', title:'宇宙動能（CAMO，照你提供的 Pine「Cosmic Adaptive Momentum Oscillator」移植，改成固定 0～100 區間的震盪指標＋回測優化）：原版震盪線＝收盤對數報酬的 Z 分數＋MACD 柱（12／26／9）的 Z 分數，各用短／中／長三種長度（0.5、1、2 倍）以 1：2：1 加權再 3 根平滑，數值沒有上下限，每檔、每段時間大小都不一樣。這裡換成固定區間：先把震盪線除以它過去 250 根的標準差，再用常態分布換成 0～100（0＝極度弱勢、50＝中性、100＝極度強勢），所以 10 以下、90 以上在每檔股票意思都一樣。細線＝原版震盪線（漲綠跌紅），粗線＝主線（震盪線 8 根平滑），藍色帶＝原版黃金比例上下界（中線 ± 1.618 個標準差）同樣換算。長度以 15 分 K 為基準（50／20 根）照週期自動縮放；原版會把日 K 縮到最短（10／5 根），回測「上穿下界」命中只有 6%～10%，比隨便挑一天還差，所以預設「最小縮放倍數」＝1（日 K 也用 50／20 根），可改回原版 0.1。【回測】全市場約 1,370 檔、分四段時間（2025/1～6、2025/7～12、2026/1～5、2026/6～9），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 16%／11%／11%／13%、守住 44%／32%／32%／31%。試過幾種換成 0～100 的方法（過去 120 根排名、平滑線自己的標準差），這個版本最好。【底】＝近 10 根主線曾低於 10、連 2 根往上、收盤突破前一根高點：命中 84%／37%／36%／54%、守住 88%／48%／40%／58%。【底★】＝近 10 根收盤曾比 20 日高點低 15% 以上（跌深）：命中 92%／38%／37%／59%、守住 94%／51%／44%／60%，20 天後平均 +11.0%／+2.8%／+3.4%／+3.5%。【頂】＝近 10 根主線曾高於 90、連 2 根往下、收盤跌破前一根低點：命中 44%／46%／46%／58%。【頂★】＝頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 58%／55%／52%／67%、守住 59%／53%／49%／66%。用 20／80 當門檻訊號較多、命中稍低（底 76%／34%／32%／48%）。【提醒】底在 2025/7～2026/5 多頭盤整時命中只有三成多，代表「接近波段低點」，不保證會漲。', groups:[
   { name:'原版參數', items:[
     {k:'fastLen', l:'MACD 快線', t:'int', d:12, min:1, max:100},
     {k:'slowLen', l:'MACD 慢線', t:'int', d:26, min:2, max:200},
@@ -1367,12 +1367,13 @@ SCHEMA.camo = { tab:'宇宙動能', title:'宇宙自適應動能（CAMO，照你
     {k:'autoScale', l:'依週期自動縮放', t:'bool', d:true},
     {k:'minScale', l:'最小縮放倍數（原版 0.1；1＝日 K 也用 50／20 根）', t:'float', d:1, min:0.1, max:20, step:0.1}
   ]},
-  { name:'線與訊號', items:[
-    {k:'showOsc', l:'震盪線（漲綠跌紅，照原版）', t:'bool', d:true},
-    {k:'showBands', l:'黃金比例上中下界', t:'bool', d:true},
-    {k:'showSm', l:'平滑線（粗）', t:'bool', d:true},
-    {k:'smLen', l:'平滑線長度', t:'int', d:8, min:2, max:30},
-    {k:'showLong', l:'長期上下界（平滑線 120 根 90%／10%）', t:'bool', d:true},
+  { name:'區間與訊號', items:[
+    {k:'lo', l:'極度弱勢（低於）', t:'float', d:10, min:2, max:40, step:1},
+    {k:'hi', l:'極度強勢（高於）', t:'float', d:90, min:60, max:98, step:1},
+    {k:'normLen', l:'換成 0～100 用的標準差長度', t:'int', d:250, min:60, max:1000},
+    {k:'smLen', l:'主線平滑長度', t:'int', d:8, min:2, max:30},
+    {k:'showOsc', l:'原版震盪線（細，漲綠跌紅）', t:'bool', d:true},
+    {k:'showBands', l:'原版黃金比例上下界（藍色帶）', t:'bool', d:true},
     {k:'showBot', l:'底', t:'bool', d:true},
     {k:'deepPct', l:'底★：收盤比 20 日高點低幾 %', t:'float', d:15, min:5, max:40, step:1},
     {k:'showTop', l:'頂', t:'bool', d:true},
@@ -1384,13 +1385,12 @@ SCHEMA.camo = { tab:'宇宙動能', title:'宇宙自適應動能（CAMO，照你
     {k:'mainStar', l:'主圖標頂★', t:'bool', d:true}
   ]},
   { name:'顏色', items:[
+    {k:'cMain', l:'主線', t:'color', d:'#e8edf4'},
     {k:'cRise', l:'震盪線往上', t:'color', d:'#00e676'},
     {k:'cFall', l:'震盪線往下', t:'color', d:'#ff1744'},
-    {k:'cMid', l:'中線', t:'color', d:'#ffd600'},
-    {k:'cBand', l:'上下界', t:'color', d:'#9e9e9e'},
-    {k:'cFill', l:'上下界之間', t:'color', d:'#2962ff'},
-    {k:'cSm', l:'平滑線', t:'color', d:'#e8edf4'},
-    {k:'cLong', l:'長期上下界', t:'color', d:'#b388ff'},
+    {k:'cFill', l:'黃金比例帶', t:'color', d:'#2962ff'},
+    {k:'cWeak', l:'極度弱勢區', t:'color', d:'#ff1744'},
+    {k:'cStrong', l:'極度強勢區', t:'color', d:'#00c853'},
     {k:'cBot', l:'底', t:'color', d:'#ff1744'},
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
@@ -3096,31 +3096,36 @@ function calcCAMO(B, p){
   const sg = ema(ml, p.sigLen), hist = nanArr(n); for (let i = 0; i < n; i++) hist[i] = ml[i] - sg[i];
   const a1 = z(lr, sN), a2 = z(lr, normLen), a3 = z(lr, lN), b1 = z(hist, sN), b2 = z(hist, normLen), b3 = z(hist, lN), raw = nanArr(n);
   for (let i = 0; i < n; i++) raw[i] = p.priceW * (0.25 * a1[i] + 0.5 * a2[i] + 0.25 * a3[i]) + p.macdW * (0.25 * b1[i] + 0.5 * b2[i] + 0.25 * b3[i]);
-  const osc = ema(raw, p.smoothLen), mid = sma(osc, bandLen), dv = stdevPop(osc, bandLen), up = nanArr(n), lo = nanArr(n);
-  for (let i = 0; i < n; i++){ up[i] = mid[i] + p.bandMult * dv[i]; lo[i] = mid[i] - p.bandMult * dv[i]; }
-  const SM = ema(osc, Math.max(2, p.smLen | 0)), LB = rollPct(SM, 120, 0.1), UB = rollPct(SM, 120, 0.9), Vm = V ? sma(V, 20) : null, deep = 1 - p.deepPct / 100;
+  const osc = ema(raw, p.smoothLen), mid = sma(osc, bandLen), dv = stdevPop(osc, bandLen), SM = ema(osc, Math.max(2, p.smLen | 0));
+  // 換成固定 0～100：除以震盪線過去 N 根的標準差，再用常態分布
+  const NL = Math.max(60, p.normLen | 0), sd = nanArr(n);
+  for (let i = 0; i < n; i++){ let s1 = 0, s2 = 0, c = 0; for (let k = Math.max(0, i - NL + 1); k <= i; k++){ const v = osc[k]; if (isNaN(v)) continue; s1 += v; s2 += v * v; c++; } if (c >= 60){ const m = s1 / c, vv = s2 / c - m * m; sd[i] = vv > 0 ? Math.sqrt(vv) : NaN; } }
+  const T = (x, i) => isNaN(x) || !(sd[i] > 0) ? NaN : 50 * (1 + erf(x / sd[i] / Math.SQRT2));
+  const K = nanArr(n), O = nanArr(n), U = nanArr(n), D = nanArr(n), M = nanArr(n);
+  for (let i = 0; i < n; i++){ K[i] = T(SM[i], i); O[i] = T(osc[i], i); M[i] = T(mid[i], i); U[i] = T(mid[i] + p.bandMult * dv[i], i); D[i] = T(mid[i] - p.bandMult * dv[i], i); }
+  const Vm = V ? sma(V, 20) : null, deep = 1 - p.deepPct / 100;
   const ev = [], sig = [], main = [], tag = new Array(n).fill(null); let lb = -99, lt = -99, ll = -99, lh = -99, ld = -99;
   for (let i = 1; i < n; i++){
-    if (!isNaN(LB[i]) && SM[i] < LB[i]) ll = i; if (!isNaN(UB[i]) && SM[i] > UB[i]) lh = i;
+    if (K[i] < p.lo) ll = i; if (K[i] > p.hi) lh = i;
     if (C[i] < deep * hhv(H, 20, i)) ld = i;
-    if (i < 3 || isNaN(SM[i - 3])) continue;
-    const u2 = SM[i] > SM[i - 1] && SM[i - 1] > SM[i - 2] && SM[i - 2] <= SM[i - 3], d2 = SM[i] < SM[i - 1] && SM[i - 1] < SM[i - 2] && SM[i - 2] >= SM[i - 3];
+    if (i < 3 || isNaN(K[i - 3])) continue;
+    const u2 = K[i] > K[i - 1] && K[i - 1] > K[i - 2] && K[i - 2] <= K[i - 3], d2 = K[i] < K[i - 1] && K[i - 1] < K[i - 2] && K[i - 2] >= K[i - 3];
     if (u2 && C[i] > H[i - 1] && i - ll < 10 && i - lb > 10){
       lb = i; const star = i - ld < 10, t = star ? '底★' : '底';
-      (tag[i] = tag[i] || []).push([t, p.cBot]); sig.push({ i, src:'宇宙動能', text:star ? '底★（跌深後動能轉強）' : '底（動能低檔轉強）', col:p.cBot });
-      if (p.showBot) ev.push({ i, y:Math.min(SM[i], osc[i], LB[i]), shape:'labelUp', dy:8, text:t, col:p.cBot, tcol:'#fff', size:star ? 1 : 0.9 });
+      (tag[i] = tag[i] || []).push([t, p.cBot]); sig.push({ i, src:'宇宙動能', text:star ? '底★（跌深後動能轉強）' : '底（動能極弱後轉強）', col:p.cBot });
+      if (p.showBot) ev.push({ i, y:Math.min(K[i], 0), shape:'labelUp', dy:4, text:t, col:p.cBot, tcol:'#fff', size:star ? 1 : 0.9 });
       if (p.mainBot) main.push({ i, text:star ? '動能底★' : '動能底', col:p.cBot });
     }
     if (d2 && C[i] < L[i - 1] && i - lh < 10 && i - lt > 10){
       lt = i; let star = false;
       if (p.starTop && Vm && !isNaN(Vm[i])){ let vx = 0; for (let k = i - 4; k <= i; k++) if (V[k] > vx) vx = V[k]; star = (hhv(H, 10, i) / llv(L, 20, i) - 1) * 100 > p.starRise && vx > p.starVol * Vm[i]; }
       const t = star ? '頂★' : '頂';
-      (tag[i] = tag[i] || []).push([t, p.cTop]); sig.push({ i, src:'宇宙動能', text:star ? '頂★（急漲爆量後動能轉弱）' : '頂（動能高檔轉弱）', col:p.cTop });
-      if (p.showTop) ev.push({ i, y:Math.max(SM[i], osc[i], UB[i]), shape:'labelDown', dy:-8, text:t, col:p.cTop, tcol:'#fff', size:star ? 1 : 0.9 });
+      (tag[i] = tag[i] || []).push([t, p.cTop]); sig.push({ i, src:'宇宙動能', text:star ? '頂★（急漲爆量後動能轉弱）' : '頂（動能極強後轉弱）', col:p.cTop });
+      if (p.showTop) ev.push({ i, y:Math.max(K[i], p.hi), shape:'labelDown', dy:-6, text:t, col:p.cTop, tcol:'#fff', size:star ? 1 : 0.9 });
       if (star ? (p.mainStar || p.mainTop) : p.mainTop) main.push({ i, text:star ? '動能頂★' : '動能頂', col:p.cTop });
     }
   }
-  return { osc, mid, up, lo, SM, LB, UB, sc, normLen, bandLen, tag, ev, sig, main };
+  return { K, O, U, D, M, osc, sc, normLen, bandLen, tag, ev, sig, main };
 }
 
 function calcLBB(B, p){
@@ -4958,40 +4963,34 @@ function drawBBX(p, i0, i1, ci){
 
 function drawCAMO(p, i0, i1, ci){
   const r = R.camo, q = P.camo;
-  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['宇宙動能  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
-  const arrs = []; if (q.showOsc) arrs.push(r.osc); if (q.showBands) arrs.push(r.up, r.lo); if (q.showSm) arrs.push(r.SM); if (q.showLong) arrs.push(r.UB, r.LB); if (!arrs.length) arrs.push(r.osc);
-  const [mn, mx] = extent(arrs, i0, i1, markerExtra(r.ev, i0, i1)), pad = (mx - mn) * 0.06;
-  S = makeScale(p.top, p.h, ...rng('camo', mn - pad, mx + pad), 30, 8);
-  gridAndAxis(2);
-  const W = plotW();
-  if (q.showBands){
-    fillBetween(i => r.up[i], i => r.lo[i], () => rgba(q.cFill, 88), i0, i1);
-    strokeSeries(i => r.up[i], () => rgba(q.cBand, 35), i0, i1, 1);
-    strokeSeries(i => r.lo[i], () => rgba(q.cBand, 35), i0, i1, 1);
-    strokeSeries(i => r.mid[i], () => rgba(q.cMid, 25), i0, i1, 1);
-  }
-  { const y = Math.round(S.y(0)) + 0.5; ctx.strokeStyle = rgba(CC.axis, 40); ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); }
-  if (q.showLong){
-    fillBetween(i => r.UB[i], i => Math.max(r.UB[i], r.SM[i]), () => rgba(q.cLong, 65), i0, i1);
-    fillBetween(i => Math.min(r.LB[i], r.SM[i]), i => r.LB[i], () => rgba(q.cLong, 65), i0, i1);
-    strokeSeries(i => r.UB[i], () => rgba(q.cLong, 35), i0, i1, 1.1, [5, 4]);
-    strokeSeries(i => r.LB[i], () => rgba(q.cLong, 35), i0, i1, 1.1, [5, 4]);
-  }
-  if (q.showOsc) strokeSeries(i => r.osc[i], i => r.osc[i] > r.osc[i - 1] ? q.cRise : q.cFall, i0, i1, q.showSm ? 1.3 : 2);
-  if (q.showSm){ const sc = UI.theme === 'light' && q.cSm === '#e8edf4' ? '#2a3140' : q.cSm; strokeSeries(i => r.SM[i], () => sc, i0, i1, 2.6); }
+  if (!r || r.error){ S = makeScale(p.top, p.h, 0, 100, 26, 6); legend([[['宇宙動能  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const narrow = plotW() < 620;
+  S = makeScale(p.top, p.h, ...rng('camo', q.showBot ? -26 : -8, 108), narrow ? 50 : 34, 4);
+  const W = plotW(), lo = q.lo, hi = q.hi;
+  const band = (a, b2, col) => { const ya = S.y(a), yb = S.y(b2); ctx.fillStyle = col; ctx.fillRect(0, Math.min(ya, yb), W, Math.abs(ya - yb)); };
+  const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  const lab = (v, t, col, base) => { ctx.font = '600 10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.textBaseline = base; ctx.fillText(t, 4, S.y(v) + (base === 'top' ? 2 : -2)); };
+  band(hi, 100, rgba(q.cStrong, 84)); band(80, hi, rgba(q.cStrong, 94)); band(0, lo, rgba(q.cWeak, 84)); band(lo, 20, rgba(q.cWeak, 94));
+  hl(100, rgba(CC.axis, 70), [2, 4]); hl(hi, rgba(q.cStrong, 45), [4, 3]); hl(80, rgba(q.cStrong, 70), [1, 3]); hl(50, rgba(CC.axis, 55), [1, 4]); hl(20, rgba(q.cWeak, 70), [1, 3]); hl(lo, rgba(q.cWeak, 45), [4, 3]); hl(0, rgba(CC.axis, 70), [2, 4]);
+  lab(100, '極度強勢', rgba(q.cStrong, 30), 'top'); lab(0, '極度弱勢', rgba(q.cWeak, 30), 'bottom');
+  if (q.showBands){ fillBetween(i => r.U[i], i => r.D[i], () => rgba(q.cFill, 94), i0, i1); strokeSeries(i => r.U[i], () => rgba(q.cFill, 70), i0, i1, 1); strokeSeries(i => r.D[i], () => rgba(q.cFill, 70), i0, i1, 1); strokeSeries(i => r.M[i], () => rgba('#ffd600', 55), i0, i1, 1); }
+  if (q.showOsc) strokeSeries(i => r.O[i], i => r.osc[i] > r.osc[i - 1] ? rgba(q.cRise, 25) : rgba(q.cFall, 25), i0, i1, 1.2);
+  const mc = UI.theme === 'light' && q.cMain === '#e8edf4' ? '#2a3140' : q.cMain;
+  fillBetween(i => Math.max(hi, r.K[i]), () => hi, () => rgba(q.cStrong, 55), i0, i1);
+  fillBetween(() => lo, i => Math.min(lo, r.K[i]), () => rgba(q.cWeak, 55), i0, i1);
+  strokeSeries(i => r.K[i], i => r.K[i] > hi ? q.cStrong : r.K[i] < lo ? q.cWeak : mc, i0, i1, 2.6);
   visibleMarkers(r.ev, i0, i1);
-  const lv = r.osc[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv > r.osc[B.n - 2] ? q.cRise : q.cFall, '#000', v => fmtNum(v, 2));
-  const o = r.osc[ci], sm = r.SM[ci];
-  const zone = !isNaN(r.up[ci]) && o > r.up[ci] ? ['高於上界', q.cRise] : !isNaN(r.lo[ci]) && o < r.lo[ci] ? ['低於下界', q.cFall] : null;
-  const lz = !isNaN(r.UB[ci]) && sm > r.UB[ci] ? ['平滑線在長期高檔', q.cLong] : !isNaN(r.LB[ci]) && sm < r.LB[ci] ? ['平滑線在長期低檔', q.cLong] : null;
-  const parts = [['宇宙動能', CC.axis], ['震盪 ' + fmtNum(o, 2) + (o > r.osc[ci - 1] ? '↑' : '↓'), o > r.osc[ci - 1] ? q.cRise : q.cFall], ['平滑 ' + fmtNum(sm, 2), UI.theme === 'light' ? '#2a3140' : q.cSm], ['中線 ' + fmtNum(r.mid[ci], 2), q.cMid]];
-  if (zone) parts.push(zone); if (lz) parts.push(lz);
+  ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = CC.axis; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (const v of [0, lo, 50, hi, 100]) ctx.fillText(String(v), W + 6, S.y(v));
+  const lv = r.K[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv > hi ? q.cStrong : lv < lo ? q.cWeak : '#5d6676', '#fff', v => fmtNum(v, 0));
+  const k = r.K[ci], o = r.O[ci], up = r.osc[ci] > r.osc[ci - 1];
+  const zone = k > hi ? ['極度強勢', q.cStrong] : k >= 80 ? ['偏強', q.cStrong] : k < lo ? ['極度弱勢', q.cWeak] : k <= 20 ? ['偏弱', q.cWeak] : ['中性', CC.axis];
+  const parts = [['宇宙動能', CC.axis], ['主線 ' + fmtNum(k, 0), mc], zone, ['震盪 ' + fmtNum(o, 0) + (up ? '↑' : '↓'), up ? q.cRise : q.cFall]];
+  if (!isNaN(r.U[ci]) && o > r.U[ci]) parts.push(['高於黃金上界', q.cRise]); else if (!isNaN(r.D[ci]) && o < r.D[ci]) parts.push(['低於黃金下界', q.cFall]);
   parts.push(['縮放 ' + fmtNum(r.sc, 2) + '・長度 ' + r.normLen + '／' + r.bandLen, CC.axis]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
-  const narrow = plotW() < 620;
   legend(narrow ? [parts.slice(0, 4), parts.slice(4)] : [parts], p.top);
 }
-
 function drawLBB(p, i0, i1, ci){
   const r = R.lbb, q = P.lbb;
   if (!r || r.error){ S = makeScale(p.top, p.h, 0, 100, 26, 6); legend([[['多空擺盪  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
