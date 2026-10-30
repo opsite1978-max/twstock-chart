@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -15,6 +15,19 @@
     --bc:#ef5350; --sc:#26a69a; --bp:#26a69a; --sp:#ef5350;
     color-scheme:dark;
   }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f6f7fa; --panel2:#eceff4; --line:#dde1e8; --grid:#eef0f4;
+    --text:#1c2230; --muted:#5d6676; --accent:#2962ff; --gold:#b7860b;
+    --up:#e53935; --down:#089981; --upbg:rgba(229,57,53,.09); --dnbg:rgba(8,153,129,.10);
+    --bc:#e53935; --sc:#089981; --bp:#089981; --sp:#e53935;
+    color-scheme:light;
+  }
+  .lgd{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:6px}
+  .lgd span{display:inline-flex;align-items:center;gap:5px}
+  .lgd i{display:inline-block;width:16px;height:0;border-top:2px solid}
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
+  .cbox{background:var(--panel2);border-radius:9px;padding:8px 11px}
+  .cbox .lb{font-size:12px;color:var(--muted)} .cbox .v{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums} .cbox .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
@@ -64,7 +77,7 @@
   <h1>⚡ 選擇權即時力道</h1>
   <span class="muted" id="hdr"></span>
   <span class="spacer"></span>
-  <a class="btn" href="txo.html">選擇權</a><a class="btn" href="force.html">多空力道</a><a class="btn" href="overview.html">總覽</a>
+  <button class="btn" id="themeBtn">黑底</button><a class="btn" href="txo.html">選擇權</a><a class="btn" href="force.html">多空力道</a><a class="btn" href="overview.html">總覽</a>
 </header>
 <div class="bar">
   <button class="btn on" id="liveBtn">即時更新中</button>
@@ -81,6 +94,10 @@
     <div class="card"><h3>主動力道統計 <span class="muted" id="sessName"></span></h3><div id="force"></div></div>
     <div class="card"><h3>期貨即時力道 <span class="muted">主動買 − 主動賣（口）</span></h3><div id="fut"></div></div>
     <div class="card" style="grid-column:1/-1"><h3>主力集中 <span class="muted">這個時段單次湧入 ≥ 門檻的累計口數</span></h3><div class="cols2" id="conc"></div></div>
+    <div class="card" style="grid-column:1/-1"><h3>主力成本線 <span class="muted">大台（法人、大戶）主動買賣累計的平均成本，隨時間變化；虛線＝昨天收盤後算好的前十大交易人、外資成本</span></h3>
+      <div class="chart" id="ch3" style="height:300px"></div>
+      <div class="lgd" id="lgd3"></div>
+      <div class="cgrid" id="cost"></div></div>
     <div class="card"><h3>淨力道走勢 <span class="muted">（BC＋SP）−（BP＋SC）累計，左軸台指期</span></h3><div class="chart" id="ch1"></div></div>
     <div class="card"><h3>期貨力道走勢 <span class="muted">大台＋微台×1/20（大台口數），左軸台指期</span></h3><div class="chart" id="ch2"></div></div>
     <div class="card"><h3>爆量紀錄 <span class="muted">最新在上</span></h3><div class="log" id="log"></div></div>
@@ -142,7 +159,15 @@ const KEY = s => 'ol:' + s.s + ':' + s.x;
 function load(s){ try { return JSON.parse(localStorage.getItem(KEY(s)) || 'null'); } catch(e){ return null; } }
 function save(s, st){ try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e){ /* 空間不夠就砍舊紀錄再存 */ st.log = st.log.slice(0, 100); st.series = st.series.filter((p, i) => i % 2 === 0); try { localStorage.setItem(KEY(s), JSON.stringify(st)); } catch(e2){} } }
 function cleanOld(){ try { const old = shiftDay(twNow().toISOString().slice(0, 10), -3); for (let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if (k && k.startsWith('ol:') && k.slice(-10) < old) localStorage.removeItem(k); } } catch(e){} }
-const blank = () => ({ prev:{}, fprev:{}, tot:{ BC:0, SC:0, BP:0, SP:0, dBC:0, dSC:0, dBP:0, dSP:0 }, fut:{ TX:0, TMF:0 }, strikes:{}, log:[], series:[], last:0, px:null, px0:null });
+const mkCost = () => ({ bq:0, bv:0, sq:0, sv:0, aq:0, av:0, pos:0, cost:null });
+const blank = () => ({ prev:{}, fprev:{}, tot:{ BC:0, SC:0, BP:0, SP:0, dBC:0, dSC:0, dBP:0, dSP:0 }, fut:{ TX:0, TMF:0 }, cost:{ TX:mkCost(), TMF:mkCost() }, strikes:{}, log:[], series:[], last:0, px:null, px0:null });
+// 平均成本記帳：同方向加碼就加權平均，減碼成本不變，翻向就用這次的價格重新起算
+function book(c, side, dv, px){ c.aq += dv; c.av += dv * px; if (side > 0){ c.bq += dv; c.bv += dv * px; } else if (side < 0){ c.sq += dv; c.sv += dv * px; } else return;
+  const q = side * dv, p0 = c.pos, p1 = p0 + q;
+  if (p0 === 0 || Math.sign(p0) === Math.sign(q)) c.cost = c.cost == null || p0 === 0 ? px : (c.cost * Math.abs(p0) + px * dv) / Math.abs(p1);
+  else if (Math.sign(p1) !== Math.sign(p0) && p1 !== 0) c.cost = px;
+  else if (p1 === 0) c.cost = null;
+  c.pos = p1; }
 
 /* ───────── 即時報價 ───────── */
 const MC = 'ABCDEFGHIJKL', MP = 'MNOPQRSTUVWX';
@@ -220,7 +245,8 @@ async function tick(force){
     // 期貨
     for (const k of ['TX', 'TMF']){ const f = F[k]; if (!f) continue;
       const p = st.fprev[k], tv = +f.total_volume || 0, side = sideOf(f, p && p.c);
-      if (fresh && p && tv > p.tv) st.fut[k] += side * (tv - p.tv);
+      if (!st.cost) st.cost = { TX:mkCost(), TMF:mkCost() };
+      if (fresh && p && tv > p.tv){ st.fut[k] += side * (tv - p.tv); book(st.cost[k], side, tv - p.tv, +f.close); }
       st.fprev[k] = { tv, c:+f.close }; }
     // 選擇權
     let nNew = 0;
@@ -245,7 +271,9 @@ async function tick(force){
     } });
     const T = st.tot, net = T.BC + T.SP - T.BP - T.SC, netD = T.dBC + T.dSP - T.dBP - T.dSC;
     const futEq = st.fut.TX + st.fut.TMF * 0.05;
-    st.series.push({ t:nowS, px, net, netD:Math.round(netD * 10) / 10, fut:Math.round(futEq * 10) / 10 });
+    const cx = st.cost.TX, cm = st.cost.TMF, r1 = v => v == null ? null : Math.round(v * 10) / 10;
+    st.series.push({ t:nowS, px, net, netD:Math.round(netD * 10) / 10, fut:Math.round(futEq * 10) / 10,
+      vb:cx.bq ? r1(cx.bv / cx.bq) : null, vs:cx.sq ? r1(cx.sv / cx.sq) : null, vw:cx.aq ? r1(cx.av / cx.aq) : null, ce:r1(cx.cost), cq:cx.pos, cr:r1(cm.cost), rq:cm.pos });
     if (st.series.length > 2500) st.series.splice(0, st.series.length - 2500);
     st.px = px; st.last = Date.now(); st.exps = ex.map(e => e.code); st.F = F;
     save(ses, st);
@@ -259,16 +287,29 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tick
 
 /* ───────── 畫面 ───────── */
 let CH = null;
+function setTheme(t){ document.documentElement.dataset.theme = t; store.set('ol.theme', t); $('#themeBtn').textContent = t === 'light' ? '黑底' : '白底';
+  document.querySelector('meta[name=theme-color]').setAttribute('content', t === 'light' ? '#ffffff' : '#131722');
+  if (CH){ CH.c1.remove(); CH.c2.remove(); CH.c3.remove(); CH = null; } }
+setTheme(store.get('ol.theme', 'light'));
+$('#themeBtn').onclick = () => { setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'); render(); };
 function charts(){
   if (CH || !window.LightweightCharts) return CH;
   const L = LightweightCharts, mk = el => L.createChart(el, { autoSize:true, layout:{ background:{ type:'solid', color:css('--panel') }, textColor:css('--muted'), fontSize:11 },
     grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } }, rightPriceScale:{ borderColor:css('--line') }, leftPriceScale:{ visible:true, borderColor:css('--line') },
     timeScale:{ borderColor:css('--line'), timeVisible:true, secondsVisible:false }, localization:{ locale:'zh-TW' }, crosshair:{ mode:L.CrosshairMode.Normal } });
-  const c1 = mk($('#ch1')), c2 = mk($('#ch2'));
+  const c1 = mk($('#ch1')), c2 = mk($('#ch2')), c3 = mk($('#ch3'));
+  c3.applyOptions({ leftPriceScale:{ visible:false } });
   const pxs = c => c.addSeries(L.LineSeries, { priceScaleId:'left', color:css('--muted'), lineWidth:1, priceLineVisible:false, lastValueVisible:true, priceFormat:{ type:'price', precision:0, minMove:1 } });
   CH = { c1, c2, p1:pxs(c1), p2:pxs(c2),
     n1:c1.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }),
-    n2:c2.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }) };
+    n2:c2.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 } }), c3 };
+  const ln = (color, w, style, title) => c3.addSeries(L.LineSeries, { color, lineWidth:w, lineStyle:style || 0, priceLineVisible:false, lastValueVisible:true, title:title || '', priceFormat:{ type:'price', precision:0, minMove:1 } });
+  CH.k = { px:ln(css('--text'), 2, 0, ''), vw:ln(css('--muted'), 1, 2, ''), vb:ln(css('--up'), 1, 1, ''), vs:ln(css('--down'), 1, 1, ''), cr:ln('#8e5cf7', 2, 0, ''), ce:ln(css('--gold'), 3, 0, '') };
+  CH.kl = [];
+  // 昨天的成本離目前價格 1.5% 以內才把它算進縱軸範圍（太遠的就只在下方數字看）
+  CH.k.px.applyOptions({ autoscaleInfoProvider:orig => { const r = orig(); if (!r || !COSTD) return r; const mid = (r.priceRange.minValue + r.priceRange.maxValue) / 2; let lo = r.priceRange.minValue, hi = r.priceRange.maxValue;
+    for (const v of [COSTD.cL, COSTD.cS, COSTD.cFI]) if (v > 0 && Math.abs(v / mid - 1) < 0.015){ lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    return { priceRange:{ minValue:lo, maxValue:hi }, margins:r.margins }; } });
   return CH;
 }
 function bar4(T, d){
@@ -326,7 +367,34 @@ function render(){
     const UPc = css('--up'), DNc = css('--down'), fade = (hex, a) => { const h = hex.replace('#', ''); if (h.length !== 6) return hex; return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')'; };
     const bars = k => pts.map((p, i) => { const v = p[k], pv = i ? pts[i - 1][k] : 0, grow = Math.abs(v) >= Math.abs(pv); return { time:p.t, value:v, color:fade(v >= 0 ? UPc : DNc, grow ? 0.9 : 0.45) }; });
     C.p1.setData(pts.map(p => ({ time:p.t, value:p.px }))); C.n1.setData(bars('net'));
-    C.p2.setData(pts.map(p => ({ time:p.t, value:p.px }))); C.n2.setData(bars('fut')); }
+    C.p2.setData(pts.map(p => ({ time:p.t, value:p.px }))); C.n2.setData(bars('fut'));
+    const ser = k => pts.filter(p => p[k] != null).map(p => ({ time:p.t, value:p[k] }));
+    for (const k of ['px', 'vw', 'vb', 'vs', 'cr', 'ce']) C.k[k].setData(ser(k));
+    // 昨天的主力成本（前十大多單、空單、外資）
+    for (const l of C.kl) C.k.px.removePriceLine(l); C.kl = [];
+    const Y = COSTD; if (Y){ const add = (v, col, t) => { if (v > 0) C.kl.push(C.k.px.createPriceLine({ price:v, color:col, lineWidth:1, lineStyle:2, axisLabelVisible:true, title:t })); };
+      add(Y.cL, css('--up'), '十大多單'); add(Y.cS, css('--down'), '十大空單'); add(Y.cFI, css('--gold'), '外資' + (Y.fi >= 0 ? '多單' : '空單')); } }
+  renderCost(st);
+}
+
+/* ───────── 主力成本線 ───────── */
+let COSTD = null;
+async function loadCost(){ try { const j = await getJSON('data/ctrl/cost.json'); COSTD = j.days[j.days.length - 1]; } catch(e){ COSTD = null; } }
+function renderCost(st){
+  const lg = [['台指期', css('--text'), 'solid'], ['大台淨部位成本（主力）', css('--gold'), 'solid'], ['微台淨部位成本（散戶）', '#8e5cf7', 'solid'], ['大台主動買均價', css('--up'), 'dotted'], ['大台主動賣均價', css('--down'), 'dotted'], ['大台成交均價', css('--muted'), 'dashed']];
+  $('#lgd3').innerHTML = lg.map(([n, c, s]) => `<span><i style="border-top:${s === 'solid' ? 3 : 2}px ${s} ${c}"></i>${n}</span>`).join('') + (COSTD ? `<span class="muted">虛線水平線＝${md(COSTD.d)} 收盤後的前十大、外資成本</span>` : '');
+  const c = st.cost || { TX:mkCost(), TMF:mkCost() }, px = st.px, X = c.TX, M = c.TMF;
+  const pnl = (q, cost) => q && cost != null && px != null ? (px - cost) * Math.sign(q) : null;
+  const box = (lb, v, s) => `<div class="cbox"><div class="lb">${lb}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  const pX = pnl(X.pos, X.cost), pM = pnl(M.pos, M.cost);
+  let h = box('主力（大台）淨部位', `<span class="${cls(X.pos)}">${sgn(X.pos)} 口</span>`, X.cost != null ? `成本 <b>${fmt(X.cost)}</b>・目前${pX >= 0 ? '賺' : '賠'} <b class="${cls(pX)}">${sgn(pX)}</b> 點` : '還沒有部位');
+  h += box('散戶（微台）淨部位', `<span class="${cls(M.pos)}">${sgn(M.pos)} 口</span>`, M.cost != null ? `成本 <b>${fmt(M.cost)}</b>・目前${pM >= 0 ? '賺' : '賠'} <b class="${cls(pM)}">${sgn(pM)}</b> 點` : '還沒有部位');
+  h += box('大台主動買／賣均價', `<span class="up">${fmt(X.bq ? X.bv / X.bq : null)}</span> / <span class="dn">${fmt(X.sq ? X.sv / X.sq : null)}</span>`, `主動買 ${fmt(X.bq)} 口・主動賣 ${fmt(X.sq)} 口`);
+  h += box('大台成交均價', fmt(X.aq ? X.av / X.aq : null), px != null && X.aq ? `台指期在均價${px >= X.av / X.aq ? '上' : '下'} ${fmt(Math.abs(px - X.av / X.aq))} 點` : '');
+  if (COSTD){ const d = v => px != null && v ? ` <span class="${cls(px - v)}">（${sgn(px - v)}）</span>` : '';
+    h += box(md(COSTD.d) + ' 前十大成本', `<span class="up">${fmt(COSTD.cL)}</span> / <span class="dn">${fmt(COSTD.cS)}</span>`, `多單${d(COSTD.cL)}・空單${d(COSTD.cS)}`);
+    h += box(md(COSTD.d) + ' 外資' + (COSTD.fi >= 0 ? '多單' : '空單') + '成本', `<span class="gold">${fmt(COSTD.cFI)}</span>`, `外資淨 ${sgn(COSTD.fi)} 口${d(COSTD.cFI)}`); }
+  $('#cost').innerHTML = h + '<div class="note" style="grid-column:1/-1;margin-top:0">主力成本＝大台主動買、主動賣的口數照平均成本記帳（同方向加碼就加權平均、減碼成本不變、翻向就用當時價格重新起算），散戶成本用微台同樣算法。和「期貨即時力道」一樣是每次抓價之間的總量推估，不是逐筆，也分不出誰是誰；從打開這頁起累積。前十大、外資成本來自網站每天晚上算好的資料（主力成本頁）。</div>';
 }
 
 /* ───────── 上一個時段（網站正式逐筆資料） ───────── */
@@ -346,6 +414,7 @@ async function renderOff(){
 (async () => {
   cleanOld();
   try { await strikes(); } catch(e){}
+  await loadCost();
   render(); renderOff();
   schedule(); tick(true);
 })();
