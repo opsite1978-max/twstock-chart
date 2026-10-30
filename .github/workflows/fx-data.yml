@@ -1,0 +1,38 @@
+name: 外資期現貨總覽
+on:
+  schedule:
+    - cron: '47 23 * * 0-5'      # 台灣時間 週一～週六 07:47（夜盤法人公布後）
+    - cron: '47 7,9,13 * * 1-5'  # 台灣時間 15:47、17:47、21:47（日盤法人、現貨買賣超、產業）
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/fx_data.py', '.github/workflows/fx-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: fx-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: 抓期貨三大法人（日盤、夜盤）、期貨行情、現貨法人買賣超（FinMind，約 50 次查詢）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          python3 scripts/fx_data.py | tee fx.log
+          echo "::notice::$(tail -1 fx.log)"
+      - name: 存回專案
+        run: |
+          git add data/fx
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git -c user.name="fx-bot" -c user.email="fx-bot@users.noreply.github.com" commit -qm "外資期現貨資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull -q --rebase -X theirs origin main && git push -q origin HEAD:main; then ok=1; break; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ] || { echo "::error::存回失敗"; exit 1; }
