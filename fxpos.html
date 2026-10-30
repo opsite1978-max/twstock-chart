@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>外資期現貨</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.12);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line2);margin:6px 0 12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+input[type=number],input[type=search]{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;font-family:var(--mono);width:110px}
+input[type=search]{font-family:var(--sans);width:180px}
+label.ck{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:4px 0 2px}
+.summary .n{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--accent)}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.warn{background:rgba(230,193,77,.10);border:1px solid rgba(230,193,77,.35);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);cursor:pointer;white-space:nowrap;user-select:none}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴"}
+td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+td.l{font-family:var(--sans)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hl)}
+.code{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.pill{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.pill.new{border-color:var(--up);color:var(--up)}
+.pill.bull{border-color:var(--up);color:var(--up)} .pill.bear{border-color:var(--down);color:var(--down)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.7}
+h3{font-size:14px;margin:4px 0 8px;display:flex;gap:8px;align-items:baseline}
+h3 .cnt{font-family:var(--mono);color:var(--accent)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.hero{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:8px 0}
+@media (max-width:420px){.hero{grid-template-columns:1fr 1fr}.box .v{font-size:18px}.box{padding:9px 10px}.box .k .tag{display:none}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.box .k{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.box .v{font-family:var(--mono);font-size:22px;font-weight:600;margin:2px 0}
+.box .s{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.box .s b{font-weight:500;color:var(--fg)}
+.box.night{border-color:rgba(124,77,255,.45)}
+.tag{font-size:11px;border-radius:999px;padding:0 7px;border:1px solid var(--line2);color:var(--muted)}
+.tag.n{border-color:#7c4dff;color:#b39dff}
+select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px}
+td.sp{padding:2px 8px}
+canvas{display:block;width:100%}
+.grp td{border-top:1px solid var(--line2)}
+tbody tr{cursor:default}
+.sec{margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>外資期現貨</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" href="zhanshen.html?s=TX">戰神看盤</a><a class="chip" href="jgscreen.html">機構牛選股</a></nav>
+</header>
+<div class="card">
+  <div class="row">
+    <span class="lbl">法人</span>
+    <div class="seg" id="who"><button data-v="F" aria-pressed="true">外資</button><button data-v="T" aria-pressed="false">投信</button><button data-v="D" aria-pressed="false">自營商</button></div>
+    <span class="lbl">日期</span><select id="day"></select>
+  </div>
+</div>
+<div id="warn"></div>
+<h3>台指期（大台、小台、微台合計，換算成大台口數）</h3>
+<div class="hero" id="hero"></div>
+<div class="sec"><h3>台指期各契約 <span class="lbl" id="t1note"></span></h3>
+<div class="tblwrap"><table id="t1"></table></div></div>
+<div class="sec"><h3>三大法人一覽</h3>
+<div class="tblwrap"><table id="t2"></table></div></div>
+<div class="sec"><h3>近 60 個交易日 <span class="lbl" id="chartLbl"></span></h3>
+<div class="card" style="padding:10px"><canvas id="cv1" height="230"></canvas><canvas id="cv2" height="140" style="margin-top:8px"></canvas></div></div>
+<div class="sec"><h3>產業期貨 <span class="lbl">（近月合約；法人口數為該契約）</span></h3>
+<div class="tblwrap"><table id="t3"></table></div></div>
+<div class="sec"><h3>現貨產業 <span class="lbl" id="secLbl"></span></h3>
+<div class="tblwrap"><table id="t4"></table></div></div>
+<p class="note">資料：期交所三大法人（日盤、夜盤）、期貨每日行情、證交所三大法人買賣金額，經 FinMind 每天自動整理（約 07:47、15:47、17:47、21:47）；現貨產業用證交所、櫃買中心每日各股法人買賣超 × 收盤價依產業加總。<br>
+・「大台等值」＝大台 1 口＋小台 0.25 口＋微台 0.05 口。<br>
+・期交所夜盤只公布法人的交易口數，沒有公布未平倉；「夜盤後淨未平倉（推估）」＝日盤淨未平倉＋夜盤多方交易−空方交易（法人自己買賣的口數差就是部位變化，多空分開的口數無法推）。<br>
+・夜盤的日期跟期交所一樣算在下一個交易日：例如 10/29 15:00～10/30 05:00 的夜盤，接在 10/29 日盤後面顯示。<br>
+・數字正值紅色、負值綠色；這頁只是整理資料，不構成買賣建議。</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+try { const ui = JSON.parse(localStorage.getItem('zs:ui') || localStorage.getItem('zx:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const sg = (v, d = 0) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, d);
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+const cs = (v, d = 0) => '<span class="' + cls(v) + '">' + sg(v, d) + '</span>';
+const md = d => d ? d.slice(5).replace('-', '/') : '';
+const WN = { F:'外資', T:'投信', D:'自營商' }, IDX = { TX:1, MTX:0.25, TMF:0.05 }, IDN = { TX:'大台', MTX:'小台', TMF:'微台' };
+let X = null, who = 'F', sel = null;
+try { const p = JSON.parse(localStorage.getItem('fxpos:prefs') || '{}'); if (p.who) who = p.who; } catch (e){}
+for (const b of $('who').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === who));
+$('who').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; who = b.dataset.v; for (const x of $('who').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); try { localStorage.setItem('fxpos:prefs', JSON.stringify({ who })); } catch (e){} render(); });
+$('day').addEventListener('change', () => { sel = $('day').value; render(); });
+let DAYS = [], ALLK = [];
+const nextKey = d => ALLK.find(k => k > d) || null;
+const prevDay = d => { const i = DAYS.indexOf(d); return i > 0 ? DAYS[i - 1] : null; };
+function g(d, fid, w){ const e = X.day[d] && X.day[d][fid]; return e && e[w] ? e[w] : null; }   // [多交易, 空交易, 多未平倉, 空未平倉]
+function gn(d, fid, w){ const e = d && X.night[d] && X.night[d][fid]; return e && e[w] ? e[w] : null; }   // [多交易, 空交易]
+function eq(d, w, k, night){ let s = 0, ok = false; for (const f in IDX){ const a = night ? gn(d, f, w) : g(d, f, w); if (a){ s += a[k] * IDX[f]; ok = true; } } return ok ? s : null; }
+const netOI = (d, w) => { const a = eq(d, w, 2), b = eq(d, w, 3); return a == null ? null : a - b; };
+const spotNet = (d, w) => { const e = X.spot[d] && X.spot[d][w]; return e ? (e[0] - e[1]) / 1e8 : null; };
+function box(k, v, s, extra, night){ return '<div class="box' + (night ? ' night' : '') + '"><div class="k"><span>' + k + '</span>' + (extra || '') + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>'; }
+function render(){
+  const d = sel, nk = nextKey(d), pd = prevDay(d), w = who, W = WN[w];
+  const nOI = netOI(d, w), nOIp = pd ? netOI(pd, w) : null, L = eq(d, w, 2), S = eq(d, w, 3);
+  const dl = eq(d, w, 0), ds = eq(d, w, 1), nl = eq(nk, w, 0, true), ns = eq(nk, w, 1, true);
+  const p = X.px[d] && X.px[d].TX, pn = nk && X.px[nk] && X.px[nk].TX;
+  const nLabel = nk ? md(d) + ' 15:00～' + md(nk) + ' 05:00' : '';
+  const sp = X.spot[d] && X.spot[d][w];
+  let h = '';
+  h += box(W + '淨未平倉', '<span class="' + cls(nOI) + '">' + sg(nOI) + '</span>', '較前一日 ' + cs(nOI != null && nOIp != null ? nOI - nOIp : null) + '<br>多單 <b>' + fmt(L) + '</b>・空單 <b>' + fmt(S) + '</b>', '<span class="tag">日盤</span>');
+  h += box(W + '日盤交易', '<span class="' + cls(dl - ds) + '">' + sg(dl == null ? null : dl - ds) + '</span>', '多方 <b>' + fmt(dl) + '</b>・空方 <b>' + fmt(ds) + '</b>', '<span class="tag">' + md(d) + '</span>');
+  if (nl != null) h += box(W + '夜盤交易', '<span class="' + cls(nl - ns) + '">' + sg(nl - ns) + '</span>', '多方 <b>' + fmt(nl) + '</b>・空方 <b>' + fmt(ns) + '</b><br>夜盤後淨未平倉（推估）' + cs(nOI == null ? null : nOI + nl - ns), '<span class="tag n">' + nLabel + '</span>', true);
+  else h += box(W + '夜盤交易', '—', nk ? '這晚夜盤資料還沒公布' : '夜盤資料約早上 7:47 更新', '<span class="tag n">夜盤</span>', true);
+  h += box(W + '現貨買賣超', sp ? '<span class="' + cls(sp[0] - sp[1]) + '">' + sg((sp[0] - sp[1]) / 1e8, 1) + ' 億</span>' : '—', sp ? '買進 <b>' + fmt(sp[0] / 1e8, 1) + '</b> 億・賣出 <b>' + fmt(sp[1] / 1e8, 1) + '</b> 億' : '證交所約 15:00 後公布', '<span class="tag">上市</span>');
+  if (p && p[0] != null){ const pc = p[1] / (p[0] - p[1]) * 100; h += box('台指期近月（' + p[6].slice(4) + ' 月）', '<span class="' + cls(p[1]) + '">' + fmt(p[0]) + '</span>', '漲跌 ' + cs(p[1]) + '（' + sg(pc, 2) + '%）<br>' + (pn && pn[4] != null ? '夜盤收 <b>' + fmt(pn[4]) + '</b>（' + cs(pn[4] - p[0]) + '）' : '成交量 <b>' + fmt(p[2]) + '</b>・未平倉 <b>' + fmt(p[3]) + '</b>'), '', false); }
+  $('hero').innerHTML = h;
+  // 各契約
+  let t = '<thead><tr><th class="l">契約</th><th>日盤多方交易</th><th>日盤空方交易</th><th>日盤淨交易</th><th>多單未平倉</th><th>空單未平倉</th><th>淨未平倉</th><th>較前一日</th><th>夜盤多方</th><th>夜盤空方</th><th>夜盤淨</th><th>夜盤後淨（推估）</th></tr></thead><tbody>';
+  const rowC = (nm, a, b, ap, nnn) => { const net = a ? a[2] - a[3] : null, netp = ap ? ap[2] - ap[3] : null, nn = nnn ? nnn[0] - nnn[1] : null;
+    return '<tr><td class="l">' + nm + '</td><td>' + fmt(a && a[0]) + '</td><td>' + fmt(a && a[1]) + '</td><td>' + cs(a ? a[0] - a[1] : null) + '</td><td>' + fmt(a && a[2]) + '</td><td>' + fmt(a && a[3]) + '</td><td>' + cs(net) + '</td><td>' + cs(net != null && netp != null ? net - netp : null) + '</td><td>' + fmt(nnn && nnn[0]) + '</td><td>' + fmt(nnn && nnn[1]) + '</td><td>' + cs(nn) + '</td><td>' + cs(net != null && nn != null ? net + nn : null) + '</td></tr>'; };
+  for (const f of ['TX', 'MTX', 'TMF']) t += rowC(IDN[f] + '（' + f + '）', g(d, f, w), null, pd ? g(pd, f, w) : null, gn(nk, f, w));
+  const sum = (dd, night) => { const k = night ? 2 : 4, o = []; for (let i = 0; i < k; i++) o.push(eq(dd, w, i, night)); return o[0] == null ? null : o; };
+  t += '<tr class="grp"><td class="l"><b>合計（大台等值）</b></td>' + rowC('', sum(d), null, pd ? sum(pd) : null, nk ? sum(nk, true) : null).replace(/^<tr><td class="l"><\/td>/, '').replace('</tr>', '') + '</tr>';
+  $('t1').innerHTML = t + '</tbody>';
+  $('t1note').textContent = '（' + W + '・' + md(d) + ' 日盤' + (nk ? '＋' + nLabel + ' 夜盤' : '') + '）';
+  // 三大法人一覽
+  let t2 = '<thead><tr><th class="l">法人</th><th>台指淨未平倉</th><th>較前一日</th><th>日盤淨交易</th><th>夜盤淨交易</th><th>夜盤後淨（推估）</th><th>現貨買賣超（億）</th><th>產業期貨淨未平倉（口）</th></tr></thead><tbody>';
+  for (const k of ['F', 'T', 'D']){ const a = netOI(d, k), ap = pd ? netOI(pd, k) : null, dn = eq(d, k, 0) == null ? null : eq(d, k, 0) - eq(d, k, 1), nn = eq(nk, k, 0, true) == null ? null : eq(nk, k, 0, true) - eq(nk, k, 1, true);
+    let sec = 0, ok = false; for (const pr of X.products) if (pr.kind === 'sec'){ const e = g(d, pr.id, k); if (e){ sec += e[2] - e[3]; ok = true; } }
+    t2 += '<tr' + (k === w ? ' style="background:var(--hl)"' : '') + '><td class="l">' + WN[k] + '</td><td>' + cs(a) + '</td><td>' + cs(a != null && ap != null ? a - ap : null) + '</td><td>' + cs(dn) + '</td><td>' + cs(nn) + '</td><td>' + cs(a != null && nn != null ? a + nn : null) + '</td><td>' + cs(spotNet(d, k), 1) + '</td><td>' + cs(ok ? sec : null) + '</td></tr>'; }
+  $('t2').innerHTML = t2 + '</tbody>';
+  // 產業期貨
+  let t3 = '<thead><tr><th class="l">商品</th><th>近月收盤</th><th>漲跌</th><th>漲跌幅</th><th>夜盤收盤</th><th>成交量</th><th>全部未平倉</th><th>' + W + '多單</th><th>' + W + '空單</th><th>' + W + '淨未平倉</th><th>較前一日</th><th>' + W + '夜盤淨</th></tr></thead><tbody>';
+  let nsec = 0;
+  for (const pr of X.products){ if (pr.kind !== 'sec') continue; const q = X.px[d] && X.px[d][pr.id], a = g(d, pr.id, w), ap = pd ? g(pd, pr.id, w) : null, nn = gn(nk, pr.id, w), qn = nk && X.px[nk] && X.px[nk][pr.id];
+    if (!q && !a) continue; nsec++;
+    const net = a ? a[2] - a[3] : null, netp = ap ? ap[2] - ap[3] : null, pc = q && q[0] != null ? q[1] / (q[0] - q[1]) * 100 : null;
+    t3 += '<tr><td class="l">' + pr.name + ' <span class="code">' + pr.id + '</span></td><td>' + fmt(q && q[0], q && q[0] % 1 ? 2 : 0) + '</td><td>' + cs(q && q[1], q && q[1] % 1 ? 2 : 0) + '</td><td>' + cs(pc, 2) + (pc != null ? '%' : '') + '</td><td>' + (qn && qn[4] != null ? fmt(qn[4], qn[4] % 1 ? 2 : 0) : '—') + '</td><td>' + fmt(q && q[2]) + '</td><td>' + fmt(q && q[3]) + '</td><td>' + fmt(a && a[2]) + '</td><td>' + fmt(a && a[3]) + '</td><td>' + cs(net) + '</td><td>' + cs(net != null && netp != null ? net - netp : null) + '</td><td>' + cs(nn ? nn[0] - nn[1] : null) + '</td></tr>'; }
+  $('t3').innerHTML = t3 + (nsec ? '' : '<tr><td colspan="12" class="empty">這天沒有產業期貨資料</td></tr>') + '</tbody>';
+  renderSector(); drawCharts();
+}
+let secSort = { k:'f1', asc:false };
+function renderSector(){
+  const s = X.sector; if (!s){ $('t4').innerHTML = '<tbody><tr><td class="empty">還沒有資料</td></tr></tbody>'; return; }
+  $('secLbl').textContent = '（' + md(s.d) + '；外資、投信買賣超金額（億元）＝各股買賣超張數 × 收盤價加總；漲跌幅用成交值加權）';
+  const rows = s.rows.slice().sort((a, b) => { const k = secSort.k, x = a[k], y = b[k]; const c = typeof x === 'string' ? x.localeCompare(y, 'zh-Hant') : (x ?? -1e9) - (y ?? -1e9); return secSort.asc ? c : -c; });
+  const H = [['ind', '產業', 'l'], ['n', '檔數'], ['chg', '今日漲跌'], ['chg5', '5 日漲跌'], ['val', '成交值（億）'], ['f1', '外資今日'], ['f5', '外資 5 日'], ['f20', '外資 20 日'], ['t1', '投信今日'], ['t5', '投信 5 日'], ['fs', '外資近 20 日', 'l']];
+  let t = '<thead><tr>' + H.map(([k, n, c]) => '<th data-k="' + k + '"' + (c ? ' class="l"' : '') + (secSort.k === k ? ' aria-sort="' + (secSort.asc ? 'ascending' : 'descending') + '"' : '') + '>' + n + '</th>').join('') + '</tr></thead><tbody>';
+  for (const r of rows){
+    const mx = Math.max(0.01, ...r.fs.map(Math.abs));
+    const spark = '<svg width="104" height="22" viewBox="0 0 104 22">' + r.fs.map((v, i) => { const hh = Math.max(1, Math.abs(v) / mx * 10); return '<rect x="' + (i * 5.2) + '" y="' + (v >= 0 ? 11 - hh : 11) + '" width="3.8" height="' + hh + '" fill="' + (v >= 0 ? 'var(--up)' : 'var(--down)') + '"/>'; }).join('') + '</svg>';
+    t += '<tr><td class="l">' + r.ind + '</td><td>' + r.n + '</td><td>' + cs(r.chg, 2) + '%</td><td>' + cs(r.chg5, 2) + '%</td><td>' + fmt(r.val, 0) + '</td><td>' + cs(r.f1, 1) + '</td><td>' + cs(r.f5, 1) + '</td><td>' + cs(r.f20, 1) + '</td><td>' + cs(r.t1, 1) + '</td><td>' + cs(r.t5, 1) + '</td><td class="l sp">' + spark + '</td></tr>';
+  }
+  $('t4').innerHTML = t + '</tbody>';
+}
+$('t4').addEventListener('click', e => { const th = e.target.closest('th'); if (!th || th.dataset.k === 'fs') return; const k = th.dataset.k; if (secSort.k === k) secSort.asc = !secSort.asc; else { secSort.k = k; secSort.asc = k === 'ind'; } renderSector(); });
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function drawCharts(){
+  const end = DAYS.indexOf(sel), ds = DAYS.slice(Math.max(0, end - 59), end + 1), w = who;
+  $('chartLbl').textContent = '（' + WN[w] + '台指淨未平倉：柱；台指期近月收盤：線；下圖：' + WN[w] + '現貨買賣超）';
+  const UP = css('--up'), DN = css('--down'), MU = css('--muted'), LN = css('--line'), FG = css('--fg'), AC = css('--accent');
+  const prep = cv => { const r = devicePixelRatio || 1, W = cv.clientWidth, H = cv.height / 1; cv.width = W * r; cv.style.height = H + 'px'; const c = cv.getContext('2d'); c.setTransform(r, 0, 0, r, 0, 0); c.clearRect(0, 0, W, H); return [c, W, H]; };
+  // 圖一
+  { const cv = $('cv1'); cv.height = 230; const [c, W, H] = prep(cv), padL = 54, padR = 54, top = 12, bot = 22, n = ds.length, bw = (W - padL - padR) / n;
+    const v = ds.map(d => netOI(d, w)), px = ds.map(d => X.px[d] && X.px[d].TX ? X.px[d].TX[0] : null);
+    const vm = Math.max(1, ...v.filter(x => x != null).map(Math.abs)), y0 = top + (H - top - bot) / 2, ys = (H - top - bot) / 2 / vm;
+    c.strokeStyle = LN; c.beginPath(); c.moveTo(padL, y0 + .5); c.lineTo(W - padR, y0 + .5); c.stroke();
+    v.forEach((x, i) => { if (x == null) return; c.fillStyle = x >= 0 ? UP : DN; c.globalAlpha = i === n - 1 ? 1 : .55; c.fillRect(padL + i * bw + bw * .15, x >= 0 ? y0 - x * ys : y0, bw * .7, Math.abs(x) * ys); });
+    c.globalAlpha = 1; c.font = '11px IBM Plex Mono, monospace'; c.fillStyle = MU; c.textAlign = 'right'; c.fillText(sg(Math.round(vm)), padL - 4, top + 8); c.fillText(sg(-Math.round(vm)), padL - 4, H - bot); c.fillText('0', padL - 4, y0 + 4);
+    const pv = px.filter(x => x != null); if (pv.length > 1){ const lo = Math.min(...pv), hi = Math.max(...pv), sy = x => top + (hi - x) / ((hi - lo) || 1) * (H - top - bot);
+      c.strokeStyle = AC; c.lineWidth = 1.8; c.beginPath(); let st = false; px.forEach((x, i) => { if (x == null) return; const X0 = padL + (i + .5) * bw; if (!st){ c.moveTo(X0, sy(x)); st = true; } else c.lineTo(X0, sy(x)); }); c.stroke();
+      c.fillStyle = AC; c.textAlign = 'left'; c.fillText(fmt(hi), W - padR + 4, top + 8); c.fillText(fmt(lo), W - padR + 4, H - bot); }
+    c.fillStyle = MU; c.textAlign = 'center'; for (let i = 0; i < n; i += Math.max(1, Math.round(n / 6))) c.fillText(md(ds[i]), padL + (i + .5) * bw, H - 6); }
+  // 圖二
+  { const cv = $('cv2'); cv.height = 140; const [c, W, H] = prep(cv), padL = 54, padR = 54, top = 8, bot = 18, n = ds.length, bw = (W - padL - padR) / n;
+    const v = ds.map(d => spotNet(d, w)), vm = Math.max(1, ...v.filter(x => x != null).map(Math.abs)), y0 = top + (H - top - bot) / 2, ys = (H - top - bot) / 2 / vm;
+    c.strokeStyle = LN; c.beginPath(); c.moveTo(padL, y0 + .5); c.lineTo(W - padR, y0 + .5); c.stroke();
+    v.forEach((x, i) => { if (x == null) return; c.fillStyle = x >= 0 ? UP : DN; c.globalAlpha = i === n - 1 ? 1 : .55; c.fillRect(padL + i * bw + bw * .15, x >= 0 ? y0 - x * ys : y0, bw * .7, Math.abs(x) * ys); });
+    c.globalAlpha = 1; c.font = '11px IBM Plex Mono, monospace'; c.fillStyle = MU; c.textAlign = 'right'; c.fillText(sg(Math.round(vm)) + '億', padL - 4, top + 8); c.fillText(sg(-Math.round(vm)), padL - 4, H - bot + 2); }
+}
+addEventListener('resize', () => X && drawCharts());
+fetch('data/fx/fx.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(j => {
+  X = j; DAYS = Object.keys(j.day).sort(); ALLK = [...new Set([...DAYS, ...Object.keys(j.night)])].sort();
+  if (!DAYS.length) throw new Error('沒有資料');
+  sel = DAYS[DAYS.length - 1];
+  $('day').innerHTML = DAYS.slice().reverse().map(d => '<option value="' + d + '">' + d.replace(/-/g, '/') + '</option>').join('');
+  $('upd').textContent = '更新 ' + j.updated.slice(5, 16).replace('T', ' ');
+  if (j.status && j.status !== 'ok') $('warn').innerHTML = '<div class="warn">這次更新沒抓完（' + j.status + '），下一次會補上。</div>';
+  render();
+}).catch(e => { $('upd').textContent = '讀不到資料：' + e.message; });
+</script>
+</body>
+</html>
