@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d1016">
 <title>戰神看盤</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest-zs.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="戰神看盤">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
@@ -225,6 +229,17 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 .ordl input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 .dfoot button{border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:7px 12px;font-size:13px}
 .dfoot button.danger{color:#f2b3ad}
+/* FinMind 憑證框 */
+.tokbox{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0 8px;padding:9px 12px;border:1px solid var(--accent);border-radius:9px;background:var(--panel)}
+.tokbox label{font-weight:600;font-size:13px;white-space:nowrap}
+.tokbox input{flex:1 1 220px;min-width:0;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:8px 10px;font:14px var(--mono);color:var(--fg)}
+.tokbox button{border:1px solid var(--line2);background:var(--panel2);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--fg);cursor:pointer;white-space:nowrap}
+.tokbox button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.tokbox .st{font-size:12.5px;color:var(--muted)} .tokbox .st.ok{color:var(--down)} .tokbox .st.bad{color:var(--up)}
+.tokbox a{font-size:12.5px;color:var(--accent);text-decoration:none;white-space:nowrap}
+.tokbox.compact{border-color:var(--line);padding:6px 12px}
+.tokbox.compact input,.tokbox.compact #tokEye,.tokbox.compact #tokSave,.tokbox.compact a{display:none}
+.tokbox:not(.compact) #tokEdit{display:none}
 /* 回測 */
 .bt-set{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;font-size:13px}
 @media (max-width:560px){.bt-set{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -259,7 +274,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 22:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 23:30</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -267,6 +282,16 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     </form>
     <datalist id="symList"></datalist>
   </header>
+
+  <div class="tokbox" id="tokBox">
+    <label for="tokIn">FinMind 憑證</label>
+    <input type="password" id="tokIn" placeholder="貼上你的 FinMind api token" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="button" id="tokEye">顯示</button>
+    <button type="button" class="pri" id="tokSave">儲存</button>
+    <button type="button" id="tokEdit">修改憑證</button>
+    <span class="st" id="tokState"></span>
+    <a href="https://finmindtrade.com/analysis/#/account/user" target="_blank" rel="noopener">申請／查看憑證</a>
+  </div>
 
   <div class="bar">
     <div class="chips" id="presets">
@@ -6637,6 +6662,33 @@ document.getElementById('togFav').onclick = () => {
   for (const [k, , , setv] of FAV_MAIN) setv(set.has(k));
   UI.favOnly = true; saveUI(); syncToolbar(); recompute(); schedule();
 };
+/* ───────── FinMind 憑證框：存在這台裝置（App、瀏覽器各自分開） ───────── */
+function tokSaveAll(t){
+  UI.token = t; saveUI();
+  try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch (e){}
+  try { localStorage.setItem('zsite.token', t); } catch (e){}
+}
+async function tokCheck(){
+  const st = document.getElementById('tokState'), t = getToken();
+  if (!t){ st.className = 'st bad'; st.textContent = '還沒有憑證：貼上後按儲存才能抓資料'; return; }
+  st.className = 'st'; st.textContent = '檢查中…';
+  try {
+    const r = await fetch('https://api.web.finmindtrade.com/v2/user_info?' + new URLSearchParams({ token:t }), { cache:'no-store' });
+    const j = await r.json();
+    if (j && j.user_count != null){ st.className = 'st ok'; st.textContent = '✓ 憑證有效' + (j.user_id ? '（' + j.user_id + '）' : '') + '・本小時已用 ' + Number(j.user_count).toLocaleString() + '／' + Number(j.api_request_limit_hour || j.api_request_limit || 0).toLocaleString(); }
+    else { st.className = 'st bad'; st.textContent = '憑證無效或過期，請重新貼上'; document.getElementById('tokBox').classList.remove('compact'); }
+  } catch (e){ st.className = 'st'; st.textContent = '已存好（目前無法連線檢查）'; }
+}
+(() => {
+  const box = document.getElementById('tokBox'), inp = document.getElementById('tokIn');
+  inp.value = getToken(); if (getToken()) box.classList.add('compact');
+  document.getElementById('tokEye').onclick = e => { const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; e.target.textContent = show ? '隱藏' : '顯示'; };
+  document.getElementById('tokEdit').onclick = () => { box.classList.remove('compact'); inp.focus(); };
+  const save = () => { const t = inp.value.trim().replace(/^token[=:]\s*/i, ''); tokSaveAll(t); inp.value = t; if (t) box.classList.add('compact'); tokCheck(); if (t) loadSymbol(UI.symbol, true); };
+  document.getElementById('tokSave').onclick = save;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); save(); } });
+  setTimeout(tokCheck, 1500);
+})();
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
