@@ -1,6 +1,6 @@
-10-31 21:33:45 fetched days 0
-10-31 21:33:48 vwb 1953 stocks 164 need more history 600 days
-10-31 21:33:58 bbot 1953 stocks 961 with long history
-10-31 21:34:01 jgn 188 stocks with signal in last 20 days
-10-31 21:34:10 lx 1222 stocks with 龍穴 in last 20 days
-10-31 21:34:16 build 1922 stocks 335 days backtest {'quietMa20': 692, 'bullNew': 2650, 'break60': 6387, 'bottom': 225, 'pullback': 15031, 'firstVol': 236}
+10-31 21:43:10 fetched days 0
+10-31 21:43:14 vwb 1953 stocks 164 need more history 600 days
+10-31 21:43:23 bbot 1953 stocks 961 with long history
+10-31 21:43:26 jgn 188 stocks with signal in last 20 days
+10-31 21:43:46 lx 1529 stocks; long none/close/ohlc [777, 752, 0]
+10-31 21:43:51 build 1922 stocks 335 days backtest {'quietMa20': 692, 'bullNew': 2650, 'break60': 6387, 'bottom': 225, 'pullback': 15031, 'firstVol': 236}
