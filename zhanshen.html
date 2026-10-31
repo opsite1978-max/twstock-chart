@@ -259,7 +259,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 16:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 17:30</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -1396,11 +1396,12 @@ SCHEMA.camo = { tab:'宇宙動能', title:'宇宙動能（CAMO，照你提供的
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
 ]};
-SCHEMA.so = { tab:'超級震盪', title:'超級震盪（自行研發）。【想法】單一震盪指標（隨機指標、相對強弱、布林位置…）只看一個面向，雜訊大；而且各指標的「80」「20」在不同股票意思不一樣。所以把八個彼此互補的量價狀態，各自換成「在全市場約 1,370 檔、近兩年所有交易日裡排第幾百分位」，再平均、平滑 3 天，最後再換一次全市場百分位。結果是固定 0～100：5 代表「歷史上只有 5% 的股票日比現在更弱」，每檔股票、每個時期意思都一樣。【八個面向】①20 日位置：收盤在 20 日高低區間的位置；②60 日位置；③布林位置：離 20 日均線幾個標準差；④強弱指數（14 日）；⑤5 日動能：5 日報酬除以波動；⑥主動買賣力：近 10 天主買減主賣佔量比例，在 60 天內的高低位置；⑦K 棒收盤位置：近 3 根下影線減上影線（佔當天振幅）；⑧離 60 日高點多遠。【研究過程】先用迴歸、梯度提升樹直接預測未來 20 天，結果換一段時間就失效（單一變數和未來的相關只有 0.02～0.06，模型學到的關係會翻轉），所以不用複雜模型，改用「等權平均全市場百分位」這種最不會過度配適的作法；而且所有比較都用兩段時間互相驗證。【回測】全市場、分四段時間（2025/1～6 大跌、2025/7～12、2026/1～5 多頭盤整、2026/6～9），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 16%／11%／11%／13%、守住 44%／32%／32%／31%。【底】＝近 10 根曾低於 5、連 2 根往上、收盤突破前一根高點：命中 72%／44%／42%／60%、守住 83%／48%／44%／63%。【底★】＝轉上那天主動買盤佔六成以上，或前 10 根內有「機會來臨」（收盤低於 5 日線 4%、5 日線又低於 10 日線 4%）：底★和底★★合計命中 81%／51%／50%／66%、守住 92%／54%／51%／68%，20 天後平均 +10.9%／+0.5%／+2.3%／+5.5%。【底★★】＝主動買盤佔六成以上，而且（有機會來臨，或近 10 根八個面向裡至少 6 個同時在全市場最低 10%）：命中 83%／57%／52%／79%、守住 91%／62%／48%／82%，20 天後平均 +11.6%／+0.5%／+0.5%／+6.9%。這是目前所有副圖裡，在多頭盤整那兩段命中最高的底部訊號（其他指標多半 36%～45%）。【頂】＝近 10 根曾高於 95、連 2 根往下、收盤跌破前一根低點：命中 46%／44%／38%／50%。【頂★】＝頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 56%／49%／45%／63%、守住 55%／49%／45%／63%。【提醒】多頭盤整時底的 20 天後平均只有 0%～2%，代表「抓得到低點、但反彈不一定大」；百分位表用 2024/11～2026/10 全市場資料算好固定在程式裡。', groups:[
+SCHEMA.so = { tab:'超級震盪', title:'超級震盪（自行研發）。【想法】單一震盪指標（隨機指標、相對強弱、布林位置…）只看一個面向，雜訊大；而且各指標的「80」「20」在不同股票意思不一樣。所以把八個彼此互補的量價狀態，各自換成「在全市場約 1,370 檔、近兩年所有交易日裡排第幾百分位」，再平均、平滑 3 天，最後再換一次全市場百分位。結果是固定 0～100：5 代表「歷史上只有 5% 的股票日比現在更弱」，每檔股票、每個時期意思都一樣。【八個面向】①20 日位置：收盤在 20 日高低區間的位置；②60 日位置；③布林位置：離 20 日均線幾個標準差；④強弱指數（14 日）；⑤5 日動能：5 日報酬除以波動；⑥主動買賣力：近 10 天主買減主賣佔量比例，在 60 天內的高低位置；⑦K 棒收盤位置：近 3 根下影線減上影線（佔當天振幅）；⑧離 60 日高點多遠。【研究過程】先用迴歸、梯度提升樹直接預測未來 20 天，結果換一段時間就失效（單一變數和未來的相關只有 0.02～0.06，模型學到的關係會翻轉），所以不用複雜模型，改用「等權平均全市場百分位」這種最不會過度配適的作法；而且所有比較都用兩段時間互相驗證。【回測】全市場、分四段時間（2025/1～6 大跌、2025/7～12、2026/1～5 多頭盤整、2026/6～9），「命中」＝訊號落在大低點（大高點）後 5 天內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 16%／11%／11%／13%、守住 44%／32%／32%／31%。【底】＝近 10 根曾低於 5、連 2 根往上、收盤突破前一根高點：命中 72%／44%／42%／60%、守住 83%／48%／44%／63%。【底★】＝轉上那天主動買盤佔六成以上，或前 10 根內有「機會來臨」（收盤低於 5 日線 4%、5 日線又低於 10 日線 4%）：底★和底★★合計命中 81%／51%／50%／66%、守住 92%／54%／51%／68%，20 天後平均 +10.9%／+0.5%／+2.3%／+5.5%。【底★★】＝主動買盤佔六成以上，而且（有機會來臨，或近 10 根八個面向裡至少 6 個同時在全市場最低 10%）：命中 83%／57%／52%／79%、守住 91%／62%／48%／82%，20 天後平均 +11.6%／+0.5%／+0.5%／+6.9%。這是目前所有副圖裡，在多頭盤整那兩段命中最高的底部訊號（其他指標多半 36%～45%）。【頂】＝近 10 根曾高於 95、連 2 根往下、收盤跌破前一根低點：命中 46%／44%／38%／50%。【頂★】＝頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍：命中 56%／49%／45%／63%、守住 55%／49%／45%／63%。【再優化測試】改用個股自己的動態上下界當門檻（過去 120 根的 10%），多頭盤整那兩段命中反而從 44%／42% 掉到 39% 左右；平滑改成 2 或 5 天、第 1 根轉上就標、不要求收過前高、上穿 5 或 10 才標，都沒有比現在的規則在四段時間都更好，所以維持全市場固定門檻 5／95。個股動態上中下界可在設定打開當參考。【提醒】多頭盤整時底的 20 天後平均只有 0%～2%，代表「抓得到低點、但反彈不一定大」；百分位表用 2024/11～2026/10 全市場資料算好固定在程式裡。', groups:[
   { name:'區間與顯示', items:[
     {k:'lo', l:'極度超賣（低於）', t:'float', d:5, min:1, max:30, step:1},
     {k:'hi', l:'極度超買（高於）', t:'float', d:95, min:70, max:99, step:1},
     {k:'showCnt', l:'八維共振柱（幾個面向同時極端）', t:'bool', d:true},
+    {k:'showBand', l:'個股自己的動態上中下界（過去 120 根 90%／50%／10%，只當參考）', t:'bool', d:false},
     {k:'showDetail', l:'說明列列出八個面向的百分位（手機直立時不顯示）', t:'bool', d:true}
   ]},
   { name:'訊號', items:[
@@ -3210,7 +3211,8 @@ function calcSO(B, p){
       if (p.mainTop && star) main.push({ i, text:'超級頂★', col:p.cTop });
     }
   }
-  return { S, P, cntL, cntH, dtc0, tag, ev, sig, main };
+  const LB = rollPct(S, 120, 0.1), MB = rollPct(S, 120, 0.5), UB = rollPct(S, 120, 0.9);
+  return { S, P, cntL, cntH, dtc0, LB, MB, UB, tag, ev, sig, main };
 }
 
 function calcLBB(B, p){
@@ -5088,9 +5090,16 @@ function drawSO(p, i0, i1, ci){
   const band = (a, b2, col) => { const ya = S.y(a), yb = S.y(b2); ctx.fillStyle = col; ctx.fillRect(0, Math.min(ya, yb), W, Math.abs(ya - yb)); };
   const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
   const lab = (v, t, col, base) => { ctx.font = '600 10.5px "Noto Sans TC", sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.textBaseline = base; ctx.fillText(t, 4, S.y(v) + (base === 'top' ? 2 : -2)); };
-  band(hi, 100, rgba(q.cHigh, 82)); band(80, hi, rgba(q.cHigh, 94)); band(0, lo, rgba(q.cLow, 80)); band(lo, 20, rgba(q.cLow, 94));
-  hl(100, rgba(CC.axis, 70), [2, 4]); hl(hi, rgba(q.cHigh, 45), [4, 3]); hl(80, rgba(q.cHigh, 72), [1, 3]); hl(50, rgba(CC.axis, 55), [1, 4]); hl(20, rgba(q.cLow, 72), [1, 3]); hl(lo, rgba(q.cLow, 45), [4, 3]); hl(0, rgba(CC.axis, 70), [2, 4]);
-  lab(100, '極度超買', rgba(q.cHigh, 30), 'top'); lab(0, '極度超賣', rgba(q.cLow, 30), 'bottom');
+  band(hi, 100, rgba(q.cHigh, 76)); band(80, hi, rgba(q.cHigh, 90)); band(0, lo, rgba(q.cLow, 74)); band(lo, 20, rgba(q.cHigh === q.cLow ? q.cLow : q.cLow, 90));
+  const ln = (v, col, w, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  ln(100, rgba(CC.axis, 65), 1, [2, 4]); ln(0, rgba(CC.axis, 65), 1, [2, 4]);
+  ln(hi, rgba(q.cHigh, 10), 1.8, []); ln(80, rgba(q.cHigh, 30), 1.3, [6, 4]);
+  ln(50, rgba(UI.theme === 'light' ? '#2a3140' : '#c9d1dc', 35), 1.4, []);
+  ln(20, rgba(q.cLow, 30), 1.3, [6, 4]); ln(lo, rgba(q.cLow, 10), 1.8, []);
+  if (q.showBand){ strokeSeries(i => r.UB[i], () => rgba('#b388ff', 25), i0, i1, 1.3, [4, 3]); strokeSeries(i => r.MB[i], () => rgba('#b388ff', 40), i0, i1, 1.1, [1, 3]); strokeSeries(i => r.LB[i], () => rgba('#b388ff', 25), i0, i1, 1.3, [4, 3]); }
+  { ctx.font = '600 10.5px "Noto Sans TC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    const used = []; const tl = (v, t, col) => { const y = S.y(v) - 2; if (y < p.top + (narrow ? 52 : 36) || y > p.top + p.h - 4 || used.some(u => Math.abs(u - y) < 12)) return; used.push(y); ctx.fillStyle = col; ctx.fillText(t, 4, y); };
+    tl(hi, '極度超買 ' + hi, rgba(q.cHigh, 5)); tl(lo, '極度超賣 ' + lo, rgba(q.cLow, 5)); tl(50, '中線 50', rgba(UI.theme === 'light' ? '#2a3140' : '#c9d1dc', 20)); tl(80, '超買 80', rgba(q.cHigh, 25)); tl(20, '超賣 20', rgba(q.cLow, 25)); }
   // 八維共振柱：超賣面向數從 0 往上、超買面向數從 100 往下（8 個全部＝32）
   if (q.showCnt) for (let i = i0; i <= i1; i++){ const x = X(i) - bw / 2;
     if (r.cntL[i]){ const h = r.cntL[i] * 4; ctx.fillStyle = rgba(q.cLow, r.cntL[i] >= 6 ? 35 : 70); ctx.fillRect(x, S.y(h), bw, S.y(0) - S.y(h)); }
@@ -5101,8 +5110,9 @@ function drawSO(p, i0, i1, ci){
   strokeSeries(i => r.S[i], i => r.S[i] > 80 ? q.cHigh : r.S[i] < 20 ? q.cLow : lc, i0, i1, 2.6);
   visibleMarkers(r.ev, i0, i1);
   ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = CC.axis; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  for (const v of [0, 20, 50, 80, 100]) ctx.fillText(String(v), W + 6, S.y(v));
-  const lv = r.S[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv > 80 ? q.cHigh : lv < 20 ? q.cLow : '#5d6676', '#fff', v => fmtNum(v, 0));
+  for (const v of [0, 20, 80, 100]) ctx.fillText(String(v), W + 6, S.y(v));
+  axisTag(hi, q.cHigh, '#fff', v => fmtNum(v, 0)); axisTag(50, '#5d6676', '#fff', v => fmtNum(v, 0)); axisTag(lo, q.cLow, '#fff', v => fmtNum(v, 0));
+  const lv = r.S[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv > 80 ? q.cHigh : lv < 20 ? q.cLow : (UI.theme === 'light' ? '#2a3140' : '#c9d1dc'), lv >= 20 && lv <= 80 && UI.theme !== 'light' ? '#000' : '#fff', v => fmtNum(v, 0));
   const v = r.S[ci];
   const zone = v > hi ? ['極度超買', q.cHigh] : v >= 80 ? ['超買', q.cHigh] : v < lo ? ['極度超賣', q.cLow] : v <= 20 ? ['超賣', q.cLow] : ['中性', CC.axis];
   const parts = [['超級震盪', CC.axis], [fmtNum(v, 0), lc], zone];
