@@ -165,9 +165,43 @@ def build():
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     print('summary', len(rows), 'stocks', len(days), 'days', out['from'], '~', out['latest'], flush=True)
 
+HIST = os.path.join(ROOT, 'data', 'insti', 'hist')
+
+def cmd_backfill(start, end, budget=6600):
+    """一次性補抓舊的法人買賣超（回測用）→ data/insti/hist/<日期>.json，不會被每天的清理刪掉。
+    只抓 data/price/days 裡有的交易日。"""
+    os.makedirs(HIST, exist_ok=True)
+    pdays = sorted(fn[:10] for fn in os.listdir(os.path.join(ROOT, 'data', 'price', 'days')) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+    want = universe(); t0 = time.time(); got = 0
+    for key in pdays:
+        if key < start or key > end or os.path.exists(os.path.join(HIST, key + '.json')) or os.path.exists(os.path.join(DAYS, key + '.json')):
+            continue
+        if time.time() - t0 > budget:
+            print('time budget reached', flush=True); break
+        d = datetime.date.fromisoformat(key)
+        try:
+            a, b = fetch_twse(d), fetch_tpex(d)
+        except Exception as e:
+            print('FAIL', key, e, flush=True); continue
+        if a is None or b is None:
+            print(key, 'missing', 'twse' if a is None else '', 'tpex' if b is None else '', flush=True)
+            if a is None and b is None: continue
+        rows = {}
+        for src in (a or {}, b or {}):
+            for code, v in src.items():
+                if want is None or code in want:
+                    rows[code] = v
+        with open(os.path.join(HIST, key + '.json'), 'w', encoding='utf-8') as f:
+            json.dump({'d': key, 'r': rows}, f, separators=(',', ':'))
+        got += 1
+        if got % 20 == 0: print(key, 'stocks', len(rows), 'done', got, flush=True)
+    print('backfill fetched', got, flush=True)
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     if a[0] == 'update':
         cmd_update()
     elif a[0] == 'build':
         build()
+    elif a[0] == 'backfill':
+        cmd_backfill(a[1], a[2])

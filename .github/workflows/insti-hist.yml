@@ -1,0 +1,38 @@
+name: 法人買賣超歷史補抓（回測用，一次性）
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: '從哪天開始（YYYY-MM-DD）'
+        default: '2024-05-13'
+      end:
+        description: '到哪天'
+        default: '2026-07-19'
+permissions:
+  contents: write
+concurrency:
+  group: insti-hist
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    steps:
+      - uses: actions/checkout@v4
+      - name: 補抓證交所、櫃買中心三大法人買賣超（每天兩次查詢，慢慢抓）
+        run: python3 scripts/insti_scrape.py backfill ${{ github.event.inputs.start }} ${{ github.event.inputs.end }}
+      - name: 存回專案
+        if: always()
+        run: |
+          mkdir -p /tmp/keep && cp -r data/insti/hist /tmp/keep/ 2>/dev/null || exit 0
+          git config user.name "insti-bot"; git config user.email "insti-bot@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            mkdir -p data/insti/hist && cp -r /tmp/keep/hist/. data/insti/hist/
+            git add data/insti/hist
+            if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+            git commit -qm "法人買賣超歷史 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            git push -q origin HEAD:main && exit 0
+            sleep $((RANDOM % 10 + 5))
+          done
+          exit 1
