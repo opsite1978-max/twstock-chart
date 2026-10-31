@@ -55,24 +55,25 @@ def compact(rows, cut):
     rows = [r for r in rows if r.get('close') and r['date'] <= cut]
     if not rows:
         return None
-    w, m = [], []     # [鍵, 開, 高, 低, 收]
+    w, m = [], []     # [鍵, 開, 高, 低, 收, 張數]
     for r in rows:
         c = r['close']; o = r.get('open') or c; h = r.get('max') or c; l = r.get('min') or c
+        v = round((r.get('Trading_Volume') or 0) / 1000)
         for arr, k in ((w, monday(r['date'])), (m, r['date'][:7])):
             if arr and arr[-1][0] == k:
-                x = arr[-1]; x[2] = max(x[2], h); x[3] = min(x[3], l); x[4] = c
+                x = arr[-1]; x[2] = max(x[2], h); x[3] = min(x[3], l); x[4] = c; x[5] += v
             else:
-                arr.append([k, o, h, l, c])
+                arr.append([k, o, h, l, c, v])
     d = rows[-KEEP_DAILY:]
     col = lambda a, j: [x[j] for x in a]
     return {'d0': d[0]['date'], 'dd': [r['date'] for r in d], 'd': [r['close'] for r in d],
-            'w0': w[0][0], 'w': col(w, 4), 'wk': col(w, 0), 'wo': col(w, 1), 'wh': col(w, 2), 'wl': col(w, 3),
-            'm0': m[0][0], 'm': col(m, 4), 'mk': col(m, 0), 'mo': col(m, 1), 'mh': col(m, 2), 'ml': col(m, 3)}
+            'w0': w[0][0], 'w': col(w, 4), 'wk': col(w, 0), 'wo': col(w, 1), 'wh': col(w, 2), 'wl': col(w, 3), 'wv': col(w, 5),
+            'm0': m[0][0], 'm': col(m, 4), 'mk': col(m, 0), 'mo': col(m, 1), 'mh': col(m, 2), 'ml': col(m, 3), 'mv': col(m, 5)}
 
 def has_ohlc(c):
     try:
         L = json.load(open(os.path.join(LONG, c + '.json'), encoding='utf-8'))
-        return 'wh' in L or not L.get('w')
+        return 'wv' in L or not L.get('w')
     except Exception:
         return False
 

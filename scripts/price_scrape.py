@@ -423,15 +423,18 @@ def roll_long(old_files):
                 L.update({'d0': dd, 'dd': [], 'd': [], 'w0': _monday(dd), 'w': [], 'wk': [], 'm0': dd[:7], 'm': [], 'mk': []})
             L['dd'].append(dd); L['d'].append(r[3])
             wk, mo = _monday(dd), dd[:7]
-            o, h, l = r[0] or r[3], r[1] or r[3], r[2] or r[3]
-            for K, C_, O_, H_, L_, key in (('wk', 'w', 'wo', 'wh', 'wl', wk), ('mk', 'm', 'mo', 'mh', 'ml', mo)):
+            o, h, l, v = r[0] or r[3], r[1] or r[3], r[2] or r[3], r[4] or 0
+            for K, C_, O_, H_, L_, V_, key in (('wk', 'w', 'wo', 'wh', 'wl', 'wv', wk), ('mk', 'm', 'mo', 'mh', 'ml', 'mv', mo)):
                 ohlc = H_ in L and len(L[H_]) == len(L[K])
+                vol = V_ in L and len(L[V_]) == len(L[K])
                 if L[K] and L[K][-1] == key:
                     L[C_][-1] = r[3]
                     if ohlc: L[H_][-1] = max(L[H_][-1], h); L[L_][-1] = min(L[L_][-1], l)
+                    if vol: L[V_][-1] += v
                 else:
                     L[K].append(key); L[C_].append(r[3])
                     if ohlc: L[O_].append(o); L[H_].append(h); L[L_].append(l)
+                    if vol: L[V_].append(v)
             L['cut'] = dd; changed = True
         if changed:
             L['dd'], L['d'] = L['dd'][-KEEP_DAILY:], L['d'][-KEEP_DAILY:]

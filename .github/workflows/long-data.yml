@@ -29,7 +29,7 @@ jobs:
               p = os.path.join(d, c + '.json')
               if not os.path.exists(p): return True
               try:
-                  L = json.load(open(p, encoding='utf-8')); return 'wh' not in L and bool(L.get('w'))
+                  L = json.load(open(p, encoding='utf-8')); return 'wv' not in L and bool(L.get('w'))
               except Exception: return True
           left = sum(1 for s in u if need(s['code']))
           print('left=%d' % left)
