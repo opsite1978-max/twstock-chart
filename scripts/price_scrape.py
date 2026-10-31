@@ -5,6 +5,7 @@
 另算戰神看盤主圖 VWB PRO 通道（全市場） → data/price/vwb.json（戰神選股用）
 另算布林大底（日／週／月，接 data/price/long 的長期收盤） → data/price/bbot.json（布林大底選股用）
 另算尋龍底龍穴能量 → data/price/lx.json（尋龍底選股用）
+另算起漲訊號 → data/price/qz.json（起漲選股用）
 在 GitHub Actions 上執行，只用標準函式庫。
 
   python3 scripts/price_scrape.py update     補抓缺少的交易日，然後 build
@@ -236,6 +237,8 @@ def build():
     build_jgn(days_all, info)
     try: build_lx(days_all, info)
     except Exception as ex: log('lx failed', ex)
+    try: build_qz(days_all, info)
+    except Exception as ex: log('qz failed', ex)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -742,6 +745,67 @@ def build_lx(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('lx', len(rows), 'stocks; long none/close/ohlc', nl)
 
+# ───────── 起漲選股（橫盤後帶量站上季線；全市場回測挑出的品質條件） ─────────
+QZ_LOOK = 30          # 列出最近 30 個交易日內的起漲訊號
+
+def build_qz(days, info):
+    dates = [d['d'] for d in days]
+    if not dates:
+        return
+    codes = sorted(set(c for d in days[-3:] for c in d['r']))
+    rows = []
+    for c in codes:
+        O, H, L, C, V, D = [], [], [], [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3] and r[1] and r[2]:
+                O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(float(r[4] or 0)); D.append(d['d'])
+        n = len(C)
+        if n < 130 or D[-1] != dates[-1] or len(c) != 4 or c.startswith('0'):
+            continue
+        m20, m60 = rolling_mean(C, 20), rolling_mean(C, 60)
+        v5, v20, v60 = rolling_mean(V, 5), rolling_mean(V, 20), rolling_mean(V, 60)
+        sig = None; last = -99
+        for i in range(max(70, n - QZ_LOOK - 1), n):
+            if m60[i] is None or v60[i - 1] is None or i - last <= 20:
+                continue
+            if not (C[i] > m60[i] and C[i] > m20[i] and C[i - 1] <= m60[i - 1] * 1.03 and V[i] >= 2 * v20[i - 1] and V[i] > v60[i - 1]):
+                continue
+            gain = C[i] / C[i - 1] - 1
+            cpos = (C[i] - L[i]) / (H[i] - L[i]) if H[i] > L[i] else 1.0
+            vx = V[i] / v20[i - 1] if v20[i - 1] else 99
+            rng40 = max(H[i - 40:i]) / min(L[i - 40:i]) - 1
+            to250 = C[i] / max(H[max(0, i - 250):i]) - 1
+            if gain >= 0.06 and cpos >= 0.85 and vx <= 7 and rng40 >= 0.15 and to250 >= -0.25 and v20[i] >= 200:   # 網頁預設只看距一年高點 21% 內
+                last = i; sig = (i, gain, vx, to250, rng40)
+        if not sig:
+            continue
+        i, gain, vx, to250, rng40 = sig
+        # 起漲之後的狀態：續漲中／回測季線中／回測後再起（第二買點）／跌破季線（失效）
+        state, sec, touched = '續漲中', '', False
+        for k in range(i + 1, n):
+            if C[k] < m60[k] * 0.97:
+                state = '跌破季線'; break
+            if not sec and k - i >= 3 and L[k] <= m60[k] * 1.03:
+                touched = True; state = '回測季線中'
+            if touched and not sec and C[k] > max(H[k - 3:k]) and V[k] > v5[k - 1]:
+                state = '回測後再起'; sec = D[k]
+            elif sec:
+                state = '回測後再起'
+        u = info.get(c, {})
+        rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+                     round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(v20[-1]),
+                     D[i], n - 1 - i, C[i], round((C[-1] / C[i] - 1) * 100, 2), round(gain * 100, 1), round(vx, 1),
+                     round(to250 * 100, 1), round((C[-1] / m60[-1] - 1) * 100, 1), round((C[-1] / m20[-1] - 1) * 100, 1),
+                     state, sec, round(max(H[i:]) / C[i] * 100 - 100, 1)])
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'look': QZ_LOOK,
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'sigDate', 'ago', 'sigC', 'since', 'sigUp', 'volX',
+                    'to250', 'd60', 'd20', 'state', 'sec', 'maxUp'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'qz.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('qz', len(rows), 'stocks with 起漲 in last', QZ_LOOK, 'days')
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     os.makedirs(OUT, exist_ok=True)
@@ -757,6 +821,10 @@ if __name__ == '__main__':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
         build_jgn([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
+    elif a[0] == 'qz':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_qz([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'lx':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
