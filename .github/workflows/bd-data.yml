@@ -1,0 +1,43 @@
+name: 神奇波段選股（60 分、4 小時、日週月）
+on:
+  schedule:
+    - cron: '7 2,3,4,5 * * 1-5'    # 台灣時間 10:07、11:07、12:07、13:07（盤中更新 60 分、4 小時）
+    - cron: '50 5 * * 1-5'         # 13:50 收盤後
+  workflow_run:
+    workflows: ['股價成交量與技術選股更新']
+    types: [completed]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/bd_scan.js', '.github/workflows/bd-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: bd-data
+  cancel-in-progress: false
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 跑戰神看盤的神奇波段（全市場五個週期）
+        run: |
+          npm i --no-save --no-package-lock acorn@8.12.1 >/dev/null
+          node scripts/bd_scan.js
+          cp data/price/bd.json /tmp/bd.json
+      - name: 存回專案
+        run: |
+          git config user.name "bd-bot"; git config user.email "bd-bot@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/bd.json data/price/bd.json
+            git add data/price/bd.json
+            if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+            git commit -qm "神奇波段選股 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            git push -q origin HEAD:main && exit 0
+            sleep $((RANDOM % 10 + 5))
+          done
+          exit 1
