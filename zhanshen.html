@@ -274,7 +274,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 23:20</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 23:15</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -4662,24 +4662,30 @@ function drawBD(p, i0, i1, ci){
   gridAndAxis(0);
   const W = plotW(), K = v => () => v;
   const hl = (v, col, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
-  if (q.showFixed){ hl(20, rgba(CC.axis, 65), [2, 4]); hl(80, rgba(CC.axis, 65), [2, 4]); }
+  const bc = UI.theme === 'light' && q.cBand === '#b388ff' ? '#7c4dff' : q.cBand;      // 白底時改深紫，上下界才看得清楚
+  const ln = (v, col, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); };
+  if (q.showFixed){ ln(20, rgba(CC.axis, 55), 1); ln(80, rgba(CC.axis, 55), 1); }
+  ln(50, rgba(UI.theme === 'light' ? '#2a3140' : '#c9d1dc', 45), 1.2);
   if (q.showBand){
-    fillBetween(i => r.UB[i], i => Math.max(r.UB[i], r.K[i]), () => rgba(q.cBand, 70), i0, i1);
-    fillBetween(i => Math.min(r.LB[i], r.K[i]), i => r.LB[i], () => rgba(q.cBand, 70), i0, i1);
-    strokeSeries(i => r.UB[i], () => rgba(q.cBand, 30), i0, i1, 1.2, [5, 4]);
-    strokeSeries(i => r.LB[i], () => rgba(q.cBand, 30), i0, i1, 1.2, [5, 4]);
+    fillBetween(i => r.UB[i], i => Math.max(r.UB[i], r.K[i]), () => rgba(bc, 55), i0, i1);
+    fillBetween(i => Math.min(r.LB[i], r.K[i]), i => r.LB[i], () => rgba(bc, 55), i0, i1);
+    strokeSeries(i => r.UB[i], () => bc, i0, i1, 2.2);
+    strokeSeries(i => r.LB[i], () => bc, i0, i1, 2.2);
   }
   // 短波線和訊號線之間：在上紅、在下綠
   fillBetween(i => r.K[i], i => r.Sg[i], i => rgba(r.K[i] >= r.Sg[i] ? q.cUp : q.cDn, 55), i0, i1);
   if (q.showLong) strokeSeries(i => r.D3[i], i => r.D3[i] >= r.D3[i - 1] ? q.cLongUp : q.cLongDn, i0, i1, 3);
   strokeSeries(i => r.Sg[i], () => rgba(CC.axis, 20), i0, i1, 1);
-  strokeSeries(i => r.K[i], i => r.K[i] >= r.Sg[i] ? q.cUp : q.cDn, i0, i1, 2);
+  strokeSeries(i => r.K[i], i => r.K[i] >= r.Sg[i] ? q.cUp : q.cDn, i0, i1, 2.4);
   visibleMarkers(r.ev, i0, i1);
+  const ub = r.UB[B.n - 1], lb = r.LB[B.n - 1];
+  if (q.showBand){ if (!isNaN(ub)) axisTag(ub, bc, '#fff', v => fmtNum(v, 0)); if (!isNaN(lb)) axisTag(lb, bc, '#fff', v => fmtNum(v, 0)); }
   const lv = r.K[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= r.Sg[B.n - 1] ? q.cUp : q.cDn, '#fff', v => fmtNum(v, 0));
   const k = r.K[ci], zone = !isNaN(r.UB[ci]) && k > r.UB[ci] ? '高於上界' : !isNaN(r.LB[ci]) && k < r.LB[ci] ? '低於下界' : '';
   const parts = [['神奇波段', CC.axis], ['短波 ' + fmtNum(k, 1), k >= r.Sg[ci] ? q.cUp : q.cDn], [k >= r.Sg[ci] ? '短波在上' : '短波在下', CC.axis]];
   if (q.showLong) parts.push(['長波 ' + fmtNum(r.D3[ci], 1) + (ci > 0 ? (r.D3[ci] >= r.D3[ci - 1] ? ' 往上' : ' 往下') : ''), ci > 0 && r.D3[ci] >= r.D3[ci - 1] ? q.cLongUp : q.cLongDn]);
-  if (zone) parts.push([zone, q.cBand]);
+  if (q.showBand && !isNaN(r.UB[ci]) && plotW() >= 620) parts.push(['上界 ' + fmtNum(r.UB[ci], 0) + '・下界 ' + fmtNum(r.LB[ci], 0), bc]);
+  if (zone) parts.push([zone, bc]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
 }
