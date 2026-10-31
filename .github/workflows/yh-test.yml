@@ -1,0 +1,12 @@
+name: 測試 Yahoo 分 K（暫時）
+on:
+  workflow_dispatch:
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 測試
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: node scripts/yh_test.js 2>&1 | sed "s/$FINMIND_TOKEN/***/g" | tee out.txt; echo "::notice::$(tail -3 out.txt | tr '\n' ' ' | cut -c1-900)"
