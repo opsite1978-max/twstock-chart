@@ -1,0 +1,37 @@
+name: 尋底選股（日週月）
+on:
+  workflow_run:
+    workflows: ['股價成交量與技術選股更新', '布林大底、尋龍底長期價格（FinMind 分批）']
+    types: [completed]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/bottom_scan.js', 'scripts/zs_engine.js', '.github/workflows/bottom-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: bottom-data
+  cancel-in-progress: false
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 跑戰神看盤的底部指標（全市場日／週／月）
+        run: |
+          npm i --no-save --no-package-lock acorn@8.12.1 >/dev/null
+          node scripts/bottom_scan.js
+      - name: 存回專案
+        run: |
+          git add data/price/bottom.json
+          if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
+          git config user.name "bottom-bot"; git config user.email "bottom-bot@users.noreply.github.com"; git commit -qm "尋底選股 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          ok=0
+          for i in 1 2 3 4 5; do
+            if out=$(git pull --rebase origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi
+            echo "第 $i 次推送失敗：$out"; git rebase --abort 2>/dev/null || true; sleep $((RANDOM % 10 + 5))
+          done
+          if [ $ok != 1 ]; then echo "::error::推送失敗：$(echo "$out" | tail -5 | tr '\n' ' ')"; exit 1; fi
