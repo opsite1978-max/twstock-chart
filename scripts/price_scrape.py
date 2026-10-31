@@ -4,6 +4,7 @@
 並計算技術面選股指標與策略回測 → data/price/screen.json
 另算戰神看盤主圖 VWB PRO 通道（全市場） → data/price/vwb.json（戰神選股用）
 另算布林大底（日／週／月，接 data/price/long 的長期收盤） → data/price/bbot.json（布林大底選股用）
+另算尋龍底龍穴能量 → data/price/lx.json（尋龍底選股用）
 在 GitHub Actions 上執行，只用標準函式庫。
 
   python3 scripts/price_scrape.py update     補抓缺少的交易日，然後 build
@@ -233,6 +234,8 @@ def build():
     build_vwb(days_all, info)
     build_bbot(days_all, info)
     build_jgn(days_all, info)
+    try: build_lx(days_all, info)
+    except Exception as ex: log('lx failed', ex)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -564,6 +567,135 @@ def build_jgn(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('jgn', len(rows), 'stocks with signal in last', JGN_LOOK, 'days')
 
+# ───────── 尋龍底（和網頁 calcLX 同一套算法） ─────────
+LX_LOOK = 20      # 只列最近 20 根內有龍穴（或龍穴剛結束）的股票
+
+def _roll_ext(a, n, big):
+    """TDX HHV/LLV：視窗不滿也照算（和網頁 hhv/llv 一樣），big=True 取最大"""
+    from collections import deque
+    q = deque(); out = [0.0] * len(a)
+    for i, x in enumerate(a):
+        while q and ((a[q[-1]] <= x) if big else (a[q[-1]] >= x)):
+            q.pop()
+        q.append(i)
+        if q[0] <= i - n:
+            q.popleft()
+        out[i] = a[q[0]]
+    return out
+
+def _sma_strict(a, n):
+    out = [None] * len(a); s = 0.0; bad = 0
+    for i, x in enumerate(a):
+        if x is None: bad += 1
+        else: s += x
+        if i >= n:
+            y = a[i - n]
+            if y is None: bad -= 1
+            else: s -= y
+        if i >= n - 1 and bad == 0:
+            out[i] = s / n
+    return out
+
+def _tdx_sma(a, N, M):
+    out = [None] * len(a); y = None
+    for i, x in enumerate(a):
+        if x is None: out[i] = y; continue
+        y = x if y is None else (M * x + (N - M) * y) / N; out[i] = y
+    return out
+
+def lx_calc(O, H, L, C, buy_min=0.25):
+    n = len(C)
+    hv = lambda a, N: _roll_ext(a, N, True)
+    lv = lambda a, N: _roll_ext(a, N, False)
+    V1, V2, V3 = _sma_strict(hv(H, 485), 17), _sma_strict(hv(H, 222), 17), _sma_strict(hv(H, 96), 17)
+    V4, V5, V6 = _sma_strict(lv(L, 485), 17), _sma_strict(lv(L, 222), 17), _sma_strict(lv(L, 96), 17)
+    def comb(w):
+        o = [None] * n
+        for i in range(n):
+            v = (V4[i], V5[i], V6[i], V1[i], V2[i], V3[i])
+            if None not in v: o[i] = sum(a * b for a, b in zip(v, w)) / 6
+        return o
+    V7 = _sma_strict(comb((.96, .96, .96, .558, .558, .558)), 17)
+    V8 = _sma_strict(comb((1.25, 1.23, 1.2, .55, .55, .65)), 17)
+    V9 = _sma_strict(comb((1.3, 1.3, 1.3, .68, .68, .68)), 17)
+    ta = [None if None in (V7[i], V8[i], V9[i]) else (V7[i] * 3 + V8[i] * 2 + V9[i]) / 6 * 1.738 for i in range(n)]
+    VB = _sma_strict(ta, 17)
+    dA = [None] + [abs(L[i] - L[i - 1]) for i in range(1, n)]
+    dU = [None] + [max(L[i] - L[i - 1], 0.0) for i in range(1, n)]
+    sa, su = _tdx_sma(dA, 3, 1), _tdx_sma(dU, 3, 1)
+    vf0 = []
+    for i in range(n):
+        ve = sa[i] / su[i] * 100 if su[i] is not None and su[i] > 0 else 0.0
+        vf0.append(ve * 10 if VB[i] is not None and C[i] * 1.35 <= VB[i] else ve / 10)
+    VF = _sma_strict(vf0, 3)
+    V10 = lv(L, 30)
+    VFz = [(-1e300 if x is None else x) for x in VF]
+    V11 = hv(VFz, 30)
+    sraw = []
+    for i in range(n):
+        if L[i] <= V10[i]:
+            sraw.append(None if VF[i] is None or V11[i] <= -1e299 else (VF[i] + V11[i] * 2) / 2)
+        else:
+            sraw.append(0.0)
+    SS = [0.0 if (x is None or x < 1e-6) else x for x in _sma_strict(sraw, 3)]
+    m5, m10 = rolling_mean(C, 5), rolling_mean(C, 10)
+    sigs = []; lb = lend = lch = ldd = -99
+    H20 = hv(H, 20)
+    for i in range(1, n):
+        if SS[i] == 0 and SS[i - 1] > 0: lend = i
+        j = i - 1
+        if m10[j] is not None and C[j] and m5[j] and (m5[j] - C[j]) / C[j] > 0.04 and (m10[j] - m5[j]) / m5[j] > 0.04: lch = i
+        if C[i] < 0.85 * H20[i]: ldd = i
+        if i - lend < 3 and C[i] > H[i - 1] and i - lb > 10:
+            lb = i
+            dtc = (C[i] - O[i]) / (2 * (H[i] - L[i]) + abs(C[i] - O[i]) + 0.0003)
+            ch = i - lch < 10
+            sigs.append((i, 2 if ch and dtc > buy_min else 1 if (ch or i - ldd < 10) else 0))
+    return SS, sigs
+
+def build_lx(days, info):
+    dates = [d['d'] for d in days]
+    if not dates:
+        return
+    codes = sorted(set(c for d in days[-3:] for c in d['r']))
+    rows = []
+    for c in codes:
+        O, H, L, C, V, D = [], [], [], [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3] and r[1] and r[2]:
+                O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
+        n = len(C)
+        if n < 120 or D[-1] != dates[-1]:
+            continue
+        SS, sigs = lx_calc(O, H, L, C)
+        # 最近一段龍穴（能量 > 0 的連續區間）
+        e = n
+        while e > 0 and SS[e - 1] == 0 and n - e <= LX_LOOK: e -= 1
+        if e == 0 or SS[e - 1] == 0:
+            continue
+        b = e - 1
+        while b > 0 and SS[b - 1] > 0: b -= 1
+        pk = max(SS[b:e]); pki = b + SS[b:e].index(pk)
+        ended = -1 if e == n else n - 1 - e          # -1＝龍穴還在進行；0＝今天剛結束
+        sg = [x for x in sigs if x[0] >= b]
+        si, st = (sg[-1] if sg else (None, None))
+        v20 = sum(V[-20:]) / 20
+        u = info.get(c, {})
+        rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+                     round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(v20), round(V[-1] / v20, 2) if v20 else 0,
+                     round(pk), round(SS[-1]), D[pki], ended, e - b,
+                     st, (n - 1 - si) if si is not None else None, D[si] if si is not None else '',
+                     round((C[-1] / C[si] - 1) * 100, 2) if si is not None else None,
+                     round((C[-1] / max(H[-60:]) - 1) * 100, 1)])
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'look': LX_LOOK,
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'vr', 'pk', 'ss', 'pkDate', 'ended', 'len',
+                    'sig', 'sigAgo', 'sigDate', 'since', 'dd60'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'lx.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('lx', len(rows), 'stocks with 龍穴 in last', LX_LOOK, 'days')
+
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
     os.makedirs(OUT, exist_ok=True)
@@ -579,6 +711,10 @@ if __name__ == '__main__':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
         build_jgn([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
+    elif a[0] == 'lx':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_lx([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'vwb':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))

@@ -274,8 +274,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 23:30</span></div>
-    <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 21:50</span></div>
+    <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
@@ -6641,7 +6641,7 @@ var favInit = false;
 function favApply(){
   if (!FAV_MAIN) return;
   // 只看常用時，新加的指標預設不打開（不影響盤面）
-  if (!favInit){ favInit = true; if (UI.favOnly && Array.isArray(UI.fav)){ const st = new Set(UI.fav); let ch = false; for (const pp of PANES) if (UI[pp.flag] && !st.has(pp.id)){ UI[pp.flag] = false; ch = true; } if (ch){ saveUI(); setTimeout(() => { recompute(); schedule(); }, 0); } } }
+  if (!favInit){ favInit = true; if (UI.favOnly && Array.isArray(UI.fav)){ const st = new Set(UI.fav); let ch = false; for (const pp of PANES) if (UI[pp.flag] && !st.has(pp.id) && pp.id !== URL_ON){ UI[pp.flag] = false; ch = true; } if (ch){ saveUI(); setTimeout(() => { recompute(); schedule(); }, 0); } } }
   const on = !!UI.favOnly && Array.isArray(UI.fav), set = new Set(UI.fav || []);
   for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.hidden = on && !set.has(pp.id) && !UI[pp.flag]; }
   for (const [k, id, isOn] of FAV_MAIN){ const b = document.getElementById(id); if (b) b.hidden = on && !set.has(k) && !isOn(); }
@@ -7153,11 +7153,13 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.ge
 window.addEventListener('resize', () => { if (!document.getElementById('btModal').hidden && BTRES) btDrawEq(BTRES); });
 
 /* ═════════════ boot ═════════════ */
+var URL_ON = new URLSearchParams(location.search).get('on') || '';
 buildTabs(); buildBody(); applyTheme();
 RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' };
 recompute();
 setMsg('載入中… 先以範例資料顯示。', 'ok');
 const qs = new URLSearchParams(location.search).get('s');
+if (URL_ON){ const pp = PANES.find(x => x.id === URL_ON); if (pp && !UI[pp.flag]){ UI[pp.flag] = true; recompute(); syncToolbar(); } }
 loadSymbol((qs && qs.trim()) || UI.symbol || '2330');
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
