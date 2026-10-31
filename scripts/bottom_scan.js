@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- 尋底選股：全市場日／週／月 K，跑戰神看盤裡回測最穩的 8 個底部指標，數最近幾根內有幾個同時出底部訊號。
+ 尋底選股：全市場日／週／月 K，每個週期用各自回測最穩的底部指標，數最近幾根內有幾個同時出底部訊號。
  指標程式碼直接從 zhanshen.html 取出來跑（scripts/zs_engine.js），和看盤畫面一模一樣。
  資料：data/price/days（每日行情）＋ data/price/long（2000 年起的週／月開高低收量），不用 FinMind 額度。
    node scripts/bottom_scan.js   → data/price/bottom.json
@@ -9,12 +9,23 @@ const fs = require('fs'), path = require('path'), os = require('os'), cp = requi
 const ROOT = path.join(__dirname, '..');
 const DAYS = path.join(ROOT, 'data', 'price', 'days'), LONG = path.join(ROOT, 'data', 'price', 'long');
 const OUT = path.join(ROOT, 'data', 'price', 'bottom.json');
-// A 組：全市場回測（2025/1～2026/9，日 K 抱 20 天）四個半年裡至少三個贏過隨便挑一天的底部訊號 → 計分
-const A = { sy:['底★'], cd:['起漲★'], zx:['入市', '見底', '底', '機會'], hm:['黑馬★'], cci:['底'], lx:['真龍★★', '尋龍底★'], ls:['機會'], km:['底'] };
-// B 組：只有兩個半年贏，列出來參考、不計分
-const Bg = { so:['底★★', '底★'], wl:['底★'], ym:['底'], vo:['底★'], camo:['底★'], bbot:['進入大底區'], xg:['反轉訊號'] };
-const LOOK = { d:10, w:4, m:3 };
-const KEYS = [...Object.keys(A), ...Object.keys(Bg)], FN = Object.fromEntries(KEYS.map(k => [k, 'calc' + k.toUpperCase()]));
+// 每個週期各自回測挑指標（日 K 有效的到週 K 幾乎沒用，所以分開挑）
+// 日 K：2025/1～2026/9 全市場、抱 20 天，四個半年至少三個贏過隨便挑一天
+// 週 K：2010～2026 全市場、抱 8 週，四個時期都贏過隨便挑一週
+// 月 K：2010～2026 全市場、抱 6 個月，四個時期都贏過隨便挑一個月（樣本較少）
+const A = {
+  d:{ sy:['底★'], cd:['起漲★'], zx:['入市', '見底', '底', '機會'], hm:['黑馬★'], cci:['底'], lx:['真龍★★', '尋龍底★'], ls:['機會'], km:['底'] },
+  w:{ zx:['入市'], bbot:['進入大底區'] },
+  m:{ valley:['谷底'], wl:['底★'], zx:['入市'] }
+};
+// 參考（列出來、不計分）：只在部分時期有效
+const Bg = {
+  d:{ so:['底★★', '底★'], wl:['底★'], ym:['底'], vo:['底★'], camo:['底★'], bbot:['進入大底區'], xg:['反轉訊號'] },
+  w:{ md:['底背離'], lbb:['BUY'], camo:['底★'], zx:['機會'], ym:['底'] },
+  m:{ hm:['黑馬★'], lx:['真龍★★', '尋龍底★'], zx:['見底'], fz:['轉折底'] }
+};
+const LOOK = { d:10, w:8, m:6 };
+const KEYS = [...new Set(['d', 'w', 'm'].flatMap(t => [...Object.keys(A[t]), ...Object.keys(Bg[t])]))], FN = Object.fromEntries(KEYS.map(k => [k, 'calc' + k.toUpperCase()]));
 
 function loadDays(){
   const files = fs.readdirSync(DAYS).filter(f => /^\d{4}-\d\d-\d\d\.json$/.test(f)).sort();
@@ -40,15 +51,18 @@ function aggregate(rows, keyf, LP, pre){
   }
   return { K, o, h, l, c, v };
 }
-function scan(M, B, look){
-  M.__setB(B); const n = B.n, a = [], b = [];
-  for (const k of KEYS){
-    const want = A[k] || Bg[k]; let r;
+function scan(M, B, t){
+  M.__setB(B); const n = B.n, a = [], b = [], look = LOOK[t], GA = A[t], GB = Bg[t];
+  for (const k of new Set([...Object.keys(GA), ...Object.keys(GB)])){
+    const want = [...(GA[k] || []), ...(GB[k] || [])]; let r;
     try { r = M[FN[k]](B, M.defaults(k)); } catch (e){ continue; }
     if (!r || r.error) continue;
     let best = null;
-    for (const s of r.sig || []){ const t = String(s.text).split('（')[0]; const ago = n - 1 - s.i; if (ago < look && want.includes(t) && (!best || ago < best[2])) best = [k, t, ago]; }
-    if (best) (A[k] ? a : b).push(best);
+    let bestB = null;
+    for (const s of r.sig || []){ const x = String(s.text).split('（')[0]; const ago = n - 1 - s.i; if (ago >= look) continue;
+      if (GA[k] && GA[k].includes(x)){ if (!best || ago < best[2]) best = [k, x, ago]; }
+      else if (GB[k] && GB[k].includes(x)){ if (!bestB || ago < bestB[2]) bestB = [k, x, ago]; } }
+    if (best) a.push(best); if (bestB) b.push(bestB);
   }
   return [a.length, a, b];
 }
@@ -64,11 +78,11 @@ function worker(shard, NS){
     let LP = null, lf = 0; const p = path.join(LONG, code + '.json');
     if (fs.existsSync(p)){ try { LP = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e){} lf = !LP ? 0 : !LP.w ? 3 : LP.wv ? 3 : LP.wh ? 2 : 1; }
     const res = {};
-    if (rows.length >= 120) res.d = scan(M, mkB('D', rows.map(x => x[0]), rows.map(x => x[1][0] || x[1][3]), rows.map(x => x[1][1]), rows.map(x => x[1][2]), rows.map(x => x[1][3]), rows.map(x => x[1][4] || 0)), LOOK.d);
+    if (rows.length >= 120) res.d = scan(M, mkB('D', rows.map(x => x[0]), rows.map(x => x[1][0] || x[1][3]), rows.map(x => x[1][1]), rows.map(x => x[1][2]), rows.map(x => x[1][3]), rows.map(x => x[1][4] || 0)), 'd');
     for (const [t, keyf] of [['w', monday], ['m', d => d.slice(0, 7)]]){
       if (lf !== 3) { res[t] = null; continue; }        // 長期資料還沒補完（缺高低點或成交量）→ 先不算，避免和看盤不一樣
       const g = aggregate(rows, keyf, LP, t);
-      res[t] = g.c.length >= 60 ? scan(M, mkB(t.toUpperCase(), g.K, g.o, g.h, g.l, g.c, g.v), LOOK[t]) : null;
+      res[t] = g.c.length >= 60 ? scan(M, mkB(t.toUpperCase(), g.K, g.o, g.h, g.l, g.c, g.v), t) : null;
     }
     const C = rows.map(x => x[1][3]), V = rows.map(x => x[1][4] || 0), n = C.length;
     out.push([code, C[n - 1], n > 1 ? Math.round((C[n - 1] / C[n - 2] - 1) * 1e4) / 100 : 0, Math.round(V.slice(-20).reduce((s, x) => s + x, 0) / Math.min(20, n)), lf, res.d || null, res.w || null, res.m || null]);
@@ -92,8 +106,8 @@ function main(){
     const out = { updated:now, latest:files[files.length - 1].slice(0, 10), look:LOOK, A, B:Bg, names, long:st,
       cols:['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'lf', 'd', 'w', 'm'], rows };
     fs.writeFileSync(OUT, JSON.stringify(out));
-    const cnt = t => rows.filter(r => r[{ d:8, w:9, m:10 }[t]] && r[{ d:8, w:9, m:10 }[t]][0] >= 3).length;
-    console.log('bottom', rows.length, 'stocks; score>=3 d/w/m', cnt('d'), cnt('w'), cnt('m'), 'in', Math.round((Date.now() - t0) / 1000) + 's');
+    const REC = { d:3, w:1, m:2 }, cnt = t => rows.filter(r => r[{ d:8, w:9, m:10 }[t]] && r[{ d:8, w:9, m:10 }[t]][0] >= REC[t]).length;
+    console.log('bottom', rows.length, 'stocks; 達建議門檻 d/w/m', cnt('d'), cnt('w'), cnt('m'), 'in', Math.round((Date.now() - t0) / 1000) + 's');
     process.exit(0);
   }).catch(e => { console.error(e); process.exit(1); });
 }

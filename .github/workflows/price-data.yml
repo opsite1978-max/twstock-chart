@@ -27,7 +27,7 @@ jobs:
           git config user.name "price-bot"; git config user.email "price-bot@users.noreply.github.com"; git commit -qm "股價與技術選股更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
           for i in 1 2 3 4 5; do
-            if out=$(git pull --rebase origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi
+            if out=$(git pull --rebase -X theirs origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi
             echo "第 $i 次推送失敗：$out"; git rebase --abort 2>/dev/null || true; sleep $((RANDOM % 10 + 5))
           done
           if [ $ok != 1 ]; then echo "::error::股價資料推送失敗：$(echo "$out" | tail -5 | tr '\n' ' ')"; exit 1; fi
