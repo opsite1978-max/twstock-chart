@@ -101,7 +101,12 @@ select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padd
 .ago{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--sans)}
 .rng{display:inline-flex;align-items:center;gap:6px}
 .rng input{width:96px}
-@media (max-width:600px){#t th:nth-child(2),#t td:nth-child(2){display:none}}
+.cellv{display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.25}
+.cellv .sub{font-size:11px;color:var(--muted);font-family:var(--sans);white-space:nowrap}
+.cellv.off{opacity:.38}
+.cellv .sub .s2{color:#ff9100;font-weight:700} .cellv .sub .s1{color:var(--up);font-weight:600} .cellv .sub .on{color:#e6b800} .cellv .sub .end{color:var(--up)}
+
+@media (max-width:600px){#t th:nth-child(2),#t td:nth-child(2),#t th:nth-child(4),#t td:nth-child(4),#t th:nth-child(8),#t td:nth-child(8),#t th:nth-child(9),#t td:nth-child(9),#t th:nth-child(10),#t td:nth-child(10){display:none} #t th:nth-child(3),#t td:nth-child(3){display:none} td,th{padding:6px 4px} td.l .code{display:block;margin:0;font-size:11px} table{font-size:12px} .cellv .sub{font-size:10px;white-space:normal;text-align:right;max-width:78px} .cellv .sub *{white-space:nowrap}}
 </style>
 </head>
 <body>
@@ -112,13 +117,17 @@ select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padd
 </header>
 <div class="card">
   <div class="row" style="margin-bottom:10px">
+    <span class="lbl">週期</span>
+    <div class="seg" id="tf"><button data-v="d" aria-pressed="true">日 K</button><button data-v="w" aria-pressed="false">週 K</button><button data-v="m" aria-pressed="false">月 K</button><button data-v="any" aria-pressed="false">任一週期</button><button data-v="all" aria-pressed="false">三週期都符合</button></div>
+  </div>
+  <div class="row" style="margin-bottom:10px">
     <span class="lbl">龍穴能量（峰值）</span>
     <div class="seg" id="band"><button data-v="30000-50000" aria-pressed="true">3～5 萬</button><button data-v="10000-30000" aria-pressed="false">1～3 萬</button><button data-v="50000-" aria-pressed="false">5 萬以上</button><button data-v="5000-" aria-pressed="false">5 千以上</button></div>
     <span class="rng"><input type="number" id="lo" min="0" step="1000" value="30000"><span class="lbl">～</span><input type="number" id="hi" min="0" step="1000" value="50000" placeholder="不限"></span>
   </div>
   <div class="row" style="margin-bottom:10px">
     <span class="lbl">狀態</span>
-    <div class="seg" id="st"><button data-v="all" aria-pressed="true">全部</button><button data-v="on" aria-pressed="false">龍穴進行中</button><button data-v="end" aria-pressed="false">剛結束（3 天內）</button><button data-v="sig" aria-pressed="false">已出訊號</button><button data-v="star" aria-pressed="false">只看 ★</button></div>
+    <div class="seg" id="st"><button data-v="all" aria-pressed="true">全部</button><button data-v="on" aria-pressed="false">龍穴進行中</button><button data-v="end" aria-pressed="false">剛結束（3 根內）</button><button data-v="sig" aria-pressed="false">已出訊號</button><button data-v="star" aria-pressed="false">只看 ★</button></div>
   </div>
   <div class="row">
     <span class="lbl">市場</span>
@@ -128,12 +137,13 @@ select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padd
     <input type="search" id="q" placeholder="篩選代號／名稱">
   </div>
 </div>
+<div id="warn" class="warn" hidden></div>
 <div class="summary"><span class="n" id="cnt">—</span><span class="muted" id="cntTxt"></span></div>
 <div class="tblwrap"><table id="t"><thead><tr>
-  <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="c">收盤</th><th data-k="chg">漲跌</th><th data-k="pk">龍穴能量峰值</th><th data-k="ss">今日能量</th><th class="l" data-k="ended">龍穴狀態</th><th class="l" data-k="sigK">訊號</th><th data-k="since">訊號後</th><th data-k="vr">量比</th><th data-k="dd60">距 60 日高</th><th data-k="v20">20 日均量</th>
+  <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="c">收盤</th><th data-k="chg">漲跌</th><th data-k="d">日 K 龍穴</th><th data-k="w">週 K 龍穴</th><th data-k="m">月 K 龍穴</th><th data-k="vr">量比</th><th data-k="dd60">距 60 日高</th><th data-k="v20">20 日均量</th>
 </tr></thead><tbody></tbody></table></div>
-<p class="note">龍穴能量＝戰神看盤副圖「尋龍底」的柱子（同一套算法，已逐檔核對過）：股價跌到 30 日低點、而且離長期價值線越遠，能量越大；黃＞5 千、綠＞1 萬、紅＞5 萬。「峰值」是最近一段龍穴裡最高的那根。龍穴結束後 3 天內收盤站上前一天高點才出訊號：<b>龍穴</b>（30 日低點守住）→<b>尋龍底★</b>（深跌後）→<b>真龍★★</b>（深跌後加上當天主動買盤強）。量比＝今天成交量÷20 日均量。資料用證交所、櫃買中心每日行情，每天收盤後約 16:40、18:40、21:40 更新，不用 FinMind 額度。點一列用戰神看盤打開並顯示尋龍底。</p>
-<p class="note">全市場回測（2025/1～2026/9，龍穴結束後出訊號買進、抱 20 天）：峰值 3～5 萬平均 +6.6%／+2.1%／−0.6%／+1.6%（四個半年），2025 年 4 月大跌那段特別好，之後和隨便挑一天買（約 +2.3%／+3.3%／+0.6%）差不多；同時有 ★ 的平均 +9.2%／+4.7%／−3.5%／+9.0%，但 2026 年樣本只有 15～22 次。所以 3～5 萬適合當「跌夠深了」的觀察名單，真正進場看有沒有出 ★。</p>
+<p class="note">每格的大數字＝那個週期最近一段龍穴的能量峰值（戰神看盤副圖「尋龍底」的柱子，同一套算法，日、週、月都逐檔核對過）；黃＞5 千、綠＞1 萬、紅＞5 萬。下面一行是狀態：<b>進行中</b>（第幾根）、<b>剛結束</b>（等收盤站上前一根高點）、或已出的訊號 <b>龍穴</b>→<b>尋龍底★</b>（深跌後）→<b>真龍★★</b>（深跌後加上主動買盤強）和出訊號後漲跌。日 K 看最近 20 根、週 K 10 根、月 K 6 根內的龍穴；不符合條件的週期顯示成淡色。週 K、月 K 都含這週、這個月到目前為止的走勢。量比＝今天成交量÷20 日均量。點一列用戰神看盤打開並顯示尋龍底。</p>
+<p class="note">全市場回測（日 K，2025/1～2026/9，龍穴結束後出訊號買進、抱 20 天）：峰值 3～5 萬平均 +6.6%／+2.1%／−0.6%／+1.6%（四個半年），2025 年 4 月大跌那段特別好，之後和隨便挑一天買（約 +2.3%／+3.3%／+0.6%）差不多；同時有 ★ 的平均 +9.2%／+4.7%／−3.5%／+9.0%，但 2026 年樣本只有 15～22 次。所以 3～5 萬適合當「跌夠深了」的觀察名單，進場看有沒有出 ★。週 K、月 K 的訊號很少，資料還不夠做回測。</p>
 </div>
 <script>
 const $ = id => document.getElementById(id);
@@ -142,49 +152,57 @@ const pxf = v => v == null ? '—' : fmt(v, v % 1 ? 2 : 0);
 const sgn = v => v > 0 ? '+' : '';
 const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
 try { const ui = JSON.parse(localStorage.getItem('zs:ui') || localStorage.getItem('zx:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
-const S = { band:'30000-50000', st:'all', mkt:'all', sortK:null, sortAsc:false, rows:[] };
-try { const p = JSON.parse(localStorage.getItem('lxscreen:prefs') || '{}'); for (const k of ['band', 'st', 'mkt']) if (p[k]) S[k] = p[k]; for (const k of ['lo', 'hi', 'minv']) if (p[k] != null) $(k).value = p[k]; } catch (e){}
-const save = () => { try { localStorage.setItem('lxscreen:prefs', JSON.stringify({ band:S.band, st:S.st, mkt:S.mkt, lo:$('lo').value, hi:$('hi').value, minv:$('minv').value })); } catch (e){} };
+const S = { tf:'d', band:'30000-50000', st:'all', mkt:'all', sortK:null, sortAsc:false, rows:[] };
+try { const p = JSON.parse(localStorage.getItem('lxscreen:prefs') || '{}'); for (const k of ['tf', 'band', 'st', 'mkt']) if (p[k] != null) S[k] = p[k]; for (const k of ['lo', 'hi', 'minv']) if (p[k] != null) $(k).value = p[k]; } catch (e){}
+const save = () => { try { localStorage.setItem('lxscreen:prefs', JSON.stringify({ tf:S.tf, band:S.band, st:S.st, mkt:S.mkt, lo:$('lo').value, hi:$('hi').value, minv:$('minv').value })); } catch (e){} };
 function seg(id, key, cb){ const el = $(id); for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[key] === b.dataset.v));
   el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); cb(b); save(); render(); }); }
-seg('band', 'band', b => { const [lo, hi] = b.dataset.v.split('-'); $('lo').value = lo; $('hi').value = hi; });
+seg('tf', 'tf', () => { S.sortK = null; }); seg('band', 'band', b => { const [lo, hi] = b.dataset.v.split('-'); $('lo').value = lo; $('hi').value = hi; });
 seg('st', 'st', () => {}); seg('mkt', 'mkt', () => {});
-for (const id of ['lo', 'hi']) $(id).addEventListener('input', () => { S.band = ''; for (const x of $('band').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === $('lo').value + '-' + $('hi').value)); save(); render(); });
+for (const id of ['lo', 'hi']) $(id).addEventListener('input', () => { S.band = $('lo').value + '-' + $('hi').value; for (const x of $('band').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === S.band)); save(); render(); });
 for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); render(); });
 $('ind').addEventListener('change', render);
 document.addEventListener('click', e => { const tr = e.target.closest('tbody tr[data-c]'); if (tr) location.href = 'zhanshen.html?s=' + encodeURIComponent(tr.dataset.c) + '&on=lx'; });
 const pkCol = v => v > 50000 ? '#ff1744' : v > 10000 ? '#00c766' : v > 5000 ? '#e6b800' : 'var(--dim)';
-const SIG = ['龍穴', '尋龍底★', '真龍★★'];
-const agoTxt = a => a === 0 ? '今天' : a + ' 天前';
-function stTxt(r){
-  if (r.ended < 0) return '<span class="tag on">進行中</span><span class="ago">第 ' + r.len + ' 天</span>';
-  if (r.sig == null && r.ended <= 2) return '<span class="tag end">剛結束</span><span class="ago">' + agoTxt(r.ended) + '・等站上前高</span>';
-  return '<span class="tag">已結束</span><span class="ago">' + agoTxt(r.ended) + '</span>';
+const SIG = ['龍穴', '尋龍底★', '真龍★★'], UNIT = { d:'天', w:'週', m:'個月' };
+const agoTxt = (a, t) => a === 0 ? (t === 'd' ? '今天' : t === 'w' ? '本週' : '本月') : a + ' ' + UNIT[t] + '前';
+function stTxt(x, t){
+  if (x.sig != null) return '<span class="s' + x.sig + '">' + SIG[x.sig] + '</span> ' + agoTxt(x.sigAgo, t) + (x.since != null ? ' <span class="' + cls(x.since) + '">' + sgn(x.since) + fmt(x.since, 1) + '%</span>' : '');
+  if (x.ended < 0) return '<span class="on">進行中</span> 第 ' + x.len + ' 根';
+  if (x.ended <= 2) return '<span class="end">剛結束</span> ' + agoTxt(x.ended, t);
+  return '結束 ' + agoTxt(x.ended, t);
+}
+function ok(r, t, lo, hi){
+  const x = r[t]; if (!x || x.pk < lo || x.pk > hi) return false;
+  return S.st === 'all' || (S.st === 'on' ? x.ended < 0 : S.st === 'end' ? x.ended >= 0 && x.ended <= 2 && x.sig == null : S.st === 'sig' ? x.sig != null : x.sig >= 1);
 }
 function render(){
   const lo = +$('lo').value || 0, hi = $('hi').value === '' ? Infinity : +$('hi').value, minv = +$('minv').value || 0, q = $('q').value.trim(), ind = $('ind').value;
-  const list = S.rows.filter(r => r.pk >= lo && r.pk <= hi && r.v20 >= minv && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && (!q || (r.code + r.name).includes(q)) &&
-    (S.st === 'all' || (S.st === 'on' ? r.ended < 0 : S.st === 'end' ? r.ended >= 0 && r.ended <= 2 : S.st === 'sig' ? r.sig != null : r.sig >= 1)));
-  const key = S.sortK || 'pk', dir = S.sortAsc ? 1 : -1;
-  list.sort((a, b) => { const x = a[key], y = b[key]; return (typeof x === 'string' ? x.localeCompare(y, 'zh-Hant') : (x ?? -1e18) - (y ?? -1e18)) * dir; });
-  const mx = Math.max(1, ...list.map(r => r.pk));
+  const tfs = S.tf === 'any' || S.tf === 'all' ? ['d', 'w', 'm'] : [S.tf];
+  const list = S.rows.filter(r => r.v20 >= minv && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && (!q || (r.code + r.name).includes(q)) &&
+    (S.tf === 'all' ? tfs.every(t => ok(r, t, lo, hi)) : tfs.some(t => ok(r, t, lo, hi))));
+  const key = S.sortK || (tfs.length === 1 ? tfs[0] : 'd'), dir = S.sortAsc ? 1 : -1;
+  const val = (r, k) => k === 'd' || k === 'w' || k === 'm' ? (r[k] ? r[k].pk : null) : r[k];
+  list.sort((a, b) => { const x = val(a, key), y = val(b, key); return (typeof x === 'string' ? x.localeCompare(y, 'zh-Hant') : (x ?? -1e18) - (y ?? -1e18)) * dir; });
   $('cnt').textContent = list.length;
-  $('cntTxt').textContent = '檔：最近 ' + (S.look || 20) + ' 天內的龍穴，能量峰值 ' + fmt(lo) + (hi === Infinity ? ' 以上' : '～' + fmt(hi)) + ({ all:'', on:'・龍穴進行中', end:'・龍穴剛結束', sig:'・已出訊號', star:'・只看 ★' })[S.st];
-  $('t').querySelector('tbody').innerHTML = list.length ? list.map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td>' +
-    '<td><span class="pk"><i style="width:' + Math.max(4, Math.round(Math.sqrt(r.pk / mx) * 54)) + 'px;background:' + pkCol(r.pk) + '"></i><b style="color:' + pkCol(r.pk) + '">' + fmt(r.pk) + '</b></span></td>' +
-    '<td class="' + (r.ss ? '' : 'muted') + '">' + (r.ss ? fmt(r.ss) : '0') + '</td><td class="l">' + stTxt(r) + '</td>' +
-    '<td class="l">' + (r.sig == null ? '<span class="muted">—</span>' : '<span class="tag' + (r.sig ? ' s' + r.sig : '') + '">' + SIG[r.sig] + '</span><span class="ago">' + agoTxt(r.sigAgo) + '</span>') + '</td>' +
-    '<td class="' + cls(r.since) + '">' + (r.since == null ? '—' : sgn(r.since) + fmt(r.since, 1) + '%') + '</td><td class="' + (r.vr >= 2 ? 'up' : '') + '">' + fmt(r.vr, 2) + '</td><td class="down">' + fmt(r.dd60, 1) + '%</td><td>' + fmt(r.v20) + '</td></tr>').join('')
-    : '<tr><td colspan="12" class="empty">目前沒有股票符合條件，可以放寬能量範圍或把 20 日均量調低</td></tr>';
+  $('cntTxt').textContent = '檔：' + { d:'日 K', w:'週 K', m:'月 K', any:'日／週／月任一週期', all:'日週月三週期都' }[S.tf] + '龍穴能量峰值 ' + fmt(lo) + (hi === Infinity ? ' 以上' : '～' + fmt(hi)) + ({ all:'', on:'・龍穴進行中', end:'・龍穴剛結束', sig:'・已出訊號', star:'・只看 ★' })[S.st];
+  const cell = (r, t) => { const x = r[t]; if (!x) return '<span class="muted">—</span>'; const on = tfs.includes(t) && ok(r, t, lo, hi);
+    return '<div class="cellv' + (on ? '' : ' off') + '"><b style="color:' + pkCol(x.pk) + '">' + fmt(x.pk) + '</b><span class="sub">' + stTxt(x, t) + '</span></div>'; };
+  $('t').querySelector('tbody').innerHTML = list.length ? list.slice(0, 600).map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td>' +
+    '<td>' + cell(r, 'd') + '</td><td>' + cell(r, 'w') + '</td><td>' + cell(r, 'm') + '</td>' +
+    '<td class="' + (r.vr >= 2 ? 'up' : '') + '">' + fmt(r.vr, 2) + '</td><td class="down">' + fmt(r.dd60, 1) + '%</td><td>' + fmt(r.v20) + '</td></tr>').join('')
+    : '<tr><td colspan="10" class="empty">目前沒有股票符合條件，可以放寬能量範圍、換週期或把 20 日均量調低</td></tr>';
   for (const th of $('t').querySelectorAll('th')){ th.removeAttribute('aria-sort'); if (th.dataset.k === key) th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending'); }
 }
-$('t').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name' || k === 'ind' || k === 'ended'; } render(); });
+$('t').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name' || k === 'ind'; } render(); });
 fetch('data/price/lx.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(d => {
-  const ci = d.cols; S.look = d.look;
-  S.rows = d.rows.map(a => { const r = Object.fromEntries(ci.map((k, i) => [k, a[i]])); r.sigK = r.sig == null ? -1 : r.sig * 100 - r.sigAgo; return r; });
+  const ci = d.cols, tc = d.tcols || ['pk', 'ss', 'pkDate', 'ended', 'len', 'sig', 'sigAgo', 'since'];
+  S.rows = d.rows.map(a => { const r = Object.fromEntries(ci.map((k, i) => [k, a[i]])); for (const t of ['d', 'w', 'm']) if (Array.isArray(r[t])) r[t] = Object.fromEntries(tc.map((k, i) => [k, r[t][i]])); else r[t] = null; return r; });
   $('upd').textContent = '資料日期 ' + d.latest.replace(/-/g, '/') + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
   const inds = [...new Set(S.rows.map(r => r.ind).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
   $('ind').innerHTML = '<option value="">全部產業（' + inds.length + '）</option>' + inds.map(x => '<option>' + x + '</option>').join('');
+  const lg = d.long || {}, tot = lg.total || 0, full = lg.ohlc || 0;
+  if (tot && full < tot){ $('warn').hidden = false; $('warn').innerHTML = '週 K、月 K 的長期高低點夜間分批補抓中（' + full + '／' + tot + ' 檔）。還沒補到的，較早的週、月 K 先用收盤代替，可能和看盤略有差異；沒有長期資料的股票沒有月 K。日 K 不受影響。'; }
   render();
 }).catch(e => { $('upd').textContent = '讀不到選股資料：' + e.message; });
 </script>

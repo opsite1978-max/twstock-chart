@@ -423,10 +423,15 @@ def roll_long(old_files):
                 L.update({'d0': dd, 'dd': [], 'd': [], 'w0': _monday(dd), 'w': [], 'wk': [], 'm0': dd[:7], 'm': [], 'mk': []})
             L['dd'].append(dd); L['d'].append(r[3])
             wk, mo = _monday(dd), dd[:7]
-            if L['wk'] and L['wk'][-1] == wk: L['w'][-1] = r[3]
-            else: L['wk'].append(wk); L['w'].append(r[3])
-            if L['mk'] and L['mk'][-1] == mo: L['m'][-1] = r[3]
-            else: L['mk'].append(mo); L['m'].append(r[3])
+            o, h, l = r[0] or r[3], r[1] or r[3], r[2] or r[3]
+            for K, C_, O_, H_, L_, key in (('wk', 'w', 'wo', 'wh', 'wl', wk), ('mk', 'm', 'mo', 'mh', 'ml', mo)):
+                ohlc = H_ in L and len(L[H_]) == len(L[K])
+                if L[K] and L[K][-1] == key:
+                    L[C_][-1] = r[3]
+                    if ohlc: L[H_][-1] = max(L[H_][-1], h); L[L_][-1] = min(L[L_][-1], l)
+                else:
+                    L[K].append(key); L[C_].append(r[3])
+                    if ohlc: L[O_].append(o); L[H_].append(h); L[L_].append(l)
             L['cut'] = dd; changed = True
         if changed:
             L['dd'], L['d'] = L['dd'][-KEEP_DAILY:], L['d'][-KEEP_DAILY:]
@@ -568,7 +573,6 @@ def build_jgn(days, info):
     log('jgn', len(rows), 'stocks with signal in last', JGN_LOOK, 'days')
 
 # ───────── 尋龍底（和網頁 calcLX 同一套算法） ─────────
-LX_LOOK = 20      # 只列最近 20 根內有龍穴（或龍穴剛結束）的股票
 
 def _roll_ext(a, n, big):
     """TDX HHV/LLV：視窗不滿也照算（和網頁 hhv/llv 一樣），big=True 取最大"""
@@ -653,12 +657,50 @@ def lx_calc(O, H, L, C, buy_min=0.25):
             sigs.append((i, 2 if ch and dtc > buy_min else 1 if (ch or i - ldd < 10) else 0))
     return SS, sigs
 
+LX_LOOKS = {'d': 20, 'w': 10, 'm': 6}     # 日 K 看最近 20 根、週 K 10 根、月 K 6 根內的龍穴
+
+def lx_summary(D, O, H, L, C, look):
+    n = len(C)
+    if n < 60:
+        return None
+    SS, sigs = lx_calc(O, H, L, C)
+    e = n
+    while e > 0 and SS[e - 1] == 0 and n - e <= look: e -= 1
+    if e == 0 or SS[e - 1] == 0:
+        return None
+    b = e - 1
+    while b > 0 and SS[b - 1] > 0: b -= 1
+    pk = max(SS[b:e]); pki = b + SS[b:e].index(pk)
+    sg = [x for x in sigs if x[0] >= b]
+    si, st = (sg[-1] if sg else (None, None))
+    return [round(pk), round(SS[-1]), D[pki], -1 if e == n else n - 1 - e, e - b,
+            st, (n - 1 - si) if si is not None else None,
+            round((C[-1] / C[si] - 1) * 100, 2) if si is not None else None]
+
+def _agg(D, O, H, L, C, keyf, LP, pre):
+    """每日 → 週／月 K；前面接 data/price/long 的長期週／月資料（有高低點就用，沒有就用收盤代替）"""
+    K, o, h, l, c = [], [], [], [], []
+    if LP and LP.get(pre):
+        kk, cc = LP[pre + 'k'], LP[pre]
+        ok = (pre + 'h') in LP and len(LP[pre + 'h']) == len(cc)
+        K, c = list(kk), list(cc)
+        o, h, l = (list(LP[pre + 'o']), list(LP[pre + 'h']), list(LP[pre + 'l'])) if ok else (list(cc), list(cc), list(cc))
+    for i in range(len(C)):
+        k = keyf(D[i])
+        if K and K[-1] == k:
+            h[-1] = max(h[-1], H[i]); l[-1] = min(l[-1], L[i]); c[-1] = C[i]
+        elif K and k < K[-1]:
+            continue
+        else:
+            K.append(k); o.append(O[i]); h.append(H[i]); l.append(L[i]); c.append(C[i])
+    return K, o, h, l, c
+
 def build_lx(days, info):
     dates = [d['d'] for d in days]
     if not dates:
         return
     codes = sorted(set(c for d in days[-3:] for c in d['r']))
-    rows = []
+    rows = []; nl = [0, 0, 0]
     for c in codes:
         O, H, L, C, V, D = [], [], [], [], [], []
         for d in days:
@@ -666,35 +708,36 @@ def build_lx(days, info):
             if r and r[3] and r[1] and r[2]:
                 O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
         n = len(C)
-        if n < 120 or D[-1] != dates[-1]:
+        if n < 60 or D[-1] != dates[-1]:
             continue
-        SS, sigs = lx_calc(O, H, L, C)
-        # 最近一段龍穴（能量 > 0 的連續區間）
-        e = n
-        while e > 0 and SS[e - 1] == 0 and n - e <= LX_LOOK: e -= 1
-        if e == 0 or SS[e - 1] == 0:
+        LP = None
+        p = os.path.join(LONG, c + '.json')
+        if os.path.exists(p):
+            try: LP = json.load(open(p, encoding='utf-8'))
+            except Exception: LP = None
+        lf = 0 if not (LP and LP.get('w')) else 2 if 'wh' in LP else 1
+        res = {'d': lx_summary(D, O, H, L, C, LX_LOOKS['d'])}
+        for t, keyf in (('w', _monday), ('m', lambda x: x[:7])):
+            K, o, h, l, cc = _agg(D, O, H, L, C, keyf, LP, t)
+            res[t] = lx_summary(K, o, h, l, cc, LX_LOOKS[t])
+        if not any(res.values()):
             continue
-        b = e - 1
-        while b > 0 and SS[b - 1] > 0: b -= 1
-        pk = max(SS[b:e]); pki = b + SS[b:e].index(pk)
-        ended = -1 if e == n else n - 1 - e          # -1＝龍穴還在進行；0＝今天剛結束
-        sg = [x for x in sigs if x[0] >= b]
-        si, st = (sg[-1] if sg else (None, None))
+        nl[lf] += 1
         v20 = sum(V[-20:]) / 20
         u = info.get(c, {})
         rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
                      round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(v20), round(V[-1] / v20, 2) if v20 else 0,
-                     round(pk), round(SS[-1]), D[pki], ended, e - b,
-                     st, (n - 1 - si) if si is not None else None, D[si] if si is not None else '',
-                     round((C[-1] / C[si] - 1) * 100, 2) if si is not None else None,
-                     round((C[-1] / max(H[-60:]) - 1) * 100, 1)])
-    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'look': LX_LOOK,
-           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'vr', 'pk', 'ss', 'pkDate', 'ended', 'len',
-                    'sig', 'sigAgo', 'sigDate', 'since', 'dd60'],
+                     round((C[-1] / max(H[-60:]) - 1) * 100, 1), lf, res['d'], res['w'], res['m']])
+    st = {}
+    try: st = json.load(open(os.path.join(LONG, '_status.json'), encoding='utf-8'))
+    except Exception: pass
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'looks': LX_LOOKS, 'long': st,
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'vr', 'dd60', 'lf', 'd', 'w', 'm'],
+           'tcols': ['pk', 'ss', 'pkDate', 'ended', 'len', 'sig', 'sigAgo', 'since'],
            'rows': rows}
     with open(os.path.join(OUT, 'lx.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
-    log('lx', len(rows), 'stocks with 龍穴 in last', LX_LOOK, 'days')
+    log('lx', len(rows), 'stocks; long none/close/ohlc', nl)
 
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']

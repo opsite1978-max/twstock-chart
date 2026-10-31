@@ -25,7 +25,13 @@ jobs:
           import json, os
           u = json.load(open('insider/universe.json', encoding='utf-8'))['stocks']
           d = 'data/price/long'
-          left = sum(1 for s in u if not os.path.exists(os.path.join(d, s['code'] + '.json')))
+          def need(c):
+              p = os.path.join(d, c + '.json')
+              if not os.path.exists(p): return True
+              try:
+                  L = json.load(open(p, encoding='utf-8')); return 'wh' not in L and bool(L.get('w'))
+              except Exception: return True
+          left = sum(1 for s in u if need(s['code']))
           print('left=%d' % left)
           PY
       - name: 向 FinMind 抓一批長期收盤（每批 270 檔）
@@ -35,11 +41,13 @@ jobs:
         run: python3 scripts/long_hist.py run ${{ github.event.inputs.batch || '270' }}
       - name: 重算布林大底選股
         if: steps.chk.outputs.left != '0'
-        run: python3 scripts/price_scrape.py bbot
+        run: |
+          python3 scripts/price_scrape.py bbot
+          python3 scripts/price_scrape.py lx
       - name: 存回專案
         if: steps.chk.outputs.left != '0'
         run: |
-          git add data/price/long data/price/bbot.json
+          git add data/price/long data/price/bbot.json data/price/lx.json
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
           git -c user.name="long-bot" -c user.email="long-bot@users.noreply.github.com" commit -qm "布林大底長期收盤 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
