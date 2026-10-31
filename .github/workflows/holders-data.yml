@@ -65,5 +65,5 @@ jobs:
           python3 scripts/holders_scrape.py build
           git add data/holders
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="holders-bot" -c user.email="holders-bot@users.noreply.github.com" commit -qm "集保股權分散資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "holders-bot"; git config user.email "holders-bot@users.noreply.github.com"; git commit -qm "集保股權分散資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done

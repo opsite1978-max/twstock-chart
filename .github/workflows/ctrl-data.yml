@@ -33,7 +33,7 @@ jobs:
         run: |
           git add data/ctrl
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="ctrl-bot" -c user.email="ctrl-bot@users.noreply.github.com" commit -qm "主力成本線更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "ctrl-bot"; git config user.email "ctrl-bot@users.noreply.github.com"; git commit -qm "主力成本線更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           git stash -u -q || true   # 其他沒要存的暫存檔先收起來，不然無法 pull --rebase
           ok=0
           for i in 1 2 3 4 5; do

@@ -28,7 +28,7 @@ jobs:
         run: |
           git add data/fx
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="fx-bot" -c user.email="fx-bot@users.noreply.github.com" commit -qm "外資期現貨資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "fx-bot"; git config user.email "fx-bot@users.noreply.github.com"; git commit -qm "外資期現貨資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
           for i in 1 2 3 4 5; do
             if git pull -q --rebase -X theirs origin main && git push -q origin HEAD:main; then ok=1; break; fi

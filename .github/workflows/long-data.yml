@@ -1,4 +1,4 @@
-name: 布林大底長期收盤（FinMind 分批）
+name: 布林大底、尋龍底長期價格（FinMind 分批）
 on:
   schedule:
     - cron: '23 16-23 * * *'   # 台灣時間 00:23～07:23 每小時一批（夜間，不跟白天看盤搶額度）
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - name: 檢查是否已經抓完
@@ -40,16 +40,16 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: python3 scripts/long_hist.py run ${{ github.event.inputs.batch || '270' }}
       - name: 重算布林大底選股
-        if: steps.chk.outputs.left != '0'
+        if: always() && steps.chk.outputs.left != '0'
         run: |
           python3 scripts/price_scrape.py bbot
           python3 scripts/price_scrape.py lx
       - name: 存回專案
-        if: steps.chk.outputs.left != '0'
+        if: always() && steps.chk.outputs.left != '0'
         run: |
           git add data/price/long data/price/bbot.json data/price/lx.json
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="long-bot" -c user.email="long-bot@users.noreply.github.com" commit -qm "布林大底長期收盤 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "long-bot"; git config user.email "long-bot@users.noreply.github.com"; git commit -qm "布林大底長期收盤 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           ok=0
           for i in 1 2 3 4 5; do
             if out=$(git pull --rebase origin main 2>&1 && git push origin HEAD:main 2>&1); then ok=1; break; fi

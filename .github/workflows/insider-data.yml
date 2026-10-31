@@ -25,7 +25,7 @@ jobs:
           fi
           git add insider/universe.json 2>/dev/null || true
           if git diff --cached --quiet; then exit 0; fi
-          git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "更新全市場股票清單"
+          git config user.name "insider-bot"; git config user.email "insider-bot@users.noreply.github.com"; git commit -qm "更新全市場股票清單"
           for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
 
   scrape:
@@ -70,5 +70,5 @@ jobs:
           python3 scripts/insider_scrape.py index
           git add data/insider
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="insider-bot" -c user.email="insider-bot@users.noreply.github.com" commit -qm "內部人申報資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "insider-bot"; git config user.email "insider-bot@users.noreply.github.com"; git commit -qm "內部人申報資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done

@@ -44,7 +44,7 @@ jobs:
           for i in 1 2 3 4 5; do
             git fetch -q origin main && git reset -q --hard origin/main && cp -r /tmp/keep/. . && git add $files
             if git diff --cached --quiet; then ok=1; break; fi
-            git -c user.name="txo-bot" -c user.email="txo-bot@users.noreply.github.com" commit -qm "台指選擇權 Gamma 曝險歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            git config user.name "txo-bot"; git config user.email "txo-bot@users.noreply.github.com"; git commit -qm "台指選擇權 Gamma 曝險歷史更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
             if git push -q origin HEAD:main; then ok=1; break; fi
             sleep $((RANDOM % 10 + 5))
           done

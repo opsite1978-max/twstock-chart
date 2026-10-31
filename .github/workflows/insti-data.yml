@@ -23,5 +23,5 @@ jobs:
         run: |
           git add data/insti
           if git diff --cached --quiet; then echo "沒有新資料"; exit 0; fi
-          git -c user.name="insti-bot" -c user.email="insti-bot@users.noreply.github.com" commit -qm "法人買賣超資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git config user.name "insti-bot"; git config user.email "insti-bot@users.noreply.github.com"; git commit -qm "法人買賣超資料更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           for i in 1 2 3 4 5; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep $((RANDOM % 10 + 5)); done
