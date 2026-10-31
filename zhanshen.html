@@ -259,7 +259,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 17:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 10/31 18:00</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -351,7 +351,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 
   <div class="chart-wrap" id="chartWrap">
     <canvas id="cv" aria-label="K 線與指標圖表"></canvas>
-    <div class="zoom">
+    <div class="zoom" id="zoomBox" hidden>
       <button id="zOut" aria-label="縮小">−</button>
       <button id="zIn" aria-label="放大">+</button>
       <button id="zAuto" class="wide" title="所有圖的價格座標恢復自動縮放">自動</button>
@@ -1459,7 +1459,7 @@ for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.
 
 const UI = Object.assign({
   symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showYM:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showJGN:true, live:true, subMarks:false, wFilter:'',
-  token:'', start:'2000-01-01', showVolume:true, scaleAll:false,
+  token:'', start:'2000-01-01', showVolume:true, scaleAll:false, showZoom:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
 if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settings') || '{}').themeName === 'light' ? 'light' : 'dark'; } catch(e){ UI.theme = 'dark'; } }
@@ -5097,9 +5097,6 @@ function drawSO(p, i0, i1, ci){
   ln(50, rgba(UI.theme === 'light' ? '#2a3140' : '#c9d1dc', 35), 1.4, []);
   ln(20, rgba(q.cLow, 30), 1.3, [6, 4]); ln(lo, rgba(q.cLow, 10), 1.8, []);
   if (q.showBand){ strokeSeries(i => r.UB[i], () => rgba('#b388ff', 25), i0, i1, 1.3, [4, 3]); strokeSeries(i => r.MB[i], () => rgba('#b388ff', 40), i0, i1, 1.1, [1, 3]); strokeSeries(i => r.LB[i], () => rgba('#b388ff', 25), i0, i1, 1.3, [4, 3]); }
-  { ctx.font = '600 10.5px "Noto Sans TC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    const used = []; const tl = (v, t, col) => { const y = S.y(v) - 2; if (y < p.top + (narrow ? 52 : 36) || y > p.top + p.h - 4 || used.some(u => Math.abs(u - y) < 12)) return; used.push(y); ctx.fillStyle = col; ctx.fillText(t, 4, y); };
-    tl(hi, '極度超買 ' + hi, rgba(q.cHigh, 5)); tl(lo, '極度超賣 ' + lo, rgba(q.cLow, 5)); tl(50, '中線 50', rgba(UI.theme === 'light' ? '#2a3140' : '#c9d1dc', 20)); tl(80, '超買 80', rgba(q.cHigh, 25)); tl(20, '超賣 20', rgba(q.cLow, 25)); }
   // 八維共振柱：超賣面向數從 0 往上、超買面向數從 100 往下（8 個全部＝32）
   if (q.showCnt) for (let i = i0; i <= i1; i++){ const x = X(i) - bw / 2;
     if (r.cntL[i]){ const h = r.cntL[i] * 4; ctx.fillStyle = rgba(q.cLow, r.cntL[i] >= 6 ? 35 : 70); ctx.fillRect(x, S.y(h), bw, S.y(0) - S.y(h)); }
@@ -6408,6 +6405,7 @@ const seg = document.getElementById('intervalSeg');
 if (NO_INTRA) for (const b of seg.querySelectorAll('button')) if (isIntra(b.dataset.v)) b.remove();
 const periodSel = document.getElementById('periodSel'), nightSeg = document.getElementById('nightSeg'), themeSeg = document.getElementById('themeSeg');
 function syncToolbar(){
+  { const zb = document.getElementById('zoomBox'); if (zb) zb.hidden = !UI.showZoom; }
   for (const b of seg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.interval));
   for (const b of themeSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === UI.theme));
   const intra = isIntra(UI.interval);
@@ -6574,12 +6572,14 @@ function appHTML(){
     '<fieldset><legend>圖表</legend>' +
     '<div class="row"><label for="a-vol">主圖底部顯示成交量</label><input type="checkbox" id="a-vol"' + (UI.showVolume ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-scale">價格座標納入 3／9 倍外通道</label><input type="checkbox" id="a-scale"' + (UI.scaleAll ? ' checked' : '') + '></div>' +
+    '<div class="row"><label for="a-zoom">圖上顯示縮放按鈕（－＋、自動、最新）</label><input type="checkbox" id="a-zoom"' + (UI.showZoom ? ' checked' : '') + '></div>' +
     '<p class="help">預設只用 K 棒與內通道決定縱軸範圍，外通道超出時會被裁切，K 棒才不會被壓扁。</p></fieldset>' +
     '<div class="dfoot"><button id="a-apply">套用並重新載入</button><button class="danger" id="a-clear">清除暫存的行情資料</button></div>';
 }
 function bindApp(){
   document.getElementById('a-vol').onchange = e => { UI.showVolume = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-scale').onchange = e => { UI.scaleAll = e.target.checked; saveUI(); schedule(); };
+  document.getElementById('a-zoom').onchange = e => { UI.showZoom = e.target.checked; saveUI(); document.getElementById('zoomBox').hidden = !UI.showZoom; };
   document.getElementById('a-adj').onchange = e => { UI.adj = e.target.checked; saveUI(); syncToolbar(); };
   document.getElementById('a-token').onchange = e => { UI.token = e.target.value.trim(); saveUI(); };
   document.getElementById('a-start').onchange = e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ UI.start = e.target.value; saveUI(); } };
