@@ -745,66 +745,98 @@ def build_lx(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('lx', len(rows), 'stocks; long none/close/ohlc', nl)
 
-# ───────── 起漲選股（橫盤後帶量站上季線；全市場回測挑出的品質條件） ─────────
+# ───────── 起漲選股 v2（全市場回測：2025 年挑條件、2026 年驗證） ─────────
 QZ_LOOK = 30          # 列出最近 30 個交易日內的起漲訊號
 
 def build_qz(days, info):
     dates = [d['d'] for d in days]
     if not dates:
         return
+    nd = len(dates); di = {d: k for k, d in enumerate(dates)}
     codes = sorted(set(c for d in days[-3:] for c in d['r']))
-    rows = []
+    S = {}
+    above = [0] * nd; cnt = [0] * nd
+    ret60 = {}            # 日期索引 → [(代號, 60 日報酬)]
+    broad = []            # (日期索引, 產業, 代號)：帶量站上季線（不管品質），算同產業共振用
     for c in codes:
-        O, H, L, C, V, D = [], [], [], [], [], []
-        for d in days:
+        if len(c) != 4 or c.startswith('0'):
+            continue
+        O, H, L, C, V, X = [], [], [], [], [], []
+        for k, d in enumerate(days):
             r = d['r'].get(c)
             if r and r[3] and r[1] and r[2]:
-                O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(float(r[4] or 0)); D.append(d['d'])
+                O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(float(r[4] or 0)); X.append(k)
         n = len(C)
-        if n < 130 or D[-1] != dates[-1] or len(c) != 4 or c.startswith('0'):
+        if n < 130 or X[-1] != nd - 1:
             continue
         m20, m60 = rolling_mean(C, 20), rolling_mean(C, 60)
         v5, v20, v60 = rolling_mean(V, 5), rolling_mean(V, 20), rolling_mean(V, 60)
-        sig = None; last = -99
-        for i in range(max(70, n - QZ_LOOK - 1), n):
-            if m60[i] is None or v60[i - 1] is None or i - last <= 20:
+        for i in range(60, n):
+            cnt[X[i]] += 1; above[X[i]] += 1 if C[i] > m60[i] else 0
+        for i in range(max(61, n - QZ_LOOK - 8), n):
+            ret60.setdefault(X[i], []).append((c, C[i] / C[i - 60] - 1))
+        last = -99; ind = info.get(c, {}).get('ind', '')
+        for i in range(max(70, n - QZ_LOOK - 30), n):
+            if i - last <= 20 or v60[i - 1] is None:
                 continue
-            if not (C[i] > m60[i] and C[i] > m20[i] and C[i - 1] <= m60[i - 1] * 1.03 and V[i] >= 2 * v20[i - 1] and V[i] > v60[i - 1]):
+            if C[i] > m60[i] and C[i] > m20[i] and C[i - 1] <= m60[i - 1] * 1.03 and V[i] >= 2 * v20[i - 1] and V[i] > v60[i - 1] and v20[i] >= 200:
+                last = i; broad.append((X[i], ind, c))
+        S[c] = (O, H, L, C, V, X, m20, m60, v5, v20, v60)
+    br = [above[k] / cnt[k] if cnt[k] else None for k in range(nd)]
+    rs = {}               # (日期索引, 代號) → 60 日報酬在全市場的百分位
+    for k, lst in ret60.items():
+        lst.sort(key=lambda x: x[1]); m = len(lst)
+        for j, (c, _) in enumerate(lst):
+            rs[(k, c)] = j / (m - 1) if m > 1 else 0.5
+    rows = []
+    for c, (O, H, L, C, V, X, m20, m60, v5, v20, v60) in S.items():
+        n = len(C); last = -99; sig = None; ind = info.get(c, {}).get('ind', '')
+        for i in range(max(70, n - QZ_LOOK - 30), n):
+            if i - last <= 20 or v60[i - 1] is None:
                 continue
+            if not (C[i] > m60[i] and C[i] > m20[i] and C[i - 1] <= m60[i - 1] * 1.03 and V[i] >= 2 * v20[i - 1] and V[i] > v60[i - 1] and v20[i] >= 200):
+                continue
+            last = i          # 20 天內已經帶量站上季線過，就不算新的起漲（和回測一樣）
             gain = C[i] / C[i - 1] - 1
             cpos = (C[i] - L[i]) / (H[i] - L[i]) if H[i] > L[i] else 1.0
             vx = V[i] / v20[i - 1] if v20[i - 1] else 99
             rng40 = max(H[i - 40:i]) / min(L[i - 40:i]) - 1
-            to250 = C[i] / max(H[max(0, i - 250):i]) - 1
-            if gain >= 0.06 and cpos >= 0.85 and vx <= 7 and rng40 >= 0.15 and to250 >= -0.25 and v20[i] >= 200:   # 網頁預設只看距一年高點 21% 內
-                last = i; sig = (i, gain, vx, to250, rng40)
-        if not sig:
+            if gain >= 0.06 and cpos >= 0.85 and vx <= 7 and rng40 >= 0.15:
+                sig = (i, gain, vx)
+        if not sig or sig[0] < n - QZ_LOOK - 1:
             continue
-        i, gain, vx, to250, rng40 = sig
-        # 起漲之後的狀態：續漲中／回測季線中／回測後再起（第二買點）／跌破季線（失效）
-        state, sec, touched = '續漲中', '', False
-        for k in range(i + 1, n):
-            if C[k] < m60[k] * 0.97:
-                state = '跌破季線'; break
-            if not sec and k - i >= 3 and L[k] <= m60[k] * 1.03:
-                touched = True; state = '回測季線中'
-            if touched and not sec and C[k] > max(H[k - 3:k]) and V[k] > v5[k - 1]:
-                state = '回測後再起'; sec = D[k]
-            elif sec:
-                state = '回測後再起'
+        i, gain, vx = sig; k = X[i]
+        to250 = C[i] / max(H[max(0, i - 250):i]) - 1
+        dry = v20[i - 1] / v60[i - 1] if v60[i - 1] else 0
+        co = sum(1 for (kk, g, cc) in broad if g == ind and ind and cc != c and k - 5 <= kk <= k)
+        r60 = rs.get((X[i - 1], c))
+        b = br[k]
+        pts = [1 if to250 >= -0.21 else 0, 1 if (b is not None and b <= 0.47) else 0, 1 if co >= 4 else 0,
+               1 if dry >= 0.62 else 0, 1 if (r60 is not None and r60 >= 0.17) else 0]
+        # 出場規則：收盤跌破起漲日低點＝停損；5 天後收盤跌破月線＝出場
+        state, outd, outp = '持有中', '', None
+        for j in range(i + 1, n):
+            if C[j] < L[i]:
+                state, outd, outp = '停損出場', dates[X[j]], C[j]; break
+            if j - i >= 5 and C[j] < m20[j]:
+                state, outd, outp = '跌破月線出場', dates[X[j]], C[j]; break
         u = info.get(c, {})
-        rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+        rows.append([c, u.get('name', ''), u.get('market', ''), ind, C[-1],
                      round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(v20[-1]),
-                     D[i], n - 1 - i, C[i], round((C[-1] / C[i] - 1) * 100, 2), round(gain * 100, 1), round(vx, 1),
-                     round(to250 * 100, 1), round((C[-1] / m60[-1] - 1) * 100, 1), round((C[-1] / m20[-1] - 1) * 100, 1),
-                     state, sec, round(max(H[i:]) / C[i] * 100 - 100, 1)])
+                     dates[k], n - 1 - i, C[i], round((C[-1] / C[i] - 1) * 100, 2), round(gain * 100, 1), round(vx, 1),
+                     sum(pts), pts, round(to250 * 100, 1), round(b * 100) if b is not None else None, co, round(dry, 2),
+                     round(r60 * 100) if r60 is not None else None, L[i], state, outd,
+                     round((outp / C[i] - 1) * 100, 1) if outp else None, round(max(H[i:]) / C[i] * 100 - 100, 1),
+                     round((C[-1] / m20[-1] - 1) * 100, 1)])
+    hist = [[dates[k], round(br[k] * 100)] for k in range(max(0, nd - 120), nd) if br[k] is not None]
     out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'look': QZ_LOOK,
+           'breadth': hist,
            'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'sigDate', 'ago', 'sigC', 'since', 'sigUp', 'volX',
-                    'to250', 'd60', 'd20', 'state', 'sec', 'maxUp'],
+                    'score', 'pts', 'to250', 'br', 'co', 'dry', 'rs', 'stop', 'state', 'outDate', 'outRet', 'maxUp', 'd20'],
            'rows': rows}
     with open(os.path.join(OUT, 'qz.json'), 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
-    log('qz', len(rows), 'stocks with 起漲 in last', QZ_LOOK, 'days')
+    log('qz', len(rows), 'stocks with 起漲 in last', QZ_LOOK, 'days; breadth', hist[-1] if hist else None)
 
 if __name__ == '__main__':
     a = sys.argv[1:] or ['update']
