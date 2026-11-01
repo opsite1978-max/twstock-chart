@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#0d1016">
 <title>戰神看盤・我的</title>
 <link rel="manifest" href="manifest-me.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-me-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-me-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -67,6 +68,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .tog[aria-pressed="true"]{color:var(--fg);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
 .tog.fav[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
 .tog[hidden],.iconbtn[hidden]{display:none}
+.iconbtn.install{align-self:center;border-color:#e8b228;color:#e8b228;font-weight:700;padding:4px 10px;font-size:12px}
 .iconbtn{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px}
 .iconbtn:hover{border-color:var(--dim)}
 .spacer{flex:1}
@@ -299,7 +301,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/01 16:20</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/02 07:40</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -7519,6 +7521,21 @@ const qs = new URLSearchParams(location.search).get('s');
 if (URL_ON){ const pp = PANES.find(x => x.id === URL_ON); if (pp && !UI[pp.flag]){ UI[pp.flag] = true; recompute(); syncToolbar(); } }
 loadSymbol((qs && qs.trim()) || UI.symbol || '2330');
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+// 安裝成第二個 App（我的戰神）：Android／電腦 Chrome 用瀏覽器的安裝視窗；iPhone 教怎麼加到主畫面
+{ const btn = document.getElementById('btnInstall'), standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent); let deferred = null;
+  if (btn && !standalone){
+    addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; btn.hidden = false; });
+    addEventListener('appinstalled', () => { btn.hidden = true; deferred = null; });
+    btn.hidden = false;      // 一律顯示：瀏覽器沒有跳安裝視窗時，按了會教怎麼手動安裝
+    btn.onclick = async () => {
+      if (deferred){ deferred.prompt(); try { await deferred.userChoice; } catch (e){} deferred = null; btn.hidden = true; return; }
+      alert(ios ? 'iPhone／iPad：請用 Safari 打開這一頁 → 按下方「分享」 → 選「加入主畫面」，名稱會是「我的戰神」（金框＋「我」字圖示）。'
+                : 'Android：按 Chrome 右上角「⋮」 → 「安裝應用程式」或「加到主畫面」 → 「安裝」，會多一個「我的戰神」（金框＋「我」字圖示），和家人的戰神看盤分開。');
+    };
+  }
+}
+
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
 </script>
 <script src="autoreload.js"></script>

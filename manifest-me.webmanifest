@@ -2,15 +2,18 @@
   "id": "./zhanshen-me.html",
   "name": "戰神看盤・我的",
   "short_name": "我的戰神",
-  "start_url": "./zhanshen-me.html",
-  "scope": "./",
+  "description": "戰神看盤・我的（自己的憑證和設定，和家人的戰神看盤分開）",
+  "start_url": "./zhanshen-me.html?app=me",
+  "scope": "./zhanshen-me.html",
   "display": "standalone",
-  "background_color": "#0d1016",
+  "orientation": "any",
+  "background_color": "#1c1008",
   "theme_color": "#0d1016",
   "lang": "zh-Hant-TW",
   "icons": [
-    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "icon-me-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
