@@ -1,6 +1,0 @@
-11-01 06:51:47 shard 0 / 6 stocks 347 weeks 51 20251107 ~ 20261030
-11-01 06:54:12 result shard 0 done requests 100 ok 100 none 0 files 2 in 146 s
-11-01 06:51:56 shard 1 / 6 stocks 367 weeks 51 20251107 ~ 20261030
-11-01 06:53:18 result shard 1 done requests 50 ok 50 none 0 files 1 in 84 s
-11-01 06:51:45 shard 3 / 6 stocks 354 weeks 51 20251107 ~ 20261030
-11-01 06:54:29 result shard 3 done requests 100 ok 100 none 0 files 2 in 165 s
