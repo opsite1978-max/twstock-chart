@@ -1,20 +1,6 @@
-11-02 00:52:24 shard 0 / 8 stocks 264 months 2023-11 ~ 2026-10
-11-02 00:52:36 result shard 0 done requests 5 ok 2 none 3 files 5 in 12 s
-11-02 00:52:25 shard 1 / 8 stocks 266 months 2023-11 ~ 2026-10
-11-02 00:52:34 result shard 1 done requests 3 ok 2 none 1 files 3 in 9 s
-11-02 00:52:24 shard 2 / 8 stocks 269 months 2023-11 ~ 2026-10
-11-02 00:53:47   retry stapap1 9906 115 09 URLError <urlopen error timed out>
-11-02 00:54:21 result shard 2 done requests 17 ok 17 none 0 files 17 in 117 s
-11-02 00:52:23 shard 3 / 8 stocks 271 months 2023-11 ~ 2026-10
-11-02 00:53:52   retry query6_1 8081 115 09 URLError <urlopen error [Errno 111] Connection refused>
-11-02 00:55:24 result shard 3 done requests 41 ok 37 none 4 files 41 in 180 s
-11-02 00:52:23 shard 4 / 8 stocks 271 months 2023-11 ~ 2026-10
-11-02 00:52:24 result shard 4 done requests 1 ok 0 none 1 files 1 in 0 s
-11-02 00:52:23 shard 5 / 8 stocks 273 months 2023-11 ~ 2026-10
-11-02 00:57:41 progress 49 ok 1 none 318 s
-11-02 01:01:09   retry query6_1 8435 115 09 HTTPError HTTP Error 502: Bad Gateway
-11-02 01:03:09 result shard 5 done requests 98 ok 97 none 1 files 98 in 645 s
-11-02 00:52:24 shard 6 / 8 stocks 267 months 2023-11 ~ 2026-10
-11-02 00:52:34 result shard 6 done requests 3 ok 2 none 1 files 3 in 10 s
-11-02 00:52:23 shard 7 / 8 stocks 272 months 2023-11 ~ 2026-10
-11-02 00:52:24 result shard 7 done requests 1 ok 0 none 1 files 1 in 0 s
+11-02 05:18:07 shard 2 / 8 stocks 269 months 2023-11 ~ 2026-10
+11-02 05:18:08 result shard 2 done requests 1 ok 0 none 1 files 1 in 1 s
+11-02 05:18:08 shard 3 / 8 stocks 271 months 2023-11 ~ 2026-10
+11-02 05:18:09 result shard 3 done requests 1 ok 0 none 1 files 1 in 0 s
+11-02 05:18:07 shard 5 / 8 stocks 273 months 2023-11 ~ 2026-10
+11-02 05:18:12 result shard 5 done requests 1 ok 1 none 0 files 1 in 5 s
