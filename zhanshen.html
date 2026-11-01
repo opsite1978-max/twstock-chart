@@ -269,12 +269,37 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 .bt-t tr.few td{opacity:.55}
 .bt-rank td:first-child{min-width:130px}
 #btModal .wm-chart canvas{height:220px;cursor:default}
+/* 自製選色盤：Android App（WebView）裡原生的顏色選擇器打不開，改用這個，手機、電腦都一樣 */
+.row input[type=color]{cursor:pointer}
+.cpk-scrim{position:fixed;inset:0;background:var(--scrim);z-index:9000}
+.cpk{position:fixed;z-index:9001;left:50%;bottom:0;transform:translateX(-50%);width:min(420px,100vw);max-height:86vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px 14px 0 0;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 30px rgba(0,0,0,.4)}
+@media (min-width:700px){.cpk{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:12px}}
+.cpk h3{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--muted)}
+.cpk-top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.cpk-prev{width:46px;height:46px;border-radius:9px;border:1px solid var(--line2);flex:none;background:conic-gradient(#ccc 25%,#fff 0 50%,#ccc 0 75%,#fff 0) 0 0/12px 12px}
+.cpk-prev i{display:block;width:100%;height:100%;border-radius:8px}
+.cpk-top input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:9px 10px;font:500 15px var(--mono);text-transform:uppercase}
+.cpk-sl{display:grid;gap:10px;margin-bottom:12px}
+.cpk-sl label{display:grid;grid-template-columns:42px 1fr;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.cpk-sl input{-webkit-appearance:none;appearance:none;width:100%;height:22px;border-radius:11px;border:1px solid var(--line2);margin:0;background:var(--g,#888)}
+.cpk-sl input::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid #222;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.cpk-sl input::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #222}
+.cpk-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-bottom:10px}
+.cpk-grid button,.cpk-rec button{aspect-ratio:1;border-radius:7px;border:1px solid rgba(128,128,128,.35);padding:0;min-height:30px}
+.cpk-grid button[aria-pressed="true"],.cpk-rec button[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
+.cpk-rec{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-bottom:12px}
+.cpk-sub{font-size:12px;color:var(--dim);margin:2px 0 6px}
+.cpk-foot{display:flex;gap:8px;justify-content:flex-end}
+.cpk-foot button{border:1px solid var(--line2);background:var(--panel2);border-radius:7px;padding:8px 16px}
+.cpk-foot .ok{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700}
+.preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.preset-row button{border:1px solid var(--line2);background:var(--panel2);border-radius:999px;padding:5px 12px;font-size:12.5px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/01 07:20</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/01 11:00</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -1880,23 +1905,28 @@ function calcTURTLE(B, p){
 const CHIP = { id:null, data:null, pend:null, err:null };
 const PARTS = [['inst', '法人', 'wInst', '#ffb74d'], ['margin', '融資', 'wMargin', '#64b5f6'], ['short', '空方', 'wShort', '#ba68c8'], ['warrant', '權證', 'wWarrant', '#f06292'], ['fut', '股期', 'wFut', '#4db6ac'], ['hold', '集保', 'wHold', '#aed581']];
 async function futCodeOf(id){
-  let c = LS.get('zs:futmap', null);
+  let c = await DSTORE.get('futmap');
   if (!c || Date.now() - c.t > 7 * 864e5){
-    const [info, fo] = await Promise.all([finmind({ dataset:'TaiwanStockInfo' }), finmind({ dataset:'TaiwanFutOptDailyInfo' })]);
+    // 股票名稱已經載入過就直接用，不再重抓一次完整的股票清單
+    if (Object.keys(NAMES).length < 1000) await loadNames().catch(() => {});
+    const haveNames = Object.keys(NAMES).length > 1000;
+    const [info, fo] = await Promise.all([haveNames ? Object.entries(NAMES).map(([stock_id, stock_name]) => ({ stock_id, stock_name })) : finmind({ dataset:'TaiwanStockInfo' }), finmind({ dataset:'TaiwanFutOptDailyInfo' })]);
     const byName = new Map();
     for (const r of fo) if (r.type === 'TaiwanFuturesDaily' && /^[A-Z]{2}F$/.test(r.code) && /期貨$/.test(r.name) && !/^小型|^微型/.test(r.name)) byName.set(r.name.replace(/期貨$/, ''), r.code);
     const m = {}; for (const r of info) if (r.stock_id && !m[r.stock_id] && byName.has(r.stock_name)) m[r.stock_id] = byName.get(r.stock_name);
-    c = { t:Date.now(), m }; LS.set('zs:futmap', c);
+    c = { t:Date.now(), m }; DSTORE.put('futmap', c);
   }
   return c.m[id] || null;
 }
 async function chipLoad(id){
-  const key = 'zs:chip:' + id, c = LS.get(key, null);
+  const key = 'chip:' + id, c = await DSTORE.get(key);
   if (c && Date.now() - c.t < 6 * 3600e3) return c;
   const today = tpNow().date, start = isoDay(dayMs(today) - 430 * 864e5);
   const opt = p => finmind(p).catch(() => null);
+  // 畫面上已經有這檔的日線（未還原）就直接拿來用，省一次股價請求
+  const own = RAW && RAW.id === id && RAW.tf === 'D' && !RAW.sample && !UI.adj && RAW.base && RAW.base.length > 60 && RAW.base[0][0] <= start ? RAW.base.filter(r => r[0] >= start) : null;
   const [px, inst, mg, sbl, fcode] = await Promise.all([
-    finmind({ dataset:'TaiwanStockPrice', data_id:id, start_date:start, end_date:today }),
+    own ? null : finmind({ dataset:'TaiwanStockPrice', data_id:id, start_date:start, end_date:today }),
     opt({ dataset:'TaiwanStockInstitutionalInvestorsBuySell', data_id:id, start_date:start }),
     opt({ dataset:'TaiwanStockMarginPurchaseShortSale', data_id:id, start_date:start }),
     opt({ dataset:'TaiwanDailyShortSaleBalances', data_id:id, start_date:start }),
@@ -1905,7 +1935,7 @@ async function chipLoad(id){
   const fut = fcode ? await opt({ dataset:'TaiwanFuturesDaily', data_id:fcode, start_date:start }) : null;
   const v = Math.floor(Date.now() / 600000), site = p => fetch(p + '?v=' + v).then(r => r.ok ? r.json() : null).catch(() => null);
   const [wj, hj] = await Promise.all([site('data/warrant/u/' + id + '.json'), site('data/holders/' + id + '.json')]);
-  const rows = stockRows(px || []);
+  const rows = own || stockRows(px || []);
   if (rows.length < 60) throw new Error('股價資料太少');
   const D = rows.map(r => r[0]), ix = new Map(D.map((d, i) => [d, i])), n = D.length, arr = () => new Array(n).fill(null);
   const out = { t:Date.now(), id, fcode, d:D, c:rows.map(r => r[4]), inst:arr(), mg:arr(), sh:arr(), sbl:arr(), w:arr(), fo:arr(), oi:arr(), hold:[], has:{} };
@@ -1920,7 +1950,7 @@ async function chipLoad(id){
   if (wj && wj.days){ for (const r of wj.days){ const i = ix.get(r[0]); if (i == null) continue; out.w[i] = (r[2] - r[3]) - (r[5] - r[6]); } out.has.warrant = true; }
   if (hj && hj.w){ const pct = (rec, a, b) => { let t = 0; for (let k = a; k < b; k++) t += rec[17 + k]; return t / 1e4; };
     out.hold = Object.keys(hj.w).sort().map(d => { const r = hj.w[d]; return [d, pct(r, 11, 15), pct(r, 0, 8), r[1]]; }); out.has.hold = out.hold.length > 2; }
-  LS.set(key, out);
+  DSTORE.put(key, out);
   return out;
 }
 function intentDaily(C, p){
@@ -1960,8 +1990,8 @@ function calcINTENT(B, p){
   if (!id || FUTS[id] || id === 'TAIEX') return { na:'主力意圖只適用個股' };
   if (!UI.showIN) return { na:'' };
   if (CHIP.id !== id){ CHIP.id = id; CHIP.data = null; CHIP.err = null;
-    const my = CHIP.pend = chipLoad(id).then(d => { if (CHIP.pend === my){ CHIP.data = d; CHIP.pend = null; recompute(); } })
-      .catch(e => { if (CHIP.pend === my){ CHIP.err = e.message; CHIP.pend = null; recompute(); } }); }
+    const my = CHIP.pend = chipLoad(id).then(d => { if (CHIP.pend === my){ CHIP.data = d; CHIP.pend = null; recomputeSoon(); } })
+      .catch(e => { if (CHIP.pend === my){ CHIP.err = e.message; CHIP.pend = null; recomputeSoon(); } }); }
   if (CHIP.err) return { na:'主力意圖：' + CHIP.err };
   if (!CHIP.data) return { na:'主力意圖讀取籌碼資料中…' };
   const Dd = intentDaily(CHIP.data, p), n = B.n, I = nanArr(n), z = {}, map = new Int32Array(n).fill(-1);
@@ -2065,14 +2095,14 @@ function idxLoad(){
   if (IDX.rows || IDX.pend) return;
   if (RAW && RAW.id === 'TAIEX' && RAW.tf === 'D' && !RAW.sample){ IDX.rows = RAW.rows; return; }
   IDX.pend = (async () => {
-    const c = readCache('TAIEX', 'IDX');
+    const c = await readCache('TAIEX', 'IDX');
     if (c && c.rows && Date.now() - c.t < 12 * 3600e3){ IDX.rows = c.rows; return; }
     const start = c && c.rows && c.rows.length ? c.rows[c.rows.length - 1][0] : '2004-01-01';
     const data = await finmind({ dataset:'TaiwanStockPrice', data_id:'TAIEX', start_date:start, end_date:tpNow().date });
     const rows = mergeRows(c && c.rows, stockRows(data));
     writeCache('TAIEX', 'IDX', { rows, t:Date.now(), start:'2004-01-01' });
     IDX.rows = rows;
-  })().then(() => { IDX.pend = null; recompute(); }).catch(e => { IDX.pend = null; IDX.err = e.message; });
+  })().then(() => { IDX.pend = null; recomputeSoon(); }).catch(e => { IDX.pend = null; IDX.err = e.message; });
 }
 const CAPS = { id:null, list:null, pend:null };
 function capLoad(id){
@@ -2081,7 +2111,7 @@ function capLoad(id){
   if (!id || FUTS[id] || id === 'TAIEX' || id === 'SAMPLE') return;
   const my = CAPS.pend = fetch('data/holders/' + id + '.json?v=' + Math.floor(Date.now() / 600000)).then(r => r.ok ? r.json() : null).then(j => {
     if (CAPS.pend !== my) return; CAPS.pend = null;
-    if (j && j.w){ CAPS.list = Object.keys(j.w).sort().map(d => [d, j.w[d][1]]); recompute(); }
+    if (j && j.w){ CAPS.list = Object.keys(j.w).sort().map(d => [d, j.w[d][1]]); recomputeSoon(); }
   }).catch(() => { CAPS.pend = null; });
 }
 function capArrFor(B){ const n = B.n, a = nanArr(n); if (CAPS.list && CAPS.list.length && CAPS.id === (RAW && RAW.id)){ const ds = CAPS.list.map(x => x[0]); for (let i = 0; i < n; i++){ const k = idxLE(ds, B.d[i].slice(0, 10), false); a[i] = CAPS.list[k >= 0 ? k : 0][1] / (B.intra ? 1000 : 1); } } return a; }
@@ -2275,10 +2305,16 @@ function calcMD(B, p){
   for (let i = 1; i < n; i++){ gold[i] = D[i - 1] < E[i - 1] && D[i] > E[i] ? 1 : 0; dead[i] = D[i - 1] > E[i - 1] && D[i] < E[i] ? 1 : 0; }
   const sd = barsLast(dead), sg = barsLast(gold), ref = (a, i, k) => k == null || i - k < 0 ? null : a[i - k];
   const BP = new Array(n).fill(null), BD = new Array(n).fill(null), TP = new Array(n).fill(null), TD = new Array(n).fill(null);
-  for (let i = 0; i < n; i++){
-    if (sd[i] != null){ let a = Infinity, b = Infinity; for (let k = i - sd[i]; k <= i; k++){ if (C[k] < a) a = C[k]; if (D[k] < b) b = D[k]; } BP[i] = a; BD[i] = b; }
-    if (sg[i] != null){ let a = -Infinity, b = -Infinity; for (let k = i - sg[i]; k <= i; k++){ if (C[k] > a) a = C[k]; if (D[k] > b) b = D[k]; } TP[i] = a; TD[i] = b; }
-  }
+  // 自上次死叉（金叉）以來的最低（最高）：一路累計、交叉時重來，不再每根往回掃
+  { let a1 = Infinity, b1 = Infinity, a2 = -Infinity, b2 = -Infinity;
+    for (let i = 0; i < n; i++){
+      if (sd[i] === 0){ a1 = Infinity; b1 = Infinity; }
+      if (sg[i] === 0){ a2 = -Infinity; b2 = -Infinity; }
+      if (C[i] < a1) a1 = C[i]; if (D[i] < b1) b1 = D[i];
+      if (C[i] > a2) a2 = C[i]; if (D[i] > b2) b2 = D[i];
+      if (sd[i] != null){ BP[i] = a1; BD[i] = b1; }
+      if (sg[i] != null){ TP[i] = a2; TD[i] = b2; }
+    } }
   // 底：前底＝REF(底谷, 死叉周期+1)，再前底＝REF(前底, 死叉周期+1)
   const pBP = [], pBD = [], ppBP = [], ppBD = [];
   for (let i = 0; i < n; i++){ const k = sd[i] == null ? null : sd[i] + 1; pBP[i] = ref(BP, i, k); pBD[i] = ref(BD, i, k); }
@@ -2324,8 +2360,7 @@ function calcMD(B, p){
     if (lo1 < lo0 && m1 > m0) opt[g] = C[g] > H[g - 1] ? 2 : 1;
   }
   // 動態上下界：快線在過去 N 根的百分位
-  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, UB = nanArr(n), LB = nanArr(n);
-  for (let i = N - 1; i < n; i++){ const w = Array.from(D.subarray(i - N + 1, i + 1)).filter(x => !isNaN(x)).sort((a, b) => a - b); if (w.length < N * 0.8) continue; LB[i] = w[Math.floor(w.length * q)]; UB[i] = w[Math.min(w.length - 1, Math.floor(w.length * (1 - q)))]; }
+  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, LB = rollPct(D, N, q), UB = rollPct(D, N, 1 - q);
   const ev = [], sig = [], main = [], tag = new Array(n).fill(null);
   const add = (i, txt, col, show, y, shape, dy, size) => { (tag[i] = tag[i] || []).push([txt, col]); sig.push({ i, src:'量化MACD', text:txt, col }); if (show) ev.push({ i, y, shape, dy, text:txt, col, tcol:'#fff', size:size || 0.8 }); };
   for (let i = 1; i < n; i++){
@@ -2380,7 +2415,23 @@ function calcBAO(B, p){
 }
 
 /* ═════════════ 神奇波段頂底（通達信公式移植＋優化＋動態上下界） ═════════════ */
-function rollPct(a, N, q){ const n = a.length, o = nanArr(n); for (let i = N - 1; i < n; i++){ const w = []; for (let k = i - N + 1; k <= i; k++) if (!isNaN(a[k])) w.push(a[k]); if (w.length < N * 0.8) continue; w.sort((x, y) => x - y); o[i] = w[Math.min(w.length - 1, Math.floor(w.length * q))]; } return o; }
+/* 滾動百分位（動態上下界）：維持一個排好序的視窗，每根只插入一筆、移除一筆，不再每根重新排序（快 50 倍以上）。
+   同一條線常一次要 下界／中線／上界，三個一起算好存起來，結果與原本逐根排序完全相同 */
+const RPC = new WeakMap();
+function rollPct(a, N, q){
+  let memo = RPC.get(a); if (!memo){ memo = new Map(); RPC.set(a, memo); }
+  const key = N + '|' + q, hit = memo.get(key); if (hit) return hit;
+  const qs = [q, 0.5, 1 - q].filter((v, k, s) => s.indexOf(v) === k && !memo.has(N + '|' + v));
+  const n = a.length, outs = qs.map(() => nanArr(n)), w = new Float64Array(N + 1), need = N * 0.8; let m = 0;
+  const find = x => { let lo = 0, hi = m; while (lo < hi){ const mid = (lo + hi) >> 1; if (w[mid] < x) lo = mid + 1; else hi = mid; } return lo; };
+  for (let i = 0; i < n; i++){
+    if (i >= N){ const y = a[i - N]; if (!isNaN(y)){ const k = find(+y); if (k < m){ w.copyWithin(k, k + 1, m); m--; } } }
+    const x = a[i]; if (!isNaN(x)){ const v = +x, k = find(v); w.copyWithin(k + 1, k, m); w[k] = v; m++; }
+    if (i >= N - 1 && m >= need) for (let t = 0; t < qs.length; t++) outs[t][i] = w[Math.min(m - 1, Math.floor(m * qs[t]))];
+  }
+  qs.forEach((v, t) => memo.set(N + '|' + v, outs[t]));
+  return memo.get(key);
+}
 function calcBD(B, p){
   const n = B.n, C = B.c, H = B.h, L = B.l;
   const pos = nanArr(n), rsv = nanArr(n);
@@ -3707,16 +3758,49 @@ async function finmind(params, tries = 3){
   return j.data || [];
 }
 
-function cacheKey(id, kind){ return 'zs:d:' + kind + ':' + id; }
-function readCache(id, kind){ return LS.get(cacheKey(id, kind), null); }
-function writeCache(id, kind, obj){
-  const key = cacheKey(id, kind);
-  if (LS.set(key, obj)) return;
-  // quota: drop the oldest cached symbols and retry
-  const entries = LS.keys().filter(k => k.startsWith('zs:d:') && k !== key)
-    .map(k => [k, (LS.get(k, {}) || {}).t || 0]).sort((a, b) => a[1] - b[1]);
-  for (const [k] of entries){ LS.del(k); if (LS.set(key, obj)) return; }
-}
+/* ───── 行情暫存：放在這台裝置的 IndexedDB，而且每個網站各用一個資料庫（zsdata-zs／zsdata-zx）。
+   以前放在 localStorage：同一個 github.io 底下所有網頁共用 5MB，日線、籌碼一塞滿，
+   設定（顏色、指標參數）就存不進去，舊的看盤頁也跟著出問題。現在行情不再碰 localStorage。 ───── */
+const DSTORE = (() => {
+  const NAME = 'zsdata-' + PAGE.key, MAX = 260, mem = new Map(); let dbp = null, writes = 0;
+  const open = () => dbp || (dbp = new Promise(res => {
+    try { const r = indexedDB.open(NAME, 1);
+      r.onupgradeneeded = () => { const db = r.result; if (!db.objectStoreNames.contains('d')) db.createObjectStore('d'); if (!db.objectStoreNames.contains('t')) db.createObjectStore('t'); };
+      r.onsuccess = () => res(r.result); r.onerror = r.onblocked = () => res(null);
+    } catch (e){ res(null); } }));
+  const remember = (k, v) => { mem.delete(k); mem.set(k, v); if (mem.size > 40) mem.delete(mem.keys().next().value); };
+  async function get(k){
+    if (mem.has(k)) return mem.get(k);
+    const db = await open(); if (!db) return null;
+    return new Promise(res => { try { const q = db.transaction('d').objectStore('d').get(k); q.onsuccess = () => { const v = q.result || null; if (v) remember(k, v); res(v); }; q.onerror = () => res(null); } catch (e){ res(null); } });
+  }
+  async function put(k, v){
+    remember(k, v);
+    const db = await open(); if (!db) return;
+    try { const tx = db.transaction(['d', 't'], 'readwrite'); tx.objectStore('d').put(v, k); tx.objectStore('t').put(Date.now(), k); } catch (e){}
+    if (++writes % 12 === 0) prune(db);
+  }
+  // 只留最近用過的 260 筆，舊的自動丟掉
+  function prune(db){ try { const st = db.transaction('t').objectStore('t'), kq = st.getAllKeys(), vq = st.getAll();
+    vq.onsuccess = () => { const ks = kq.result || [], ts = vq.result || []; if (ks.length <= MAX) return;
+      const old = ks.map((k, i) => [k, ts[i] || 0]).sort((a, b) => a[1] - b[1]).slice(0, ks.length - MAX);
+      const tx = db.transaction(['d', 't'], 'readwrite'); for (const [k] of old){ tx.objectStore('d').delete(k); tx.objectStore('t').delete(k); mem.delete(k); } }; } catch (e){} }
+  async function clear(){ mem.clear(); const db = await open(); if (!db) return; try { const tx = db.transaction(['d', 't'], 'readwrite'); tx.objectStore('d').clear(); tx.objectStore('t').clear(); } catch (e){} }
+  return { get, put, clear };
+})();
+// 舊版留在 localStorage 的行情暫存（zs:d:／zs:chip:／zs:names／zs:futmap）：搬進本站資料庫後刪掉，把空間還給設定
+setTimeout(() => {
+  const old = LS.keys().filter(k => /^zs:(d:|chip:|names$|futmap$)/.test(k));
+  let i = 0;
+  const step = () => { const k = old[i++]; if (!k) return;
+    const v = LS.get(k, null); LS.del(k);
+    if (v && v.t && Date.now() - v.t < 7 * 864e5) DSTORE.put(k.slice(3), v);
+    setTimeout(step, 40); };
+  step();
+}, 2500);
+function cacheKey(id, kind){ return 'd:' + kind + ':' + id; }
+function readCache(id, kind){ return DSTORE.get(cacheKey(id, kind)); }
+function writeCache(id, kind, obj){ return DSTORE.put(cacheKey(id, kind), obj); }
 function mergeRows(oldRows, newRows){
   if (!oldRows || !oldRows.length) return newRows;
   if (!newRows.length) return oldRows;
@@ -3761,12 +3845,14 @@ function futuresRows(data, night){
   return [...best.values()].map(b => b.slice(0, 6)).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
 
-async function fetchSymbol(id, force){
+async function fetchSymbol(id, force, early){
   const isTX = !!FUTS[id];
   const kind = isTX ? (UI.night ? 'TXFN' : 'TXF') : (UI.adj ? 'ADJ' : 'RAW');
-  const cached = readCache(id, kind);
+  const cached = await readCache(id, kind);
   const fresh = cached && Date.now() - cached.t < 30 * 60e3 && cached.start === UI.start;
   if (cached && fresh && !force) return { rows:cached.rows, from:'cache' };
+  // 有舊的暫存就先畫出來（不用等網路），同時在背景補最新幾天
+  if (cached && !force && early && cached.start === UI.start && cached.rows && cached.rows.length) early(cached.rows);
   const today = tpNow().date;
 
   if (isTX){
@@ -3801,18 +3887,21 @@ async function fetchSymbol(id, force){
   return { rows, from:'api' };
 }
 
-async function loadNames(){
+// 股票名稱清單：同時有好幾個地方要用時只抓一次
+let namesP = null;
+function loadNames(){ return namesP || (namesP = loadNames0().finally(() => { if (!Object.keys(NAMES).length) namesP = null; })); }
+async function loadNames0(){
   try {
     const sl = JSON.parse(localStorage.getItem('twchart.stocklist') || 'null');
     if (sl && sl.list && sl.list.length){ NAMES = Object.fromEntries(sl.list); fillDatalist(); if (RAW && !RAW.sample && NAMES[RAW.id]){ RAW.name = NAMES[RAW.id]; schedule(); } return; }
   } catch(e){}
-  const c = LS.get('zs:names', null);
-  if (c && Date.now() - c.t < 7 * 864e5){ NAMES = c.m; fillDatalist(); return; }
+  const c = await DSTORE.get('names');
+  if (c && Date.now() - c.t < 7 * 864e5){ NAMES = c.m; fillDatalist(); if (RAW && !RAW.sample && NAMES[RAW.id]){ RAW.name = NAMES[RAW.id]; schedule(); } return; }
   try {
     const data = await finmind({ dataset:'TaiwanStockInfo' });
     const m = {};
     for (const r of data) if (r.stock_id && !m[r.stock_id]) m[r.stock_id] = r.stock_name;
-    NAMES = m; LS.set('zs:names', { m, t:Date.now() }); fillDatalist();
+    NAMES = m; DSTORE.put('names', { m, t:Date.now() }); fillDatalist();
     if (RAW && !RAW.sample && NAMES[RAW.id]){ RAW.name = NAMES[RAW.id]; schedule(); }
   } catch (e){ /* names are optional */ }
 }
@@ -4104,13 +4193,20 @@ function makeBars(rows, iv, sample){
   return b;
 }
 
+// 背景資料（籌碼、大盤、股本…）陸續到齊時合併成一次重算，不會連續卡好幾次
+let recSoonT = 0;
+function recomputeSoon(){ clearTimeout(recSoonT); recSoonT = setTimeout(recompute, 60); }
 function recompute(){
+  clearTimeout(recSoonT);
   if (!RAW) return;
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
   for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['ym', calcYM], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['bz', calcBZ], ['jgn', calcJGN], ['kui', calcKUI]]){
-    try { R[k] = fn(B, P[k]); } catch (e){ R[k] = { error:'計算錯誤：' + e.message }; }
+    // 用到才算：只有開著的副圖／主圖標記會真的計算，關掉的指標不花時間（以前每次都把 39 個指標全部重算）
+    const obj = R, bars = B, fix = v => { Object.defineProperty(obj, k, { value:v, writable:true, configurable:true, enumerable:true }); return v; };
+    Object.defineProperty(obj, k, { configurable:true, enumerable:true, set:fix,
+      get(){ let v; try { v = fn(bars, P[k]); } catch (e){ v = { error:'計算錯誤：' + e.message }; } return fix(v); } });
   }
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
@@ -4137,6 +4233,27 @@ const PAL = {
   dark:  { bg:'#0d1016', grid:'rgba(120,135,160,.09)', axis:'#8892a3', text:'#c9d1dc', cross:'rgba(200,210,225,.45)', sep:'#252d3a', up:'#e5484d', down:'#2fb67c', tag:'#2a3342', tagText:'#e8edf4', title:'#e8edf4', legendBg:'rgba(13,16,22,.78)', upVol:'rgba(229,72,77,.22)', downVol:'rgba(47,182,124,.22)', hint:'#d9a85c' },
   light: { bg:'#ffffff', grid:'rgba(30,40,60,.07)', axis:'#5d6676', text:'#2a3140', cross:'rgba(40,50,70,.45)', sep:'#dde1e8', up:'#e53935', down:'#089981', tag:'#3a4354', tagText:'#ffffff', title:'#111722', legendBg:'rgba(255,255,255,.84)', upVol:'rgba(229,57,53,.16)', downVol:'rgba(8,153,129,.16)', hint:'#a8711a' }
 };
+// 使用者自訂的圖表配色（深色、淺色各存一份）蓋在預設色上
+const CKEYS = [['up', '上漲 K 棒'], ['down', '下跌 K 棒'], ['bg', '圖表背景'], ['grid', '格線'], ['cross', '十字線'], ['axis', '座標文字']];
+function hexOf(c, bg){   // 任何顏色（含 rgba 半透明）換成畫在背景上看到的 #rrggbb
+  const m = String(c).match(/rgba?\(([^)]+)\)/);
+  if (!m) return /^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : '#888888';
+  const [r, g, b, a = 1] = m[1].split(',').map(Number), B0 = hexOf(bg || '#000000'), bb = i => parseInt(B0.slice(i, i + 2), 16);
+  const mix = (x, y) => Math.round(x * a + y * (1 - a)).toString(16).padStart(2, '0');
+  return '#' + mix(r, bb(1)) + mix(g, bb(3)) + mix(b, bb(5));
+}
+function themeColors(){
+  const th = UI.theme === 'light' ? 'light' : 'dark', base = PAL[th], o = ((UI.colors || {})[th]) || {}, cc = Object.assign({}, base);
+  for (const [k] of CKEYS) if (/^#[0-9a-f]{6}$/i.test(o[k] || '')) cc[k] = o[k];
+  const va = th === 'light' ? 84 : 78;
+  if (o.up) cc.upVol = rgba(cc.up, va);
+  if (o.down) cc.downVol = rgba(cc.down, va);
+  if (o.bg) cc.legendBg = rgba(cc.bg, th === 'light' ? 16 : 22);
+  if (o.axis) cc.text = cc.axis;
+  const st = document.documentElement.style;
+  for (const k of ['up', 'down', 'bg']) if (o[k]) st.setProperty('--' + k, o[k]); else st.removeProperty('--' + k);
+  return cc;
+}
 let CC = PAL[UI.theme] || PAL.dark;
 function ink(c){
   if (UI.theme !== 'light' || typeof c !== 'string' || !/^#[0-9a-f]{6}$/i.test(c)) return c;
@@ -6297,15 +6414,24 @@ async function loadSymbol(input, force){
   document.getElementById('symInput').value = id + (nameOf(id) ? ' ' + nameOf(id) : '');
   setLoading('資料載入中… ' + id + ' ' + nameOf(id));
   try {
-    let res;
-    if (intra) res = { rows:await fetchIntraday(id, iv, () => seq !== loadSeq), from:'api' };
-    else res = await fetchSymbol(id, force);
-    if (seq !== loadSeq) return;
+    let res, shown = null;
     const tf = intra ? iv : 'D', night = !!FUTS[id] && !!UI.night;
+    const early = rows => {
+      if (seq !== loadSeq) return;
+      const keep = RAW && RAW.id === id && !RAW.sample && RAW.tf === tf;
+      RAW = { id, name:nameOf(id), rows, base:rows, sample:false, tf, night };
+      if (!keep){ view.right = NaN; cross = null; pinned = false; resetY(); }
+      recompute(); shown = rows;
+      setLoading('更新最新資料中… ' + id + ' ' + nameOf(id));
+    };
+    if (intra) res = { rows:await fetchIntraday(id, iv, () => seq !== loadSeq), from:'api' };
+    else res = await fetchSymbol(id, force, early);
+    if (seq !== loadSeq) return;
+    const same = shown && shown.length === res.rows.length && JSON.stringify(shown[shown.length - 1]) === JSON.stringify(res.rows[res.rows.length - 1]);
     const keepView = RAW && RAW.id === id && !RAW.sample && RAW.tf === tf;
     RAW = { id, name:nameOf(id), rows:res.rows, base:res.rows, sample:false, tf, night };
     if (!keepView){ view.right = NaN; cross = null; pinned = false; resetY(); }
-    recompute();
+    if (!same) recompute();
     liveApply(true); setTimeout(() => livePoll(), 300);
     if (intra && INTRA_BG) setTimeout(() => intraBgFill(seq), 50);
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
@@ -6326,7 +6452,7 @@ async function loadSymbol(input, force){
 const WSTATE = { id:null, data:null, rows:null, hv:NaN, S:NaN, ivC:NaN, ivP:NaN, pend:null };
 async function dailyRawCloses(id){
   if (RAW && RAW.id === id && RAW.tf === 'D' && !UI.adj) return RAW.rows;
-  const c = readCache(id, 'RAW');
+  const c = await readCache(id, 'RAW');
   if (c && c.rows && c.rows.length > 80 && Date.now() - c.t < 18 * 3600e3) return c.rows;
   const data = await finmind({ dataset:'TaiwanStockPrice', data_id:id, start_date:isoDay(dayMs(tpNow().date) - 200 * 864e5), end_date:tpNow().date });
   return stockRows(data);
@@ -6669,10 +6795,10 @@ document.getElementById('togFav').onclick = () => {
   UI.favOnly = true; saveUI(); syncToolbar(); recompute(); schedule();
 };
 /* ───────── FinMind 憑證框：存在這台裝置（App、瀏覽器各自分開） ───────── */
+// 只存在戰神看盤自己的設定裡：不再順手改掉看盤頁（twchart.settings）或另一個戰神網站（zsite.token）的憑證，
+// 兩組 FinMind 帳號各用各的，額度也分開算
 function tokSaveAll(t){
   UI.token = t; saveUI();
-  try { const s = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; s.token = t; localStorage.setItem('twchart.settings', JSON.stringify(s)); } catch (e){}
-  try { localStorage.setItem('zsite.token', t); } catch (e){}
 }
 async function tokCheck(){
   const st = document.getElementById('tokState'), t = getToken();
@@ -6715,7 +6841,7 @@ nightSeg.addEventListener('click', e => { const b = e.target.closest('button'); 
 themeSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; UI.theme = b.dataset.v; saveUI(); applyTheme(); });
 function applyTheme(){
   document.documentElement.dataset.theme = UI.theme;
-  CC = PAL[UI.theme] || PAL.dark;
+  CC = themeColors();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = CC.bg;
   syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips();
 }
@@ -6816,9 +6942,32 @@ function appHTML(){
     '<div class="row"><label for="a-scale">價格座標納入 3／9 倍外通道</label><input type="checkbox" id="a-scale"' + (UI.scaleAll ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-zoom">圖上顯示縮放按鈕（－＋、自動、最新）</label><input type="checkbox" id="a-zoom"' + (UI.showZoom ? ' checked' : '') + '></div>' +
     '<p class="help">預設只用 K 棒與內通道決定縱軸範圍，外通道超出時會被裁切，K 棒才不會被壓扁。</p></fieldset>' +
+    colorsHTML() +
     '<div class="dfoot"><button id="a-apply">套用並重新載入</button><button class="danger" id="a-clear">清除暫存的行情資料</button></div>';
 }
+function colorsHTML(){
+  const th = UI.theme === 'light' ? 'light' : 'dark', o = ((UI.colors || {})[th]) || {}, base = PAL[th];
+  return '<fieldset><legend>圖表配色（目前是' + (th === 'light' ? '白底' : '黑底') + '，黑白底各記一份）</legend>' +
+    CKEYS.map(([k, l]) => '<div class="row"><label for="c-' + k + '">' + l + (o[k] ? ' <small style="color:var(--accent)">已自訂</small>' : '') + '</label><input type="color" id="c-' + k + '" value="' + (o[k] || hexOf(base[k], base.bg)) + '"></div>').join('') +
+    '<div class="preset-row"><button data-cp="tw">台股：紅漲綠跌</button><button data-cp="us">美股：綠漲紅跌</button><button data-cp="tv">深藍底</button><button data-cp="reset">恢復預設配色</button></div>' +
+    '<p class="help">點色塊就能選色（App 裡也可以）。主圖開著「K 棒依趨勢變色」時，K 棒改用 VWB 分頁的多空顏色；要用這裡的漲跌色，到 VWB 主圖分頁把它關掉。</p></fieldset>';
+}
+function setChartColors(th, patch){
+  UI.colors = Object.assign({}, UI.colors); UI.colors[th] = patch == null ? {} : Object.assign({}, UI.colors[th], patch);
+  saveUI(); applyTheme();
+}
 function bindApp(){
+  { const th = UI.theme === 'light' ? 'light' : 'dark';
+    for (const [k] of CKEYS){ const el = document.getElementById('c-' + k); if (!el) continue;
+      el.addEventListener('input', () => setChartColors(th, { [k]:el.value }));
+      el.addEventListener('change', () => { setChartColors(th, { [k]:el.value }); buildBody(); }); }
+    const PRE = { tw:th === 'light' ? { up:'#e53935', down:'#089981' } : { up:'#e5484d', down:'#2fb67c' },
+                  us:th === 'light' ? { up:'#089981', down:'#e53935' } : { up:'#26a69a', down:'#ef5350' },
+                  tv:{ bg:'#131722', grid:'#1e222d', axis:'#b2b5be', cross:'#758696' } };
+    document.querySelector('.preset-row').onclick = e => { const b = e.target.closest('[data-cp]'); if (!b) return;
+      const v = b.dataset.cp; if (v === 'reset') setChartColors(th, null); else if (v === 'tv'){ if (th === 'light'){ UI.theme = 'dark'; } setChartColors('dark', PRE.tv); }
+      else setChartColors(th, PRE[v]); buildBody(); };
+  }
   document.getElementById('a-vol').onchange = e => { UI.showVolume = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-scale').onchange = e => { UI.scaleAll = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-zoom').onchange = e => { UI.showZoom = e.target.checked; saveUI(); document.getElementById('zoomBox').hidden = !UI.showZoom; };
@@ -6828,8 +6977,8 @@ function bindApp(){
   document.getElementById('a-apply').onclick = () => { UI.token = document.getElementById('a-token').value.trim(); saveUI(); closeDrawer(); loadSymbol(UI.symbol, true); };
   document.getElementById('a-check').onclick = () => { const t = document.getElementById('a-token'); t.dispatchEvent(new Event('change')); checkToken(); };
   document.getElementById('a-clear').onclick = e => {
-    for (const k of LS.keys()) if (k.startsWith('zs:d:') || k === 'zs:names') LS.del(k);
-    e.target.textContent = '已清除';
+    for (const k of LS.keys()) if (/^zs:(d:|chip:|names$|futmap$)/.test(k)) LS.del(k);
+    DSTORE.clear(); CHIP.id = null; e.target.textContent = '已清除';
   };
 }
 /* 檢查憑證：日 K、分 K 各試抓一次，順便讀本小時已用額度 */
@@ -7160,6 +7309,80 @@ window.addEventListener('resize', () => { if (!document.getElementById('btModal'
 
 /* ═════════════ boot ═════════════ */
 var URL_ON = new URLSearchParams(location.search).get('on') || '';
+/* ═════════════ 選色盤（取代原生的 <input type=color>） ═════════════
+   Android App 用的 WebView 點顏色格子不會跳出選色器，所以所有顏色格子都改由這裡處理：
+   點下去跳出色盤，選的顏色寫回原本的格子並發出 input／change，原本各指標的存檔、重算照常運作 */
+const CPK = (() => {
+  const SW = ['#ef5350', '#e5484d', '#ff1744', '#f06292', '#ff69b4', '#ba68c8', '#b32ac3', '#7e57c2',
+              '#5c6bc0', '#42a5f5', '#1e90ff', '#26c6da', '#5cf0d7', '#00e676', '#26a69a', '#2fb67c',
+              '#089981', '#9ccc65', '#d4e157', '#ffd600', '#ffca28', '#ff9800', '#ff7043', '#8d6e63',
+              '#ffffff', '#e0e0e0', '#bdbdbd', '#9e9e9e', '#757575', '#424242', '#252d3a', '#000000',
+              '#0d1016', '#131722', '#1e222d', '#0b1e2d', '#1b1b1b', '#f5f5f5', '#fffaf0', '#eef2f7'];
+  let el = null, scrim = null, target = null, orig = '', hsl = [0, 0, 50];
+  const hx = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  function toHsl(h){ const r = parseInt(h.slice(1, 3), 16) / 255, g = parseInt(h.slice(3, 5), 16) / 255, b = parseInt(h.slice(5, 7), 16) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let H = 0, S = 0;
+    if (d){ S = d / (1 - Math.abs(2 * l - 1)); H = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H *= 60; if (H < 0) H += 360; }
+    return [Math.round(H), Math.round(S * 100), Math.round(l * 100)]; }
+  function toHex(H, S, L){ S /= 100; L /= 100; const c = (1 - Math.abs(2 * L - 1)) * S, x = c * (1 - Math.abs((H / 60) % 2 - 1)), m = L - c / 2;
+    const [r, g, b] = H < 60 ? [c, x, 0] : H < 120 ? [x, c, 0] : H < 180 ? [0, c, x] : H < 240 ? [0, x, c] : H < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + hx((r + m) * 255) + hx((g + m) * 255) + hx((b + m) * 255); }
+  const recent = () => { const r = LS.get(PFX + 'recentColors', []); return Array.isArray(r) ? r.filter(c => /^#[0-9a-f]{6}$/.test(c)).slice(0, 8) : []; };
+  function build(){
+    scrim = document.createElement('div'); scrim.className = 'cpk-scrim'; scrim.hidden = true;
+    el = document.createElement('div'); el.className = 'cpk'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '選顏色');
+    el.innerHTML = '<h3 id="cpkT">選顏色</h3>' +
+      '<div class="cpk-top"><span class="cpk-prev"><i id="cpkPrev"></i></span><input id="cpkHex" maxlength="7" inputmode="text" autocomplete="off" spellcheck="false" aria-label="色碼"></div>' +
+      '<div class="cpk-sl"><label>色相<input type="range" id="cpkH" min="0" max="359" aria-label="色相"></label><label>鮮豔<input type="range" id="cpkS" min="0" max="100" aria-label="鮮豔度"></label><label>明暗<input type="range" id="cpkL" min="0" max="100" aria-label="明暗"></label></div>' +
+      '<div class="cpk-grid" id="cpkGrid">' + SW.map(c => '<button type="button" data-c="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('') + '</div>' +
+      '<div class="cpk-sub" id="cpkRecT">最近用過</div><div class="cpk-rec" id="cpkRec"></div>' +
+      '<div class="cpk-foot"><button type="button" id="cpkCancel">取消</button><button type="button" class="ok" id="cpkOk">確定</button></div>';
+    document.body.append(scrim, el);
+    const pick = c => { set(c, true); };
+    el.querySelector('#cpkGrid').onclick = e => { const b = e.target.closest('[data-c]'); if (b) pick(b.dataset.c); };
+    el.querySelector('#cpkRec').onclick = e => { const b = e.target.closest('[data-c]'); if (b) pick(b.dataset.c); };
+    for (const [id, k] of [['cpkH', 0], ['cpkS', 1], ['cpkL', 2]]) el.querySelector('#' + id).addEventListener('input', e => { hsl[k] = +e.target.value; set(toHex(...hsl), false); });
+    el.querySelector('#cpkHex').addEventListener('input', e => { let v = e.target.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (/^#[0-9a-f]{6}$/i.test(v)) set(v.toLowerCase(), true, true); });
+    el.querySelector('#cpkOk').onclick = () => close(true);
+    el.querySelector('#cpkCancel').onclick = () => { if (target && target.value !== orig){ target.value = orig; fire('input'); } close(false); };
+    scrim.onclick = () => close(true);
+    el.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.stopPropagation(); el.querySelector('#cpkCancel').click(); } if (e.key === 'Enter' && e.target.id === 'cpkHex') close(true); });
+  }
+  const fire = type => target && target.dispatchEvent(new Event(type, { bubbles:true }));
+  function paint(c){
+    el.querySelector('#cpkPrev').style.background = c;
+    const hexIn = el.querySelector('#cpkHex'); if (document.activeElement !== hexIn) hexIn.value = c.toUpperCase();
+    const [H, S, L] = hsl;
+    const sH = el.querySelector('#cpkH'), sS = el.querySelector('#cpkS'), sL = el.querySelector('#cpkL');
+    sH.value = H; sS.value = S; sL.value = L;
+    sH.style.setProperty('--g', 'linear-gradient(90deg,' + [0, 60, 120, 180, 240, 300, 359].map(h => toHex(h, Math.max(S, 60), 50)).join(',') + ')');
+    sS.style.setProperty('--g', 'linear-gradient(90deg,' + toHex(H, 0, L) + ',' + toHex(H, 100, L) + ')');
+    sL.style.setProperty('--g', 'linear-gradient(90deg,#000,' + toHex(H, S, 50) + ',#fff)');
+    for (const b of el.querySelectorAll('[data-c]')) b.setAttribute('aria-pressed', String(b.dataset.c === c));
+  }
+  function set(c, fromHex){ if (fromHex) hsl = toHsl(c); if (!target) return; target.value = c; paint(c); fire('input'); }
+  function open(input){
+    if (!el) build();
+    target = input; orig = input.value || '#000000'; hsl = toHsl(orig);
+    const lab = input.id && document.querySelector('label[for="' + input.id + '"]');
+    el.querySelector('#cpkT').textContent = lab ? lab.textContent.replace(/已自訂/, '').trim() : '選顏色';
+    const rc = recent(); el.querySelector('#cpkRec').innerHTML = rc.map(c => '<button type="button" data-c="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
+    el.querySelector('#cpkRecT').hidden = !rc.length;
+    scrim.hidden = false; el.hidden = false; paint(orig);
+    setTimeout(() => el.querySelector('#cpkOk').focus({ preventScroll:true }), 30);
+  }
+  function close(keep){
+    if (!target) return;
+    const t = target, v = t.value;
+    if (keep && v !== orig){ LS.set(PFX + 'recentColors', [v, ...recent().filter(c => c !== v)].slice(0, 8)); fire('change'); }
+    el.hidden = true; scrim.hidden = true; target = null;
+    try { t.focus({ preventScroll:true }); } catch (e){}
+  }
+  // 擋掉原生選色器，改開自己的
+  document.addEventListener('click', e => { const t = e.target; if (t && t.matches && t.matches('input[type=color]') && !t.disabled){ e.preventDefault(); open(t); } }, true);
+  return { open };
+})();
+
 buildTabs(); buildBody(); applyTheme();
 RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' };
 recompute();

@@ -1,11 +1,12 @@
 // 讓看盤頁可以「安裝成 App」：外殼檔案離線可開，股價資料一律即時向 FinMind 取得
-const CACHE = 'twchart-v205';
+const CACHE = 'twchart-v206';
 const SHELL = ['./', './index.html', './mobile.html', './holders.html', './insider.html', './txo.html', './strategy.html', './futstock.html', './futscreen.html', './ctrl.html', './force.html', './flowchart.html', './force-lab.html', './optsim.html', './iv.html', './overview.html', './optlive.html', './clear.html', './bbview.html', './margin.html', './zhanshen.html', './manifest-zs.webmanifest', './icon-180.png', './calc.html', './vwscreen.html', './bbscreen.html', './lxscreen.html', './xdscreen.html', './qzscreen.html', './bdscreen.html', './jgscreen.html', './fxpos.html', './autoreload.js', './manifest.webmanifest', './manifest-m.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
+// 只清自己的舊快取：同一個 github.io 底下的 zhanshen 網站快取不能被這裡刪掉
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('twchart-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
