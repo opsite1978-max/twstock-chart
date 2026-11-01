@@ -299,7 +299,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/01 15:30</span></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/01 16:20</span></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -364,7 +364,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togCAMO" aria-pressed="true" title="宇宙自適應動能（CAMO）：價格報酬＋MACD 柱多尺度 Z 分數融合、黃金比例上中下界、平滑線、長期動態上下界、回測優化的底與頂">宇宙動能</button>
     <button class="tog" id="togSO" aria-pressed="true" title="超級震盪：八種量價狀態換成全市場百分位後平均的 0～100 震盪線、八維共振柱、回測優化的底★★／頂★">超級震盪</button>
     <button class="tog" id="togDZ" aria-pressed="true" title="紅持綠空：端庄窩紅綠階梯柱、建倉區、發現庄跡、果斷出擊、回測優化的底★與頂★">紅持綠空</button>
-    <button class="tog" id="togLHB" aria-pressed="true" title="龍虎榜抄底（通達信公式）：底部強度紅柱、離 40 日均線乖離、-24 超跌區、龍虎榜抄底、龍虎榜資金、回測優化的底★、動態上中下界">龍虎榜抄底</button>
+    <button class="tog" id="togLHB" aria-pressed="true" title="龍虎榜抄底（通達信公式）：固定 0～100 震盪線（離 40 日均線乖離換算）、上下界實線、底部強度紅柱、龍虎榜抄底、龍虎榜資金、回測優化的底★">龍虎榜抄底</button>
     <button class="tog" id="togLX" aria-pressed="true" title="尋龍底（龍穴）：30 日低點的龍穴能量（黃／綠／紅）、長期價值線位置、回測優化的龍穴、尋龍底★、真龍★★">尋龍底</button>
     <button class="tog" id="togMD" aria-pressed="true" title="量化 MACD 頂底背離＋動態上下界">量化MACD</button>
     <button class="tog" id="togLS" aria-pressed="true" title="拉升機會（通達信公式＋優化）：主線低檔、拉升、機會、ABC">拉升機會</button>
@@ -1523,30 +1523,33 @@ SCHEMA.lx = { tab:'尋龍底', title:'尋龍底（龍穴）（照你提供的通
     {k:'cBot2', l:'真龍★★', t:'color', d:'#ff9100'}
   ]}
 ]};
-SCHEMA.lhb = { tab:'龍虎榜抄底', title:'龍虎榜抄底（照你提供的通達信公式移植＋回測優化；公式名稱叫「龍虎榜」，但實際只用 K 線的開高低收，沒有用到券商進出或龍虎榜資料）。【底部強度】紅柱＝最低價下跌幅度和上漲幅度的 3 日平滑比值（跌得越多、反彈越少越大），只有在今天創 38 日新低時才累積，再 3 日平滑後除以 618；柱子用對數縮放、放在副圖下半部，數字大小每檔不同，只看相對高低。【乖離40】白線＝收盤離 40 日均線幾 %；低於 -24% 的部分塗青色（原公式的青色短柱，超跌區）。乖離5（離 5 日均線）原公式不畫，只在上方數值列顯示。【龍虎榜抄底】黃色＝乖離40 由下往上穿過 -24%（原公式）。【龍虎榜資金】金點＝底部強度創 20 根新高（原公式的圖示）。【底★】（回測後新增）＝近 10 根出現過龍虎榜資金、乖離40 近 3 根曾低於 -20% 今天回到上面且往上、收盤突破前一根最高價。動態上中下界＝乖離40 過去 120 根的 5%／50%／95% 百分位，每檔自己的「超跌／超漲」位置。【回測】全市場約 1,940 檔日 K、分四段時間（2024/11～2025/5、2025/5～11、2025/11～2026/5、2026/5～10），「命中」＝訊號落在大低點（前後 20 天最低）後 5 天內，「守住」＝之後 20 天沒跌破近 6 根最低點。隨便挑一天：命中 10%／10%／10%／13%、守住 35%／27%／32%／32%。原版龍虎榜抄底：命中 84%／37%／41%／62%、守住 87%／33%／48%／65%，次數 1,145／43／71／424，大多出現在全面急跌之後，平常很少出現。原版龍虎榜資金：命中 13%／16%／19%／20%，跟隨便挑一天差不多，意思是「下殺力道還在創新高」，不是買點，看到它要等。【底★】：命中 88%／56%／56%／63%、守住 90%／54%／55%／65%，次數 1,048／48／89／520，四段都比原版穩；20 天後報酬中位數 +9.1%／−0.9%／−1.2%／+4.7%。試過的其他版本：門檻改成 -18%、-15%，或改用動態下界，次數變多但命中掉到三到四成；「底部強度結束＋收盤突破前高」命中四成多但報酬不好，都不採用。【提醒】底★代表「接近波段低點」，在 2025/5～2026/5 盤整期 20 天報酬中位數是負的，不保證會漲。', groups:[
+SCHEMA.lhb = { tab:'龍虎榜抄底', title:'龍虎榜抄底（照你提供的通達信公式移植＋回測優化；公式名稱叫「龍虎榜」，但實際只用 K 線的開高低收，沒有用到券商進出或龍虎榜資料）。【底部強度】紅柱＝最低價下跌幅度和上漲幅度的 3 日平滑比值（跌得越多、反彈越少越大），只有在今天創 38 日新低時才累積，再 3 日平滑後除以 618；柱子用對數縮放、放在副圖下半部，數字大小每檔不同，只看相對高低。【震盪線】（改成固定 0～100 區間）＝乖離40（收盤離 40 日均線幾 %）除以它過去 250 根的波動大小，再用常態分布換成 0～100、3 根平滑：50＝在 40 日均線上，越低越超跌、越高越超漲，每檔股票意思都一樣。上界 80、下界 20 是實線（全市場約有兩成時間在 20 以下、兩成在 80 以上），跌破下界的部分塗青色（原公式的超跌青柱）。原始乖離40、乖離5 的 % 數字放在上方數值列。【龍虎榜抄底】黃色＝乖離40 由下往上穿過 -24%（原公式）。【龍虎榜資金】金點＝底部強度創 20 根新高（原公式的圖示）。【底★】（回測後新增）＝近 10 根出現過龍虎榜資金、乖離40 近 3 根曾低於 -20% 今天回到上面且往上、收盤突破前一根最高價。【回測】全市場約 1,940 檔日 K、分四段時間（2024/11～2025/5、2025/5～11、2025/11～2026/5、2026/5～10），「命中」＝訊號落在大低點（前後 20 天最低）後 5 天內，「守住」＝之後 20 天沒跌破近 6 根最低點。隨便挑一天：命中 10%／10%／10%／13%、守住 35%／27%／32%／32%。原版龍虎榜抄底：命中 84%／37%／41%／62%、守住 87%／33%／48%／65%，次數 1,145／43／71／424，大多出現在全面急跌之後，平常很少出現。原版龍虎榜資金：命中 13%／16%／19%／20%，跟隨便挑一天差不多，意思是「下殺力道還在創新高」，不是買點，看到它要等。【底★】：命中 88%／56%／56%／63%、守住 90%／54%／55%／65%，次數 1,048／48／89／520，四段都比原版穩；20 天後報酬中位數 +9.1%／−0.9%／−1.2%／+4.7%。改成震盪線後也試過「震盪線上穿 5／10／15／20」當訊號（加收過前高、加龍虎榜資金），命中最多 66%／39%／46%／66%，不如底★，所以訊號仍用原始乖離40 判斷，只是畫在震盪線上。試過的其他版本：門檻改成 -18%、-15%，或改用動態下界，次數變多但命中掉到三到四成；「底部強度結束＋收盤突破前高」命中四成多但報酬不好，都不採用。【提醒】底★代表「接近波段低點」，在 2025/5～2026/5 盤整期 20 天報酬中位數是負的，不保證會漲。', groups:[
   { name:'顯示', items:[
     {k:'showDQ', l:'底部強度紅柱', t:'bool', d:true},
     {k:'showFund', l:'龍虎榜資金（底部強度創 20 根新高，金點）', t:'bool', d:true},
-    {k:'showZone', l:'超跌區（乖離40 低於門檻塗色）', t:'bool', d:true},
+    {k:'showZone', l:'超跌區（震盪線跌破下界塗色）', t:'bool', d:true},
     {k:'thr', l:'龍虎榜抄底門檻：乖離40（%）', t:'float', d:-24, min:-60, max:-5, step:1},
     {k:'showOrig', l:'龍虎榜抄底（原公式：乖離40 上穿門檻）', t:'bool', d:true},
     {k:'showStar', l:'底★（回測優化）', t:'bool', d:true},
     {k:'starThr', l:'底★：乖離40 回到這個 % 之上', t:'float', d:-20, min:-50, max:-5, step:1},
     {k:'mainMark', l:'主圖標龍虎榜抄底、底★（要打開「副圖標記」）', t:'bool', d:true}
   ]},
-  { name:'動態上中下界', items:[
-    {k:'showBand', l:'顯示乖離40 動態上中下界', t:'bool', d:true},
-    {k:'bandLen', l:'計算根數', t:'int', d:120, min:60, max:500},
-    {k:'bandPct', l:'上下界百分位（%）', t:'float', d:5, min:1, max:30, step:1}
+  { name:'震盪線', items:[
+    {k:'oscLen', l:'波動計算根數', t:'int', d:250, min:60, max:600},
+    {k:'oscSm', l:'平滑根數', t:'int', d:3, min:1, max:10},
+    {k:'hi', l:'上界', t:'float', d:80, min:55, max:95, step:1},
+    {k:'lo', l:'下界', t:'float', d:20, min:5, max:45, step:1},
+    {k:'lineW', l:'震盪線粗細', t:'float', d:2, min:1, max:4, step:0.5}
   ]},
   { name:'顏色', items:[
     {k:'cDQ', l:'底部強度', t:'color', d:'#ff1744'},
     {k:'cFund', l:'龍虎榜資金', t:'color', d:'#ffc400'},
-    {k:'cLine', l:'乖離40 線（白底自動改深色）', t:'color', d:'#ffffff'},
-    {k:'cZone', l:'超跌區', t:'color', d:'#00e5ff'},
+    {k:'cLine', l:'震盪線（白底自動改深色）', t:'color', d:'#ffffff'},
+    {k:'cHi', l:'上界', t:'color', d:'#ff5252'},
+    {k:'cLo', l:'下界', t:'color', d:'#00e5ff'},
+    {k:'cZone', l:'超跌區（跌破下界）', t:'color', d:'#00e5ff'},
     {k:'cOrig', l:'龍虎榜抄底', t:'color', d:'#ffd600'},
-    {k:'cStar', l:'底★', t:'color', d:'#ff1744'},
-    {k:'cBand', l:'上中下界', t:'color', d:'#b388ff'}
+    {k:'cStar', l:'底★', t:'color', d:'#ff1744'}
   ]}
 ]};
 SCHEMA.jgn = { tab:'機構牛', title:'機構牛主圖（照你提供的通達信主圖公式移植＋回測後重新定義「★機構牛」）：K 棒照原公式依「收盤比昨收」上漲紅、下跌綠、平盤灰，並加上立體中心亮條；漲 5.8%～9.5% 紫色 K、漲停（9.8% 以上）金色 K。牛線＝(3×收+低+開+高)÷6 的 21 根加權平均（和紅線股起相同），馬線＝牛線 6 日平均；另有 5 日線、20 日布林標準上下軌（點線）、100 日布林超級上下軌（粗線）可開。原公式的「小心變盤」條件永遠成立（只是每 84 根印一次字），RSI 跌破 83 的文字是空的，所以沒有放。文章說的「★★★★★機構牛」選股公式沒有附在你給的原始碼裡，所以照文章描述（不過熱、蓄勢、突破壓力、放量）用全市場 2.4 年、分四段時間（2025/6～10、2025/11～2026/3、2026/4～7、2026/7～9）回測重新定義：照文章做「均線糾結＋窄幅整理＋量縮後突破」反而比較差（20 天後平均 +0.1%～+2.6%，比全市場平均還低）；最穩的是【★機構牛】＝收盤突破前 60 日最高價、成交量至少 20 日均量 2 倍、漲幅超過 4%、收在最高價 1.5% 以內：20 天後平均 +4.3%／+5.4%／+5.6%／+2.2%（全市場 +0.8%／+2.8%／+1.8%／+1.6%），四段都比較好。「過熱」（收盤高於年線 60% 以上，或高於月線 25% 以上）回測沒有比較差，所以只標註不剔除。【出場】＝之後牛線跌破馬線：每筆平均 +4.7%／+8.9%／+6.6%／+1.8%、勝率 40%／38%／40%／34%（順勢做法，賺在少數大段）；若改成固定抱 20 天：+4.3%／+5.5%／+5.5%／+2.4%、勝率 48%／49%／49%／44%。', groups:[
@@ -3450,8 +3453,14 @@ function calcLHB(B, p){
   const DQ = tdxEMA(raw, 3); for (let i = 0; i < n; i++){ DQ[i] /= 618; if (DQ[i] < 1e-9 || i < 40) DQ[i] = 0; }   // 前 40 根還在暖機，數值會失真
   const m40 = sma(C, 40), m5 = sma(C, 5), B40 = nanArr(n), B5 = nanArr(n);
   for (let i = 0; i < n; i++){ B40[i] = (C[i] - m40[i]) / m40[i] * 100; B5[i] = (C[i] - m5[i]) / m5[i] * 100; }
-  const N = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100;
-  const LB = rollPct(B40, N, q), MB = rollPct(B40, N, 0.5), UB = rollPct(B40, N, 1 - q);
+  // 震盪線：乖離40 ÷ 過去 N 根的波動（均方根），換成常態分布 0～100，再平滑
+  const N = Math.max(60, p.oscLen | 0), raw2 = nanArr(n); let s2 = 0, cnt = 0;
+  for (let i = 0; i < n; i++){
+    const x = B40[i]; if (!isNaN(x)){ s2 += x * x; cnt++; }
+    if (i >= N){ const y = B40[i - N]; if (!isNaN(y)){ s2 -= y * y; cnt--; } }
+    if (cnt >= 60 && !isNaN(x)){ const sd = Math.sqrt(Math.max(s2, 1e-9) / cnt); raw2[i] = 100 * ncdf(x / sd); }
+  }
+  const OSC = tdxEMA(raw2, Math.max(1, p.oscSm | 0));
   const fund = new Uint8Array(n), orig = new Uint8Array(n), star = new Uint8Array(n);
   const ev = [], sig = [], main = [], tag = new Array(n).fill(null); let ls = -99, lf = -99;
   for (let i = 1; i < n; i++){
@@ -3465,10 +3474,10 @@ function calcLHB(B, p){
     (tag[i] = tag[i] || []).push([t, col]);
     sig.push({ i, src:'龍虎榜抄底', text:t + (star[i] ? '（殺盤後乖離40 回到 ' + p.starThr + '% 之上、收過前高）' : '（乖離40 上穿 ' + p.thr + '%）'), col });
     if ((star[i] && p.showStar) || (orig[i] && p.showOrig))
-      ev.push({ i, y:B40[i], shape:'labelUp', dy:6, text:t, col:(star[i] && p.showStar) ? p.cStar : p.cOrig, tcol:(star[i] && p.showStar) ? '#fff' : '#3a2a00', size:star[i] ? 1.0 : 0.9 });
+      ev.push({ i, y:isNaN(OSC[i]) ? 0 : OSC[i], shape:'labelUp', dy:6, text:t, col:(star[i] && p.showStar) ? p.cStar : p.cOrig, tcol:(star[i] && p.showStar) ? '#fff' : '#3a2a00', size:star[i] ? 1.0 : 0.9 });
     if (p.mainMark && ((star[i] && p.showStar) || (orig[i] && p.showOrig))) main.push({ i, text:(star[i] && p.showStar) ? (both ? '抄底★' : '底★') : '龍虎榜抄底', col:(star[i] && p.showStar) ? p.cStar : p.cOrig });
   }
-  return { DQ, B40, B5, LB, MB, UB, low, fund, orig, star, tag, ev, sig, main };
+  return { DQ, B40, B5, OSC, low, fund, orig, star, tag, ev, sig, main };
 }
 
 function calcLBB(B, p){
@@ -5523,40 +5532,31 @@ function drawLX(p, i0, i1, ci){
 
 function drawLHB(p, i0, i1, ci){
   const r = R.lhb, q = P.lhb;
-  if (!r || r.error){ S = makeScale(p.top, p.h, -30, 10, 26, 6); legend([[['龍虎榜抄底  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  if (!r || r.error){ S = makeScale(p.top, p.h, 0, 100, 26, 6); legend([[['龍虎榜抄底  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
   const light = UI.theme === 'light', lineCol = light && /^#f{6}$/i.test(q.cLine) ? '#2a3140' : q.cLine;
-  const bc = light && q.cBand === '#b388ff' ? '#7c4dff' : q.cBand, oc = light && q.cOrig === '#ffd600' ? '#e6a700' : q.cOrig, zc = light && q.cZone === '#00e5ff' ? '#00a5b8' : q.cZone;
-  const arrs = [r.B40]; if (q.showBand) arrs.push(r.LB, r.UB);
-  const [mn0] = extent([r.B40], i0, i1), [mn, mx] = extent(arrs, i0, i1, mn0 < q.thr / 2 ? [q.thr, 0] : [0]), pad = (mx - mn) * 0.07;   // 離超跌門檻很遠時不硬把 -24% 拉進畫面，線才不會被壓扁
-  const hasEv = r.ev.some(m => m.i >= i0 && m.i <= i1);
-  S = makeScale(p.top, p.h, ...rng('lhb', mn - pad, mx + pad), 26, hasEv ? 30 : 8);
-  gridAndAxis(0, v => fmtNum(v, 0) + '%');
-  const W = plotW(), bw = Math.max(1, Math.min(view.barW * 0.62, 10)), yb = p.top + p.h - 1, maxH = (p.h - 30) * 0.5;
-  const hl = (v, col, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w || 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  const dk = (c, d0, d1) => light && c === d0 ? d1 : c;
+  const oc = dk(q.cOrig, '#ffd600', '#e6a700'), zc = dk(q.cZone, '#00e5ff', '#00a5b8'), hc = dk(q.cHi, '#ff5252', '#e53935'), lc = dk(q.cLo, '#00e5ff', '#00a5b8');
+  // 固定座標：0～100，下方留位置給標籤
+  S = makeScale(p.top, p.h, ...rng('lhb', -26, 106), 24, 2);
+  const W = plotW(), bw = Math.max(1, Math.min(view.barW * 0.62, 10)), yb = S.y(-26), maxH = (S.y(-26) - S.y(30));
+  const hl = (v, col, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); };
+  // 上下界之間淡底色，0／100 外框
+  ctx.fillStyle = rgba(CC.axis, light ? 95 : 96); ctx.fillRect(0, S.y(q.hi), W, S.y(q.lo) - S.y(q.hi));
   // 龍虎榜抄底：整根淡黃色直條（原公式的黃色長柱）
-  if (q.showOrig) for (let i = i0; i <= i1; i++) if (r.orig[i]){ ctx.fillStyle = rgba(oc, light ? 80 : 84); ctx.fillRect(X(i) - Math.max(2, view.barW * 0.45), p.top + 22, Math.max(4, view.barW * 0.9), p.h - 23); }
-  // 底部強度：從副圖底部往上的紅柱，平方根縮放、最高佔一半高度（和乖離是不同座標）
+  if (q.showOrig) for (let i = i0; i <= i1; i++) if (r.orig[i]){ ctx.fillStyle = rgba(oc, light ? 80 : 84); ctx.fillRect(X(i) - Math.max(2, view.barW * 0.45), S.y(100), Math.max(4, view.barW * 0.9), yb - S.y(100)); }
+  // 底部強度：從副圖底部往上的紅柱（獨立的對數座標，最高到震盪 30 的位置）
   let dm = 0; for (let i = i0; i <= i1; i++) if (r.DQ[i] > dm) dm = r.DQ[i];
-  const lgm = Math.log10(1 + dm), colTop = i => yb - Math.log10(1 + r.DQ[i]) / lgm * maxH;   // 對數縮放：急跌時的大值不會把平常的柱子壓扁
-  if (q.showDQ && dm > 0){
-    for (let i = i0; i <= i1; i++){ const v = r.DQ[i]; if (!(v > dm * 0.015)) continue; const y = colTop(i), x = X(i) - bw / 2;
-      ctx.fillStyle = rgba(q.cDQ, r.low[i] ? (light ? 25 : 18) : 62); ctx.fillRect(x, y, bw, yb - y); }
-    ctx.font = '10px "Noto Sans TC", sans-serif'; ctx.fillStyle = rgba(q.cDQ, 30); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-    ctx.fillText('底部強度', 4, yb - 2);
-  }
-  // 零軸、門檻、動態上中下界
-  hl(0, rgba(CC.axis, 45), [3, 3]);
-  if (q.showBand){
-    strokeSeries(i => r.UB[i], () => rgba(bc, 30), i0, i1, 1.1, [5, 4]);
-    strokeSeries(i => r.MB[i], () => rgba(bc, 55), i0, i1, 1, [2, 3]);
-    strokeSeries(i => r.LB[i], () => rgba(bc, 30), i0, i1, 1.1, [5, 4]);
-  }
-  if (q.showZone) fillBetween(i => Math.min(r.B40[i], q.thr), () => q.thr, () => rgba(zc, light ? 62 : 55), i0, i1);
-  hl(q.thr, rgba(zc, 25), [6, 4], 1.2);
-  ctx.font = '600 10.5px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = zc; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-  ctx.fillText('超跌 ' + q.thr + '%', W - 4, S.y(q.thr) - 2); ctx.textAlign = 'left';
-  // 乖離40 主線：超跌區那段換成青色
-  strokeSeries(i => r.B40[i], i => q.showZone && r.B40[i] < q.thr && r.B40[i - 1] < q.thr ? zc : lineCol, i0, i1, 1.8);
+  const lgm = Math.log10(1 + dm), colTop = i => yb - Math.log10(1 + r.DQ[i]) / lgm * maxH;
+  if (q.showDQ && dm > 0) for (let i = i0; i <= i1; i++){ const v = r.DQ[i]; if (!(v > dm * 0.015)) continue; const y = colTop(i);
+    ctx.fillStyle = rgba(q.cDQ, r.low[i] ? (light ? 30 : 25) : 66); ctx.fillRect(X(i) - bw / 2, y, bw, yb - y); }
+  // 實線：上界、中線、下界、0、100
+  hl(100, rgba(CC.axis, 75), 1); hl(0, rgba(CC.axis, 75), 1);
+  hl(50, rgba(CC.axis, 55), 1);
+  hl(q.hi, rgba(hc, 15), 1.5); hl(q.lo, rgba(lc, 15), 1.5);
+  // 跌破下界：塗色
+  if (q.showZone) fillBetween(i => Math.min(r.OSC[i], q.lo), () => q.lo, () => rgba(zc, light ? 60 : 52), i0, i1);
+  // 震盪線：跌破下界那段換下界色、超過上界那段換上界色
+  strokeSeries(i => r.OSC[i], i => { const v = r.OSC[i], u = r.OSC[i - 1]; return v < q.lo && u < q.lo ? lc : v > q.hi && u > q.hi ? hc : lineCol; }, i0, i1, q.lineW);
   // 龍虎榜資金：紅柱頂端金點
   if (q.showFund && q.showDQ && dm > 0 && view.barW >= 1.5){
     const rad = Math.max(2.2, Math.min(4, view.barW * 0.4));
@@ -5565,13 +5565,17 @@ function drawLHB(p, i0, i1, ci){
       ctx.strokeStyle = light ? '#fff' : '#0d1016'; ctx.lineWidth = 1; ctx.stroke(); }
   }
   visibleMarkers(r.ev, i0, i1);
-  const lv = r.B40[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv < q.thr ? zc : light ? '#2a3140' : '#5a6474', '#fff', v => fmtNum(v, 1) + '%');
-  const b40 = r.B40[ci], b5 = r.B5[ci], dq = r.DQ[ci];
-  const zone = isNaN(b40) ? '' : b40 < q.thr ? '超跌區' : !isNaN(r.LB[ci]) && b40 < r.LB[ci] ? '低於下界' : !isNaN(r.UB[ci]) && b40 > r.UB[ci] ? '高於上界' : '';
-  const parts = [['龍虎榜抄底', CC.axis], ['乖離40 ' + (isNaN(b40) ? '—' : (b40 >= 0 ? '+' : '') + fmtNum(b40, 1) + '%'), !isNaN(b40) && b40 < q.thr ? zc : lineCol],
-    ['乖離5 ' + (isNaN(b5) ? '—' : (b5 >= 0 ? '+' : '') + fmtNum(b5, 1) + '%'), CC.axis],
+  // 右側座標：只標 0、下界、50、上界、100
+  ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for (const [v, col] of [[0, CC.axis], [q.lo, lc], [50, CC.axis], [q.hi, hc], [100, CC.axis]]){ ctx.fillStyle = col; ctx.fillText(fmtNum(v, 0), W + 6, S.y(v)); }
+  const lv = r.OSC[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv < q.lo ? lc : lv > q.hi ? hc : light ? '#2a3140' : '#5a6474', '#fff', v => fmtNum(v, 1));
+  const o = r.OSC[ci], b40 = r.B40[ci], b5 = r.B5[ci], dq = r.DQ[ci];
+  const zone = isNaN(o) ? '' : o < q.lo ? '超跌（下界以下）' : o > q.hi ? '超漲（上界以上）' : '';
+  const pct = v => isNaN(v) ? '—' : (v >= 0 ? '+' : '') + fmtNum(v, 1) + '%';
+  const parts = [['龍虎榜抄底', CC.axis], ['震盪 ' + (isNaN(o) ? '—' : fmtNum(o, 1)), isNaN(o) ? CC.axis : o < q.lo ? lc : o > q.hi ? hc : lineCol],
+    ['乖離40 ' + pct(b40), !isNaN(b40) && b40 < q.thr ? zc : CC.axis], ['乖離5 ' + pct(b5), CC.axis],
     ['底部強度 ' + (dq > 0 ? fmtNum(dq, dq < 10 ? 1 : 0) : '0') + (r.low[ci] ? '（38 日新低）' : ''), dq > 0 ? q.cDQ : CC.axis]];
-  if (zone) parts.push([zone, zone === '高於上界' ? bc : zc]);
+  if (zone) parts.push([zone, o < q.lo ? lc : hc]);
   if (r.fund[ci]) parts.push(['龍虎榜資金（下殺力道創新高）', q.cFund]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
