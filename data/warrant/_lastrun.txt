@@ -1,5 +1,4 @@
-11-03 02:51:23   retry https://www.tpex.org.tw/openapi/v1/tpex_warrant_quts IncompleteRead IncompleteRead(3767929 bytes read, 168284 more expected)
-11-03 02:52:14 2026-11-02 underlyings 662 otc unmatched traded 0
-11-03 02:52:14 fetched days 1
-11-03 02:52:14 summary 804 underlyings 86 days, base 60
-11-03 02:52:53 detail files 804 detail days 20 meta 64509
+11-04 00:37:00 2026-11-03 underlyings 675 otc unmatched traded 0
+11-04 00:37:00 fetched days 1
+11-04 00:37:00 summary 805 underlyings 86 days, base 60
+11-04 00:37:48 detail files 805 detail days 20 meta 65062
