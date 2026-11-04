@@ -1,4 +1,5 @@
-11-04 00:37:00 2026-11-03 underlyings 675 otc unmatched traded 0
-11-04 00:37:00 fetched days 1
-11-04 00:37:00 summary 805 underlyings 86 days, base 60
-11-04 00:37:48 detail files 805 detail days 20 meta 65062
+11-05 00:36:44 2026-11-04 underlyings 678 otc unmatched traded 0
+11-05 00:37:27 2026-09-29 underlyings 674 otc unmatched traded 6
+11-05 00:37:27 fetched days 2
+11-05 00:37:28 summary 804 underlyings 87 days, base 60
+11-05 00:38:03 detail files 804 detail days 20 meta 65517
