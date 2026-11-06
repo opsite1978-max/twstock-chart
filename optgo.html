@@ -50,7 +50,7 @@ a{color:inherit}
 .ck.ok b{color:var(--gold)} .ck.no b{color:var(--faint)}
 
 /* 版面 */
-.wrap{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 140px)}
+.wrap{display:grid;grid-template-columns:450px 1fr;min-height:calc(100vh - 140px)}
 aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
 .sec{padding:14px 16px;border-bottom:1px solid var(--line)}
 .sec h2{font-size:14px;font-weight:700;margin:0 0 8px}
@@ -67,13 +67,34 @@ aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-
 .codes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .code{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
 .code.on{background:var(--text);color:var(--ink);border-color:var(--text)}
-.pick-ctl{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.pick-ctl{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.pick-ctl .chk{display:inline-flex;gap:5px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+.grp{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+.grp .lb{font-size:12px;color:var(--muted);width:30px;flex:none;line-height:26px}
+.grp .codes{margin-bottom:0}
+.code .ex{font-size:11px;opacity:.7;margin-left:4px;font-family:var(--num)}
+details.old{margin:2px 0 10px}
+details.old summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+details.old summary::-webkit-details-marker{display:none}
+details.old[open] summary{margin-bottom:6px}
+table.t9{width:100%;border-collapse:collapse;font-size:13px}
+table.t9 th{position:sticky;top:0;z-index:1;background:var(--panel);font-weight:500;font-size:12px;color:var(--muted);padding:6px 3px;white-space:nowrap;border-bottom:1px solid var(--line)}
+table.t9 th.ch{color:var(--bull)} table.t9 th.ph{color:var(--bear)}
+table.t9 td{padding:5px 3px;text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums;border-bottom:1px solid var(--grid);white-space:nowrap;cursor:pointer}
+table.t9 td.k{text-align:center;font-weight:600;color:var(--muted);background:var(--panel2);min-width:56px}
+table.t9 td.p{text-align:left}
+table.t9 td.px{font-weight:700;font-size:14px;color:var(--text)}
+table.t9 td.na{color:var(--faint)}
+table.t9 tr.itmc td.c, table.t9 tr.itmp td.p{background:var(--goldbg)}
+table.t9 tr.atm td.k{color:var(--gold);background:var(--goldbg)}
+table.t9 td.q{box-shadow:inset 0 0 0 1.5px var(--gold);color:var(--gold)}
+table.t9 td.sel{background:rgba(127,150,190,.28)!important}
+table.t9 tr:hover td{filter:brightness(1.15)}
 .pick-ctl .seg{display:flex;gap:2px;background:var(--panel2);border-radius:8px;padding:2px}
 .pick-ctl .seg button{border:0;background:none;padding:3px 9px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted);font-family:var(--num)}
 .pick-ctl .seg button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
 .pick-ctl input{flex:1;min-width:0;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0 10px;font-family:var(--num);font-size:14px}
-.tscroll{max-height:62vh;overflow:auto;border-radius:6px}
-table.t thead th{position:sticky;top:0;background:var(--ink);z-index:1}
+.tscroll{max-height:66vh;overflow:auto;border-radius:6px;border:1px solid var(--line)}
 .more-btn{margin-top:6px;width:100%;border:1px dashed var(--line);background:none;border-radius:8px;padding:7px;font-size:13px;color:var(--muted);cursor:pointer}
 table.t{width:100%;border-collapse:collapse}
 table.t th{font-size:12px;font-weight:500;color:var(--muted);padding:4px;text-align:center}
@@ -111,6 +132,8 @@ main{display:flex;flex-direction:column;min-width:0}
   .wrap{display:flex;flex-direction:column}
   aside{display:contents}
   .sec.s1{order:1} main{order:2} .sec.s2{order:3;border-top:1px solid var(--line)}
+  .sec.s2{padding-left:8px;padding-right:8px}
+  table.t9{font-size:12.5px} table.t9 td{padding:5px 2px}
   .chart{min-height:62vh}
   .chart.more{min-height:88vh}
   #panes{margin-left:0}
@@ -145,12 +168,18 @@ main{display:flex;flex-direction:column;min-width:0}
     </section>
     <section class="sec s2">
       <h2>自己挑</h2>
-      <div class="codes" id="codes"></div>
+      <div class="grp"><span class="lb">週選</span><div class="codes" id="gW"></div></div>
+      <div class="grp"><span class="lb">月選</span><div class="codes" id="gM"></div></div>
+      <details class="old" id="oldBox"><summary>▸ 已結算（保留 30 天，可回頭檢討）</summary><div class="codes" id="gX"></div></details>
       <div class="pick-ctl">
-        <span class="seg" id="rng"><button data-r="10">±10</button><button data-r="20">±20</button><button data-r="40">±40</button><button data-r="0">全部</button></span>
-        <input id="jump" type="search" inputmode="numeric" placeholder="跳到履約價" aria-label="跳到履約價">
+        <span class="seg" id="rng"><button data-r="8">價平±8</button><button data-r="15">±15</button><button data-r="30">±30</button><button data-r="0">全部</button></span>
+        <label class="chk"><input type="checkbox" id="onlyTraded"> 只看有成交</label>
       </div>
-      <div class="tscroll" id="tscroll"><table class="t"><thead><tr><th>買權</th><th>履約價</th><th>賣權</th></tr></thead><tbody id="tbody"></tbody></table></div>
+      <div class="pick-ctl"><input id="jump" type="search" inputmode="numeric" placeholder="跳到履約價" aria-label="跳到履約價"></div>
+      <div class="tscroll" id="tscroll"><table class="t9"><thead><tr>
+        <th class="ch">未平倉</th><th class="ch">量</th><th class="ch">漲跌</th><th class="ch">買權</th><th>履約價</th><th class="ph">賣權</th><th class="ph">漲跌</th><th class="ph">量</th><th class="ph">未平倉</th>
+      </tr></thead><tbody id="tbody"></tbody></table></div>
+      <p class="hint" style="margin-top:8px">金框＝現在符合進場條件；淡黃底＝價內；點買權或賣權那一邊看那一檔的圖。</p>
     </section>
   </aside>
 
@@ -187,7 +216,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, loss:-0.3 };   // 進場條件（回測挑出來的）
 
-const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true, range:0, cheap:false }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true, range:0, cheap:false, onlyTraded:false }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
 // 之前存過 ±20 的，改成預設全部價位（只做一次）
 try { const raw = JSON.parse(localStorage.getItem('optgo:ui') || '{}'); if (raw && raw.rangeV !== 2){ UI.range = 0; UI.rangeV = 2; } } catch(e){}
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
@@ -301,7 +330,20 @@ function quote(c, r, cp){
   const h = r[cp] || {}, lv = D.live.get(c.code), bars = lv && lv.s && lv.s[r.k + cp];
   if (!bars || !bars.length) return h;
   const add = bars.filter(b => b[0] > (h.t || 0)); if (!add.length) return h;
-  return Object.assign({}, h, { c:add[add.length - 1][4], v:(h.v || 0) + add.reduce((s, b) => s + b[5], 0), live:true });
+  const last = add[add.length - 1], lastTd = D.idx.lastTd, ltd = tradeDay(last[0]);
+  const q = Object.assign({}, h, { c:last[4], live:true });
+  if (ltd === lastTd) q.v = (h.v || 0) + add.reduce((s, b) => s + b[5], 0);
+  else { q.v = add.filter(b => tradeDay(b[0]) === ltd).reduce((s, b) => s + b[5], 0); q.b = h.sd === lastTd && h.st > 0 ? h.st : h.c; }
+  q.ch = q.b != null ? Math.round((q.c - q.b) * 100) / 100 : null;
+  return q;
+}
+// 分鐘 → 交易日（夜盤算下一個交易日）
+function tradeDay(t){
+  const d = Math.floor(t / 1440), m = t - d * 1440, x = ymd(d), cal = D.idx.cal || [];
+  const next = y => { for (const z of cal) if (z > y) return z; const q = new Date(y + 'T00:00:00Z'); do { q.setUTCDate(q.getUTCDate() + 1); } while (q.getUTCDay() % 6 === 0); return q.toISOString().slice(0, 10); };
+  if (m >= 900) return next(x);
+  if (m <= 330 && !cal.includes(x)) return next(x);
+  return x;
 }
 function renderStatus(){
   const S = TX5, i = S.U.length - 1, d = S.dir[i], a = S.adx[i], mo = S.mom[i] * d, F = S.U[i].c;
@@ -348,27 +390,48 @@ async function renderCands(st){
   const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
   box.querySelectorAll('.cand').forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; select(x.c.code, x.k, x.cp); });
 }
+function codeChip(c){
+  const m = c.code.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/), e = (c.exp || '').slice(5).replace('-', '/');
+  const label = !m ? c.code : !m[3] ? (+m[2]) + '月<span class="ex">' + e + '</span>' : e + (m[3] === 'W' ? ' 週三' : ' 週五');
+  return '<button class="code' + (c.code === UI.code ? ' on' : '') + '" data-c="' + c.code + '">' + label + '</button>';
+}
 function renderPicker(st){
-  const now = nowMin(), cs = D.idx.contracts.filter(c => !c.expired && expMin(c) > now);
-  if (!cs.some(c => c.code === UI.code)) UI.code = (cs.find(c => expMin(c) - now >= R.tte) || cs[0] || {}).code;
-  $('codes').innerHTML = cs.map(c => '<button class="code' + (c.code === UI.code ? ' on' : '') + '" data-c="' + c.code + '">' + shortLabel(c) + '</button>').join('');
-  $('codes').querySelectorAll('.code').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); pickScrolled = false; renderPicker(st); });
-  const c = cs.find(x => x.code === UI.code); if (!c) return;
-  const rows = c.rows; let ai = 0, bd = Infinity; rows.forEach((r, i) => { const d0 = Math.abs(r.k - st.F); if (d0 < bd){ bd = d0; ai = i; } });
-  const R0 = UI.range || 0, vis = R0 ? rows.slice(Math.max(0, ai - R0), ai + R0 + 1) : rows, longOK = expMin(c) - now >= R.tte;
-  for (const b of $('rng').children) b.classList.toggle('on', +b.dataset.r === R0);
+  const now = nowMin(), all = D.idx.contracts, live = all.filter(c => !c.expired && expMin(c) > now), old = all.filter(c => !(!c.expired && expMin(c) > now));
+  if (!all.some(c => c.code === UI.code)) UI.code = (live.find(c => expMin(c) - now >= R.tte) || live[0] || {}).code;
+  $('gW').innerHTML = live.filter(c => /[WF]/.test(c.code)).map(codeChip).join('');
+  $('gM').innerHTML = live.filter(c => !/[WF]/.test(c.code)).map(codeChip).join('');
+  $('gX').innerHTML = old.map(codeChip).join('');
+  $('oldBox').style.display = old.length ? '' : 'none';
+  if (old.some(c => c.code === UI.code)) $('oldBox').open = true;
+  document.querySelectorAll('.sec.s2 .code').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); pickScrolled = false; renderPicker(st); });
+  for (const b of $('rng').children) b.classList.toggle('on', +b.dataset.r === (UI.range || 0));
+  $('onlyTraded').checked = !!UI.onlyTraded;
+  const c = all.find(x => x.code === UI.code); if (!c) return;
+  const F = st.F, longOK = expMin(c) - now >= R.tte, minPx = UI.cheap ? 0.1 : R.px;
+  let rows = c.rows.map(r => ({ k:r.k, C:quote(c, r, 'C'), P:quote(c, r, 'P') }));
+  if (UI.onlyTraded) rows = rows.filter(r => (r.C.v || 0) + (r.P.v || 0) > 0);
+  let ai = 0, bd = Infinity; rows.forEach((r, i) => { const d0 = Math.abs(r.k - F); if (d0 < bd){ bd = d0; ai = i; } });
+  const atmK = rows[ai] && rows[ai].k, R0 = UI.range || 0;
+  const vis = R0 ? rows.slice(Math.max(0, ai - R0), ai + R0 + 1) : rows;
+  const cell = (v, cls) => '<td class="' + cls + (v == null || v === '' ? ' na' : '') + '">' + (v == null || v === '' ? '–' : v) + '</td>';
+  const chc = v => v == null ? '' : v > 0 ? ' bull' : v < 0 ? ' bear' : '';
+  const fch = v => v == null ? '' : (v > 0 ? '+' : '') + fmtP(v);
   $('tbody').innerHTML = vis.map(r => {
-    const qc = quote(c, r, 'C'), qp = quote(c, r, 'P');
-    const minPx = UI.cheap ? 0.1 : R.px;
-    const okC = st.ok && st.d > 0 && longOK && r.k > st.F && qc.c >= minPx && qc.v, okP = st.ok && st.d < 0 && longOK && r.k < st.F && qp.c >= minPx && qp.v;
-    const sel = cp => c.code === UI.code && r.k === UI.K && UI.cp === cp ? ' sel' : '';
-    return '<tr class="' + (r === rows[ai] ? 'atm' : '') + '"><td class="px' + (okC ? ' q' : '') + sel('C') + '" data-k="' + r.k + '" data-p="C">' + fmtP(qc.c) + '</td><td class="k">' + r.k + '</td>' +
-      '<td class="px' + (okP ? ' q' : '') + sel('P') + '" data-k="' + r.k + '" data-p="P">' + fmtP(qp.c) + '</td></tr>'; }).join('');
-  $('tbody').querySelectorAll('td.px').forEach(td => td.onclick = () => select(UI.code, +td.dataset.k, td.dataset.p));
-  // 捲到選中的那一檔（沒有就捲到價平）
+    const C = r.C, P = r.P, expired = !(expMin(c) > now);
+    const okC = !expired && st.ok && st.d > 0 && longOK && r.k > F && C.c >= minPx && C.v, okP = !expired && st.ok && st.d < 0 && longOK && r.k < F && P.c >= minPx && P.v;
+    const sc = c.code === UI.code && r.k === UI.K && UI.cp === 'C' ? ' sel' : '', sp = c.code === UI.code && r.k === UI.K && UI.cp === 'P' ? ' sel' : '';
+    return '<tr class="' + [r.k === atmK ? 'atm' : '', r.k < F ? 'itmc' : '', r.k > F ? 'itmp' : ''].join(' ') + '" data-k="' + r.k + '">' +
+      cell(fmtN(C.oi), 'c' + sc) + cell(fmtN(C.v), 'c' + sc) + cell(fch(C.ch), 'c' + sc + chc(C.ch)) + cell(fmtP(C.c), 'c px' + sc + (okC ? ' q' : '')) +
+      '<td class="k">' + r.k + '</td>' +
+      cell(fmtP(P.c), 'p px' + sp + (okP ? ' q' : '')) + cell(fch(P.ch), 'p' + sp + chc(P.ch)) + cell(fmtN(P.v), 'p' + sp) + cell(fmtN(P.oi), 'p' + sp) + '</tr>'; }).join('')
+    || '<tr><td colspan="9" class="na" style="text-align:center;padding:20px">沒有符合的履約價</td></tr>';
+  $('tbody').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = e => {
+    const td = e.target.closest('td'), K = +tr.dataset.k;
+    select(UI.code, K, td.classList.contains('c') ? 'C' : td.classList.contains('p') ? 'P' : UI.cp); });
   const box = $('tscroll'), tr = $('tbody').querySelector('td.sel') ? $('tbody').querySelector('td.sel').parentElement : $('tbody').querySelector('tr.atm');
   if (tr && !pickScrolled){ box.scrollTop = Math.max(0, tr.offsetTop - box.clientHeight / 2); pickScrolled = true; }
 }
+$('onlyTraded').onchange = e => { UI.onlyTraded = e.target.checked; saveUI(); pickScrolled = false; renderPicker(ST); };
 let pickScrolled = false;
 $('rng').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); pickScrolled = false; renderPicker(ST); };
 $('jump').addEventListener('keydown', e => {
