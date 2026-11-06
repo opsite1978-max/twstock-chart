@@ -173,10 +173,10 @@ def main():
                         # 中途才開始錄（或重新接手）就只記下目前累計量，從下一分鐘開始算，避免整段量灌進一根
                         fresh = now_min() - start <= 3 or (p is not None and p[4] != start)
                         if fresh:
-                            p = st[oid] = [0, hi, lo, float(r.get('open') or c), start]
+                            p = st[oid] = [0, hi, lo, float(r.get('open') or c), start, tm]
                             first = True
                         else:
-                            st[oid] = [tv, hi, lo, c, start]
+                            st[oid] = [tv, hi, lo, c, start, tm]
                             continue
                     dv = tv - p[0]
                     if dv > 0:
@@ -186,7 +186,8 @@ def main():
                         elif bars and bars[-1][0] > tm:
                             b = None
                         else:
-                            o = p[3]
+                            # 開盤價：上一筆成交在 2 分鐘內才接上一筆的價；冷門檔隔很久才成交，就用這一筆的價，避免畫出假的長紅長黑
+                            o = p[3] if (first or (p[5] is not None and tm - p[5] <= 2)) else c
                             b = [tm, o, max(o, c), min(o, c), c, 0]
                             bars.append(b)
                         if b is not None:
@@ -199,6 +200,8 @@ def main():
                                 b[3] = min(b[3], lo)
                         nrow += 1
                     p[0], p[1], p[2], p[3] = tv, hi, lo, c
+                    if dv > 0:
+                        p[5] = tm
             # 只留最近 30 小時
             cut = now_min() - 30 * 60
             for code in list(data):
