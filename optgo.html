@@ -82,13 +82,15 @@ main{display:flex;flex-direction:column;min-width:0}
 .chead .ttl{font-size:22px;font-weight:700}
 .chead .ttl .n{font-size:26px}
 .chead .px{font-family:var(--num);font-size:26px;font-weight:600}
-.tfs{display:flex;gap:2px;margin-left:auto;background:var(--panel2);border-radius:8px;padding:2px}
+.tfs{display:flex;gap:2px;background:var(--panel2);border-radius:8px;padding:2px}
+#panes{margin-left:auto}
 .tfs button{border:0;background:none;padding:4px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted)}
 .tfs button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
 .now{margin:0 18px 8px;padding:10px 14px;border-radius:10px;background:var(--goldbg);border:1px solid var(--gold);font-size:14px;display:none}
 .now.show{display:block}
 .now b{font-family:var(--num);font-size:17px}
 .chart{position:relative;flex:1;min-height:440px;margin:0 6px}
+.chart.more{min-height:640px}
 .chart .cv{position:absolute;inset:0}
 .lg{position:absolute;left:12px;top:6px;z-index:3;pointer-events:none;font-size:12px;color:var(--muted);display:flex;gap:4px 12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
 .lg .n{font-size:14px;color:var(--text)}
@@ -102,6 +104,8 @@ main{display:flex;flex-direction:column;min-width:0}
   aside{display:contents}
   .sec.s1{order:1} main{order:2} .sec.s2{order:3;border-top:1px solid var(--line)}
   .chart{min-height:62vh}
+  .chart.more{min-height:88vh}
+  #panes{margin-left:0}
   .top{padding-left:14px;padding-right:14px}
   .tfs{margin-left:0}
 }
@@ -141,6 +145,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chead">
       <span class="ttl" id="ttl">—</span>
       <span class="px" id="px"></span>
+      <div class="tfs" id="panes"><button data-p="mo" title="這一檔選擇權的動能：快慢均線差÷平均波幅；紅柱＝往上的力道、綠柱＝往下；顏色深＝力道還在變大、淡＝在變小；虛線是最近 120 根的上下界">動能</button><button data-p="vo" title="台指期波動發動：波動（平均波幅佔價格）在最近 120 根裡的位置 0～100；20 以下＝擠壓、80 以上＝爆發；發動＝從擠壓往上突破 50">波動發動</button></div>
       <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
     </div>
     <div class="now" id="now"></div>
@@ -148,6 +153,8 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="stats" id="stats"></div>
     <div class="rule">
       <b>附圖怎麼看</b>：彩色線是<b>這一檔選擇權自己的波段線</b>（0～100，跟主圖 K 線一起動）：往上走是紅色、往下走是綠色；碰到<b>上界 80</b> 代表這一波漲得多、偏高，掉到<b>下界 20</b> 代表跌得多、偏低，<b>中線 50</b> 是一半。底下的<b class="gold">金色條</b>＝台指期進場條件成立（趨勢強、同方向、還在推）。<br>
+      <b>動能</b>：這一檔選擇權自己的力道（快慢均線差÷平均波幅）。紅柱在 0 上面＝往上推、綠柱在 0 下面＝往下壓；柱子顏色深＝力道還在變大、變淡＝在變小（常是一波快結束）；紅、綠虛線是最近 120 根的上下界，超過＝這一波特別強。<br>
+      <b>波動發動</b>：台指期的波動在最近 120 根裡的位置。<span style="color:#4a9eff">20 以下（藍）＝擠壓</span>、<span style="color:#ff8f3a">80 以上（橘）＝爆發</span>；橘點＝從擠壓往上突破 50（發動）。<b>回測：發動那一刻追進去比隨便進場還差</b>（平均每筆 −4%，加在進場條件上也會從 +7% 變成 −1%），因為剛發動常常先來回洗。發動後等方向確定、金色條亮起再看進場。<br>
       <b>怎麼一起看</b>：進場看<b class="gold">金色條＋主圖的進場箭頭</b>（回測過的部分）；波段線用來看位置和出場——已經在上界上面才進場，追高的風險比較大；持有中波段線從上界掉回來、金色條也消失，就是動能沒了。回測顯示加上波段線的位置並不會讓進場勝算更高，所以它是輔助看盤，不是進場條件。<br>
       <b>進場條件</b>（全部同時成立，用 5 分 K 判斷）：台指期超級趨勢方向和這一邊相同（買權要多方、賣權要空方）、平均趨向 30 以上（趨勢夠強）、最近 6 根往有利方向走了半個平均波幅以上（還在推）；選擇權是價外、價格 30 點以上、離到期 24 小時以上。<br>
       <b>出場</b>：漲 50% 停利、跌 30% 停損，都沒碰到就在 4 小時盤中（48 根 5 分 K）後出場。圖上金色＝當時有達到 +50%，灰色＝先停損，白色＝時間到。<br>
@@ -166,7 +173,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, loss:-0.3 };   // 進場條件（回測挑出來的）
 
-const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark' }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -255,6 +262,15 @@ function txState(U){
   const idx = new Map(U.map((b, i) => [b.t, i]));
   return { U, dir, adx, mom, idx };
 }
+// 波動位置：14 根平均波幅佔價格，在最近 120 根裡排第幾（0～100）；發動＝最近 24 根曾在 20 以下，這一根往上突破 50
+function volIgnite(S){
+  const n = S.U.length, ap = new Array(n).fill(NaN), vp = new Array(n).fill(NaN), ign = new Uint8Array(n), tr = new Array(n).fill(NaN);
+  for (let i = 1; i < n; i++){ const a = S.U[i], p = S.U[i - 1]; tr[i] = Math.max(a.h - a.l, Math.abs(a.h - p.c), Math.abs(a.l - p.c)); }
+  const at = rma(tr, 14); for (let i = 0; i < n; i++) if (at[i] > 0) ap[i] = at[i] / S.U[i].c;
+  for (let i = 120; i < n; i++){ let below = 0, cnt = 0; for (let k = i - 119; k <= i; k++) if (!isNaN(ap[k])){ cnt++; if (ap[k] < ap[i]) below++; } if (cnt >= 100) vp[i] = below / cnt * 100; }
+  for (let i = 25; i < n; i++){ if (!(vp[i] >= 50 && vp[i - 1] < 50)) continue; let mn = Infinity; for (let k = i - 24; k < i; k++) if (vp[k] < mn) mn = vp[k]; if (mn <= 20) ign[i] = 1; }
+  S.vp = vp; S.ign = ign;
+}
 // 第 i 根台指期對「方向 want」是不是可進場
 const txOK = (S, i, want) => S.dir[i] === want && S.adx[i] >= R.adx && want * S.mom[i] >= R.mom;
 // 震盪值：50＋50×tanh(0.847×有利方向動能)，動能 0.5 剛好是 70
@@ -329,7 +345,7 @@ function renderPicker(st){
 }
 
 /* ═════════════ 圖 ═════════════ */
-let chart = null, sCandle = null, sVol = null, sZone = null, sK = null, sSg = null, sStrip = null, mk = null, plines = [], DATA = [];
+let chart = null, sCandle = null, sVol = null, sZone = null, sK = null, sSg = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, mkV = null, mk = null, plines = [], DATA = [];
 function buildChart(){
   if (chart) chart.remove();
   const el = $('cv');
@@ -361,7 +377,29 @@ function buildChart(){
   sK.createPriceLine({ price:80, color:css('--bull') + 'aa', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'上界' });
   sK.createPriceLine({ price:50, color:faint, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
   sK.createPriceLine({ price:20, color:css('--bear') + 'aa', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'下界' });
-  try { const ps = chart.panes(); ps[0].setStretchFactor(2.8); ps[1].setStretchFactor(1.2); } catch(e){}
+  let pn = 2; sMo = sVo = null;
+  if (UI.mo){
+    // 動能：這一檔選擇權（12 根均線−26 根均線）÷14 根平均波幅；虛線＝最近 120 根動能的 9 成／1 成（動態上下界）
+    sMo = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'動能', priceFormat:{ type:'price', precision:2, minMove:0.01 } }, pn);
+    sMoU = chart.addSeries(L.LineSeries, { color:css('--bull') + '99', lineWidth:1, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }, pn);
+    sMoL = chart.addSeries(L.LineSeries, { color:css('--bear') + '99', lineWidth:1, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }, pn);
+    sMo.createPriceLine({ price:0, color:faint, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+    try { chart.panes()[pn].setStretchFactor(0.9); } catch(e){}
+    pn++;
+  }
+  if (UI.vo){
+    // 波動發動：台指期波動在最近 120 根裡的位置（0～100）；20 以下擠壓（藍）、80 以上爆發（橘）
+    sVo = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2, lineType:L.LineType.Curved,
+      topLineColor:'#ff8f3a', topFillColor1:'#ff8f3a44', topFillColor2:'#ff8f3a05', bottomLineColor:'#4a9eff', bottomFillColor1:'#4a9eff05', bottomFillColor2:'#4a9eff44',
+      priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'波動', priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }) }, pn);
+    sVo.createPriceLine({ price:80, color:'#ff8f3a', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'爆發' });
+    sVo.createPriceLine({ price:20, color:'#4a9eff', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'擠壓' });
+    mkV = L.createSeriesMarkers(sVo, []);
+    try { chart.panes()[pn].setStretchFactor(0.9); } catch(e){}
+    pn++;
+  }
+  $('cv').parentElement.classList.toggle('more', pn > 3);
+  try { const ps = chart.panes(); ps[0].setStretchFactor(pn > 2 ? 2.4 : 2.8); ps[1].setStretchFactor(pn > 2 ? 0.9 : 1.2); } catch(e){}
   mk = L.createSeriesMarkers(sCandle, []);
   chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
 }
@@ -372,6 +410,9 @@ function legend(b){
   if (b.k != null && !isNaN(b.k)) s += '<span>波段 <span class="n" style="color:' + (b.k >= b.sg ? css('--bull') : css('--bear')) + '">' + Math.round(b.k) + '</span>' + (b.k >= 80 ? '（上界以上，偏高）' : b.k <= 20 ? '（下界以下，偏低）' : '') + '</span>';
   if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span></span>'; }
   s += '<span' + (b.ok5 ? ' class="gold"' : '') + '>台指期進場條件 ' + (b.ok5 ? '✓ 成立（金色條）' : '✗ 不成立') + '</span>';
+  if (sMo && b.mo != null && !isNaN(b.mo)) s += '<span>動能 <span class="n" style="color:' + (b.mo >= 0 ? css('--bull') : css('--bear')) + '">' + b.mo.toFixed(2) + '</span>' + (!isNaN(b.moU) && b.mo >= b.moU ? '（上界以上，力道很強）' : !isNaN(b.moL) && b.mo <= b.moL ? '（下界以下，跌勢很強）' : '') + '</span>';
+  if (sVo && b.vp != null && !isNaN(b.vp)) s += '<span>台指期波動 <span class="n">' + Math.round(b.vp) + '</span>' + (b.vp >= 80 ? '（爆發中）' : b.vp <= 20 ? '（擠壓中）' : '') + '</span>';
+  if (sVo && b.ign) s += '<span style="color:#ff8f3a">● 波動剛發動：回測這時候追進去比隨便進場還差，先等方向確定</span>';
   if (b.sig) s += '<span class="gold">進場 ' + fmtP(b.sig.px) + '（' + b.sig.txt + '）</span>';
   $('lg').innerHTML = s;
 }
@@ -424,6 +465,30 @@ async function renderChart(keep){
   // 金色條：台指期進場條件（5 分 K 判斷，取這一根結束前最後一根 5 分 K）
   sStrip.setData(DATA.map(b => { let j = null; for (let q = tf - 5; q >= 0 && j == null; q -= 5) j = TX5.idx.get(b.t + q);
     b.ok5 = j != null && txOK(TX5, j, want); return { time:b.t * 60, value:-4, color:b.ok5 ? gold : 'transparent' }; }));
+  if (sMo){
+    const n2 = DATA.length, e12 = [], e26 = [], atr = [];
+    let a12 = NaN, a26 = NaN, at = NaN;
+    for (let i = 0; i < n2; i++){ const b = DATA[i], pc = i ? DATA[i - 1].c : b.c;
+      a12 = isNaN(a12) ? b.c : a12 + 2 / 13 * (b.c - a12); a26 = isNaN(a26) ? b.c : a26 + 2 / 27 * (b.c - a26);
+      const tr = Math.max(b.h - b.l, Math.abs(b.h - pc), Math.abs(b.l - pc)); at = isNaN(at) ? tr : (at * 13 + tr) / 14;
+      b.mo = i >= 26 && at > 0 ? (a12 - a26) / at : NaN; }
+    const hist = [];
+    sMo.setData(DATA.map((b, i) => { if (isNaN(b.mo)) return { time:b.t * 60 }; const pv = i ? DATA[i - 1].mo : NaN, grow = isNaN(pv) || Math.abs(b.mo) >= Math.abs(pv);
+      return { time:b.t * 60, value:b.mo, color:b.mo >= 0 ? (grow ? up : up + '66') : (grow ? dn : dn + '66') }; }));
+    const ub = [], lb = [];
+    DATA.forEach((b, i) => { if (!isNaN(b.mo)) hist.push(b.mo); const w = hist.slice(-120);
+      if (w.length >= 30){ const srt = w.slice().sort((x, y) => x - y); b.moU = Math.max(0, srt[Math.floor(srt.length * 0.9)]); b.moL = Math.min(0, srt[Math.floor(srt.length * 0.1)]); } else b.moU = b.moL = NaN;
+      ub.push(isNaN(b.moU) ? { time:b.t * 60 } : { time:b.t * 60, value:b.moU }); lb.push(isNaN(b.moL) ? { time:b.t * 60 } : { time:b.t * 60, value:b.moL }); });
+    sMoU.setData(ub); sMoL.setData(lb);
+  }
+  if (sVo){
+    const mkv = [];
+    sVo.setData(DATA.map(b => { let j = null; for (let q = tf - 5; q >= 0 && j == null; q -= 5) j = TX5.idx.get(b.t + q);
+      b.vp = j != null ? TX5.vp[j] : NaN; let ig = false; if (j != null) for (let q = j; q > j - tf / 5 - 1 && q >= 0; q--) if (TX5.ign[q]) ig = true; b.ign = ig;
+      if (ig) mkv.push({ time:b.t * 60, position:'inBar', color:'#ff8f3a', shape:'circle', size:0.7 });
+      return isNaN(b.vp) ? { time:b.t * 60 } : { time:b.t * 60, value:b.vp }; }));
+    mkV.setMarkers(mkv);
+  }
   mk.setMarkers(sig.map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:1.1,
     color:s.res === 'win' ? gold : s.res === 'loss' ? faint : s.res === 'open' ? gold : css('--text'),
     text:s.res === 'win' ? '進場 ✓' : s.res === 'loss' ? '進場 ✗' : s.res === 'open' ? '進場' : '進場 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' })));
@@ -461,7 +526,8 @@ async function renderChart(keep){
 let ST = null;
 function select(code, K, cp){ UI.code = code; UI.K = K; UI.cp = cp; saveUI(); renderPicker(ST); renderCands(ST); renderChart(); if (matchMedia('(max-width:900px)').matches) window.scrollTo({ top:0, behavior:'smooth' }); }
 $('tfs').onclick = e => { const b = e.target.closest('[data-tf]'); if (!b) return; UI.tf = b.dataset.tf; saveUI(); syncTf(); renderChart(); };
-function syncTf(){ for (const b of $('tfs').children) b.classList.toggle('on', b.dataset.tf === UI.tf); }
+function syncTf(){ for (const b of $('tfs').children) b.classList.toggle('on', b.dataset.tf === UI.tf); for (const b of $('panes').children) b.classList.toggle('on', !!UI[b.dataset.p]); }
+$('panes').onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; UI[b.dataset.p] = !UI[b.dataset.p]; saveUI(); syncTf(); buildChart(); renderChart(); };
 $('themeBtn').onclick = () => { UI.theme = UI.theme === 'light' ? 'dark' : 'light'; saveUI(); applyTheme(); buildChart(); refresh(true); };
 function applyTheme(){ document.documentElement.dataset.theme = UI.theme; $('themeBtn').textContent = UI.theme === 'light' ? '黑底' : '白底';
   document.querySelector('meta[name=theme-color]').content = UI.theme === 'light' ? '#f3f5f9' : '#0e1726'; }
@@ -469,7 +535,7 @@ function applyTheme(){ document.documentElement.dataset.theme = UI.theme; $('the
 async function refresh(keep){
   if (!D.idx) return;
   const raw = await loadTX();
-  TX5 = txState(agg(raw, 5)); TX5.raw = raw;
+  TX5 = txState(agg(raw, 5)); TX5.raw = raw; volIgnite(TX5);
   ST = renderStatus();
   // 第一次打開：預設挑「現在符合」清單第一檔，否則價平附近順勢那一邊
   if (UI.K == null){ const c = D.idx.contracts.find(x => !x.expired && expMin(x) - nowMin() >= R.tte);
