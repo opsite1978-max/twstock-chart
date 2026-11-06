@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1726">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<title>選擇權順勢看盤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+/* 選擇權買方的決策看盤：先看台指期有沒有強趨勢（最上面的大字），再挑符合條件的選擇權，最後看圖上的進場、停損、目標 */
+:root{
+  --ink:#0e1726; --panel:#152238; --panel2:#1b2a44; --line:#24344f; --grid:#18253b;
+  --text:#e6eaf2; --muted:#8c9ab3; --faint:#5b6a85;
+  --bull:#f0524a; --bear:#1fbf8f; --gold:#f2b544; --goldbg:rgba(242,181,68,.12);
+  --num:"Barlow Semi Condensed","Noto Sans TC",system-ui,sans-serif;
+  --zh:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --ink:#f3f5f9; --panel:#ffffff; --panel2:#eef1f6; --line:#d9dfe9; --grid:#eef1f6;
+  --text:#14202f; --muted:#5a6880; --faint:#9aa6ba;
+  --bull:#d93b33; --bear:#0d9a6f; --gold:#b9810f; --goldbg:rgba(185,129,15,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--zh);font-size:14px;line-height:1.5}
+button,select,input{font:inherit;color:inherit}
+a{color:inherit}
+.n{font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.muted{color:var(--muted)} .bull{color:var(--bull)} .bear{color:var(--bear)} .gold{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* 最上面：台指期狀態（整頁唯一的大字） */
+.top{padding:max(10px,env(safe-area-inset-top)) 18px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.bar1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar1 h1{font-size:15px;font-weight:700;margin:0;margin-right:auto}
+.bar1 a,.bar1 button{font-size:13px;color:var(--muted);text-decoration:none;background:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer}
+.status{display:flex;align-items:flex-end;gap:14px 26px;flex-wrap:wrap;margin-top:12px}
+.verdict{font-weight:900;font-size:clamp(28px,4.6vw,46px);line-height:1.05;letter-spacing:.02em}
+.verdict small{display:block;font-size:14px;font-weight:500;letter-spacing:0;color:var(--muted);margin-bottom:6px}
+.checks{display:flex;gap:8px 18px;flex-wrap:wrap;padding-bottom:4px}
+.ck{display:flex;flex-direction:column;gap:1px;min-width:92px}
+.ck b{font-family:var(--num);font-size:24px;font-weight:700;line-height:1.1}
+.ck span{font-size:12px;color:var(--muted)}
+.ck.ok b{color:var(--gold)} .ck.no b{color:var(--faint)}
+
+/* 版面 */
+.wrap{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 140px)}
+aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.sec{padding:14px 16px;border-bottom:1px solid var(--line)}
+.sec h2{font-size:14px;font-weight:700;margin:0 0 8px}
+.sec .hint{font-size:12px;color:var(--muted);margin:0 0 8px}
+.cands{display:flex;flex-direction:column;gap:2px}
+.cand{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:baseline;padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent;background:none;text-align:left;width:100%}
+.cand:hover{background:var(--panel2)}
+.cand.on{border-color:var(--gold);background:var(--goldbg)}
+.cand .k{font-family:var(--num);font-size:19px;font-weight:700}
+.cand .c{font-size:12px;color:var(--muted)}
+.cand .p{font-family:var(--num);font-size:19px;font-weight:600;text-align:right}
+.cand .s{grid-column:2 / 4;font-size:12px;color:var(--muted)}
+.empty{font-size:13px;color:var(--muted);padding:6px 2px 2px;line-height:1.7}
+.codes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.code{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
+.code.on{background:var(--text);color:var(--ink);border-color:var(--text)}
+table.t{width:100%;border-collapse:collapse}
+table.t th{font-size:12px;font-weight:500;color:var(--muted);padding:4px;text-align:center}
+table.t td{padding:5px 4px;text-align:center;font-family:var(--num);font-size:16px;border-top:1px solid var(--grid)}
+table.t td.k{color:var(--muted);font-size:14px}
+table.t td.px{cursor:pointer;border-radius:6px}
+table.t td.px:hover{background:var(--panel2)}
+table.t td.q{color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+table.t td.sel{background:var(--goldbg)}
+table.t tr.atm td.k{color:var(--text);font-weight:700}
+
+main{display:flex;flex-direction:column;min-width:0}
+.chead{display:flex;align-items:baseline;gap:10px 16px;flex-wrap:wrap;padding:12px 18px 8px}
+.chead .ttl{font-size:22px;font-weight:700}
+.chead .ttl .n{font-size:26px}
+.chead .px{font-family:var(--num);font-size:26px;font-weight:600}
+.tfs{display:flex;gap:2px;margin-left:auto;background:var(--panel2);border-radius:8px;padding:2px}
+.tfs button{border:0;background:none;padding:4px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted)}
+.tfs button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.now{margin:0 18px 8px;padding:10px 14px;border-radius:10px;background:var(--goldbg);border:1px solid var(--gold);font-size:14px;display:none}
+.now.show{display:block}
+.now b{font-family:var(--num);font-size:17px}
+.chart{position:relative;flex:1;min-height:440px;margin:0 6px}
+.chart .cv{position:absolute;inset:0}
+.lg{position:absolute;left:12px;top:6px;z-index:3;pointer-events:none;font-size:12px;color:var(--muted);display:flex;gap:4px 12px;flex-wrap:wrap;max-width:calc(100% - 90px)}
+.lg .n{font-size:14px;color:var(--text)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;padding:12px 18px 18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.stats b{display:block;font-family:var(--num);font-size:20px;color:var(--text);font-weight:600}
+.rule{padding:12px 18px 22px;font-size:12.5px;color:var(--muted);line-height:1.8;max-width:78ch}
+.rule b{color:var(--text);font-weight:600}
+
+@media (max-width:900px){
+  .wrap{display:flex;flex-direction:column}
+  aside{display:contents}
+  .sec.s1{order:1} main{order:2} .sec.s2{order:3;border-top:1px solid var(--line)}
+  .chart{min-height:62vh}
+  .top{padding-left:14px;padding-right:14px}
+  .tfs{margin-left:0}
+}
+@media (prefers-reduced-motion:no-preference){ .verdict{transition:color .4s} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar1">
+    <h1>選擇權順勢看盤</h1>
+    <span class="muted n" id="txInfo"></span>
+    <a href="optk.html">選擇權K線（舊版）</a>
+    <a href="./">看盤</a>
+    <button id="themeBtn">白底</button>
+  </div>
+  <div class="status">
+    <div class="verdict" id="verdict"><small>台指期現在</small>讀取中…</div>
+    <div class="checks" id="checks"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <aside>
+    <section class="sec s1">
+      <h2>現在符合進場條件</h2>
+      <p class="hint">順著台指期趨勢的價外選擇權，價格 30 點以上、離到期 24 小時以上，依今天成交量排序</p>
+      <div class="cands" id="cands"><div class="empty">讀取中…</div></div>
+    </section>
+    <section class="sec s2">
+      <h2>自己挑</h2>
+      <div class="codes" id="codes"></div>
+      <table class="t"><thead><tr><th>買權</th><th>履約價</th><th>賣權</th></tr></thead><tbody id="tbody"></tbody></table>
+    </section>
+  </aside>
+
+  <main>
+    <div class="chead">
+      <span class="ttl" id="ttl">—</span>
+      <span class="px" id="px"></span>
+      <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
+    </div>
+    <div class="now" id="now"></div>
+    <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
+    <div class="stats" id="stats"></div>
+    <div class="rule">
+      <b>進場條件</b>（全部同時成立，用 5 分 K 判斷）：台指期超級趨勢方向和這一邊相同（買權要多方、賣權要空方）、平均趨向 30 以上（趨勢夠強）、最近 6 根往有利方向走了半個平均波幅以上（還在推）；選擇權是價外、價格 30 點以上、離到期 24 小時以上。<br>
+      <b>出場</b>：漲 50% 停利、跌 30% 停損，都沒碰到就在 4 小時盤中（48 根 5 分 K）後出場。圖上金色＝當時有達到 +50%，灰色＝先停損，白色＝時間到。<br>
+      <b>回測</b>（8/6～11/6 全部週選、月選，每檔 50 分鐘內只算一次，扣一個跳動點的價差）：符合條件 6,651 次，先漲 50% 26%、先跌 30% 24%、平均每筆 +7.1%；隨便進場 72,457 次，先漲 50% 18%、先跌 30% 36%、平均每筆 −2.6%。條件是用 10 月挑的，10/20 以後沒看過的資料也一樣比較好。<br>
+      <b>要知道的</b>：這三個月大多是下跌行情，賣權平均 +10%、買權只有 +2%；14 週裡有 8 週賺、6 週賠。這是「勝算比較好」，不是保證；每筆先決定好金額，碰到停損就出場。
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const OWNER = (location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : '') || 'opsite1978-max';
+const REPO = OWNER + '/twstock-chart';
+const RAW = 'https://raw.githubusercontent.com/' + REPO + '/optk-data/';
+const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
+const L = LightweightCharts;
+const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, loss:-0.3 };   // 進場條件（回測挑出來的）
+
+const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark' }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtP = v => v == null || isNaN(v) ? '–' : (v >= 100 || Number.isInteger(v) ? String(Math.round(v * 10) / 10) : v.toFixed(1));
+const fmtN = v => v == null ? '–' : Number(v).toLocaleString('zh-TW');
+const minKey = () => Math.floor(Date.now() / 60000);
+const ymd = d => new Date(d * 864e5).toISOString().slice(0, 10);
+const nowMin = () => { const d = new Date(Date.now() + 8 * 3600e3); return Math.floor(d.getTime() / 6e4); };   // 台灣時間當成 UTC
+const hm = t => { const d = new Date(t * 6e4), p = n => String(n).padStart(2, '0'); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); };
+async function fetchJ(url){ try { const r = await fetch(url, { cache:'no-store' }); return r.ok ? await r.json() : null; } catch(e){ return null; } }
+
+/* ═════════════ 資料 ═════════════ */
+const D = { idx:null, ser:new Map(), live:new Map(), txm:new Map(), txLive:[], txAt:0 };
+async function loadIndex(){
+  const j = await fetchJ(RAW + 'index.json?t=' + minKey());
+  if (j){ for (const c of j.contracts) c.rows = c.rows.map(r => Array.isArray(r) ? { k:r[0], C:{ c:r[1], v:r[3] }, P:{ c:r[5], v:r[7] } } : r); D.idx = j; }
+  return D.idx;
+}
+async function loadSeries(code, K, cp){
+  const k = code + '/' + K + cp, c = D.ser.get(k);
+  if (c && Date.now() - c.at < 10 * 60e3) return c;
+  const j = await fetchJ(RAW + 's/' + code + '/' + K + cp + '.json?t=' + Math.floor(Date.now() / 600e3));
+  const v = { m:j ? j.m : [], at:Date.now() }; D.ser.set(k, v); return v;
+}
+async function loadLive(code){
+  const c = D.live.get(code);
+  if (c && Date.now() - c.at < 55e3) return c;
+  const j = await fetchJ(LIVE + code + '.json?t=' + minKey());
+  const v = { s:j ? j.s : (c ? c.s : {}), updated:j ? j.updated : null, at:Date.now() }; D.live.set(code, v); return v;
+}
+function minutes(code, K, cp){
+  const h = D.ser.get(code + '/' + K + cp), lv = D.live.get(code), m = h ? h.m : [];
+  const live = lv && lv.s && lv.s[K + cp] || [], last = m.length ? m[m.length - 1][0] : 0;
+  const add = live.filter(b => b[0] > last);
+  return add.length ? m.concat(add) : m;
+}
+// 台指期 1 分 K：optk-data/tx（逐筆做的，含完整夜盤）＋盤中錄影
+async function loadTX(){
+  const months = [], now = nowMin();
+  for (let d = Math.floor(now / 1440) - 40; d <= Math.floor(now / 1440); d++){ const m = ymd(d).slice(0, 7); if (!months.includes(m)) months.push(m); }
+  const have = new Set(D.idx.txMonths || []), cur = ymd(Math.floor(now / 1440)).slice(0, 7);
+  await Promise.all(months.filter(m => have.has(m)).map(async m => { const c = D.txm.get(m);
+    if (c && (m < cur || Date.now() - c.at < 10 * 60e3)) return;
+    const j = await fetchJ(RAW + 'tx/' + m + '.json?t=' + Math.floor(Date.now() / 600e3));
+    D.txm.set(m, { at:Date.now(), rows:j ? j.bars : [] }); }));
+  if (Date.now() - D.txAt > 55e3){
+    const [a, b] = await Promise.all([fetchJ(LIVE + 'tx.json?t=' + minKey()), fetchJ('https://raw.githubusercontent.com/' + REPO + '/live-data/tx_live.json?t=' + minKey())]);
+    const mp = new Map();
+    if (a && a.bars) for (const x of a.bars) mp.set(x[0], x.slice(0, 6));
+    if (b && b.sessions) for (const q of Object.values(b.sessions)) for (const x of q.bars || []){ const t = Math.round(x[0] / 60); mp.set(t, [t, x[1], x[2], x[3], x[4], x[7] || 0]); }
+    D.txLive = [...mp.values()].sort((p, q) => p[0] - q[0]); D.txAt = Date.now();
+  }
+  let rows = [...D.txm.keys()].sort().flatMap(m => D.txm.get(m).rows);
+  const last = rows.length ? rows[rows.length - 1][0] : 0;
+  return rows.concat(D.txLive.filter(r => r[0] > last));
+}
+
+/* ═════════════ K 線合成（日盤 08:45、夜盤 15:00 開始對齊） ═════════════ */
+function sesStart(t){ const d = Math.floor(t / 1440), m = t - d * 1440;
+  if (m >= 525 && m <= 840) return d * 1440 + 525; if (m >= 900) return d * 1440 + 900; if (m <= 330) return (d - 1) * 1440 + 900; return d * 1440 + 525; }
+function agg(min, tf){
+  const out = []; let a = null;
+  for (const b of min){ const s = sesStart(b[0]), t = s + Math.floor((b[0] - s) / tf) * tf;
+    if (a && a.t === t){ if (b[2] > a.h) a.h = b[2]; if (b[3] < a.l) a.l = b[3]; a.c = b[4]; a.v += b[5] || 0; }
+    else { a = { t, o:b[1], h:b[2], l:b[3], c:b[4], v:b[5] || 0 }; out.push(a); } }
+  return out;
+}
+
+/* ═════════════ 台指期：超級趨勢、平均趨向、動能 ═════════════ */
+const rma = (src, n) => { const o = new Array(src.length).fill(NaN); let y = NaN, c = 0, s = 0;
+  for (let i = 0; i < src.length; i++){ const x = src[i]; if (isNaN(x)){ o[i] = y; continue; }
+    if (isNaN(y)){ s += x; c++; if (c === n){ y = s / n; o[i] = y; } } else { y = (y * (n - 1) + x) / n; o[i] = y; } }
+  return o; };
+function txState(U){
+  const n = U.length, tr = new Array(n).fill(NaN), pdm = new Array(n).fill(NaN), mdm = new Array(n).fill(NaN);
+  for (let i = 1; i < n; i++){ const a = U[i], p = U[i - 1]; tr[i] = Math.max(a.h - a.l, Math.abs(a.h - p.c), Math.abs(a.l - p.c));
+    const up = a.h - p.h, dn = p.l - a.l; pdm[i] = up > dn && up > 0 ? up : 0; mdm[i] = dn > up && dn > 0 ? dn : 0; }
+  const atr10 = rma(tr, 10), dir = new Int8Array(n); let fu = NaN, fl = NaN, d = 1;
+  for (let i = 1; i < n; i++){ if (isNaN(atr10[i])) continue; const a = U[i], hl = (a.h + a.l) / 2, bu = hl + 3 * atr10[i], bl = hl - 3 * atr10[i];
+    fu = isNaN(fu) || bu < fu || U[i - 1].c > fu ? bu : fu; fl = isNaN(fl) || bl > fl || U[i - 1].c < fl ? bl : fl;
+    if (d < 0 && a.c > fu) d = 1; else if (d > 0 && a.c < fl) d = -1; dir[i] = d; }
+  const a14 = rma(tr, 14), p14 = rma(pdm, 14), m14 = rma(mdm, 14), dx = new Array(n).fill(NaN);
+  for (let i = 0; i < n; i++) if (a14[i] > 0){ const pd = 100 * p14[i] / a14[i], md = 100 * m14[i] / a14[i]; dx[i] = pd + md > 0 ? 100 * Math.abs(pd - md) / (pd + md) : 0; }
+  const adx = rma(dx, 14), mom = new Array(n).fill(NaN);
+  for (let i = 6; i < n; i++) if (a14[i] > 0) mom[i] = (U[i].c - U[i - 6].c) / a14[i];
+  const idx = new Map(U.map((b, i) => [b.t, i]));
+  return { U, dir, adx, mom, idx };
+}
+// 第 i 根台指期對「方向 want」是不是可進場
+const txOK = (S, i, want) => S.dir[i] === want && S.adx[i] >= R.adx && want * S.mom[i] >= R.mom;
+
+/* ═════════════ 狀態 ═════════════ */
+let TX = null, TX5 = null;
+function expMin(c){ return Date.parse(c.exp + 'T13:30:00Z') / 6e4; }
+function shortLabel(c){ const m = c.code.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/), e = (c.exp || '').slice(5).replace('-', '/');
+  return !m ? c.code : !m[3] ? (+m[2]) + '月月選' : e + (m[3] === 'W' ? ' 週三' : ' 週五'); }
+function quote(c, r, cp){
+  const h = r[cp] || {}, lv = D.live.get(c.code), bars = lv && lv.s && lv.s[r.k + cp];
+  if (!bars || !bars.length) return h;
+  const add = bars.filter(b => b[0] > (h.t || 0)); if (!add.length) return h;
+  return Object.assign({}, h, { c:add[add.length - 1][4], v:(h.v || 0) + add.reduce((s, b) => s + b[5], 0), live:true });
+}
+function renderStatus(){
+  const S = TX5, i = S.U.length - 1, d = S.dir[i], a = S.adx[i], mo = S.mom[i] * d, F = S.U[i].c;
+  const side = d > 0 ? '買權' : '賣權', col = d > 0 ? css('--bull') : css('--bear');
+  let v, vc;
+  if (a >= R.adx && mo >= R.mom){ v = (d > 0 ? '多方' : '空方') + '趨勢強・找' + side; vc = col; }
+  else if (a >= R.adx){ v = (d > 0 ? '多方' : '空方') + '趨勢強，但動能暫停・先等'; vc = css('--text'); }
+  else if (a >= 20){ v = (d > 0 ? '偏多' : '偏空') + '，趨勢還不夠強・先等'; vc = css('--muted'); }
+  else { v = '盤整・不進場'; vc = css('--muted'); }
+  const el = $('verdict'); el.innerHTML = '<small>台指期現在（5 分 K）</small>' + v; el.style.color = vc;
+  const ck = (ok, val, lab) => '<div class="ck ' + (ok ? 'ok' : 'no') + '"><b>' + val + '</b><span>' + lab + '</span></div>';
+  $('checks').innerHTML = ck(true, '<span style="color:' + col + '">' + (d > 0 ? '多方' : '空方') + '</span>', '超級趨勢方向') +
+    ck(a >= R.adx, Math.round(a), '趨勢強度（要 ≥ 30）') + ck(mo >= R.mom, (mo >= 0 ? '+' : '') + mo.toFixed(2), '6 根動能（要 ≥ 0.5）');
+  $('txInfo').textContent = '台指期 ' + fmtN(Math.round(F)) + '・資料到 ' + hm(S.U[i].t + 4);
+  document.title = (a >= R.adx && mo >= R.mom ? '● ' : '') + '選擇權順勢看盤';
+  // 最近一次符合（給「現在沒有」時參考）
+  let lastOk = -1; for (let k = i; k >= 0; k--) if (S.adx[k] >= R.adx && S.dir[k] * S.mom[k] >= R.mom){ lastOk = k; break; }
+  return { d, ok:a >= R.adx && mo >= R.mom, F, lastOk };
+}
+async function renderCands(st){
+  const box = $('cands'), now = nowMin();
+  if (!st.ok){
+    box.innerHTML = '<div class="empty">現在沒有符合的。台指期要「趨勢強度 30 以上、而且還在往同方向推」才進場；盤整時買選擇權，時間價值會一直流失。' +
+      (st.lastOk >= 0 ? '<br>上一次符合：' + hm(TX5.U[st.lastOk].t) + '（' + (TX5.dir[st.lastOk] > 0 ? '多方' : '空方') + '）' : '') + '</div>';
+    return;
+  }
+  const cp = st.d > 0 ? 'C' : 'P', list = [];
+  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - now >= R.tte);
+  await Promise.all(cs.map(c => loadLive(c.code)));
+  for (const c of cs) for (const r of c.rows){
+    const q = quote(c, r, cp); if (!(q.c >= R.px) || !q.v) continue;
+    const otm = st.d * (r.k - st.F) / st.F; if (otm <= 0) continue;
+    list.push({ c, k:r.k, cp, q, otm });
+  }
+  list.sort((a, b) => (b.q.v || 0) - (a.q.v || 0));
+  if (!list.length){ box.innerHTML = '<div class="empty">台指期條件符合，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
+  box.innerHTML = list.slice(0, 10).map((x, i) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-i="' + i + '">' +
+    '<span class="k ' + (cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span><span class="c">' + shortLabel(x.c) + ' ' + (cp === 'C' ? '買權' : '賣權') + '</span>' +
+    '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + (x.otm * 100).toFixed(1) + '%・今天 ' + fmtN(x.q.v) + ' 口</span></button>').join('');
+  box.querySelectorAll('.cand').forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; select(x.c.code, x.k, x.cp); });
+}
+function renderPicker(st){
+  const now = nowMin(), cs = D.idx.contracts.filter(c => !c.expired);
+  if (!cs.some(c => c.code === UI.code)) UI.code = (cs.find(c => expMin(c) - now >= R.tte) || cs[0] || {}).code;
+  $('codes').innerHTML = cs.map(c => '<button class="code' + (c.code === UI.code ? ' on' : '') + '" data-c="' + c.code + '">' + shortLabel(c) + '</button>').join('');
+  $('codes').querySelectorAll('.code').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); renderPicker(st); });
+  const c = cs.find(x => x.code === UI.code); if (!c) return;
+  const rows = c.rows; let ai = 0, bd = Infinity; rows.forEach((r, i) => { const d0 = Math.abs(r.k - st.F); if (d0 < bd){ bd = d0; ai = i; } });
+  const vis = rows.slice(Math.max(0, ai - 10), ai + 11), longOK = expMin(c) - now >= R.tte;
+  $('tbody').innerHTML = vis.map(r => {
+    const qc = quote(c, r, 'C'), qp = quote(c, r, 'P');
+    const okC = st.ok && st.d > 0 && longOK && r.k > st.F && qc.c >= R.px && qc.v, okP = st.ok && st.d < 0 && longOK && r.k < st.F && qp.c >= R.px && qp.v;
+    const sel = cp => c.code === UI.code && r.k === UI.K && UI.cp === cp ? ' sel' : '';
+    return '<tr class="' + (r === rows[ai] ? 'atm' : '') + '"><td class="px' + (okC ? ' q' : '') + sel('C') + '" data-k="' + r.k + '" data-p="C">' + fmtP(qc.c) + '</td><td class="k">' + r.k + '</td>' +
+      '<td class="px' + (okP ? ' q' : '') + sel('P') + '" data-k="' + r.k + '" data-p="P">' + fmtP(qp.c) + '</td></tr>'; }).join('');
+  $('tbody').querySelectorAll('td.px').forEach(td => td.onclick = () => select(UI.code, +td.dataset.k, td.dataset.p));
+}
+
+/* ═════════════ 圖 ═════════════ */
+let chart = null, sCandle = null, sVol = null, sForce = null, mk = null, plines = [], DATA = [];
+function buildChart(){
+  if (chart) chart.remove();
+  const el = $('cv');
+  chart = L.createChart(el, { autoSize:true,
+    layout:{ background:{ type:'solid', color:css('--ink') }, textColor:css('--muted'), fontSize:12, fontFamily:css('--num'), panes:{ separatorColor:css('--line') } },
+    grid:{ vertLines:{ color:css('--grid') }, horzLines:{ color:css('--grid') } },
+    rightPriceScale:{ borderColor:css('--line'), scaleMargins:{ top:0.08, bottom:0.2 } },
+    timeScale:{ borderColor:css('--line'), timeVisible:true, rightOffset:8, barSpacing:9,
+      tickMarkFormatter:(t, type) => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return type <= 2 ? (d.getUTCMonth() + 1) + '/' + d.getUTCDate() : p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); } },
+    localization:{ locale:'zh-TW', timeFormatter:t => hm(t / 60) },
+    crosshair:{ mode:L.CrosshairMode.Normal } });
+  const up = css('--bull'), dn = css('--bear');
+  sCandle = chart.addSeries(L.CandlestickSeries, { upColor:up, downColor:dn, borderUpColor:up, borderDownColor:dn, wickUpColor:up, wickDownColor:dn, priceLineVisible:false,
+    priceFormat:{ type:'custom', minMove:0.1, formatter:v => v < 0 ? '' : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) }, autoscaleInfoProvider:o => { const r = o(); if (r && r.priceRange && r.priceRange.minValue < 0) r.priceRange.minValue = 0; return r; } });
+  sVol = chart.addSeries(L.HistogramSeries, { priceScaleId:'v', priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false });
+  chart.priceScale('v').applyOptions({ scaleMargins:{ top:0.86, bottom:0 }, visible:false });
+  sForce = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'順勢力道', priceFormat:{ type:'price', precision:0, minMove:1 },
+    autoscaleInfoProvider:o => { const r = o(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 5 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; } }, 1);
+  sForce.createPriceLine({ price:R.adx, color:css('--gold'), lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'' });
+  sForce.createPriceLine({ price:0, color:css('--line'), lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+  try { const ps = chart.panes(); ps[0].setStretchFactor(3.2); ps[1].setStretchFactor(1); } catch(e){}
+  mk = L.createSeriesMarkers(sCandle, []);
+  chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
+}
+function legend(b){
+  if (!b) b = DATA[DATA.length - 1]; if (!b){ $('lg').innerHTML = ''; return; }
+  const want = UI.cp === 'C' ? 1 : -1, j = b.j;
+  let s = '<span>' + hm(b.t) + '</span><span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>';
+  if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span> ' + (S.dir[j] > 0 ? '多方' : '空方') + '・強度 <span class="n">' + Math.round(S.adx[j]) + '</span>・動能 <span class="n">' + (want * S.mom[j]).toFixed(2) + '</span></span>'; }
+  if (b.sig) s += '<span class="gold">進場 ' + fmtP(b.sig.px) + '（' + b.sig.txt + '）</span>';
+  $('lg').innerHTML = s;
+}
+// 這一檔過去所有符合條件的進場點（用 5 分 K 判斷）＋之後的結果
+function signals(c, K, cp, min){
+  const want = cp === 'C' ? 1 : -1, B = agg(min, 5), ex = expMin(c), out = []; let last = -99;
+  for (let i = 21; i < B.length; i++){
+    const b = B[i], j = TX5.idx.get(b.t); if (j == null || j < 20) continue;
+    if (!txOK(TX5, j, want) || b.c < R.px || b.v < 2 || ex - (b.t + 5) < R.tte) continue;
+    const F = TX5.U[j].c; if (want * (K - F) <= 0) continue;            // 價外
+    if (i - last < R.gap) continue; last = i;
+    const px = b.c, end = j + R.horizon < TX5.U.length ? TX5.U[j + R.horizon].t : Infinity;
+    let res = 'open', fin = px, until = null;
+    for (let k = i + 1; k < B.length; k++){ const x = B[k]; if (x.t > end || x.t >= ex){ res = 'time'; break; }
+      fin = x.c; if (x.l <= px * (1 + R.loss)){ res = 'loss'; until = x.t; break; } if (x.h >= px * (1 + R.win)){ res = 'win'; until = x.t; break; } }
+    if (res === 'open' && end !== Infinity && B[B.length - 1].t > end) res = 'time';
+    const ret = res === 'win' ? R.win : res === 'loss' ? R.loss : fin / px - 1;
+    out.push({ t:b.t, px, res, ret, until, txt:res === 'win' ? '之後漲到 +50%' : res === 'loss' ? '先碰到 −30% 停損' : res === 'time' ? '4 小時到，' + (ret >= 0 ? '+' : '') + (ret * 100).toFixed(0) + '%' : '進行中' });
+  }
+  return out;
+}
+async function renderChart(keep){
+  const c = D.idx.contracts.find(x => x.code === UI.code);
+  if (!c || UI.K == null){ $('ttl').textContent = '從左邊挑一檔'; return; }
+  await Promise.all([loadSeries(c.code, UI.K, UI.cp), loadLive(c.code)]);
+  const min = minutes(c.code, UI.K, UI.cp), tf = +UI.tf, want = UI.cp === 'C' ? 1 : -1;
+  const bars = agg(min, tf);
+  TX = tf === 5 ? TX5 : txState(agg(TX5.raw, tf));
+  const sig = signals(c, UI.K, UI.cp, min);
+  // 進場點對到目前週期的那一根
+  const bt = t => { const s = sesStart(t); return s + Math.floor((t - s) / tf) * tf; };
+  const sigAt = new Map(sig.map(s => [bt(s.t), s]));
+  DATA = bars.map(b => Object.assign(b, { j:TX.idx.get(b.t), sig:sigAt.get(b.t) || null }));
+  const up = css('--bull'), dn = css('--bear'), gold = css('--gold'), faint = css('--faint');
+  sCandle.setData(bars.map(b => ({ time:b.t * 60, open:b.o, high:b.h, low:b.l, close:b.c })));
+  sVol.setData(bars.map(b => ({ time:b.t * 60, value:b.v, color:(b.c >= b.o ? up : dn) + '55' })));
+  sForce.setData(bars.map(b => { const j = b.j; if (j == null || isNaN(TX.adx[j])) return { time:b.t * 60 };
+    const al = TX.dir[j] === want, v = (al ? 1 : -1) * TX.adx[j], ok = txOK(TX, j, want);
+    return { time:b.t * 60, value:v, color:ok ? gold : al ? (want > 0 ? up : dn) + '88' : faint + '88' }; }));
+  mk.setMarkers(sig.map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:1.1,
+    color:s.res === 'win' ? gold : s.res === 'loss' ? faint : s.res === 'open' ? gold : css('--text'),
+    text:s.res === 'win' ? '進場 ✓' : s.res === 'loss' ? '進場 ✗' : s.res === 'open' ? '進場' : '進場 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' })));
+  for (const p of plines) sCandle.removePriceLine(p); plines = [];
+  const open = sig.filter(s => s.res === 'open').pop();
+  if (open){ plines.push(sCandle.createPriceLine({ price:open.px * 1.5, color:gold, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'目標 +50%' }));
+    plines.push(sCandle.createPriceLine({ price:open.px, color:css('--text'), lineWidth:1, lineStyle:L.LineStyle.Dotted, axisLabelVisible:true, title:'進場' }));
+    plines.push(sCandle.createPriceLine({ price:open.px * 0.7, color:faint, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'停損 −30%' })); }
+  if (!keep && bars.length) chart.timeScale().setVisibleLogicalRange({ from:Math.max(-2, bars.length - 140), to:bars.length + 6 });
+  // 標題、現在狀態、這一檔的統計
+  const last = bars[bars.length - 1];
+  $('ttl').innerHTML = '<span class="n ' + (UI.cp === 'C' ? 'bull' : 'bear') + '">' + UI.K + '</span> ' + (UI.cp === 'C' ? '買權' : '賣權') + ' <span class="muted" style="font-size:14px;font-weight:400">' + shortLabel(c) + '</span>';
+  $('px').textContent = last ? fmtP(last.c) : '';
+  const j = TX5.U.length - 1, F = TX5.U[j].c, otm = want * (UI.K - F) > 0, longOK = expMin(c) - nowMin() >= R.tte, okNow = txOK(TX5, j, want) && otm && last && last.c >= R.px && longOK;
+  const nowEl = $('now');
+  nowEl.classList.toggle('show', !!(okNow || open));
+  nowEl.innerHTML = open ? '進場訊號進行中：' + hm(open.t) + ' 在 <b>' + fmtP(open.px) + '</b> 進場，目標 <b>' + fmtP(open.px * 1.5) + '</b>、停損 <b>' + fmtP(open.px * 0.7) + '</b>，最晚 4 小時盤中出場'
+    : okNow ? '這一檔現在符合進場條件（價格 <b>' + fmtP(last.c) + '</b>）：目標 <b>' + fmtP(last.c * 1.5) + '</b>、停損 <b>' + fmtP(last.c * 0.7) + '</b>' : '';
+  const done = sig.filter(s => s.res !== 'open'), w = done.filter(s => s.res === 'win').length, l = done.filter(s => s.res === 'loss').length;
+  const avg = done.length ? done.reduce((a, s) => a + s.ret, 0) / done.length : NaN;
+  const reasons = [];
+  if (!otm) reasons.push('這一檔不是價外');
+  if (!longOK) reasons.push('離到期不到 24 小時');
+  if (last && last.c < R.px) reasons.push('價格不到 30 點');
+  if (!txOK(TX5, j, want)) reasons.push('台指期條件不符（' + (TX5.dir[j] === want ? '方向對，但強度或動能不夠' : '方向相反') + '）');
+  $('stats').innerHTML =
+    '<div>這一檔過去的進場訊號<b>' + sig.length + ' 次</b></div>' +
+    '<div>達到 +50%／先停損<b><span class="gold">' + w + '</span> ／ ' + l + '</b></div>' +
+    '<div>平均每筆（已結束的）<b>' + (isNaN(avg) ? '–' : (avg >= 0 ? '+' : '') + (avg * 100).toFixed(1) + '%') + '</b></div>' +
+    '<div>現在<b style="font-size:15px;font-family:var(--zh)">' + (okNow ? '<span class="gold">符合進場條件</span>' : reasons.join('、') || '—') + '</b></div>';
+  legend(null);
+}
+
+/* ═════════════ 操作 ═════════════ */
+let ST = null;
+function select(code, K, cp){ UI.code = code; UI.K = K; UI.cp = cp; saveUI(); renderPicker(ST); renderCands(ST); renderChart(); if (matchMedia('(max-width:900px)').matches) window.scrollTo({ top:0, behavior:'smooth' }); }
+$('tfs').onclick = e => { const b = e.target.closest('[data-tf]'); if (!b) return; UI.tf = b.dataset.tf; saveUI(); syncTf(); renderChart(); };
+function syncTf(){ for (const b of $('tfs').children) b.classList.toggle('on', b.dataset.tf === UI.tf); }
+$('themeBtn').onclick = () => { UI.theme = UI.theme === 'light' ? 'dark' : 'light'; saveUI(); applyTheme(); buildChart(); refresh(true); };
+function applyTheme(){ document.documentElement.dataset.theme = UI.theme; $('themeBtn').textContent = UI.theme === 'light' ? '黑底' : '白底';
+  document.querySelector('meta[name=theme-color]').content = UI.theme === 'light' ? '#f3f5f9' : '#0e1726'; }
+
+async function refresh(keep){
+  if (!D.idx) return;
+  const raw = await loadTX();
+  TX5 = txState(agg(raw, 5)); TX5.raw = raw;
+  ST = renderStatus();
+  // 第一次打開：預設挑「現在符合」清單第一檔，否則價平附近順勢那一邊
+  if (UI.K == null){ const c = D.idx.contracts.find(x => !x.expired && expMin(x) - nowMin() >= R.tte);
+    if (c){ UI.code = c.code; UI.cp = ST.d > 0 ? 'C' : 'P'; let best = null, bd = Infinity;
+      for (const r of c.rows){ const o = ST.d * (r.k - ST.F); if (o > 0 && o < bd){ bd = o; best = r.k; } } UI.K = best; saveUI(); } }
+  await renderCands(ST); renderPicker(ST); await renderChart(keep);
+}
+async function boot(){
+  applyTheme(); syncTf(); buildChart();
+  if (!await loadIndex()){ $('verdict').innerHTML = '<small>台指期現在</small>資料讀不到，請稍後重新整理'; return; }
+  await refresh(false);
+  setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); }, 60e3);
+  setInterval(async () => { if (document.hidden) return; await loadIndex(); D.ser.clear(); }, 10 * 60e3);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && D.idx){ D.live.clear(); D.txAt = 0; refresh(true); } });
+boot();
+</script>
+</body>
+</html>
