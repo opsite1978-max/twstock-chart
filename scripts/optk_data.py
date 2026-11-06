@@ -318,7 +318,7 @@ def build_index():
             tv += (C.get('v') or 0) + (P.get('v') or 0)
         if rows:
             out.append({'code': code, 'exp': exp, 'kind': kd, 'label': lb, 'expired': bool(exp and exp < today), 'vol': tv, 'rows': rows})
-    return {'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'lastTd': last_td, 'fut': fut,
+    return {'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'lastTd': last_td, 'fut': fut, 'cal': CAL[-400:],
             'cols': ['履約價', '買權收', '買權漲跌', '買權量', '買權未平倉', '賣權收', '賣權漲跌', '賣權量', '賣權未平倉', '買權有K線', '賣權有K線'],
             'contracts': out}
 
