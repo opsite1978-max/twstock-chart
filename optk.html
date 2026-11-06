@@ -101,6 +101,22 @@
   .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:5px;vertical-align:middle}
   .live.on{background:#2ecc71;box-shadow:0 0 6px #2ecc71}
   .hide{display:none!important}
+  .scan{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 10px 10px}
+  .scan .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(980px,100%);max-height:calc(100vh - 24px);display:flex;flex-direction:column;overflow:hidden}
+  .scan .hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .scan .hd h2{margin:0;font-size:16px;flex:1}
+  .scan .ctl{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}
+  .scan .ctl label{color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+  .scan .ctl select{height:30px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);padding:0 6px}
+  .scan .res{overflow:auto;flex:1;min-height:120px}
+  .scan table{width:100%;border-collapse:collapse;font-size:13px}
+  .scan th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600;font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  .scan td{padding:7px 8px;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums;vertical-align:top}
+  .scan tr.r{cursor:pointer} .scan tr.r:hover td{background:var(--panel2)}
+  .scan .tg{display:inline-block;padding:1px 7px;border-radius:10px;font-size:12px;margin:1px 3px 1px 0;border:1px solid}
+  .scan .sc{font-weight:800;font-size:15px}
+  .scan .ft{padding:8px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);line-height:1.6}
+  .scan .prog{font-size:12px;color:var(--muted)}
   .toggle-side{display:none}
 
   @media (max-width:900px){
@@ -190,8 +206,26 @@
       <button class="btn" id="bdBtn" title="神奇波段（和戰神看盤相同）：短波線＝(2×收+高+低)÷4 在 34 根高低區間的位置（13 根平均），在訊號線上紅、下綠；長波線往上藍、往下橘；紫色＝短波線過去 250 根的 90%／10% 動態上下界。底＝短波線往上穿訊號線、近 5 根曾低於下界、收盤突破前一根高點；頂＝反過來；頂★＝急漲爆量後轉弱。要約 200 根 K 棒才有上下界和訊號">神奇波段</button>
       <button class="btn" id="lxBtn" title="尋龍底（和戰神看盤相同）：30 根新低時的龍穴能量（黃＞5千、綠＞1萬、紅＞5萬，對數刻度）；龍穴＝能量結束後 3 根內突破前高、尋龍底★＝之前有急跌或跌深、真龍★★＝急跌後而且當根主動買盤強">尋龍底</button>
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
+      <button class="btn sp" id="presetBtn" title="固定看盤組合：超級趨勢波動＋神奇波段（含上下界），其他副圖關掉；以後打開網頁就是這一組">固定看盤</button>
+      <button class="btn sp" id="scanBtn" title="噴發搜尋：找這個結算日價平附近，剛發生神奇波段金叉／底、選擇權趨勢轉多、台指期趨勢同向、爆量的履約價">🔍 噴發搜尋</button>
     </div>
     <div class="charts" id="charts"></div>
+    <div class="scan hide" id="scanBox"><div class="box">
+      <div class="hd"><h2>🔍 噴發搜尋</h2><span class="prog" id="scanProg"></span><button class="btn" id="scanClose">關閉</button></div>
+      <div class="ctl">
+        <label>結算日 <select id="scCode"></select></label>
+        <label>週期 <select id="scTf"><option value="5">5 分</option><option value="15" selected>15 分</option><option value="30">30 分</option><option value="60">60 分</option></select></label>
+        <label>範圍 <select id="scRange"><option value="8">價平 ±8</option><option value="15" selected>價平 ±15</option><option value="30">價平 ±30</option></select></label>
+        <label>買賣權 <select id="scSide"><option value="both">都看</option><option value="C">只看買權</option><option value="P">只看賣權</option></select></label>
+        <label>最近幾根內 <select id="scWin"><option value="2">2 根</option><option value="3" selected>3 根</option><option value="5">5 根</option><option value="10">10 根</option></select></label>
+        <label>今天量至少 <select id="scVol"><option value="20">20 口</option><option value="100" selected>100 口</option><option value="500">500 口</option></select></label>
+        <button class="btn on" id="scGo">開始搜尋</button>
+      </div>
+      <div class="res"><table><thead><tr><th>分數</th><th>履約價</th><th>現價</th><th>今天量</th><th>訊號</th><th>最近訊號</th></tr></thead><tbody id="scBody">
+        <tr><td colspan="6" class="muted" style="padding:24px;text-align:center">選好條件按「開始搜尋」</td></tr></tbody></table></div>
+      <div class="ft">分數＝神奇波段「底」3 分（金叉而且之前低於下界或 25 以下 3 分、一般金叉 2 分）＋選擇權本身超級趨勢轉多 2 分＋台指期剛往有利方向翻轉 2 分（只是方向同、趨勢成形 1 分；方向相反而且趨勢強扣 1 分）＋爆量收紅 1 分。
+        只列出有金叉、底或轉多其中之一，而且分數 2 分以上的。這是幫你縮小範圍的工具，<b>不是保證會漲</b>；選擇權有時間價值流失，進場前先想好停損。</div>
+    </div></div>
     <div class="note"><span class="live" id="liveDot"></span><span id="liveTxt">盤中：網站每分鐘錄一次即時報價補上今天的 K 線（網頁約 2～5 分鐘看到）</span>；
       盤後逐筆資料公布後（每天約 07:45、20:35 更新）改用逐筆算出的準確 K 線。量＝口數（單邊）。紅漲綠跌。</div>
   </main>
@@ -207,7 +241,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 
 /* ═════════════ 設定（存在這台裝置） ═════════════ */
-const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, bd:false, sp:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
+const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, bd:true, sp:true, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
   (() => { try { return JSON.parse(localStorage.getItem('optk:ui') || '{}') || {}; } catch(e){ return {}; } })());
 function saveUI(){ try { localStorage.setItem('optk:ui', JSON.stringify(UI)); } catch(e){} }
 
@@ -508,7 +542,7 @@ function buildCharts(){
       const auto = () => ({ priceRange:{ minValue:-4, maxValue:106 } });
       const bc = UI.theme === 'light' ? '#7c4dff' : IND_C.bdBand;
       const mk = (o2) => chart.addSeries(L.LineSeries, Object.assign({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:auto, priceFormat:{ type:'price', precision:0, minMove:1 } }, o2), pane);
-      const ub = mk({ color:bc, lineWidth:2 }), lb = mk({ color:bc, lineWidth:2 });
+      const ub = mk({ color:bc, lineWidth:2, lastValueVisible:true, title:'上界' }), lb = mk({ color:bc, lineWidth:2, lastValueVisible:true, title:'下界' });
       const d3 = mk({ lineWidth:3 });
       const sg = mk({ color:(UI.theme === 'light' ? '#8a93a6' : '#5d6676'), lineWidth:1 });
       const k = mk({ lineWidth:2, lastValueVisible:true, title:'神奇波段' });
@@ -626,13 +660,13 @@ function calcLX(B){
 }
 function tdxEMA(a, N){ const k = 2 / (N + 1), o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : y + k * (x - y); o[i] = y; } return o; }
 // 滾動百分位（過去 N 根，至少 8 成有值才算）
-function rollPct(a, N, q){
+function rollPct(a, N, q, minN){
   const n = a.length, out = nanArr(n), w = new Float64Array(N + 1), need = N * 0.8; let m = 0;
   const find = x => { let lo = 0, hi = m; while (lo < hi){ const mid = (lo + hi) >> 1; if (w[mid] < x) lo = mid + 1; else hi = mid; } return lo; };
   for (let i = 0; i < n; i++){
     if (i >= N){ const y = a[i - N]; if (!isNaN(y)){ const k = find(+y); if (k < m){ w.copyWithin(k, k + 1, m); m--; } } }
     const x = a[i]; if (!isNaN(x)){ const v = +x, k = find(v); w.copyWithin(k + 1, k, m); w[k] = v; m++; }
-    if (i >= N - 1 && m >= need) out[i] = w[Math.min(m - 1, Math.floor(m * q))];
+    if ((i >= N - 1 && m >= need) || (i < N - 1 && minN && m >= minN)) out[i] = w[Math.min(m - 1, Math.floor(m * q))];
   }
   return out;
 }
@@ -646,7 +680,8 @@ function calcBD(B){
   }
   const K = tdxEMA(pos, 13), mix = nanArr(n); for (let i = 1; i < n; i++) mix[i] = 0.667 * K[i - 1] + 0.333 * K[i];
   const Sg = tdxEMA(mix, 2), D3 = tdxEMA(tdxSMA(tdxSMA(rsv, 13, 1), 13, 1), 3);
-  const LB = rollPct(K, bandLen, bandPct), UB = rollPct(K, bandLen, 1 - bandPct);
+  // 選擇權 K 棒常常不到 250 根：不夠時改用目前全部的 K 棒（至少 40 根）算上下界
+  const LB = rollPct(K, bandLen, bandPct, 40), UB = rollPct(K, bandLen, 1 - bandPct, 40);
   const tag = new Array(n).fill(null), Vm = smaN(B.v, 20); let lb = -99, lt = -99;
   for (let i = 5; i < n; i++){
     if (isNaN(Sg[i - 1]) || isNaN(LB[i])) continue;
@@ -755,6 +790,88 @@ function buyerHint(side, d, adx, iv, rv, ivPrev){
   else { t = '順風：方向對、趨勢' + (adx >= 25 ? '強' : '成形中'); col = side === 'C' ? css('--up') : css('--down'); }
   if (!isNaN(iv) && !isNaN(ivPrev) && ivPrev > 0 && iv / ivPrev - 1 <= -0.15) t += '・保費正在洩氣';
   return [t, col];
+}
+/* ═════════════ 噴發搜尋 ═════════════ */
+function optSuper(bars){ return calcSuper(bars); }
+async function runScan(){
+  const code = $('scCode').value, c = contracts().find(x => x.code === code); if (!c) return;
+  const tf = $('scTf').value, R = +$('scRange').value, sideSel = $('scSide').value, win = +$('scWin').value, minV = +$('scVol').value;
+  const body = $('scBody'), prog = $('scanProg');
+  body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:24px;text-align:center">搜尋中…</td></tr>'; prog.textContent = '準備中…';
+  if (!c.expired) await loadLive(c.code, true);
+  const qs = quotes(c), F = refPx(c);
+  let ai = 0, bd = Infinity; qs.forEach((r, i) => { const d = Math.abs(r.k - F); if (d < bd){ bd = d; ai = i; } });
+  const cand = [];
+  for (const r of qs.slice(Math.max(0, ai - R), ai + R + 1)) for (const sd of ['C', 'P']){
+    if (sideSel !== 'both' && sd !== sideSel) continue;
+    if ((r[sd].v || 0) < minV) continue;
+    cand.push([r.k, sd, r[sd]]);
+  }
+  if (!cand.length){ body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:24px;text-align:center">價平附近沒有量夠大的履約價，把「今天量至少」調低試試</td></tr>'; prog.textContent = ''; return; }
+  // 台指期（同一個週期）
+  let UA = null, SP = null, uIdx = null;
+  try { const now = Date.now() / 6e4, U = await loadUnderlying(now - 25 * 1440, now + 1440, false); UA = aggregate(U, tf, UI.sess); SP = calcSuper(UA); uIdx = new Map(UA.map((b, i) => [b.time, i])); } catch(e){}
+  const out = []; let done = 0, refT = 0;
+  const work = async ([K, sd, q]) => {
+    await loadSeries(code, K, sd);
+    const bars = aggregate(mergedMinutes(code, K, sd).m, tf, UI.sess), n = bars.length;
+    done++; prog.textContent = '已看 ' + done + '／' + cand.length + ' 檔';
+    if (n) refT = Math.max(refT, bars[n - 1].time);
+    if (n < 40) return;
+    const B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n), v:new Float64Array(n) };
+    bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; B.v[i] = b.volume; });
+    const bdR = calcBD(B), os = optSuper(bars), vAvg = smaN(B.v, 20);
+    const want = sd === 'C' ? 1 : -1, tags = [];
+    let score = 0, lastT = 0, gcType = 0, st = false, uf = false, vs = false;
+    for (let i = Math.max(1, n - win); i < n; i++){
+      const K0 = bdR.K, S0 = bdR.Sg;
+      if (bdR.tag[i] && bdR.tag[i][2] === 'bot'){ gcType = 3; lastT = Math.max(lastT, bars[i].time); }
+      else if (K0[i - 1] < S0[i - 1] && K0[i] > S0[i]){
+        let mn = Infinity; for (let k = Math.max(0, i - 5); k <= i; k++) mn = Math.min(mn, K0[k]);
+        const low = mn < (isNaN(bdR.LB[i]) ? 25 : Math.max(25, bdR.LB[i]));
+        gcType = Math.max(gcType, low ? 3 : 2); lastT = Math.max(lastT, bars[i].time);
+      }
+      if (os.flip[i] === 1){ st = true; lastT = Math.max(lastT, bars[i].time); }
+      if (!isNaN(vAvg[i - 1]) && B.v[i] > 3 * vAvg[i - 1] && B.c[i] > B.o[i]){ vs = true; }
+      if (SP){ const j = uIdx.get(bars[i].time), j0 = uIdx.get(bars[i - 1].time);
+        if (j != null){ for (let k = j; k > (j0 == null ? j - 1 : j0); k--) if (SP.flip[k] === want){ uf = true; lastT = Math.max(lastT, bars[i].time); } } }
+    }
+    if (!gcType && !st) return;
+    if (gcType === 3) tags.push([bdR.tag.slice(n - win).some(t => t && t[2] === 'bot') ? '神奇波段 底' : '低檔金叉', '#ff1744']);
+    else if (gcType === 2) tags.push(['神奇波段金叉', '#ff6e6e']);
+    score += gcType;
+    if (st){ score += 2; tags.push(['選擇權轉多', '#ff9100']); }
+    let ud = 0, ua = NaN;
+    if (SP){ const j = uIdx.get(bars[n - 1].time) ?? (UA.length - 1); ud = SP.dir[j]; ua = SP.adx[j]; }
+    if (uf){ score += 2; tags.push(['台指期剛轉' + (want > 0 ? '多' : '空'), want > 0 ? '#ff1744' : '#00c853']); }
+    else if (ud === want && ua >= 20){ score += 1; tags.push(['台指期同向', want > 0 ? '#ff6e6e' : '#4cd98a']); }
+    else if (ud === -want && ua >= 25){ score -= 1; tags.push(['台指期逆向', '#8a93a6']); }
+    if (vs){ score += 1; tags.push(['爆量收紅', '#ffca28']); }
+    if (score < 2) return;
+    out.push({ K, sd, q, score, tags, lastT, last:bars[n - 1] });
+  };
+  const queue = cand.slice(); await Promise.all(Array.from({ length:6 }, async () => { while (queue.length) await work(queue.shift()); }));
+  // 訊號要是「整個市場最近幾根」內發生的（冷門檔最後幾根可能是好幾個小時前）
+  if (SP && UA.length) refT = Math.max(refT, UA[UA.length - 1].time);
+  for (let k = out.length - 1; k >= 0; k--) if (out[k].lastT < refT - (win + 1) * (+tf) * 60) out.splice(k, 1);
+  out.sort((a, b) => b.score - a.score || b.lastT - a.lastT);
+  prog.textContent = '看了 ' + cand.length + ' 檔，找到 ' + out.length + ' 檔';
+  if (!out.length){ body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:24px;text-align:center">最近 ' + win + ' 根內沒有符合的。可以換週期、放寬「最近幾根內」，或晚點再搜</td></tr>'; return; }
+  const tl = t => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); };
+  body.innerHTML = out.map((r, i) => '<tr class="r" data-i="' + i + '"><td class="sc" style="color:' + (r.score >= 5 ? '#ff1744' : r.score >= 3 ? 'var(--gold)' : 'var(--text)') + '">' + r.score + '</td>' +
+    '<td><b style="color:' + (r.sd === 'C' ? 'var(--call)' : 'var(--put)') + '">' + (r.sd === 'C' ? '買權 ' : '賣權 ') + r.K + '</b></td>' +
+    '<td>' + fmtP(r.q.c) + (r.q.ch != null ? ' <span class="' + (r.q.ch > 0 ? 'up' : r.q.ch < 0 ? 'dn' : '') + '">' + fmtCh(r.q.ch) + '</span>' : '') + '</td>' +
+    '<td>' + fmtN(r.q.v) + '</td>' +
+    '<td>' + r.tags.map(t => '<span class="tg" style="color:' + t[1] + ';border-color:' + t[1] + '">' + t[0] + '</span>').join('') + '</td>' +
+    '<td class="muted">' + (r.lastT ? tl(r.lastT) : '') + '</td></tr>').join('');
+  body.querySelectorAll('tr.r').forEach(tr => tr.onclick = () => { const r = out[+tr.dataset.i];
+    $('scanBox').classList.add('hide'); UI.code = code; UI.K = r.K; UI.view = r.sd; UI.tf = tf; UI.bd = true; UI.sp = true; saveUI();
+    renderHeader(); renderContracts(); renderTable(true); syncBar(); renderCharts();
+    if (matchMedia('(max-width:900px)').matches) setTimeout(() => document.querySelector('main').scrollIntoView({ behavior:'smooth' }), 80); });
+}
+function openScan(){
+  const sel = $('scCode'); sel.innerHTML = contracts().filter(c => !c.expired).map(c => '<option value="' + c.code + '"' + (c.code === UI.code ? ' selected' : '') + '>' + shortLabel(c) + (c.kind === 'M' ? ' 月選' : '') + '</option>').join('');
+  $('scanBox').classList.remove('hide');
 }
 function indicators(bars){
   const n = bars.length, B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n), v:new Float64Array(n) };
@@ -938,8 +1055,8 @@ function indLegend(o, b){
       const k = r.K[i], upS = k >= r.Sg[i];
       h += sp('神奇波段 短波 ' + k.toFixed(1), upS ? IND_C.bdUp : IND_C.bdDn) + sp(upS ? '短波在上' : '短波在下', css('--muted'));
       if (!isNaN(r.D3[i])) h += sp('長波 ' + r.D3[i].toFixed(1) + (i > 0 ? (r.D3[i] >= r.D3[i - 1] ? ' 往上' : ' 往下') : ''), i > 0 && r.D3[i] >= r.D3[i - 1] ? IND_C.bdLU : IND_C.bdLD);
-      if (isNaN(r.UB[i])) h += sp('上下界要約 200 根才有（現在 ' + (I.n || 0) + ' 根）', css('--muted'));
-      else { h += sp('上界 ' + Math.round(r.UB[i]) + '・下界 ' + Math.round(r.LB[i]), UI.theme === 'light' ? '#7c4dff' : IND_C.bdBand);
+      if (isNaN(r.UB[i])) h += sp('上下界：這根之前還不到 40 根', css('--muted'));
+      else { h += sp('上界 ' + Math.round(r.UB[i]) + '・下界 ' + Math.round(r.LB[i]) + (i < 249 ? '（用前 ' + (i + 1) + ' 根算）' : ''), UI.theme === 'light' ? '#7c4dff' : IND_C.bdBand);
         if (k > r.UB[i]) h += sp('高於上界', IND_C.bdBand); else if (k < r.LB[i]) h += sp('低於下界', IND_C.bdBand); }
       if (r.tag[i]) h += sp(r.tag[i][0], r.tag[i][1]);
     }
@@ -1002,6 +1119,11 @@ $('viewSeg').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) re
 $('rangeSeg').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); syncBar(); renderTable(true); };
 $('onlyTraded').onchange = e => { UI.onlyTraded = e.target.checked; saveUI(); renderTable(true); };
 $('maBtn').onclick = () => { UI.ma = !UI.ma; saveUI(); syncBar(); renderCharts(true); };
+$('presetBtn').onclick = () => { Object.assign(UI, { sp:true, bd:true, bb:false, lx:false, ma:false }); saveUI(); syncBar(); renderCharts(); };
+$('scanBtn').onclick = openScan;
+$('scanClose').onclick = () => $('scanBox').classList.add('hide');
+$('scanBox').onclick = e => { if (e.target.id === 'scanBox') $('scanBox').classList.add('hide'); };
+$('scGo').onclick = () => runScan();
 $('spBtn').onclick = () => { UI.sp = !UI.sp; saveUI(); syncBar(); renderCharts(); };
 $('bdBtn').onclick = () => { UI.bd = !UI.bd; saveUI(); syncBar(); renderCharts(); };
 $('bbBtn').onclick = () => { UI.bb = !UI.bb; saveUI(); syncBar(); renderCharts(); };
