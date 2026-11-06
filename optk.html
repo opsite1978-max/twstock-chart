@@ -202,12 +202,13 @@
       <button class="btn sp" id="spBtn" title="超級趨勢波動（選擇權買方專用，兩個副圖）：
 【趨勢】用台指期本身的 K 線算（不受選擇權 K 棒太少影響）：柱子方向＝超級趨勢（真實波幅 10 根 × 3）多空，柱子高度＝平均趨向指標（趨勢強弱），25 以上才算有趨勢；轉多／轉空＝超級趨勢翻轉。
 【波動】紫線＝這一檔選擇權每根 K 棒的隱含波動率（用台指期價格、履約價、到期時間反推）；橘虛線＝台指期近 20 根的實際波動（年化）。隱含遠高於實際＝保費偏貴；隱含快速下滑＝保費在洩氣。擠壓＝台指期波動縮到近 120 根最低 15%，常是大行情前兆。
+【標記】◆順勢突破＝台指期趨勢強而且同向、選擇權突破前 20 根最高（回測比隨便進場好）；■擠壓低檔金叉＝台指期擠壓中、神奇波段低檔金叉（回測比隨便進場差，只當提醒）。
 【買方提示】把方向、趨勢強弱、保費貴不貴合成一句話（不是保證，只是幫你避開逆風和盤整）。">超級趨勢波動</button>
       <button class="btn" id="bdBtn" title="神奇波段（和戰神看盤相同）：短波線＝(2×收+高+低)÷4 在 34 根高低區間的位置（13 根平均），在訊號線上紅、下綠；長波線往上藍、往下橘；紫色＝短波線過去 250 根的 90%／10% 動態上下界。底＝短波線往上穿訊號線、近 5 根曾低於下界、收盤突破前一根高點；頂＝反過來；頂★＝急漲爆量後轉弱。要約 200 根 K 棒才有上下界和訊號">神奇波段</button>
       <button class="btn" id="lxBtn" title="尋龍底（和戰神看盤相同）：30 根新低時的龍穴能量（黃＞5千、綠＞1萬、紅＞5萬，對數刻度）；龍穴＝能量結束後 3 根內突破前高、尋龍底★＝之前有急跌或跌深、真龍★★＝急跌後而且當根主動買盤強">尋龍底</button>
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
       <button class="btn sp" id="presetBtn" title="固定看盤組合：超級趨勢波動＋神奇波段（含上下界），其他副圖關掉；以後打開網頁就是這一組">固定看盤</button>
-      <button class="btn sp" id="scanBtn" title="噴發搜尋：找這個結算日價平附近，剛發生神奇波段金叉／底、選擇權趨勢轉多、台指期趨勢同向、爆量的履約價">🔍 噴發搜尋</button>
+      <button class="btn sp" id="scanBtn" title="噴發搜尋：找這個結算日價平附近，台指期趨勢強烈同向、而且選擇權剛突破前 20 根高點的履約價（依回測配分）">🔍 噴發搜尋</button>
     </div>
     <div class="charts" id="charts"></div>
     <div class="scan hide" id="scanBox"><div class="box">
@@ -223,8 +224,9 @@
       </div>
       <div class="res"><table><thead><tr><th>分數</th><th>履約價</th><th>現價</th><th>今天量</th><th>訊號</th><th>最近訊號</th></tr></thead><tbody id="scBody">
         <tr><td colspan="6" class="muted" style="padding:24px;text-align:center">選好條件按「開始搜尋」</td></tr></tbody></table></div>
-      <div class="ft">分數＝神奇波段「底」3 分（金叉而且之前低於下界或 25 以下 3 分、一般金叉 2 分）＋選擇權本身超級趨勢轉多 2 分＋台指期剛往有利方向翻轉 2 分（只是方向同、趨勢成形 1 分；方向相反而且趨勢強扣 1 分）＋爆量收紅 1 分。
-        只列出有金叉、底或轉多其中之一，而且分數 2 分以上的。這是幫你縮小範圍的工具，<b>不是保證會漲</b>；選擇權有時間價值流失，進場前先想好停損。</div>
+      <div class="ft">依回測配分（近三個月全部選擇權，進場後約 4 小時盤中，看先漲 50% 還是先跌 30%）：台指期強烈同向（趨勢強、方向和這一邊相同）3 分＋選擇權收盤突破前 20 根最高 2 分＋隱含波動率偏低 1 分；台指期強烈逆向扣 2 分。只列出「有突破而且 4 分以上」的。
+        回測：隨便進場先漲 50% 約 23%、先跌 30% 約 46%；台指期強烈同向約 30%／39%；低檔金叉約 19%／52%、再加擠壓 17%／56%（抄底反而比較差，所以低檔金叉、爆量只當參考標籤，不加分）。
+        這是幫你縮小範圍的工具，<b>不是保證會漲</b>；回測沒有算買賣價差和手續費，選擇權價差大的檔次實際會更差。進場前先想好停損。</div>
     </div></div>
     <div class="note"><span class="live" id="liveDot"></span><span id="liveTxt">盤中：網站每分鐘錄一次即時報價補上今天的 K 線（網頁約 2～5 分鐘看到）</span>；
       盤後逐筆資料公布後（每天約 07:45、20:35 更新）改用逐筆算出的準確 K 線。量＝口數（單邊）。紅漲綠跌。</div>
@@ -700,19 +702,18 @@ function calcBD(B){
 const UND = { m5:new Map(), m1:new Map(), live:null, liveAt:0 };
 async function fetchJ(url){ try { const r = await fetch(url, { cache:'no-cache' }); return r.ok ? await r.json() : null; } catch(e){ return null; } }
 // 回傳 [[分鐘, 開, 高, 低, 收, 0], ...]（台灣時間當成 UTC 的分鐘數）
-async function loadUnderlying(t0, t1, wantM1){
-  const months = new Set(), days = [];
-  for (let d = Math.floor(t0 / 1440) - 1; d <= Math.floor(t1 / 1440) + 1; d++){ const x = ymd(d); months.add(x.slice(0, 7)); days.push(x); }
+// 主要來源：optk-data/tx（台指期逐筆自己做的 1 分 K，含完整夜盤）；更早的月份才用網站的 5 分資料（去掉夜盤缺漏時補的假 K 棒）
+async function loadUnderlying(t0, t1){
+  const months = new Set();
+  for (let d = Math.floor(t0 / 1440) - 1; d <= Math.floor(t1 / 1440) + 1; d++) months.add(ymd(d).slice(0, 7));
+  const txm = new Set((IDX.data && IDX.data.txMonths) || []), curM = ymd(Math.floor(Date.now() / 864e5)).slice(0, 7);
   await Promise.all([...months].map(async m => { const c = UND.m5.get(m);
-    if (c && (Date.now() - c.at < 10 * 60e3 || m < ymd(Math.floor(Date.now() / 6e4 / 1440)).slice(0, 7))) return;
-    const j = await fetchJ('data/force/m5/' + m + '.json?t=' + Math.floor(Date.now() / 600e3));
-    UND.m5.set(m, { at:Date.now(), rows:j ? (j.sessions || []).flatMap(q => q.bars.map(b => [Math.round(b[0] / 60), b[1], b[2], b[3], b[4], 0])) : [] }); }));
-  if (wantM1){
-    const recent = days.slice(-12);
-    await Promise.all(recent.map(async x => { const c = UND.m1.get(x); if (c && (c.done || Date.now() - c.at < 10 * 60e3)) return;
-      const j = await fetchJ('data/force/m1/' + x + '.json?t=' + Math.floor(Date.now() / 600e3)), m0 = Date.parse(x + 'T00:00:00Z') / 6e4;
-      UND.m1.set(x, { at:Date.now(), done:!!(j && j.complete), rows:j && j.bars ? j.bars.map(b => [m0 + b[0], b[1], b[2], b[3], b[4], 0]) : [] }); }));
-  }
+    if (c && (m < curM || Date.now() - c.at < 10 * 60e3)) return;
+    let rows = [];
+    if (txm.has(m)){ const j = await fetchJ(RAW + 'tx/' + m + '.json?t=' + Math.floor(Date.now() / 600e3)); rows = j && j.bars ? j.bars.map(b => [b[0], b[1], b[2], b[3], b[4], 0]) : []; }
+    if (!rows.length){ const j = await fetchJ('data/force/m5/' + m + '.json?t=' + Math.floor(Date.now() / 600e3));
+      rows = j ? (j.sessions || []).flatMap(q => q.bars.filter(b => !(b[13] === 0 && b[1] === b[2] && b[2] === b[3] && b[3] === b[4])).map(b => [Math.round(b[0] / 60), b[1], b[2], b[3], b[4], 0])) : []; }
+    UND.m5.set(m, { at:Date.now(), rows }); }));
   if (!UND.live || Date.now() - UND.liveAt > 55e3){
     // 兩個盤中錄影都讀（網站台指期錄影、選擇權錄影裡的台指期），同一分鐘以網站錄影為準
     const [j, k] = await Promise.all([fetchJ('https://raw.githubusercontent.com/' + REPO + '/live-data/tx_live.json?t=' + minKey()), fetchJ(LIVE + 'tx.json?t=' + minKey())]);
@@ -722,13 +723,11 @@ async function loadUnderlying(t0, t1, wantM1){
     if (j && j.sessions) for (const q of Object.values(j.sessions)) for (const b of q.bars || []){ const t = Math.round(b[0] / 60); mp.set(t, [t, b[1], b[2], b[3], b[4], 0]); }
     UND.live = [...mp.values()];
   }
-  // 合併：5 分 → 有 1 分的日子用 1 分 → 盤中錄影接在最後
-  const byDay = new Map();
-  for (const [m, c] of UND.m5) for (const r of c.rows){ const d = Math.floor(r[0] / 1440); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(r); }
-  if (wantM1) for (const [x, c] of UND.m1) if (c.rows.length) byDay.set(Math.floor(Date.parse(x + 'T00:00:00Z') / 864e5), c.rows);
-  let out = [...byDay.keys()].sort((a, b) => a - b).flatMap(d => byDay.get(d));
+  // 合併月份，盤中錄影接在最後
+  let out = [...UND.m5.keys()].sort().flatMap(m => UND.m5.get(m).rows);
+  out.sort((a, b) => a[0] - b[0]);
   const last = out.length ? out[out.length - 1][0] : 0;
-  if (UND.live) out = out.concat(UND.live.filter(r => r[0] > last + (wantM1 ? 0 : 4)).sort((a, b) => a[0] - b[0]));
+  if (UND.live) out = out.concat(UND.live.filter(r => r[0] > last).sort((a, b) => a[0] - b[0]));
   return out;
 }
 const rma = (src, n) => { const o = nanArr(src.length); let y = NaN, c = 0, s = 0;
@@ -785,9 +784,9 @@ function buyerHint(side, d, adx, iv, rv, ivPrev){
   const want = side === 'C' ? 1 : -1;
   let t, col;
   if (adx < 20){ t = '盤整：沒有趨勢，時間價值在流失，買方不利'; col = css('--muted'); }
-  else if (d !== want){ t = '逆風：台指期趨勢' + (d > 0 ? '向上' : '向下') + '，和' + (side === 'C' ? '買權' : '賣權') + '相反'; col = '#8a93a6'; }
+  else if (d !== want){ t = '逆風：台指期趨勢' + (d > 0 ? '向上' : '向下') + '，和' + (side === 'C' ? '買權' : '賣權') + '相反（回測：逆勢抄底的勝算比隨便進場還低）'; col = '#8a93a6'; }
   else if (!isNaN(iv) && !isNaN(rv) && iv > rv * 1.3){ t = '方向對，但保費偏貴（隱含比實際高 ' + Math.round((iv / rv - 1) * 100) + '%）'; col = IND_C.bbE; }
-  else { t = '順風：方向對、趨勢' + (adx >= 25 ? '強' : '成形中'); col = side === 'C' ? css('--up') : css('--down'); }
+  else { t = '順風：方向對、趨勢' + (adx >= 25 ? '強（回測：這種時候買，先漲 50% 的機會比隨便進場高約 6～8 成、先跌 30% 少約 2 成）' : '成形中'); col = side === 'C' ? css('--up') : css('--down'); }
   if (!isNaN(iv) && !isNaN(ivPrev) && ivPrev > 0 && iv / ivPrev - 1 <= -0.15) t += '・保費正在洩氣';
   return [t, col];
 }
@@ -810,7 +809,7 @@ async function runScan(){
   if (!cand.length){ body.innerHTML = '<tr><td colspan="6" class="muted" style="padding:24px;text-align:center">價平附近沒有量夠大的履約價，把「今天量至少」調低試試</td></tr>'; prog.textContent = ''; return; }
   // 台指期（同一個週期）
   let UA = null, SP = null, uIdx = null;
-  try { const now = Date.now() / 6e4, U = await loadUnderlying(now - 25 * 1440, now + 1440, false); UA = aggregate(U, tf, UI.sess); SP = calcSuper(UA); uIdx = new Map(UA.map((b, i) => [b.time, i])); } catch(e){}
+  try { const now = Date.now() / 6e4, U = await loadUnderlying(now - 25 * 1440, now + 1440); UA = aggregate(U, tf, UI.sess); SP = calcSuper(UA); uIdx = new Map(UA.map((b, i) => [b.time, i])); } catch(e){}
   const out = []; let done = 0, refT = 0;
   const work = async ([K, sd, q]) => {
     await loadSeries(code, K, sd);
@@ -822,32 +821,31 @@ async function runScan(){
     bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; B.v[i] = b.volume; });
     const bdR = calcBD(B), os = optSuper(bars), vAvg = smaN(B.v, 20);
     const want = sd === 'C' ? 1 : -1, tags = [];
-    let score = 0, lastT = 0, gcType = 0, st = false, uf = false, vs = false;
-    for (let i = Math.max(1, n - win); i < n; i++){
-      const K0 = bdR.K, S0 = bdR.Sg;
-      if (bdR.tag[i] && bdR.tag[i][2] === 'bot'){ gcType = 3; lastT = Math.max(lastT, bars[i].time); }
-      else if (K0[i - 1] < S0[i - 1] && K0[i] > S0[i]){
-        let mn = Infinity; for (let k = Math.max(0, i - 5); k <= i; k++) mn = Math.min(mn, K0[k]);
-        const low = mn < (isNaN(bdR.LB[i]) ? 25 : Math.max(25, bdR.LB[i]));
-        gcType = Math.max(gcType, low ? 3 : 2); lastT = Math.max(lastT, bars[i].time);
-      }
-      if (os.flip[i] === 1){ st = true; lastT = Math.max(lastT, bars[i].time); }
-      if (!isNaN(vAvg[i - 1]) && B.v[i] > 3 * vAvg[i - 1] && B.c[i] > B.o[i]){ vs = true; }
-      if (SP){ const j = uIdx.get(bars[i].time), j0 = uIdx.get(bars[i - 1].time);
-        if (j != null){ for (let k = j; k > (j0 == null ? j - 1 : j0); k--) if (SP.flip[k] === want){ uf = true; lastT = Math.max(lastT, bars[i].time); } } }
+    // 依回測配分：台指期強烈同向 3、選擇權突破 20 根高點 2、隱含波動率偏低 1、台指期強烈逆向 −2；低檔金叉、擠壓只當標籤（回測沒有比較好）
+    let score = 0, lastT = 0, brk = false, gc = false, vs = false;
+    for (let i = Math.max(21, n - win); i < n; i++){
+      let hh = -Infinity; for (let k = i - 20; k < i; k++) hh = Math.max(hh, B.h[k]);
+      if (B.c[i] > hh){ brk = true; lastT = Math.max(lastT, bars[i].time); }
+      let mn = Infinity; for (let k = Math.max(0, i - 5); k <= i; k++) mn = Math.min(mn, bdR.K[k]);
+      if (bdR.K[i - 1] < bdR.Sg[i - 1] && bdR.K[i] > bdR.Sg[i] && mn < Math.max(25, isNaN(bdR.LB[i]) ? 25 : bdR.LB[i])){ gc = true; lastT = Math.max(lastT, bars[i].time); }
+      if (!isNaN(vAvg[i - 1]) && B.v[i] > 3 * vAvg[i - 1] && B.c[i] > B.o[i]) vs = true;
     }
-    if (!gcType && !st) return;
-    if (gcType === 3) tags.push([bdR.tag.slice(n - win).some(t => t && t[2] === 'bot') ? '神奇波段 底' : '低檔金叉', '#ff1744']);
-    else if (gcType === 2) tags.push(['神奇波段金叉', '#ff6e6e']);
-    score += gcType;
-    if (st){ score += 2; tags.push(['選擇權轉多', '#ff9100']); }
-    let ud = 0, ua = NaN;
-    if (SP){ const j = uIdx.get(bars[n - 1].time) ?? (UA.length - 1); ud = SP.dir[j]; ua = SP.adx[j]; }
-    if (uf){ score += 2; tags.push(['台指期剛轉' + (want > 0 ? '多' : '空'), want > 0 ? '#ff1744' : '#00c853']); }
-    else if (ud === want && ua >= 20){ score += 1; tags.push(['台指期同向', want > 0 ? '#ff6e6e' : '#4cd98a']); }
-    else if (ud === -want && ua >= 25){ score -= 1; tags.push(['台指期逆向', '#8a93a6']); }
-    if (vs){ score += 1; tags.push(['爆量收紅', '#ffca28']); }
-    if (score < 2) return;
+    let ud = 0, ua = NaN, ivLow = false;
+    if (SP){ const j = uIdx.get(bars[n - 1].time) ?? (UA.length - 1); ud = SP.dir[j]; ua = SP.adx[j];
+      // 隱含波動率在這一檔自己最近 60 根裡偏低（後 3 成）
+      const ex = expMin(c), ivs = [];
+      for (let k = Math.max(0, n - 60); k < n; k++){ const jj = uIdx.get(bars[k].time); if (jj == null) continue;
+        const T = Math.max(15, ex - (bars[k].time / 60 + (+tf) - 1)) / (365 * 1440), v = impVol(B.c[k], UA[jj].close, K, T, sd === 'C'); if (!isNaN(v)) ivs.push(v); }
+      if (ivs.length >= 20){ const v = ivs[ivs.length - 1]; ivLow = ivs.filter(x => x < v).length / ivs.length <= 0.3; } }
+    const strongWith = ud === want && ua >= 25, strongAgainst = ud === -want && ua >= 25;
+    if (strongWith){ score += 3; tags.push(['台指期強烈同向', want > 0 ? '#ff1744' : '#00c853']); }
+    else if (ud === want && ua >= 20){ score += 1; tags.push(['台指期同向（成形中）', want > 0 ? '#ff6e6e' : '#4cd98a']); }
+    if (brk){ score += 2; tags.push(['突破 20 根高點', '#ffca28']); }
+    if (ivLow){ score += 1; tags.push(['隱含波動率偏低', '#c77dff']); }
+    if (strongAgainst){ score -= 2; tags.push(['台指期強烈逆向', '#8a93a6']); }
+    if (gc) tags.push(['低檔金叉', '#8a93a6']);
+    if (vs) tags.push(['爆量收紅', '#8a93a6']);
+    if (!brk || score < 4) return;
     out.push({ K, sd, q, score, tags, lastT, last:bars[n - 1] });
   };
   const queue = cand.slice(); await Promise.all(Array.from({ length:6 }, async () => { while (queue.length) await work(queue.shift()); }));
@@ -905,7 +903,7 @@ async function renderCharts(keepRange){
   if (UI.sp && times.length){
     // 往前多抓一段給指標暖身（日 K 以上抓到今年初）
     const tf = UI.tf, from = times[0] / 60 - (daily ? 300 : 20) * 1440, t1 = times[times.length - 1] / 60 + 1440;
-    const U = await loadUnderlying(Math.max(from, Date.parse('2026-01-01T00:00:00Z') / 6e4), t1, tf === '1');
+    const U = await loadUnderlying(Math.max(from, Date.parse('2026-01-01T00:00:00Z') / 6e4), t1);
     UA = aggregate(U, tf, UI.sess);
     SP = calcSuper(UA); uIdx = new Map(UA.map((b, i) => [b.time, i]));
   }
@@ -955,9 +953,30 @@ async function renderCharts(keepRange){
             if (!isNaN(v) && v < 400){ ivd.push({ time:b.time, value:v }); ivMap.set(b.time, v); } else ivd.push({ time:b.time }); }
           else ivd.push({ time:b.time });
         }
+        // 標出兩種進場情況（回測：近三個月全部選擇權、之後約 4 小時盤中，先漲 50% 還是先跌 30%）
+        //  順勢突破＝台指期趨勢強（平均趨向 25 以上）而且方向和這一邊相同，選擇權收盤突破前 20 根最高 → 回測比隨便進場好
+        //  擠壓低檔金叉＝台指期波動擠壓中，神奇波段從低檔往上穿訊號線（你圖上虛線那種）→ 回測比隨便進場差
+        if (bars.length > 25){
+          const n = bars.length, B2 = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n), v:new Float64Array(n) };
+          bars.forEach((x, k) => { B2.o[k] = x.open; B2.h[k] = x.high; B2.l[k] = x.low; B2.c[k] = x.close; B2.v[k] = x.volume; });
+          const bdx = calcBD(B2), want = o.side === 'C' ? 1 : -1; let lastS = -99, lastG = -99;
+          const sig = new Map();
+          for (let k = 21; k < n; k++){
+            const j = uIdx.get(bars[k].time); if (j == null) continue;
+            let hh = -Infinity; for (let q = k - 20; q < k; q++) hh = Math.max(hh, B2.h[q]);
+            if (SP.dir[j] === want && SP.adx[j] >= 25 && B2.c[k] > hh && k - lastS > 10){
+              lastS = k; sig.set(bars[k].time, 'S'); mkA.push({ time:bars[k].time, position:want > 0 ? 'aboveBar' : 'belowBar', color:'#ffca28', shape:'circle', text:'順勢突破' }); }
+            let mn = Infinity; for (let q = Math.max(0, k - 5); q <= k; q++) mn = Math.min(mn, bdx.K[q]);
+            let sqn = false; for (let q = Math.max(0, j - 12); q <= j; q++) if (SP.sq[q]) sqn = true;
+            if (sqn && bdx.K[k - 1] < bdx.Sg[k - 1] && bdx.K[k] > bdx.Sg[k] && mn < Math.max(25, isNaN(bdx.LB[k]) ? 25 : bdx.LB[k]) && k - lastG > 10){
+              lastG = k; if (!sig.has(bars[k].time)) sig.set(bars[k].time, 'G'); mkA.push({ time:bars[k].time, position:want > 0 ? 'belowBar' : 'aboveBar', color:'#8a93a6', shape:'square', text:'擠壓低檔金叉' }); }
+          }
+          mkA.sort((a, b) => a.time - b.time);
+          o.ind.spSig = sig;
+        }
         o.sp.A.hist.setData(hd); o.sp.A.mk.setMarkers(mkA);
         o.sp.iv.setData(ivd); o.sp.rv.setData(rvd); o.sp.mk.setMarkers(mkB);
-        o.ind.sp = { SP, UA, uIdx, ivMap };
+        o.ind.sp = { SP, UA, uIdx, ivMap, sig:o.ind.spSig };
       } else { o.sp.A.hist.setData([]); o.sp.iv.setData([]); o.sp.rv.setData([]); o.ind.sp = null; }
     }
     if (o.bb || o.lx || o.bd){
@@ -1043,6 +1062,9 @@ function indLegend(o, b){
       else h += sp('隱含波動率：這根算不出來（價內太深或沒成交）', css('--muted'));
       if (!isNaN(rv)) h += sp('實際波動 ' + rv.toFixed(0) + '%', '#ff9100');
       if (S2.sq[i]) h += sp('波動擠壓中（大行情前兆）', '#9aa3b2');
+      const sg = Z.sig && Z.sig.get(b.time);
+      if (sg === 'S') h += sp('◆ 順勢突破（回測：先漲 50% 約 29%、先跌 30% 約 37%，比隨便進場好）', IND_C.bbE);
+      if (sg === 'G') h += sp('■ 擠壓低檔金叉（回測：先漲 50% 只有 17%、先跌 30% 56%，比隨便進場差）', '#8a93a6');
       const hint = buyerHint(o.side, d, a, iv == null ? NaN : iv, rv, ivPrev);
       if (hint){ h += '<span style="flex-basis:100%;height:0"></span>' + '<span class="num" style="font-weight:700;color:' + hint[1] + '">買方提示：' + hint[0] + '</span>'; }
     }
