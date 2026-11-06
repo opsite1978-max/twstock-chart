@@ -379,6 +379,46 @@ def build_index():
             'contracts': out}
 
 
+def ses_start(t):
+    d, m = divmod(t, 1440)
+    if 525 <= m <= 840: return d * 1440 + 525
+    if m >= 900: return d * 1440 + 900
+    if m <= 330: return (d - 1) * 1440 + 900
+    return d * 1440 + 525
+
+
+def build_elig(days=4):
+    """給「主圖箭頭搜尋」先過濾用：最近幾個交易日裡，每一檔哪些 5 分 K 收盤 ≥ 30 點、量 ≥ 2 口（箭頭的必要條件）。
+    格式：t＝所有用到的 5 分 K 時間；s[code][K+cp]＝對應 t 的位元（base64）。"""
+    import base64
+    allt = [t for s in SER.values() for t in s['m']]
+    if not allt:
+        return None
+    tds = sorted({trade_day(t) for t in allt})[-days:]
+    keep = set(tds); per = {}; slots = set()
+    for (code, K, cp), s in SER.items():
+        if (contract_exp(code) or '0000') < tds[0]:
+            continue
+        a = {}
+        for t in sorted(s['m']):
+            if trade_day(t) not in keep:
+                continue
+            o, h, l, c, v = s['m'][t]; st = ses_start(t); b = st + (t - st) // 5 * 5
+            x = a.get(b)
+            if x is None: a[b] = [c, v]
+            else: x[0] = c; x[1] += v
+        ok = [b for b, (c, v) in a.items() if c >= 30 and v >= 2]
+        if ok:
+            per[(code, K, cp)] = ok; slots.update(ok)
+    T = sorted(slots); pos = {t: i for i, t in enumerate(T)}; out = {}
+    for (code, K, cp), ok in per.items():
+        bits = bytearray((len(T) + 7) // 8)
+        for t in ok:
+            i = pos[t]; bits[i >> 3] |= 1 << (i & 7)
+        out.setdefault(code, {})['%d%s' % (K, cp)] = base64.b64encode(bytes(bits)).decode()
+    return {'t': T, 's': out, 'days': tds, 'px': 30, 'v': 2}
+
+
 def save_all(index):
     base = os.path.join(WORK, 's')
     shutil.rmtree(base, ignore_errors=True)
@@ -403,6 +443,13 @@ def save_all(index):
     index['txMonths'] = sorted(by)
     json.dump(index, open(os.path.join(WORK, 'index.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
     json.dump(META, open(os.path.join(WORK, 'meta.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
+    try:
+        el = build_elig()
+        if el:
+            json.dump(el, open(os.path.join(WORK, 'elig.json'), 'w'), separators=(',', ':'))
+            log('箭頭搜尋過濾檔', len(el['t']), '根 5 分 K，', sum(len(v) for v in el['s'].values()), '檔')
+    except Exception as e:
+        log('箭頭搜尋過濾檔失敗', e)
     sz = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(WORK) for f in fs)
     log('存檔', nf, '檔', nb, '根 1 分 K，共', round(sz / 1e6, 1), 'MB')
 

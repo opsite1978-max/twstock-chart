@@ -96,6 +96,37 @@ table.t9 tr:hover td{filter:brightness(1.15)}
 .pick-ctl input{flex:1;min-width:0;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0 10px;font-family:var(--num);font-size:14px}
 .tscroll{max-height:66vh;overflow:auto;border-radius:6px;border:1px solid var(--line)}
 .more-btn{margin-top:6px;width:100%;border:1px dashed var(--line);background:none;border-radius:8px;padding:7px;font-size:13px;color:var(--muted);cursor:pointer}
+.scan-btn{float:right;border:1px solid #ff6b1a;color:#ff6b1a;background:none;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:-3px}
+.scan-btn:hover{background:#ff6b1a22}
+.scanbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:4vh 12px}
+.scanbg.show{display:flex}
+.scanbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(860px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.scanbox .hd{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
+.scanbox .hd b{font-size:18px}
+.scanbox .hd .x{margin-left:auto;border:0;background:none;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
+.scanbox .ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:4px 16px 8px;font-size:13px;color:var(--muted)}
+.scanbox .ctl .seg{display:flex;gap:2px;background:var(--panel2);border-radius:8px;padding:2px}
+.scanbox .ctl .seg button{border:0;background:none;padding:4px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted)}
+.scanbox .ctl .seg button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.scanbox .ctl select{height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);padding:0 8px;font-size:13px}
+.scanbox .go{border:0;background:#ff6b1a;color:#fff;border-radius:8px;padding:6px 16px;font-size:14px;font-weight:700;cursor:pointer}
+.scanbox .go:disabled{opacity:.5;cursor:default}
+.scanbox .prog{padding:0 16px 8px;font-size:13px;color:var(--muted)}
+.scanbox .prog i{display:block;height:3px;background:var(--panel2);border-radius:2px;margin-top:5px;overflow:hidden}
+.scanbox .prog i s{display:block;height:100%;width:0;background:#ff6b1a;transition:width .2s}
+.scanbox .body{overflow:auto;padding:0 8px 12px 16px}
+table.sr{width:100%;border-collapse:collapse;font-size:14px}
+table.sr th{position:sticky;top:0;background:var(--panel);font-size:12px;font-weight:500;color:var(--muted);padding:6px 6px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+table.sr td{padding:8px 6px;border-bottom:1px solid var(--grid);white-space:nowrap;cursor:pointer;vertical-align:middle}
+table.sr tr:hover td{background:var(--panel2)}
+table.sr td.n{font-family:var(--num);font-variant-numeric:tabular-nums;text-align:right}
+table.sr .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:700}
+table.sr .tag.f{background:#ff6b1a;color:#fff}
+table.sr .tag.e{border:1px solid var(--gold);color:var(--gold)}
+table.sr .k{font-family:var(--num);font-size:17px;font-weight:700}
+table.sr .sub{font-size:12px;color:var(--muted)}
+.scannote{padding:8px 16px 14px;font-size:12px;color:var(--muted);line-height:1.7;border-top:1px solid var(--line)}
+@media (max-width:640px){ .scanbg{padding:0} .scanbox{max-height:100vh;height:100vh;border-radius:0} table.sr .hide-m,.scanbox .hd .muted{display:none} table.sr td,table.sr th{padding:7px 4px} table.sr{font-size:13px} table.sr .k{font-size:15px} .scanbox .body{padding:0 6px 10px} }
 table.t{width:100%;border-collapse:collapse}
 table.t th{font-size:12px;font-weight:500;color:var(--muted);padding:4px;text-align:center}
 table.t td{padding:5px 4px;text-align:center;font-family:var(--num);font-size:16px;border-top:1px solid var(--grid)}
@@ -146,7 +177,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/06 22:20・趨勢震盪 Pro</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/06 23:30・箭頭搜尋</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optk.html">選擇權K線（舊版）</a>
     <a href="./">看盤</a>
@@ -161,7 +192,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <div class="wrap">
   <aside>
     <section class="sec s1">
-      <h2>現在符合進場條件</h2>
+      <h2>現在符合進場條件 <button class="scan-btn" id="scanOpen" title="一次掃過全部未結算的週選、月選，找出最近主圖出現過發動或進場箭頭的">🔍 箭頭搜尋</button></h2>
       <p class="hint">順著台指期趨勢的價外選擇權，離到期 24 小時以上，依今天成交量排序</p>
       <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cheap"> 也列 30 點以下的（回測沒有包含，風險比較高）</label>
       <div class="cands" id="cands"><div class="empty">讀取中…</div></div>
@@ -214,6 +245,22 @@ main{display:flex;flex-direction:column;min-width:0}
   </main>
 </div>
 
+<div class="scanbg" id="scanBg">
+  <div class="scanbox" role="dialog" aria-label="主圖箭頭搜尋">
+    <div class="hd"><b>🔍 主圖箭頭搜尋</b><span class="muted" style="font-size:13px">找最近主圖出現過箭頭的選擇權</span><button class="x" id="scanX" aria-label="關閉">✕</button></div>
+    <div class="ctl">
+      <span>時間</span><span class="seg" id="scW"><button data-w="h1">最近 1 小時</button><button data-w="h4">最近 4 小時</button><button data-w="s1">這一盤</button><button data-w="s3">最近 3 盤</button></span>
+      <span>箭頭</span><span class="seg" id="scK"><button data-k="all">發動＋進場</button><button data-k="fire">只要發動</button></span>
+      <select id="scC" aria-label="哪一個契約"></select>
+      <button class="go" id="scGo">開始搜尋</button>
+    </div>
+    <div class="prog" id="scProg"></div>
+    <div class="body" id="scBody"></div>
+    <div class="scannote">箭頭和主圖一模一樣（5 分 K 判斷）：<b style="color:#ff6b1a">發動</b>＝大橘箭頭（回測平均每筆 +9.7%）、<b class="gold">進場</b>＝小箭頭（+7.0%）。「現在」是最新成交價，跟箭頭那時的價格比；✓＝已經漲到 +50%、✗＝先碰到 −30% 停損。點一列就打開那一檔的圖。<br>
+    為了少下載資料，只掃「那段時間台指期條件成立的方向」、價外、離到期 24 小時以上、有成交的履約價。</div>
+  </div>
+</div>
+
 <script>
 "use strict";
 const OWNER = (location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : '') || 'opsite1978-max';
@@ -239,7 +286,7 @@ const hm = t => { const d = new Date(t * 6e4), p = n => String(n).padStart(2, '0
 async function fetchJ(url){ try { const r = await fetch(url, { cache:'no-store' }); return r.ok ? await r.json() : null; } catch(e){ return null; } }
 
 /* ═════════════ 資料 ═════════════ */
-const D = { idx:null, ser:new Map(), live:new Map(), txm:new Map(), txLive:[], txAt:0 };
+const D = { elig:null, idx:null, ser:new Map(), live:new Map(), txm:new Map(), txLive:[], txAt:0 };
 async function loadIndex(){
   const j = await fetchJ(RAW + 'index.json?t=' + minKey());
   if (j){ for (const c of j.contracts) c.rows = c.rows.map(r => Array.isArray(r) ? { k:r[0], C:{ c:r[1], v:r[3] }, P:{ c:r[5], v:r[7] } } : r); D.idx = j; }
@@ -695,6 +742,129 @@ async function renderChart(keep){
     '<div>現在<b style="font-size:15px;font-family:var(--zh)">' + (okNow ? '<span class="gold">符合進場條件</span>' : reasons.join('、') || '—') + '</b></div>';
   legend(null);
 }
+
+/* ═════════════ 主圖箭頭搜尋 ═════════════ */
+let SCAN = { busy:false, res:null, at:0, key:'' };
+// 搜尋的時間範圍：以「選擇權資料最新那一分鐘」為終點（夜盤的選擇權資料隔天早上才會補）
+function optLast(){
+  let t = 0;
+  for (const c of D.idx.contracts) for (const r of c.rows) for (const cp of 'CP'){ const h = r[cp]; if (h && h.t > t) t = h.t; }
+  for (const v of D.live.values()) for (const k in (v.s || {})){ const a = v.s[k]; if (a.length && a[a.length - 1][0] > t) t = a[a.length - 1][0]; }
+  return t;
+}
+function scanWindow(){
+  const U = TX5.U, end = Math.min(optLast() || Infinity, U[U.length - 1].t + 4), w = UI.scW || 's1';
+  if (w === 'h1') return [end - 59, end];
+  if (w === 'h4') return [end - 239, end];
+  const ss = []; for (let i = U.length - 1; i >= 0 && ss.length < 3; i--){ if (U[i].t > end) continue; const s0 = sesStart(U[i].t); if (ss[ss.length - 1] !== s0) ss.push(s0); }
+  return [ss[w === 's3' ? ss.length - 1 : 0], end];
+}
+// 先過濾：箭頭那一根一定是「收盤 ≥ 30、量 ≥ 2 的 5 分 K」，而且台指期條件成立、價外、離到期 24 小時以上
+async function loadElig(){
+  if (D.elig && Date.now() - D.elig.at < 10 * 60e3) return D.elig.j;
+  const j = await fetchJ(RAW + 'elig.json?t=' + Math.floor(Date.now() / 600e3));
+  D.elig = { j, at:Date.now() }; return j;
+}
+function eligTimes(el, c, r, cp){
+  const out = [], b64 = el && el.s[c.code] && el.s[c.code][r.k + cp];
+  if (b64){ const bin = atob(b64); for (let i = 0; i < bin.length; i++){ const x = bin.charCodeAt(i); if (x) for (let k = 0; k < 8; k++) if (x >> k & 1) out.push(el.t[i * 8 + k]); } }
+  const lv = D.live.get(c.code), bars = lv && lv.s && lv.s[r.k + cp], ht = (r[cp] || {}).t || 0;
+  if (bars){ const a = agg(bars.filter(b => b[0] > ht), 5); for (const b of a) if (b.c >= R.px && b.v >= 1) out.push(b.t); }
+  return out;
+}
+function scanSync(){
+  for (const b of $('scW').children) b.classList.toggle('on', b.dataset.w === (UI.scW || 's1'));
+  for (const b of $('scK').children) b.classList.toggle('on', b.dataset.k === (UI.scK || 'all'));
+  const now = nowMin(), live = D.idx.contracts.filter(c => !c.expired && expMin(c) > now);
+  $('scC').innerHTML = '<option value="">全部未結算</option>' + live.map(c => '<option value="' + c.code + '"' + (UI.scC === c.code ? ' selected' : '') + '>' + shortLabel(c) + '</option>').join('');
+}
+function scanOpen(){
+  if (!TX5 || !D.idx) return;
+  scanSync(); $('scanBg').classList.add('show');
+  const key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
+  if (SCAN.res && SCAN.key === key && Date.now() - SCAN.at < 3 * 60e3) scanRender(); else scanRun();
+}
+function scanClose(){ $('scanBg').classList.remove('show'); }
+async function scanRun(){
+  if (SCAN.busy) return; SCAN.busy = true; $('scGo').disabled = true;
+  const prog = (txt, f) => { $('scProg').innerHTML = txt + (f != null ? '<i><s style="width:' + Math.round(f * 100) + '%"></s></i>' : ''); };
+  try {
+    const [t0, tEnd] = scanWindow(), U = TX5.U, onlyFire = (UI.scK || 'all') === 'fire';
+    // 那段時間台指期條件成立過的方向，和當時台指期的範圍（判斷價外用）
+    const sides = [];
+    for (const want of [1, -1]){ let lo = Infinity, hi = -Infinity, n = 0;
+      for (let j = U.length - 1; j >= 20 && U[j].t >= t0; j--) if (U[j].t <= tEnd && txOK(TX5, j, want)){ n++; lo = Math.min(lo, U[j].c); hi = Math.max(hi, U[j].c); }
+      if (n) sides.push({ want, cp:want > 0 ? 'C' : 'P', lo, hi }); }
+    if (!sides.length){
+      SCAN.res = { list:[], t0, tEnd, sides, none:true }; SCAN.at = Date.now(); SCAN.key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
+      prog(''); scanRender(); return; }
+    prog('整理要掃的履約價…');
+    const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - t0 >= R.tte && (!UI.scC || c.code === UI.scC));
+    const [el] = await Promise.all([loadElig(), Promise.all(cs.map(c => loadLive(c.code)))]);
+    const elOK = el && el.days && el.days.length && el.days[0] <= tradeDay(t0);
+    const okAt = new Map(sides.map(sd => [sd.want, []]));
+    for (let j = 20; j < U.length; j++) if (U[j].t >= t0 && U[j].t <= tEnd) for (const sd of sides) if (txOK(TX5, j, sd.want)) okAt.get(sd.want).push(j);
+    const todo = [];
+    for (const c of cs) for (const r of c.rows) for (const sd of sides){
+      const otm = sd.want > 0 ? r.k > sd.lo : r.k < sd.hi; if (!otm) continue;
+      const q = quote(c, r, sd.cp), h = r[sd.cp] || {};
+      if (elOK){
+        // 有過濾檔：一定要有一根 5 分 K 同時符合（收盤 ≥ 30、量夠、台指期條件、價外、離到期 24 小時以上）
+        const ts = new Set(eligTimes(el, c, r, sd.cp)), ex = expMin(c);
+        if (!okAt.get(sd.want).some(j => { const t = U[j].t; return ts.has(t) && sd.want * (r.k - U[j].c) > 0 && ex - (t + 5) >= R.tte; })) continue;
+      } else {
+        if (!q.v && !((h.t || 0) >= t0)) continue;                                   // 那段時間沒成交
+        if (Math.max(q.c || 0, q.b || 0, h.c || 0) < R.px * 0.5) continue;          // 一直都很便宜
+      }
+      todo.push({ c, k:r.k, cp:sd.cp, q });
+    }
+    let done = 0; const out = [];
+    prog('掃描 0 / ' + todo.length + ' 檔', 0);
+    const work = async x => {
+      await loadSeries(x.c.code, x.k, x.cp);
+      const SG = signals(x.c, x.k, x.cp, minutes(x.c.code, x.k, x.cp));
+      const f = SG.fire.filter(s => s.t >= t0 && s.t <= tEnd), e = onlyFire ? [] : SG.ent.filter(s => s.t >= t0 && s.t <= tEnd);
+      if (f.length || e.length){
+        const lastF = f[f.length - 1], lastE = e[e.length - 1], pick = lastF || lastE;
+        const m = minutes(x.c.code, x.k, x.cp), now = m.length ? m[m.length - 1][4] : pick.px;
+        out.push({ c:x.c, k:x.k, cp:x.cp, s:pick, nf:f.length, ne:e.length, now, v:x.q.v || 0 }); }
+      done++; if (done % 4 === 0 || done === todo.length) prog('掃描 ' + done + ' / ' + todo.length + ' 檔・找到 ' + out.length + ' 檔', done / todo.length);
+    };
+    const q = todo.slice();
+    await Promise.all(Array.from({ length:8 }, async () => { while (q.length) await work(q.shift()); }));
+    // 還在進行中的排最前面（還能參考），再來發動、越新越前面
+    out.sort((a, b) => (b.s.res === 'open') - (a.s.res === 'open') || (b.s.kind === 'fire') - (a.s.kind === 'fire') || b.s.t - a.s.t || b.v - a.v);
+    SCAN.res = { list:out, t0, tEnd, sides, n:todo.length }; SCAN.at = Date.now(); SCAN.key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
+    prog(''); scanRender();
+  } catch(err){ prog('搜尋失敗，請再按一次「開始搜尋」'); console.error(err); }
+  finally { SCAN.busy = false; $('scGo').disabled = false; }
+}
+function scanRender(){
+  const R0 = SCAN.res, body = $('scBody'); if (!R0) return;
+  const lagTX = TX5.U[TX5.U.length - 1].t - R0.tEnd > 30;
+  const head = '<p class="muted" style="font-size:13px;margin:2px 0 8px">範圍 <b>' + hm(R0.t0) + '</b> ～ <b>' + hm(R0.tEnd) + '</b>' + (lagTX ? '（選擇權資料到這裡；夜盤的選擇權資料隔天早上 8 點左右才補上）' : '') + '・' +
+    (R0.sides.length ? '台指期條件成立過的方向：' + R0.sides.map(s => s.want > 0 ? '<b class="bull">多方（買權）</b>' : '<b class="bear">空方（賣權）</b>').join('、') : '') +
+    (R0.n != null ? '・掃了 ' + R0.n + ' 檔・' : '・') + '<span class="muted">' + Math.round((Date.now() - SCAN.at) / 60e3) + ' 分鐘前搜尋</span></p>';
+  if (R0.none){ body.innerHTML = '<div class="empty" style="padding:16px 0">這段時間台指期都沒有「趨勢強度 30 以上、而且還在往同方向推」，所以沒有任何一檔會出現箭頭。可以把時間拉長再找。</div>'; return; }
+  if (!R0.list.length){ body.innerHTML = head + '<div class="empty" style="padding:12px 0">這段時間沒有選擇權出現' + ((UI.scK || 'all') === 'fire' ? '發動' : '發動或進場') + '箭頭（台指期條件成立，但沒有 30 點以上、離到期 24 小時以上的價外選擇權符合）。</div>'; return; }
+  const st = s => s.res === 'win' ? '<span class="gold">✓ 漲到 +50%</span>' : s.res === 'loss' ? '<span class="muted">✗ 停損</span>' : s.res === 'time' ? '4 小時到 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' :
+    '<span style="color:#ff6b1a;font-weight:700">進行中</span><div class="sub">目標 ' + fmtP(s.px * 1.5) + '・停損 ' + fmtP(s.px * 0.7) + '</div>';
+  body.innerHTML = head + '<table class="sr"><thead><tr><th>箭頭・時間</th><th>選擇權</th><th style="text-align:right">箭頭價</th><th style="text-align:right">現在</th><th>結果</th><th class="hide-m">這段時間</th></tr></thead><tbody>' +
+    R0.list.map((x, i) => { const r = x.now / x.s.px - 1;
+      return '<tr data-i="' + i + '"><td><span class="tag ' + (x.s.kind === 'fire' ? 'f">發動' : 'e">進場') + '</span><div class="sub n" style="text-align:left;margin-top:3px">' + hm(x.s.t) + '</div></td>' +
+        '<td><span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span> ' + (x.cp === 'C' ? '買權' : '賣權') + '<div class="sub">' + shortLabel(x.c) + '</div></td>' +
+        '<td class="n">' + fmtP(x.s.px) + '</td><td class="n"><b>' + fmtP(x.now) + '</b><div class="sub ' + (r >= 0 ? 'bull' : 'bear') + '">' + (r >= 0 ? '+' : '') + (r * 100).toFixed(0) + '%</div></td>' +
+        '<td style="white-space:normal">' + st(x.s) + '</td><td class="hide-m sub">' + (x.nf ? '發動 ' + x.nf + ' 次' : '') + (x.nf && x.ne ? '・' : '') + (x.ne ? '進場 ' + x.ne + ' 次' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
+  body.querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { const x = R0.list[+tr.dataset.i]; scanClose(); select(x.c.code, x.k, x.cp); });
+}
+$('scanOpen').onclick = scanOpen;
+$('scanX').onclick = scanClose;
+$('scanBg').onclick = e => { if (e.target === $('scanBg')) scanClose(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') scanClose(); });
+$('scW').onclick = e => { const b = e.target.closest('[data-w]'); if (!b) return; UI.scW = b.dataset.w; saveUI(); scanSync(); scanRun(); };
+$('scK').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; UI.scK = b.dataset.k; saveUI(); scanSync(); scanRun(); };
+$('scC').onchange = e => { UI.scC = e.target.value; saveUI(); scanRun(); };
+$('scGo').onclick = () => scanRun();
 
 /* ═════════════ 操作 ═════════════ */
 let ST = null;
