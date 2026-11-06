@@ -181,6 +181,7 @@
       <button class="btn" id="maBtn" title="5、20 根均線">均線</button>
       <button class="btn" id="oiBtn" title="每天收盤後的未平倉量（日K、週K、月K 才顯示）">未平倉</button>
       <button class="btn" id="bbBtn" title="布林大底（和戰神看盤相同）：大底能量 0～100＝跌到 60 根布林下軌外多深 × 20 根通道寬度在過去 750 根的百分位；50 以上＝大底區、80＝極端；W底＝能量背離後突破。至少要 160 根 K 棒">布林大底</button>
+      <button class="btn" id="bdBtn" title="神奇波段（和戰神看盤相同）：短波線＝(2×收+高+低)÷4 在 34 根高低區間的位置（13 根平均），在訊號線上紅、下綠；長波線往上藍、往下橘；紫色＝短波線過去 250 根的 90%／10% 動態上下界。底＝短波線往上穿訊號線、近 5 根曾低於下界、收盤突破前一根高點；頂＝反過來；頂★＝急漲爆量後轉弱。要約 200 根 K 棒才有上下界和訊號">神奇波段</button>
       <button class="btn" id="lxBtn" title="尋龍底（和戰神看盤相同）：30 根新低時的龍穴能量（黃＞5千、綠＞1萬、紅＞5萬，對數刻度）；龍穴＝能量結束後 3 根內突破前高、尋龍底★＝之前有急跌或跌深、真龍★★＝急跌後而且當根主動買盤強">尋龍底</button>
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
     </div>
@@ -200,7 +201,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 
 /* ═════════════ 設定（存在這台裝置） ═════════════ */
-const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
+const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, bd:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
   (() => { try { return JSON.parse(localStorage.getItem('optk:ui') || '{}') || {}; } catch(e){ return {}; } })());
 function saveUI(){ try { localStorage.setItem('optk:ui', JSON.stringify(UI)); } catch(e){} }
 
@@ -460,7 +461,7 @@ function buildCharts(){
   CH.list = [];
   const box = $('charts'); box.innerHTML = '';
   box.classList.toggle('two', UI.view === 'both');
-  box.classList.toggle('ind', !!(UI.bb || UI.lx));
+  box.classList.toggle('ind', !!(UI.bb || UI.lx || UI.bd));
   const up = css('--up'), dn = css('--down');
   for (const side of sides()){
     const el = document.createElement('div'); el.className = 'cbox';
@@ -470,7 +471,7 @@ function buildCharts(){
     const candle = chart.addSeries(L.CandlestickSeries, { upColor:up, downColor:dn, borderUpColor:up, borderDownColor:dn, wickUpColor:up, wickDownColor:dn,
       priceLineVisible:true, priceLineWidth:1, priceFormat:{ type:'price', precision:1, minMove:0.1 } });
     const vol = chart.addSeries(L.HistogramSeries, { priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false }, 1);
-    const indOn = UI.bb || UI.lx;
+    const indOn = UI.bb || UI.lx || UI.bd;
     try { const ps = chart.panes(); ps[0].setStretchFactor(indOn ? 3.4 : 5); ps[1].setStretchFactor(indOn ? 0.7 : 1.2); } catch(e){}
     const ma5 = chart.addSeries(L.LineSeries, { color:'#ffca28', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
     const ma20 = chart.addSeries(L.LineSeries, { color:'#b388ff', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
@@ -480,6 +481,19 @@ function buildCharts(){
       o.oi = chart.addSeries(L.LineSeries, { color:css('--gold'), lineWidth:2, lineType:L.LineType.WithSteps, priceLineVisible:false, lastValueVisible:true,
         priceFormat:{ type:'volume' }, title:'未平倉' }, pane);
       try { chart.panes()[pane].setStretchFactor(indOn ? 0.8 : 1.1); } catch(e){}
+      pane++;
+    }
+    if (UI.bd){
+      const auto = () => ({ priceRange:{ minValue:-4, maxValue:106 } });
+      const bc = UI.theme === 'light' ? '#7c4dff' : IND_C.bdBand;
+      const mk = (o2) => chart.addSeries(L.LineSeries, Object.assign({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:auto, priceFormat:{ type:'price', precision:0, minMove:1 } }, o2), pane);
+      const ub = mk({ color:bc, lineWidth:2 }), lb = mk({ color:bc, lineWidth:2 });
+      const d3 = mk({ lineWidth:3 });
+      const sg = mk({ color:(UI.theme === 'light' ? '#8a93a6' : '#5d6676'), lineWidth:1 });
+      const k = mk({ lineWidth:2, lastValueVisible:true, title:'神奇波段' });
+      for (const [v, a] of [[20, '55'], [80, '55'], [50, '88']]) k.createPriceLine({ price:v, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + a, lineWidth:1, lineStyle:v === 50 ? L.LineStyle.Solid : L.LineStyle.Dotted, axisLabelVisible:false, title:'' });
+      o.bd = { k, sg, d3, ub, lb, mk:L.createSeriesMarkers(k, []) };
+      try { chart.panes()[pane].setStretchFactor(1.5); } catch(e){}
       pane++;
     }
     if (UI.bb){
@@ -535,7 +549,7 @@ function smaN(src, n){ const len = src.length, out = nanArr(len); let s = 0, bad
 function tdxSMA(a, N, M){ const o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : (M * x + (N - M) * y) / N; o[i] = y; } return o; }
 function llv(a, n, i){ let m = Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] < m) m = a[k]; return m; }
 function hhv(a, n, i){ let m = -Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] > m) m = a[k]; return m; }
-const IND_C = { bbE:'#ffca28', bbW:'#ff9800', lxY:'#ffd600', lxG:'#00e676', lxR:'#ff1744', lxBot:'#ff1744', lxBot2:'#ff9100' };
+const IND_C = { bdUp:'#ff1744', bdDn:'#00c853', bdLU:'#2979ff', bdLD:'#ff8f00', bdBand:'#b388ff', bdBot:'#ff1744', bdTop:'#00a152', bbE:'#ffca28', bbW:'#ff9800', lxY:'#ffd600', lxG:'#00e676', lxR:'#ff1744', lxBot:'#ff1744', lxBot2:'#ff9100' };
 // 布林大底：大底能量 0～100、進入大底區、W 底
 function calcBBOT(B){
   const n = B.n, C = B.c, Hh = B.h, Ll = B.l, Sv = nanArr(n), bw = nanArr(n);
@@ -589,10 +603,48 @@ function calcLX(B){
   }
   return { SS, VB, tag };
 }
+function tdxEMA(a, N){ const k = 2 / (N + 1), o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : y + k * (x - y); o[i] = y; } return o; }
+// 滾動百分位（過去 N 根，至少 8 成有值才算）
+function rollPct(a, N, q){
+  const n = a.length, out = nanArr(n), w = new Float64Array(N + 1), need = N * 0.8; let m = 0;
+  const find = x => { let lo = 0, hi = m; while (lo < hi){ const mid = (lo + hi) >> 1; if (w[mid] < x) lo = mid + 1; else hi = mid; } return lo; };
+  for (let i = 0; i < n; i++){
+    if (i >= N){ const y = a[i - N]; if (!isNaN(y)){ const k = find(+y); if (k < m){ w.copyWithin(k, k + 1, m); m--; } } }
+    const x = a[i]; if (!isNaN(x)){ const v = +x, k = find(v); w.copyWithin(k + 1, k, m); w[k] = v; m++; }
+    if (i >= N - 1 && m >= need) out[i] = w[Math.min(m - 1, Math.floor(m * q))];
+  }
+  return out;
+}
+// 神奇波段：短波線、訊號線、長波線、動態上下界、底／頂／頂★
+function calcBD(B){
+  const n = B.n, C = B.c, H = B.h, Lw = B.l, bandLen = 250, bandPct = 0.10, starRise = 15, starVol = 2;
+  const pos = nanArr(n), rsv = nanArr(n);
+  for (let i = 0; i < n; i++){
+    let lo = llv(Lw, 34, i), hi = hhv(H, 34, i); pos[i] = hi > lo ? ((2 * C[i] + H[i] + Lw[i]) / 4 - lo) / (hi - lo) * 100 : 0;
+    lo = llv(Lw, 35, i); hi = hhv(H, 35, i); rsv[i] = hi > lo ? (C[i] - lo) / (hi - lo) * 100 : 0;
+  }
+  const K = tdxEMA(pos, 13), mix = nanArr(n); for (let i = 1; i < n; i++) mix[i] = 0.667 * K[i - 1] + 0.333 * K[i];
+  const Sg = tdxEMA(mix, 2), D3 = tdxEMA(tdxSMA(tdxSMA(rsv, 13, 1), 13, 1), 3);
+  const LB = rollPct(K, bandLen, bandPct), UB = rollPct(K, bandLen, 1 - bandPct);
+  const tag = new Array(n).fill(null), Vm = smaN(B.v, 20); let lb = -99, lt = -99;
+  for (let i = 5; i < n; i++){
+    if (isNaN(Sg[i - 1]) || isNaN(LB[i])) continue;
+    let mn = Infinity, mx = -Infinity; for (let k = i - 4; k <= i; k++){ if (K[k] < mn) mn = K[k]; if (K[k] > mx) mx = K[k]; }
+    if (K[i - 1] < Sg[i - 1] && K[i] > Sg[i] && mn < LB[i] && C[i] > H[i - 1] && i - lb > 10){ lb = i; tag[i] = ['底', IND_C.bdBot, 'bot']; }
+    if (K[i - 1] > Sg[i - 1] && K[i] < Sg[i] && mx > UB[i] && C[i] < Lw[i - 1] && i - lt > 10){
+      lt = i; let star = false;
+      if (i >= 20 && !isNaN(Vm[i])){ let vx = 0; for (let k = i - 4; k <= i; k++) if (B.v[k] > vx) vx = B.v[k];
+        const rise = hhv(H, 10, i) / llv(Lw, 20, i) - 1; star = rise * 100 > starRise && vx > starVol * Vm[i]; }
+      tag[i] = [star ? '頂★' : '頂', IND_C.bdTop, 'top'];
+    }
+  }
+  return { K, Sg, D3, LB, UB, tag };
+}
 function indicators(bars){
-  const n = bars.length, B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n) };
-  bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; });
-  const out = { bb:null, lx:null };
+  const n = bars.length, B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n), v:new Float64Array(n) };
+  bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; B.v[i] = b.volume; });
+  const out = { bb:null, lx:null, bd:null };
+  if (UI.bd) out.bd = calcBD(B);
   if (UI.bb) out.bb = calcBBOT(B);
   if (UI.lx) out.lx = calcLX(B);
   return out;
@@ -604,7 +656,7 @@ const fmtE = v => v >= 1e4 ? (v / 1e4).toFixed(v >= 1e5 ? 0 : 1) + '萬' : v >= 
 let lastBuild = '';
 async function renderCharts(keepRange){
   const c = curContract();
-  const tag = [UI.view, UI.theme, UI.oi && /^[DWM]$/.test(UI.tf), UI.bb, UI.lx].join('|');
+  const tag = [UI.view, UI.theme, UI.oi && /^[DWM]$/.test(UI.tf), UI.bd, UI.bb, UI.lx].join('|');
   if (tag !== lastBuild || !CH.list.length){ buildCharts(); lastBuild = tag; keepRange = false; }
   if (!c || UI.K == null){ for (const o of CH.list){ o.empty.textContent = '在左邊清單點一個履約價'; o.empty.classList.remove('hide'); } return; }
   const sideList = sides();
@@ -639,8 +691,21 @@ async function renderCharts(keepRange){
     }
     // 指標（只用有成交的 K 棒算，再對回時間軸）
     o.ind = { n:bars.length };
-    if (o.bb || o.lx){
+    if (o.bb || o.lx || o.bd){
       const R = indicators(bars);
+      if (o.bd && R.bd){
+        const r = R.bd, up = IND_C.bdUp, dnc = IND_C.bdDn, mpK = new Map(), mk = [];
+        const ser = (arr, colFn) => { const m = new Map(); bars.forEach((b, i) => { if (!isNaN(arr[i])) m.set(b.time, colFn ? { time:b.time, value:arr[i], color:colFn(i) } : { time:b.time, value:arr[i] }); });
+          return full.map(b => m.get(b.time) || { time:b.time }); };
+        o.bd.k.setData(ser(r.K, i => r.K[i] >= r.Sg[i] ? up : dnc));
+        o.bd.sg.setData(ser(r.Sg));
+        o.bd.d3.setData(ser(r.D3, i => i > 0 && r.D3[i] >= r.D3[i - 1] ? IND_C.bdLU : IND_C.bdLD));
+        o.bd.ub.setData(ser(r.UB)); o.bd.lb.setData(ser(r.LB));
+        bars.forEach((b, i) => { const t = r.tag[i]; if (t) mk.push(t[2] === 'bot' ? { time:b.time, position:'belowBar', color:t[1], shape:'arrowUp', text:t[0] } : { time:b.time, position:'aboveBar', color:t[1], shape:'arrowDown', text:t[0] });
+          mpK.set(b.time, i); });
+        o.bd.mk.setMarkers(mk);
+        o.ind.bd = { r, idx:mpK };
+      }
       if (o.bb && R.bb){
         const S = R.bb.S, mp = new Map(), mk = [];
         bars.forEach((b, i) => { if (!isNaN(S[i])) mp.set(b.time, S[i]);
@@ -694,16 +759,30 @@ function setLegend(o, bar, stale){
 function indLegend(o, b){
   const I = o.ind || {}, sp = (t, col) => '<span class="num"' + (col ? ' style="color:' + col + '"' : '') + '>' + t + '</span>';
   let h = '';
+  if (o.bd && I.bd){
+    const r = I.bd.r, i = I.bd.idx.get(b.time);
+    h += '<span style="flex-basis:100%;height:0"></span>';
+    if (i == null || isNaN(r.K[i])) h += sp('神奇波段：這根之前的 K 棒還不夠', css('--muted'));
+    else {
+      const k = r.K[i], upS = k >= r.Sg[i];
+      h += sp('神奇波段 短波 ' + k.toFixed(1), upS ? IND_C.bdUp : IND_C.bdDn) + sp(upS ? '短波在上' : '短波在下', css('--muted'));
+      if (!isNaN(r.D3[i])) h += sp('長波 ' + r.D3[i].toFixed(1) + (i > 0 ? (r.D3[i] >= r.D3[i - 1] ? ' 往上' : ' 往下') : ''), i > 0 && r.D3[i] >= r.D3[i - 1] ? IND_C.bdLU : IND_C.bdLD);
+      if (isNaN(r.UB[i])) h += sp('上下界要約 200 根才有（現在 ' + (I.n || 0) + ' 根）', css('--muted'));
+      else { h += sp('上界 ' + Math.round(r.UB[i]) + '・下界 ' + Math.round(r.LB[i]), UI.theme === 'light' ? '#7c4dff' : IND_C.bdBand);
+        if (k > r.UB[i]) h += sp('高於上界', IND_C.bdBand); else if (k < r.LB[i]) h += sp('低於下界', IND_C.bdBand); }
+      if (r.tag[i]) h += sp(r.tag[i][0], r.tag[i][1]);
+    }
+  }
   if (o.bb){
     const v = I.bb && I.bb.get(b.time);
-    h += '<span style="flex-basis:100%;height:0"></span>';
+    if (!o.bd) h += '<span style="flex-basis:100%;height:0"></span>';
     if (v == null) h += sp(I.bb && I.bb.size ? '布林大底：這根之前的 K 棒還不夠' : '布林大底：這個週期 K 棒不夠（要約 120 根，現在 ' + (I.n || 0) + ' 根），換 1 分、5 分看', css('--muted'));
     else { h += sp('布林大底 ' + Math.round(v), v >= 50 ? IND_C.bbE : null) + sp(v >= 80 ? '超過 80（極端恐慌）' : v >= 50 ? '大底區' : v >= 30 ? '偏低、波動放大' : '', v >= 50 ? IND_C.bbE : css('--muted'));
       if (I.bbW && I.bbW.has(b.time)) h += sp('W底', IND_C.bbW); else if (I.bbZ && I.bbZ.has(b.time)) h += sp('進入大底區', IND_C.bbE); }
   }
   if (o.lx){
     const v = I.lx && I.lx.get(b.time), t = I.lxT && I.lxT.get(b.time), vb = I.vb && I.vb.get(b.time);
-    if (!o.bb) h += '<span style="flex-basis:100%;height:0"></span>';
+    if (!o.bb && !o.bd) h += '<span style="flex-basis:100%;height:0"></span>';
     h += sp('龍穴能量 ' + (v > 0 ? fmtN(Math.round(v)) : '0'), v > 5000 ? lxColor(v) : null);
     if (v > 50000) h += sp('紅', IND_C.lxR); else if (v > 10000) h += sp('綠', IND_C.lxG); else if (v > 5000) h += sp('黃', IND_C.lxY); else if (v > 0) h += sp('30 根新低', css('--muted'));
     if (vb > 0) h += sp('收盤／價值線 ' + Math.round(b.close / vb * 100) + '%' + (b.close * 1.35 <= vb ? '（深）' : ''), css('--muted'));
@@ -735,6 +814,7 @@ function syncBar(){
   for (const b of $('rangeSeg').children) b.classList.toggle('on', +b.dataset.r === UI.range);
   $('maBtn').classList.toggle('on', UI.ma);
   $('bbBtn').classList.toggle('on', !!UI.bb);
+  $('bdBtn').classList.toggle('on', !!UI.bd);
   $('lxBtn').classList.toggle('on', !!UI.lx);
   $('oiBtn').classList.toggle('on', UI.oi);
   $('oiBtn').disabled = !/^[DWM]$/.test(UI.tf);
@@ -750,6 +830,7 @@ $('viewSeg').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) re
 $('rangeSeg').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); syncBar(); renderTable(true); };
 $('onlyTraded').onchange = e => { UI.onlyTraded = e.target.checked; saveUI(); renderTable(true); };
 $('maBtn').onclick = () => { UI.ma = !UI.ma; saveUI(); syncBar(); renderCharts(true); };
+$('bdBtn').onclick = () => { UI.bd = !UI.bd; saveUI(); syncBar(); renderCharts(); };
 $('bbBtn').onclick = () => { UI.bb = !UI.bb; saveUI(); syncBar(); renderCharts(); };
 $('lxBtn').onclick = () => { UI.lx = !UI.lx; saveUI(); syncBar(); renderCharts(); };
 $('oiBtn').onclick = () => { UI.oi = !UI.oi; saveUI(); syncBar(); renderCharts(true); };
