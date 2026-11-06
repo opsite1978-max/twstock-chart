@@ -139,7 +139,8 @@ main{display:flex;flex-direction:column;min-width:0}
   <aside>
     <section class="sec s1">
       <h2>現在符合進場條件</h2>
-      <p class="hint">順著台指期趨勢的價外選擇權，價格 30 點以上、離到期 24 小時以上，依今天成交量排序</p>
+      <p class="hint">順著台指期趨勢的價外選擇權，離到期 24 小時以上，依今天成交量排序</p>
+      <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cheap"> 也列 30 點以下的（回測沒有包含，風險比較高）</label>
       <div class="cands" id="cands"><div class="empty">讀取中…</div></div>
     </section>
     <section class="sec s2">
@@ -186,7 +187,9 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, loss:-0.3 };   // 進場條件（回測挑出來的）
 
-const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true, range:20 }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true, range:0, cheap:false }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+// 之前存過 ±20 的，改成預設全部價位（只做一次）
+try { const raw = JSON.parse(localStorage.getItem('optgo:ui') || '{}'); if (raw && raw.rangeV !== 2){ UI.range = 0; UI.rangeV = 2; } } catch(e){}
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -319,6 +322,7 @@ function renderStatus(){
   return { d, ok:a >= R.adx && mo >= R.mom, F, lastOk };
 }
 let candAll = false;
+$('cheap') && ($('cheap').onchange = e => { UI.cheap = e.target.checked; saveUI(); renderCands(ST); renderPicker(ST); });
 async function renderCands(st){
   const box = $('cands'), now = nowMin();
   if (!st.ok){
@@ -330,7 +334,7 @@ async function renderCands(st){
   const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - now >= R.tte);   // 離到期 24 小時以上（已結算的自然不會列）
   await Promise.all(cs.map(c => loadLive(c.code)));
   for (const c of cs) for (const r of c.rows){
-    const q = quote(c, r, cp); if (!(q.c >= R.px) || !q.v) continue;
+    const q = quote(c, r, cp); if (!(q.c >= (UI.cheap ? 0.1 : R.px)) || !q.v) continue;
     const otm = st.d * (r.k - st.F) / st.F; if (otm <= 0) continue;
     list.push({ c, k:r.k, cp, q, otm });
   }
@@ -339,7 +343,7 @@ async function renderCands(st){
   const shown = candAll ? list : list.slice(0, 12);
   box.innerHTML = shown.map((x, i) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-i="' + i + '">' +
     '<span class="k ' + (cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span><span class="c">' + shortLabel(x.c) + ' ' + (cp === 'C' ? '買權' : '賣權') + '</span>' +
-    '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + (x.otm * 100).toFixed(1) + '%・今天 ' + fmtN(x.q.v) + ' 口</span></button>').join('');
+    '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + (x.otm * 100).toFixed(1) + '%・今天 ' + fmtN(x.q.v) + ' 口' + (x.q.c < R.px ? '・30 點以下（未回測）' : '') + '</span></button>').join('');
   if (list.length > 12) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 12 檔' : '顯示全部 ' + list.length + ' 檔') + '</button>');
   const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
   box.querySelectorAll('.cand').forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; select(x.c.code, x.k, x.cp); });
@@ -355,7 +359,8 @@ function renderPicker(st){
   for (const b of $('rng').children) b.classList.toggle('on', +b.dataset.r === R0);
   $('tbody').innerHTML = vis.map(r => {
     const qc = quote(c, r, 'C'), qp = quote(c, r, 'P');
-    const okC = st.ok && st.d > 0 && longOK && r.k > st.F && qc.c >= R.px && qc.v, okP = st.ok && st.d < 0 && longOK && r.k < st.F && qp.c >= R.px && qp.v;
+    const minPx = UI.cheap ? 0.1 : R.px;
+    const okC = st.ok && st.d > 0 && longOK && r.k > st.F && qc.c >= minPx && qc.v, okP = st.ok && st.d < 0 && longOK && r.k < st.F && qp.c >= minPx && qp.v;
     const sel = cp => c.code === UI.code && r.k === UI.K && UI.cp === cp ? ' sel' : '';
     return '<tr class="' + (r === rows[ai] ? 'atm' : '') + '"><td class="px' + (okC ? ' q' : '') + sel('C') + '" data-k="' + r.k + '" data-p="C">' + fmtP(qc.c) + '</td><td class="k">' + r.k + '</td>' +
       '<td class="px' + (okP ? ' q' : '') + sel('P') + '" data-k="' + r.k + '" data-p="P">' + fmtP(qp.c) + '</td></tr>'; }).join('');
@@ -564,7 +569,7 @@ async function refresh(keep){
   await renderCands(ST); renderPicker(ST); await renderChart(keep);
 }
 async function boot(){
-  applyTheme(); syncTf(); buildChart();
+  applyTheme(); syncTf(); buildChart(); $('cheap').checked = !!UI.cheap; saveUI();
   if (!await loadIndex()){ $('verdict').innerHTML = '<small>台指期現在</small>資料讀不到，請稍後重新整理'; return; }
   await refresh(false);
   setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); }, 60e3);
