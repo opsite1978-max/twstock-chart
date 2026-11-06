@@ -8,84 +8,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 選擇權籌碼資料探查
+      - name: 選擇權逐筆資料探查
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
           python3 - <<'PY' > out/opt.txt 2>&1 || true
-          import os, json, urllib.request, urllib.parse, collections
+          import os, json, time, urllib.request, urllib.parse, collections
           T = os.environ['T']
           def js(p):
               u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T))
+              t0 = time.time()
               try:
-                  with urllib.request.urlopen(u, timeout=120) as r: j = json.loads(r.read().decode())
-                  return j.get('status'), j.get('msg'), j.get('data') or []
-              except Exception as e: return 0, str(e)[:200], []
-          for ds in ['TaiwanOptionInstitutionalInvestors', 'TaiwanOptionOpenInterestLargeTraders', 'TaiwanOptionInstitutionalInvestorsAfterHours']:
-              st, msg, d = js({'dataset': ds, 'data_id': 'TXO', 'start_date': '2026-10-15'})
-              print(ds, st, msg, len(d))
-              for x in d[:12]: print('  ', json.dumps(x, ensure_ascii=False)[:700])
-              st, msg, d = js({'dataset': ds, 'data_id': 'TXO', 'start_date': '2019-01-01', 'end_date': '2019-01-10'})
-              print('  depth 2019:', st, len(d))
-          st, msg, d = js({'dataset': 'TaiwanOptionDaily', 'data_id': 'TXO', 'start_date': '2026-10-16', 'end_date': '2026-10-16'})
-          print('OPTDAILY', st, len(d), json.dumps(d[:2], ensure_ascii=False)[:600])
-          pos = [x for x in d if x.get('trading_session') == 'position']
-          agg = collections.defaultdict(lambda: [0, 0.0])
-          for x in pos:
-              k = x.get('call_put'); agg[k][0] += x.get('open_interest') or 0; agg[k][1] += (x.get('open_interest') or 0) * (x.get('settlement_price') or 0) * 50 / 1000
-          print('market OI and amount(thousand)', dict(agg), 'contracts', sorted(set(str(x.get('contract_date')).strip() for x in pos))[:12])
+                  with urllib.request.urlopen(u, timeout=300) as r: b = r.read()
+                  j = json.loads(b.decode())
+                  return j.get('status'), j.get('msg'), j.get('data') or [], len(b), time.time() - t0
+              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200], [], 0, time.time() - t0
+              except Exception as e: return 0, str(e)[:200], [], 0, time.time() - t0
+          st, msg, d, nb, dt = js({'dataset': 'TaiwanOptionDaily', 'data_id': 'TXO', 'start_date': '2026-11-05', 'end_date': '2026-11-05'})
+          print('DAILY', st, msg, len(d), nb, round(dt, 1))
+          print(' contracts', collections.Counter(str(x.get('contract_date')).strip() for x in d).most_common(20))
+          print(' sessions', collections.Counter(x.get('trading_session') for x in d))
+          for x in d[:2]: print(' ', json.dumps(x, ensure_ascii=False))
+          st, msg, d, nb, dt = js({'dataset': 'TaiwanOptionDaily', 'data_id': 'TXO', 'start_date': '2026-08-01', 'end_date': '2026-11-05'})
+          print('DAILY 3m', st, len(d), nb, round(dt, 1))
+          for did in ['TXO', 'TX1', 'TX2', 'TXU', 'TXV', 'TXX']:
+              st, msg, d, nb, dt = js({'dataset': 'TaiwanOptionTick', 'data_id': did, 'start_date': '2026-11-05'})
+              print('TICK', did, st, msg, 'rows', len(d), 'bytes', nb, 'sec', round(dt, 1))
+              if d:
+                  print('  keys', list(d[0].keys()))
+                  for x in d[:3] + d[-3:]: print('  ', json.dumps(x, ensure_ascii=False))
+                  print('  option_id', collections.Counter(x.get('option_id') for x in d).most_common(10))
+                  print('  contract', collections.Counter(str(x.get('contract_date')).strip() for x in d).most_common(10))
+                  tm = sorted(str(x.get('date')) for x in d); print('  time range', tm[0], tm[-1])
+                  print('  series', len(set((x.get('contract_date'), x.get('ExercisePrice'), x.get('PutCall')) for x in d)))
+          for did in ['TXO']:
+              st, msg, d, nb, dt = js({'dataset': 'TaiwanOptionTick', 'data_id': did, 'start_date': '2026-11-04'})
+              print('TICK prevday', did, st, 'rows', len(d), nb, round(dt, 1))
+          for ds in ['taiwan_options_snapshot']:
+              u = 'https://api.finmindtrade.com/api/v4/' + ds + '?' + urllib.parse.urlencode({'data_id': 'TXO', 'token': T})
+              try:
+                  with urllib.request.urlopen(u, timeout=60) as r: j = json.loads(r.read())
+                  d = j.get('data') or []
+                  print('SNAP', j.get('status'), len(d)); 
+                  for x in d[:3]: print('  ', json.dumps(x, ensure_ascii=False))
+              except Exception as e: print('SNAP err', str(e)[:200])
+          try:
+              with urllib.request.urlopen('https://api.web.finmindtrade.com/v2/user_info?' + urllib.parse.urlencode({'token': T}), timeout=30) as r: j = json.loads(r.read())
+              print('USER level', j.get('level'), j.get('level_title'), 'limit', j.get('api_request_limit'), j.get('api_request_limit_hour'), 'used', j.get('user_count'))
+          except Exception as e: print('USER err', str(e)[:100])
           PY
           sed -i "s/$T/***/g" out/opt.txt
-      - name: 查詢憑證狀態（只記錄狀態，不記錄憑證）
-        if: false
-        env:
-          T: ${{ secrets.FINMIND_TOKEN }}
-        run: |
-          mkdir -p out
-          python3 - <<'PY' > out/log.txt 2>&1
-          import os, json, urllib.request, urllib.parse
-          t = os.environ.get('T', '')
-          def get(url):
-              try:
-                  with urllib.request.urlopen(url, timeout=30) as r: b = r.read().decode(); return r.status, (b[:250] + ' ... ' + b[-250:] + ' len=' + str(len(b)))
-              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:600]
-              except Exception as e: return 0, str(e)[:300]
-          import datetime
-          td = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
-          D = 'https://api.finmindtrade.com/api/v4/data?'
-          def cnt(url, key):
-              try:
-                  with urllib.request.urlopen(url, timeout=60) as r: j = json.loads(r.read().decode())
-              except Exception as e: return 'ERR ' + str(e)[:120]
-              d = j.get('data') or []
-              ev = [x for x in d if str(x.get(key, ''))[-8:] >= '15:00:00' or str(x.get(key,'')) >= '15:00:00']
-              last = max((str(x.get(key, '')) for x in d), default='')
-              return f"status={j.get('status')} msg={j.get('msg')} rows={len(d)} night_rows={len(ev)} max_{key}={last}"
-          def js(params):
-              try:
-                  with urllib.request.urlopen(D + urllib.parse.urlencode(dict(params, token=t)), timeout=60) as r: return json.loads(r.read().decode())
-              except urllib.error.HTTPError as e: return {'status': e.code, 'msg': e.read().decode()[:200]}
-              except Exception as e: return {'status': 0, 'msg': str(e)[:200]}
-          from collections import Counter
-          j = js({'dataset': 'TaiwanFuturesInstitutionalInvestors', 'data_id': 'TX', 'start_date': '2026-10-07'})
-          d = j.get('data') or []
-          print('INST', j.get('status'), len(d))
-          for x in d[-6:]: print('INST row', json.dumps(x, ensure_ascii=False)[:600])
-          j = js({'dataset': 'TaiwanFuturesInstitutionalInvestorsAfterHours', 'data_id': 'TX', 'start_date': '2026-10-07'})
-          d = j.get('data') or []
-          print('INSTAH', j.get('status'), j.get('msg'), len(d))
-          for x in d[-3:]: print('INSTAH row', json.dumps(x, ensure_ascii=False)[:600])
-          j = js({'dataset': 'TaiwanFuturesDaily', 'data_id': 'TX', 'start_date': '2026-10-12'})
-          d = j.get('data') or []
-          for x in d: 
-              if str(x.get('contract_date')).strip() in ('202610',): print('TX', json.dumps(x, ensure_ascii=False)[:400])
-          for ds in ['TaiwanFuturesOpenInterestLargeTraders', 'TaiwanFuturesInstitutionalInvestors']:
-              j = js({'dataset': ds, 'data_id': 'TX', 'start_date': '2025-01-01'})
-              d = j.get('data') or []
-              print('DEPTH', ds, len(d), d[0].get('date') if d else None)
-          PY
-          cat out/log.txt | sed 's/[A-Za-z0-9._-]\{40,\}/***/g'
       - name: 保存結果
         if: always()
         run: |
