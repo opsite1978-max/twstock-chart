@@ -1,6 +1,9 @@
-11-06 00:52:30 2026-11-05 underlyings 673 otc unmatched traded 0
-11-06 00:53:11 2026-09-30 underlyings 706 otc unmatched traded 5
-11-06 00:53:50 2026-09-29 underlyings 674 otc unmatched traded 6
-11-06 00:53:50 fetched days 3
-11-06 00:53:50 summary 804 underlyings 88 days, base 60
-11-06 00:54:35 detail files 804 detail days 20 meta 66049
+11-07 00:19:45 2026-11-06 underlyings 681 otc unmatched traded 0
+11-07 00:20:27 2026-10-01 underlyings 694 otc unmatched traded 7
+11-07 00:21:07 2026-09-30 underlyings 706 otc unmatched traded 5
+11-07 00:21:48 2026-09-29 underlyings 674 otc unmatched traded 6
+11-07 00:21:48 fetched days 4
+11-07 00:21:48 summary 802 underlyings 88 days, base 60
+11-07 00:22:07   retry https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap37_O IncompleteRead IncompleteRead(2424438 bytes read, 15877693 more expected)
+11-07 00:22:26   retry https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap37_O IncompleteRead IncompleteRead(2227830 bytes read, 16074301 more expected)
+11-07 00:23:30 detail files 802 detail days 20 meta 66520
