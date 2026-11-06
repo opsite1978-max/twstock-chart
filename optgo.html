@@ -147,6 +147,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
     <div class="stats" id="stats"></div>
     <div class="rule">
+      <b>附圖怎麼看</b>：順勢震盪 0～100，是台指期最近 6 根往「對這一檔有利的方向」推了多少（買權看上漲、賣權看下跌）。<b>上界 70</b>＝推力夠、<b>中線 50</b>＝沒在推、<b>下界 30</b>＝往反方向推。線變成<b class="gold">金色</b>＝台指期趨勢強而且同方向。<b class="gold">金色線站上上界</b>＝台指期條件全部符合，這時候價外、30 點以上、離到期 24 小時以上的這一邊選擇權就會出現「進場」箭頭。<br>
       <b>進場條件</b>（全部同時成立，用 5 分 K 判斷）：台指期超級趨勢方向和這一邊相同（買權要多方、賣權要空方）、平均趨向 30 以上（趨勢夠強）、最近 6 根往有利方向走了半個平均波幅以上（還在推）；選擇權是價外、價格 30 點以上、離到期 24 小時以上。<br>
       <b>出場</b>：漲 50% 停利、跌 30% 停損，都沒碰到就在 4 小時盤中（48 根 5 分 K）後出場。圖上金色＝當時有達到 +50%，灰色＝先停損，白色＝時間到。<br>
       <b>回測</b>（8/6～11/6 全部週選、月選，每檔 50 分鐘內只算一次，扣一個跳動點的價差）：符合條件 6,651 次，先漲 50% 26%、先跌 30% 24%、平均每筆 +7.1%；隨便進場 72,457 次，先漲 50% 18%、先跌 30% 36%、平均每筆 −2.6%。條件是用 10 月挑的，10/20 以後沒看過的資料也一樣比較好。<br>
@@ -255,6 +256,8 @@ function txState(U){
 }
 // 第 i 根台指期對「方向 want」是不是可進場
 const txOK = (S, i, want) => S.dir[i] === want && S.adx[i] >= R.adx && want * S.mom[i] >= R.mom;
+// 震盪值：50＋50×tanh(0.847×有利方向動能)，動能 0.5 剛好是 70
+const osc = (S, i, want) => isNaN(S.mom[i]) ? NaN : 50 + 50 * Math.tanh(0.847 * want * S.mom[i]);
 
 /* ═════════════ 狀態 ═════════════ */
 let TX = null, TX5 = null;
@@ -325,7 +328,7 @@ function renderPicker(st){
 }
 
 /* ═════════════ 圖 ═════════════ */
-let chart = null, sCandle = null, sVol = null, sForce = null, sReady = null, mk = null, plines = [], DATA = [];
+let chart = null, sCandle = null, sVol = null, sOsc = null, sGold = null, mk = null, plines = [], DATA = [];
 function buildChart(){
   if (chart) chart.remove();
   const el = $('cv');
@@ -342,24 +345,30 @@ function buildChart(){
     priceFormat:{ type:'custom', minMove:0.1, formatter:v => v < 0 ? '' : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) }, autoscaleInfoProvider:o => { const r = o(); if (r && r.priceRange && r.priceRange.minValue < 0) r.priceRange.minValue = 0; return r; } });
   sVol = chart.addSeries(L.HistogramSeries, { priceScaleId:'v', priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false });
   chart.priceScale('v').applyOptions({ scaleMargins:{ top:0.86, bottom:0 }, visible:false });
-  // 順勢力道：0 以上＝台指期和這一邊同方向（金色），0 以下＝反方向（灰色）；高度＝趨勢強度；全部條件成立的區段用亮金色粗線
-  const gold = css('--gold'), faint = css('--faint'), hx = (c, a) => c + a;
-  const fAuto = o => { const r = o(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 5 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; };
-  sForce = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, lineType:L.LineType.Curved,
-    topLineColor:hx(gold, 'aa'), topFillColor1:hx(gold, '55'), topFillColor2:hx(gold, '08'),
-    bottomLineColor:hx(faint, 'aa'), bottomFillColor1:hx(faint, '08'), bottomFillColor2:hx(faint, '44'),
-    priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, title:'順勢力道', priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:fAuto }, 1);
-  sReady = chart.addSeries(L.LineSeries, { color:gold, lineWidth:4, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:fAuto }, 1);
-  sForce.createPriceLine({ price:R.adx, color:hx(gold, '88'), lineWidth:1, lineStyle:L.LineStyle.SparseDotted, axisLabelVisible:true, title:'' });
-  try { const ps = chart.panes(); ps[0].setStretchFactor(3.2); ps[1].setStretchFactor(1); } catch(e){}
+  // 順勢震盪（0～100）：台指期最近 6 根往「對這一檔有利的方向」推了多少（用平均波幅換算）。
+  //   70 以上＝推力夠（進場動能門檻）；50＝中性；30 以下＝往反方向推。線是金色＝台指期趨勢強（≥30）而且同方向
+  const gold = css('--gold'), faint = css('--faint'), muted = css('--muted');
+  const oAuto = () => ({ priceRange:{ minValue:0, maxValue:100 } });
+  // 底色（50 以上淡金、以下淡灰）＋一條會變色的線（金色＝台指期趨勢強而且同方向）
+  sOsc = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:50 }, lineVisible:false,
+    topLineColor:'transparent', topFillColor1:gold + '38', topFillColor2:gold + '04', bottomLineColor:'transparent', bottomFillColor1:faint + '04', bottomFillColor2:faint + '38',
+    priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:oAuto }, 1);
+  sGold = chart.addSeries(L.LineSeries, { color:muted, lineWidth:2, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false,
+    title:'順勢震盪', priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:oAuto }, 1);
+  sOsc.createPriceLine({ price:70, color:gold, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'上界' });
+  sOsc.createPriceLine({ price:50, color:faint, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+  sOsc.createPriceLine({ price:30, color:faint, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'下界' });
+  try { const ps = chart.panes(); ps[0].setStretchFactor(2.8); ps[1].setStretchFactor(1.2); } catch(e){}
   mk = L.createSeriesMarkers(sCandle, []);
   chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
 }
 function legend(b){
   if (!b) b = DATA[DATA.length - 1]; if (!b){ $('lg').innerHTML = ''; return; }
   const want = UI.cp === 'C' ? 1 : -1, j = b.j;
-  let s = '<span>' + hm(b.t) + '</span><span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>';
-  if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span> ' + (S.dir[j] > 0 ? '多方' : '空方') + '・強度 <span class="n">' + Math.round(S.adx[j]) + '</span>・動能 <span class="n">' + (want * S.mom[j]).toFixed(2) + '</span></span>'; }
+  let s = '<span>' + hm(b.t) + '</span>' + (b.o != null ? '<span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>' : '<span>這一檔這根沒成交</span>');
+  if (j != null){ const S = TX, ov = S.osc ? S.osc[j] : osc(S, j, want), strong = S.dir[j] === want && S.adx[j] >= R.adx;
+    s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span>・趨勢強度 <span class="n">' + Math.round(S.adx[j]) + '</span>' + (strong ? '（同方向，金色）' : S.dir[j] === want ? '（同方向但不夠強）' : '（反方向）') + '</span>';
+    if (!isNaN(ov)) s += '<span' + (ov >= 70 && strong ? ' class="gold"' : '') + '>順勢震盪 <span class="n">' + Math.round(ov) + '</span>' + (ov >= 70 ? '（上界以上）' : ov <= 30 ? '（下界以下）' : '') + '</span>'; }
   if (b.sig) s += '<span class="gold">進場 ' + fmtP(b.sig.px) + '（' + b.sig.txt + '）</span>';
   $('lg').innerHTML = s;
 }
@@ -388,18 +397,24 @@ async function renderChart(keep){
   const min = minutes(c.code, UI.K, UI.cp), tf = +UI.tf, want = UI.cp === 'C' ? 1 : -1;
   const bars = agg(min, tf);
   TX = tf === 5 ? TX5 : txState(agg(TX5.raw, tf));
+  const byT = new Map(bars.map(b => [b.t, b]));
+  const t0 = bars.length ? bars[0].t : TX.U[0].t;
+  const line = [...new Set(TX.U.filter(u => u.t >= t0).map(u => u.t).concat(bars.map(b => b.t)))].sort((a, b) => a - b)
+    .map(t => byT.get(t) || { t, o:null });
   const sig = signals(c, UI.K, UI.cp, min);
   // 進場點對到目前週期的那一根
   const bt = t => { const s = sesStart(t); return s + Math.floor((t - s) / tf) * tf; };
   const sigAt = new Map(sig.map(s => [bt(s.t), s]));
-  DATA = bars.map(b => Object.assign(b, { j:TX.idx.get(b.t), sig:sigAt.get(b.t) || null }));
+  DATA = line.map(b => Object.assign(b, { j:TX.idx.get(b.t), sig:sigAt.get(b.t) || null }));
   const up = css('--bull'), dn = css('--bear'), gold = css('--gold'), faint = css('--faint');
-  sCandle.setData(bars.map(b => ({ time:b.t * 60, open:b.o, high:b.h, low:b.l, close:b.c })));
-  sVol.setData(bars.map(b => ({ time:b.t * 60, value:b.v, color:(b.c >= b.o ? up : dn) + '55' })));
-  const fv = bars.map(b => { const j = b.j; if (j == null || isNaN(TX.adx[j])) return null; return { v:(TX.dir[j] === want ? 1 : -1) * TX.adx[j], ok:txOK(TX, j, want) }; });
-  sForce.setData(bars.map((b, i) => fv[i] ? { time:b.t * 60, value:fv[i].v } : { time:b.t * 60 }));
-  // 可進場區段（前後各多接一根，線才連得起來）
-  sReady.setData(bars.map((b, i) => { const on = fv[i] && (fv[i].ok || (fv[i - 1] && fv[i - 1].ok) || (fv[i + 1] && fv[i + 1].ok)); return on ? { time:b.t * 60, value:fv[i].v } : { time:b.t * 60 }; }));
+  sCandle.setData(DATA.map(b => b.o == null ? { time:b.t * 60 } : { time:b.t * 60, open:b.o, high:b.h, low:b.l, close:b.c }));
+  sVol.setData(DATA.map(b => b.o == null ? { time:b.t * 60 } : { time:b.t * 60, value:b.v, color:(b.c >= b.o ? up : dn) + '55' }));
+  // 震盪線：在整條台指期上算，再用 3 根平均讓線變平順（進場箭頭還是照原本的條件）
+  const raw = TX.U.map((u, i) => osc(TX, i, want)), sm = new Array(raw.length).fill(NaN); { let y = NaN; for (let i = 0; i < raw.length; i++){ const x = raw[i]; if (isNaN(x)) continue; y = isNaN(y) ? x : y + 0.5 * (x - y); sm[i] = y; } }
+  TX.osc = sm;
+  const fv = DATA.map(b => { const j = b.j; if (j == null || isNaN(TX.adx[j]) || isNaN(sm[j])) return null; return { v:sm[j], g:TX.dir[j] === want && TX.adx[j] >= R.adx }; });
+  sOsc.setData(DATA.map((b, i) => fv[i] ? { time:b.t * 60, value:fv[i].v } : { time:b.t * 60 }));
+  sGold.setData(DATA.map((b, i) => fv[i] ? { time:b.t * 60, value:fv[i].v, color:fv[i].g ? gold : css('--muted') } : { time:b.t * 60 }));
   mk.setMarkers(sig.map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:1.1,
     color:s.res === 'win' ? gold : s.res === 'loss' ? faint : s.res === 'open' ? gold : css('--text'),
     text:s.res === 'win' ? '進場 ✓' : s.res === 'loss' ? '進場 ✗' : s.res === 'open' ? '進場' : '進場 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' })));
@@ -408,7 +423,7 @@ async function renderChart(keep){
   if (open){ plines.push(sCandle.createPriceLine({ price:open.px * 1.5, color:gold, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'目標 +50%' }));
     plines.push(sCandle.createPriceLine({ price:open.px, color:css('--text'), lineWidth:1, lineStyle:L.LineStyle.Dotted, axisLabelVisible:true, title:'進場' }));
     plines.push(sCandle.createPriceLine({ price:open.px * 0.7, color:faint, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'停損 −30%' })); }
-  if (!keep && bars.length) chart.timeScale().setVisibleLogicalRange({ from:Math.max(-2, bars.length - 140), to:bars.length + 6 });
+  if (!keep && DATA.length) chart.timeScale().setVisibleLogicalRange({ from:Math.max(-2, DATA.length - 160), to:DATA.length + 6 });
   // 標題、現在狀態、這一檔的統計
   const last = bars[bars.length - 1];
   $('ttl').innerHTML = '<span class="n ' + (UI.cp === 'C' ? 'bull' : 'bear') + '">' + UI.K + '</span> ' + (UI.cp === 'C' ? '買權' : '賣權') + ' <span class="muted" style="font-size:14px;font-weight:400">' + shortLabel(c) + '</span>';
