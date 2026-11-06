@@ -288,14 +288,20 @@ def build_index():
                 elif td < last_td:
                     prev = ms[t][3]
                     break
-            info['v'] = vol
-            if prev is not None and trade_day(lt) == last_td:
-                info['ch'] = round(info['c'] - prev, 2)
+            info['v'] = vol if trade_day(lt) == last_td else 0
+            # 漲跌：和交易所一樣跟「前一個交易日的結算價」比；沒有結算價才跟上一筆成交比
+            ps = [d for d in s['oi'] if d < last_td and s['oi'][d][1] > 0]
+            base = s['oi'][max(ps)][1] if ps else prev
+            if base is not None:
+                info['b'] = base
+                if trade_day(lt) == last_td:
+                    info['ch'] = round(info['c'] - base, 2)
             info['n'] = len(ms)
         if s['oi']:
             d = max(s['oi'])
             info['oi'] = s['oi'][d][0]
             info['st'] = s['oi'][d][1]
+            info['sd'] = d
         row[cp] = info
     fut = None
     try:
@@ -314,12 +320,13 @@ def build_index():
             C, P = r.get('C', {}), r.get('P', {})
             if not C.get('n') and not P.get('n'):
                 continue
-            rows.append([K, C.get('c'), C.get('ch'), C.get('v'), C.get('oi'), P.get('c'), P.get('ch'), P.get('v'), P.get('oi'), 1 if C.get('n') else 0, 1 if P.get('n') else 0])
+            side = lambda X: {k: X[k] for k in ('c', 'ch', 'v', 'oi', 't', 'b', 'st', 'sd') if X.get(k) is not None}
+            rows.append({'k': K, 'C': side(C), 'P': side(P)})
             tv += (C.get('v') or 0) + (P.get('v') or 0)
         if rows:
             out.append({'code': code, 'exp': exp, 'kind': kd, 'label': lb, 'expired': bool(exp and exp < today), 'vol': tv, 'rows': rows})
     return {'updated': datetime.datetime.now(TW).strftime('%Y-%m-%d %H:%M'), 'lastTd': last_td, 'fut': fut, 'cal': CAL[-400:],
-            'cols': ['履約價', '買權收', '買權漲跌', '買權量', '買權未平倉', '賣權收', '賣權漲跌', '賣權量', '賣權未平倉', '買權有K線', '賣權有K線'],
+            'cols': {'c': '最後成交價', 'ch': '漲跌（和前一交易日結算價比）', 'v': '最新交易日量', 'oi': '未平倉', 't': '最後一根 1 分 K（分鐘數）', 'b': '漲跌的基準價', 'st': '最新結算價', 'sd': '結算價日期'},
             'contracts': out}
 
 
