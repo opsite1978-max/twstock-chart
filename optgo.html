@@ -67,6 +67,14 @@ aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-
 .codes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .code{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 10px;font-size:13px;cursor:pointer}
 .code.on{background:var(--text);color:var(--ink);border-color:var(--text)}
+.pick-ctl{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.pick-ctl .seg{display:flex;gap:2px;background:var(--panel2);border-radius:8px;padding:2px}
+.pick-ctl .seg button{border:0;background:none;padding:3px 9px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--muted);font-family:var(--num)}
+.pick-ctl .seg button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.pick-ctl input{flex:1;min-width:0;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0 10px;font-family:var(--num);font-size:14px}
+.tscroll{max-height:62vh;overflow:auto;border-radius:6px}
+table.t thead th{position:sticky;top:0;background:var(--ink);z-index:1}
+.more-btn{margin-top:6px;width:100%;border:1px dashed var(--line);background:none;border-radius:8px;padding:7px;font-size:13px;color:var(--muted);cursor:pointer}
 table.t{width:100%;border-collapse:collapse}
 table.t th{font-size:12px;font-weight:500;color:var(--muted);padding:4px;text-align:center}
 table.t td{padding:5px 4px;text-align:center;font-family:var(--num);font-size:16px;border-top:1px solid var(--grid)}
@@ -137,7 +145,11 @@ main{display:flex;flex-direction:column;min-width:0}
     <section class="sec s2">
       <h2>自己挑</h2>
       <div class="codes" id="codes"></div>
-      <table class="t"><thead><tr><th>買權</th><th>履約價</th><th>賣權</th></tr></thead><tbody id="tbody"></tbody></table>
+      <div class="pick-ctl">
+        <span class="seg" id="rng"><button data-r="10">±10</button><button data-r="20">±20</button><button data-r="40">±40</button><button data-r="0">全部</button></span>
+        <input id="jump" type="search" inputmode="numeric" placeholder="跳到履約價" aria-label="跳到履約價">
+      </div>
+      <div class="tscroll" id="tscroll"><table class="t"><thead><tr><th>買權</th><th>履約價</th><th>賣權</th></tr></thead><tbody id="tbody"></tbody></table></div>
     </section>
   </aside>
 
@@ -174,7 +186,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, loss:-0.3 };   // 進場條件（回測挑出來的）
 
-const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
+const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', mo:true, vo:true, range:20 }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -306,6 +318,7 @@ function renderStatus(){
   let lastOk = -1; for (let k = i; k >= 0; k--) if (S.adx[k] >= R.adx && S.dir[k] * S.mom[k] >= R.mom){ lastOk = k; break; }
   return { d, ok:a >= R.adx && mo >= R.mom, F, lastOk };
 }
+let candAll = false;
 async function renderCands(st){
   const box = $('cands'), now = nowMin();
   if (!st.ok){
@@ -314,7 +327,7 @@ async function renderCands(st){
     return;
   }
   const cp = st.d > 0 ? 'C' : 'P', list = [];
-  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - now >= R.tte);
+  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - now >= R.tte);   // 離到期 24 小時以上（已結算的自然不會列）
   await Promise.all(cs.map(c => loadLive(c.code)));
   for (const c of cs) for (const r of c.rows){
     const q = quote(c, r, cp); if (!(q.c >= R.px) || !q.v) continue;
@@ -323,19 +336,23 @@ async function renderCands(st){
   }
   list.sort((a, b) => (b.q.v || 0) - (a.q.v || 0));
   if (!list.length){ box.innerHTML = '<div class="empty">台指期條件符合，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
-  box.innerHTML = list.slice(0, 10).map((x, i) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-i="' + i + '">' +
+  const shown = candAll ? list : list.slice(0, 12);
+  box.innerHTML = shown.map((x, i) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-i="' + i + '">' +
     '<span class="k ' + (cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span><span class="c">' + shortLabel(x.c) + ' ' + (cp === 'C' ? '買權' : '賣權') + '</span>' +
     '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + (x.otm * 100).toFixed(1) + '%・今天 ' + fmtN(x.q.v) + ' 口</span></button>').join('');
+  if (list.length > 12) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 12 檔' : '顯示全部 ' + list.length + ' 檔') + '</button>');
+  const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
   box.querySelectorAll('.cand').forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; select(x.c.code, x.k, x.cp); });
 }
 function renderPicker(st){
-  const now = nowMin(), cs = D.idx.contracts.filter(c => !c.expired);
+  const now = nowMin(), cs = D.idx.contracts.filter(c => !c.expired && expMin(c) > now);
   if (!cs.some(c => c.code === UI.code)) UI.code = (cs.find(c => expMin(c) - now >= R.tte) || cs[0] || {}).code;
   $('codes').innerHTML = cs.map(c => '<button class="code' + (c.code === UI.code ? ' on' : '') + '" data-c="' + c.code + '">' + shortLabel(c) + '</button>').join('');
-  $('codes').querySelectorAll('.code').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); renderPicker(st); });
+  $('codes').querySelectorAll('.code').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); pickScrolled = false; renderPicker(st); });
   const c = cs.find(x => x.code === UI.code); if (!c) return;
   const rows = c.rows; let ai = 0, bd = Infinity; rows.forEach((r, i) => { const d0 = Math.abs(r.k - st.F); if (d0 < bd){ bd = d0; ai = i; } });
-  const vis = rows.slice(Math.max(0, ai - 10), ai + 11), longOK = expMin(c) - now >= R.tte;
+  const R0 = UI.range || 0, vis = R0 ? rows.slice(Math.max(0, ai - R0), ai + R0 + 1) : rows, longOK = expMin(c) - now >= R.tte;
+  for (const b of $('rng').children) b.classList.toggle('on', +b.dataset.r === R0);
   $('tbody').innerHTML = vis.map(r => {
     const qc = quote(c, r, 'C'), qp = quote(c, r, 'P');
     const okC = st.ok && st.d > 0 && longOK && r.k > st.F && qc.c >= R.px && qc.v, okP = st.ok && st.d < 0 && longOK && r.k < st.F && qp.c >= R.px && qp.v;
@@ -343,7 +360,19 @@ function renderPicker(st){
     return '<tr class="' + (r === rows[ai] ? 'atm' : '') + '"><td class="px' + (okC ? ' q' : '') + sel('C') + '" data-k="' + r.k + '" data-p="C">' + fmtP(qc.c) + '</td><td class="k">' + r.k + '</td>' +
       '<td class="px' + (okP ? ' q' : '') + sel('P') + '" data-k="' + r.k + '" data-p="P">' + fmtP(qp.c) + '</td></tr>'; }).join('');
   $('tbody').querySelectorAll('td.px').forEach(td => td.onclick = () => select(UI.code, +td.dataset.k, td.dataset.p));
+  // 捲到選中的那一檔（沒有就捲到價平）
+  const box = $('tscroll'), tr = $('tbody').querySelector('td.sel') ? $('tbody').querySelector('td.sel').parentElement : $('tbody').querySelector('tr.atm');
+  if (tr && !pickScrolled){ box.scrollTop = Math.max(0, tr.offsetTop - box.clientHeight / 2); pickScrolled = true; }
 }
+let pickScrolled = false;
+$('rng').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); pickScrolled = false; renderPicker(ST); };
+$('jump').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const v = +e.target.value, c = D.idx.contracts.find(x => x.code === UI.code); if (!v || !c) return;
+  let best = null, bd = Infinity; for (const r of c.rows){ const d = Math.abs(r.k - v); if (d < bd){ bd = d; best = r.k; } }
+  if (best == null) return;
+  UI.range = 0; saveUI(); e.target.blur(); pickScrolled = false; select(UI.code, best, UI.cp);
+});
 
 /* ═════════════ 圖 ═════════════ */
 let chart = null, sCandle = null, sVol = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, sVoBg = null, mkMo = null, mk = null, plines = [], DATA = [];
