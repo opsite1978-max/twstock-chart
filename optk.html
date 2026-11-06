@@ -113,6 +113,8 @@
     .charts{height:auto}
     .cbox{flex:none;height:62vh}
     .charts.two .cbox{height:46vh}
+    .charts.ind .cbox{height:82vh}
+    .charts.two.ind .cbox{height:72vh}
     header{padding-left:12px;padding-right:12px}
   }
   @media (max-width:520px){
@@ -178,6 +180,8 @@
       </span>
       <button class="btn" id="maBtn" title="5、20 根均線">均線</button>
       <button class="btn" id="oiBtn" title="每天收盤後的未平倉量（日K、週K、月K 才顯示）">未平倉</button>
+      <button class="btn" id="bbBtn" title="布林大底（和戰神看盤相同）：大底能量 0～100＝跌到 60 根布林下軌外多深 × 20 根通道寬度在過去 750 根的百分位；50 以上＝大底區、80＝極端；W底＝能量背離後突破。至少要 160 根 K 棒">布林大底</button>
+      <button class="btn" id="lxBtn" title="尋龍底（和戰神看盤相同）：30 根新低時的龍穴能量（黃＞5千、綠＞1萬、紅＞5萬，對數刻度）；龍穴＝能量結束後 3 根內突破前高、尋龍底★＝之前有急跌或跌深、真龍★★＝急跌後而且當根主動買盤強">尋龍底</button>
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
     </div>
     <div class="charts" id="charts"></div>
@@ -196,7 +200,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 
 /* ═════════════ 設定（存在這台裝置） ═════════════ */
-const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
+const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
   (() => { try { return JSON.parse(localStorage.getItem('optk:ui') || '{}') || {}; } catch(e){ return {}; } })());
 function saveUI(){ try { localStorage.setItem('optk:ui', JSON.stringify(UI)); } catch(e){} }
 
@@ -456,6 +460,7 @@ function buildCharts(){
   CH.list = [];
   const box = $('charts'); box.innerHTML = '';
   box.classList.toggle('two', UI.view === 'both');
+  box.classList.toggle('ind', !!(UI.bb || UI.lx));
   const up = css('--up'), dn = css('--down');
   for (const side of sides()){
     const el = document.createElement('div'); el.className = 'cbox';
@@ -465,10 +470,42 @@ function buildCharts(){
     const candle = chart.addSeries(L.CandlestickSeries, { upColor:up, downColor:dn, borderUpColor:up, borderDownColor:dn, wickUpColor:up, wickDownColor:dn,
       priceLineVisible:true, priceLineWidth:1, priceFormat:{ type:'price', precision:1, minMove:0.1 } });
     const vol = chart.addSeries(L.HistogramSeries, { priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false }, 1);
-    try { const ps = chart.panes(); ps[0].setStretchFactor(5); ps[1].setStretchFactor(1.2); } catch(e){}
+    const indOn = UI.bb || UI.lx;
+    try { const ps = chart.panes(); ps[0].setStretchFactor(indOn ? 3.4 : 5); ps[1].setStretchFactor(indOn ? 0.7 : 1.2); } catch(e){}
     const ma5 = chart.addSeries(L.LineSeries, { color:'#ffca28', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
     const ma20 = chart.addSeries(L.LineSeries, { color:'#b388ff', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
-    const o = { side, chart, candle, vol, ma5, ma20, oi:null, el, lg:el.querySelector('.lg'), empty:el.querySelector('.empty'), data:[] };
+    const o = { side, chart, candle, vol, ma5, ma20, oi:null, bb:null, lx:null, el, lg:el.querySelector('.lg'), empty:el.querySelector('.empty'), data:[], ind:{} };
+    let pane = 2;
+    if (UI.oi && /^[DWM]$/.test(UI.tf)){
+      o.oi = chart.addSeries(L.LineSeries, { color:css('--gold'), lineWidth:2, lineType:L.LineType.WithSteps, priceLineVisible:false, lastValueVisible:true,
+        priceFormat:{ type:'volume' }, title:'未平倉' }, pane);
+      try { chart.panes()[pane].setStretchFactor(indOn ? 0.8 : 1.1); } catch(e){}
+      pane++;
+    }
+    if (UI.bb){
+      const gray = UI.theme === 'light' ? '#9aa3b2' : '#78829a';
+      const sr = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:50 }, lineWidth:2,
+        topLineColor:IND_C.bbE, topFillColor1:IND_C.bbE + '88', topFillColor2:IND_C.bbE + '22',
+        bottomLineColor:gray, bottomFillColor1:gray + '10', bottomFillColor2:gray + '40',
+        priceLineVisible:false, lastValueVisible:true, title:'布林大底', priceFormat:{ type:'price', precision:0, minMove:1 },
+        autoscaleInfoProvider:() => ({ priceRange:{ minValue:-4, maxValue:112 } }) }, pane);
+      sr.createPriceLine({ price:50, color:IND_C.bbE, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'' });
+      sr.createPriceLine({ price:80, color:IND_C.bbW, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:true, title:'' });
+      o.bb = { sr, mk:L.createSeriesMarkers(sr, []) };
+      try { chart.panes()[pane].setStretchFactor(1.5); } catch(e){}
+      pane++;
+    }
+    if (UI.lx){
+      const hist = chart.addSeries(L.HistogramSeries, { base:2, priceLineVisible:false, lastValueVisible:false, title:'尋龍底',
+        priceFormat:{ type:'custom', formatter:v => v > 2.0001 ? fmtE(Math.pow(10, v)) : '', minMove:0.01 },
+        autoscaleInfoProvider:orig => { const r = orig(); const mx = Math.max(4.9, r && r.priceRange ? r.priceRange.maxValue + 0.15 : 0); return { priceRange:{ minValue:1.35, maxValue:mx } }; } }, pane);
+      for (const [v, col, t] of [[L5, IND_C.lxY, '5千'], [L10, IND_C.lxG, '1萬'], [L50, IND_C.lxR, '5萬']])
+        hist.createPriceLine({ price:v, color:col + '99', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'' });
+      const anchor = chart.addSeries(L.LineSeries, { lineVisible:false, pointMarkersVisible:false, lastValueVisible:false, priceLineVisible:false, crosshairMarkerVisible:false }, pane);
+      o.lx = { hist, anchor, mk:L.createSeriesMarkers(anchor, []) };
+      try { chart.panes()[pane].setStretchFactor(1.5); } catch(e){}
+      pane++;
+    }
     chart.subscribeCrosshairMove(p => onCross(o, p));
     CH.list.push(o);
   }
@@ -481,18 +518,6 @@ function buildCharts(){
     link(a, b); link(b, a);
   }
 }
-function ensureOI(o, on){
-  if (on && !o.oi){
-    try { o.oi = o.chart.addSeries(L.LineSeries, { color:css('--gold'), lineWidth:2, lineType:L.LineType.WithSteps, priceLineVisible:false, lastValueVisible:true,
-      priceFormat:{ type:'volume' }, title:'未平倉' }, 2);
-      try { const ps = o.chart.panes(); if (ps[2]) ps[2].setStretchFactor(1.1); } catch(e){}
-    } catch(e){ o.oi = null; }
-  } else if (!on && o.oi){
-    try { o.chart.removeSeries(o.oi); } catch(e){}
-    o.oi = null;
-    try { if (o.chart.panes().length > 2) o.chart.removePane(2); } catch(e){}
-  }
-}
 function sma(arr, n){
   const out = []; let s = 0, q = [];
   for (const b of arr){ if (b.close == null){ out.push({ time:b.time }); continue; }
@@ -500,10 +525,86 @@ function sma(arr, n){
     out.push(q.length === n ? { time:b.time, value:s / n } : { time:b.time }); }
   return out;
 }
+/* ═════════════ 指標（和戰神看盤同一套算法，只用有成交的 K 棒） ═════════════ */
+const nanArr = n => new Float64Array(n).fill(NaN);
+function smaN(src, n){ const len = src.length, out = nanArr(len); let s = 0, bad = 0;
+  for (let i = 0; i < len; i++){ const x = src[i]; if (isNaN(x)) bad++; else s += x;
+    if (i >= n){ const y = src[i - n]; if (isNaN(y)) bad--; else s -= y; }
+    if (i >= n - 1 && bad === 0) out[i] = s / n; }
+  return out; }
+function tdxSMA(a, N, M){ const o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : (M * x + (N - M) * y) / N; o[i] = y; } return o; }
+function llv(a, n, i){ let m = Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] < m) m = a[k]; return m; }
+function hhv(a, n, i){ let m = -Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] > m) m = a[k]; return m; }
+const IND_C = { bbE:'#ffca28', bbW:'#ff9800', lxY:'#ffd600', lxG:'#00e676', lxR:'#ff1744', lxBot:'#ff1744', lxBot2:'#ff9100' };
+// 布林大底：大底能量 0～100、進入大底區、W 底
+function calcBBOT(B){
+  const n = B.n, C = B.c, Hh = B.h, Ll = B.l, Sv = nanArr(n), bw = nanArr(n);
+  const msd = (k, i) => { let s = 0; for (let j = i - k + 1; j <= i; j++) s += C[j]; const m = s / k; let v = 0; for (let j = i - k + 1; j <= i; j++) v += (C[j] - m) ** 2; return [m, Math.sqrt(v / k)]; };
+  for (let i = 19; i < n; i++){ const [m, sd] = msd(20, i); bw[i] = m ? 4 * sd / m : NaN; }
+  for (let i = 59; i < n; i++){
+    const [m, sd] = msd(60, i), depth = sd > 0 ? Math.max(0, Math.min(3, (m - C[i]) / sd)) / 3 : 0;
+    let cnt = 0, below = 0;
+    for (let j = Math.max(19, i - 749); j <= i; j++) if (!isNaN(bw[j])){ cnt++; if (bw[j] < bw[i]) below++; }
+    if (cnt < 100) continue;
+    Sv[i] = depth * below / cnt * 100;
+  }
+  const W = new Uint8Array(n), zone = new Uint8Array(n); let last = -99;
+  for (let i = 1; i < n; i++) zone[i] = !isNaN(Sv[i]) && !isNaN(Sv[i - 1]) && Sv[i - 1] < 50 && Sv[i] >= 50 ? 1 : 0;
+  for (let i = 60; i < n; i++){
+    const hh = k => Math.max(Hh[k - 3], Hh[k - 2], Hh[k - 1]);
+    if (!(C[i] > hh(i)) || C[i - 1] > hh(i - 1) || i - last <= 20) continue;
+    let k2 = i - 10; for (let k = i - 10; k <= i; k++) if (Ll[k] < Ll[k2]) k2 = k;
+    let k1 = -1; for (let k = i - 60; k <= k2 - 6; k++) if (Sv[k] >= 50 && (k1 < 0 || Ll[k] < Ll[k1])) k1 = k;
+    if (k1 < 0 || Ll[k2] > Ll[k1] * 1.02) continue;
+    const mx = (a, b) => { let v = 0; for (let k = Math.max(0, a); k <= Math.min(n - 1, b); k++) v = Math.max(v, Sv[k] || 0); return v; };
+    if (mx(k2 - 2, k2) <= mx(k1 - 2, k1 + 2) * 0.9){ W[i] = 1; last = i; }
+  }
+  return { S:Sv, W, zone };
+}
+// 尋龍底：龍穴能量、長期價值線、龍穴／尋龍底★／真龍★★
+function calcLX(B){
+  const n = B.n, O = B.o, H = B.h, Lw = B.l, C = B.c, buyMin = 0.25;
+  const hv = (a, N) => { const o = nanArr(n); for (let i = 0; i < n; i++){ const v = hhv(a, N, i); o[i] = v === -Infinity ? NaN : v; } return o; };
+  const lv = (a, N) => { const o = nanArr(n); for (let i = 0; i < n; i++){ const v = llv(a, N, i); o[i] = v === Infinity ? NaN : v; } return o; };
+  const V1 = smaN(hv(H, 485), 17), V2 = smaN(hv(H, 222), 17), V3 = smaN(hv(H, 96), 17), V4 = smaN(lv(Lw, 485), 17), V5 = smaN(lv(Lw, 222), 17), V6 = smaN(lv(Lw, 96), 17);
+  const t7 = nanArr(n), t8 = nanArr(n), t9 = nanArr(n);
+  for (let i = 0; i < n; i++){ t7[i] = (V4[i] * .96 + V5[i] * .96 + V6[i] * .96 + V1[i] * .558 + V2[i] * .558 + V3[i] * .558) / 6; t8[i] = (V4[i] * 1.25 + V5[i] * 1.23 + V6[i] * 1.2 + V1[i] * .55 + V2[i] * .55 + V3[i] * .65) / 6; t9[i] = (V4[i] * 1.3 + V5[i] * 1.3 + V6[i] * 1.3 + V1[i] * .68 + V2[i] * .68 + V3[i] * .68) / 6; }
+  const V7 = smaN(t7, 17), V8 = smaN(t8, 17), V9 = smaN(t9, 17), ta = nanArr(n); for (let i = 0; i < n; i++) ta[i] = (V7[i] * 3 + V8[i] * 2 + V9[i]) / 6 * 1.738;
+  const VB = smaN(ta, 17), dA = nanArr(n), dU = nanArr(n); for (let i = 1; i < n; i++){ const d = Lw[i] - Lw[i - 1]; dA[i] = Math.abs(d); dU[i] = Math.max(d, 0); }
+  const sa = tdxSMA(dA, 3, 1), su = tdxSMA(dU, 3, 1), vf0 = nanArr(n);
+  for (let i = 0; i < n; i++){ const ve = su[i] > 0 ? sa[i] / su[i] * 100 : 0; vf0[i] = C[i] * 1.35 <= VB[i] ? ve * 10 : ve / 10; }
+  const VF = smaN(vf0, 3), V10 = lv(Lw, 30), V11 = hv(VF, 30), sraw = nanArr(n); for (let i = 0; i < n; i++) sraw[i] = Lw[i] <= V10[i] ? (VF[i] + V11[i] * 2) / 2 : 0;
+  const SS = smaN(sraw, 3), m5 = smaN(C, 5), m10 = smaN(C, 10), tag = new Array(n).fill(null);
+  let lb = -99, lend = -99, lch = -99, ldd = -99;
+  for (let i = 1; i < n; i++){
+    const s0 = isNaN(SS[i]) || SS[i] < 1e-6 ? 0 : SS[i], s1 = isNaN(SS[i - 1]) || SS[i - 1] < 1e-6 ? 0 : SS[i - 1];
+    if (s0 === 0 && s1 > 0) lend = i;
+    const j = i - 1; if ((m5[j] - C[j]) / C[j] > 0.04 && (m10[j] - m5[j]) / m5[j] > 0.04) lch = i;
+    if (C[i] < 0.85 * hhv(H, 20, i)) ldd = i;
+    if (i - lend < 3 && C[i] > H[i - 1] && i - lb > 10){
+      lb = i; const dtc = (C[i] - O[i]) / (2 * (H[i] - Lw[i]) + Math.abs(C[i] - O[i]) + 0.0003), ch = i - lch < 10;
+      const s2 = ch && dtc > buyMin, s1b = ch || i - ldd < 10;
+      tag[i] = s2 ? ['真龍★★', IND_C.lxBot2, 2] : s1b ? ['尋龍底★', IND_C.lxBot, 1] : ['龍穴', IND_C.lxBot, 0];
+    }
+  }
+  return { SS, VB, tag };
+}
+function indicators(bars){
+  const n = bars.length, B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n) };
+  bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; });
+  const out = { bb:null, lx:null };
+  if (UI.bb) out.bb = calcBBOT(B);
+  if (UI.lx) out.lx = calcLX(B);
+  return out;
+}
+const L5 = Math.log10(5000), L10 = 4, L50 = Math.log10(50000);
+const lxColor = v => v > 50000 ? IND_C.lxR : v > 10000 ? IND_C.lxG : v > 5000 ? IND_C.lxY : (UI.theme === 'light' ? '#9aa3b2' : '#5d6676');
+const fmtE = v => v >= 1e4 ? (v / 1e4).toFixed(v >= 1e5 ? 0 : 1) + '萬' : v >= 1e3 ? (v / 1e3).toFixed(1) + '千' : String(Math.round(v));
+
 let lastBuild = '';
 async function renderCharts(keepRange){
   const c = curContract();
-  const tag = UI.view + '|' + UI.theme;
+  const tag = [UI.view, UI.theme, UI.oi && /^[DWM]$/.test(UI.tf), UI.bb, UI.lx].join('|');
   if (tag !== lastBuild || !CH.list.length){ buildCharts(); lastBuild = tag; keepRange = false; }
   if (!c || UI.K == null){ for (const o of CH.list){ o.empty.textContent = '在左邊清單點一個履約價'; o.empty.classList.remove('hide'); } return; }
   const sideList = sides();
@@ -526,8 +627,6 @@ async function renderCharts(keepRange){
     o.ma5.applyOptions({ visible:UI.ma }); o.ma20.applyOptions({ visible:UI.ma });
     if (UI.ma){ o.ma5.setData(sma(full, 5)); o.ma20.setData(sma(full, 20)); } else { o.ma5.setData([]); o.ma20.setData([]); }
     // 未平倉：每天收盤後才有，日 K 以上才畫
-    const showOI = UI.oi && daily;
-    ensureOI(o, showOI);
     if (o.oi){
       const h = SER.get(c.code + '/' + UI.K + o.side), oiMap = new Map((h ? h.oi : []).map(r => [r[0], r[1]]));
       const pts = [];
@@ -537,6 +636,29 @@ async function renderCharts(keepRange){
         else { const start = ymd(Math.floor(b.time / 86400)); for (const [d, x] of oiMap) if (d >= start && d <= b.td) v = x; }
         pts.push(v == null ? { time:b.time } : { time:b.time, value:v }); }
       o.oi.setData(pts);
+    }
+    // 指標（只用有成交的 K 棒算，再對回時間軸）
+    o.ind = { n:bars.length };
+    if (o.bb || o.lx){
+      const R = indicators(bars);
+      if (o.bb && R.bb){
+        const S = R.bb.S, mp = new Map(), mk = [];
+        bars.forEach((b, i) => { if (!isNaN(S[i])) mp.set(b.time, S[i]);
+          if (R.bb.W[i]) mk.push({ time:b.time, position:'aboveBar', color:IND_C.bbW, shape:'arrowDown', text:'W底' });
+          else if (R.bb.zone[i]) mk.push({ time:b.time, position:'aboveBar', color:IND_C.bbE, shape:'circle', size:0.6 }); });
+        o.bb.sr.setData(full.map(b => mp.has(b.time) ? { time:b.time, value:mp.get(b.time) } : { time:b.time }));
+        o.bb.mk.setMarkers(mk);
+        o.ind.bb = mp; o.ind.bbW = new Set(bars.filter((b, i) => R.bb.W[i]).map(b => b.time)); o.ind.bbZ = new Set(bars.filter((b, i) => R.bb.zone[i]).map(b => b.time));
+      }
+      if (o.lx && R.lx){
+        const SS = R.lx.SS, mp = new Map(), tg = new Map(), mk = [];
+        bars.forEach((b, i) => { const v = isNaN(SS[i]) || SS[i] < 1e-6 ? 0 : SS[i]; mp.set(b.time, v);
+          const t = R.lx.tag[i]; if (t){ tg.set(b.time, t); mk.push({ time:b.time, position:'inBar', color:t[1], shape:'arrowUp', text:t[0], size:t[2] ? 1.2 : 0.8 }); } });
+        o.lx.hist.setData(full.map(b => { const v = mp.get(b.time); return v > 100 ? { time:b.time, value:Math.log10(v), color:lxColor(v) } : { time:b.time }; }));
+        o.lx.anchor.setData(full.map(b => mp.has(b.time) ? { time:b.time, value:1.62 } : { time:b.time }));
+        o.lx.mk.setMarkers(mk);
+        o.ind.lx = mp; o.ind.lxT = tg; o.ind.vb = new Map(bars.map((b, i) => [b.time, R.lx.VB[i]]));
+      }
     }
     const nm = bars.length;
     o.empty.classList.toggle('hide', nm > 0);
@@ -566,7 +688,28 @@ function setLegend(o, bar, stale){
     '<span class="muted">' + (c ? shortLabel(c) : '') + '</span>' +
     (b ? '<span class="num">開 ' + fmtP(b.open) + '</span><span class="num">高 ' + fmtP(b.high) + '</span><span class="num">低 ' + fmtP(b.low) + '</span>' +
       '<span class="num ' + cls + '">收 ' + fmtP(b.close) + (ch != null ? ' (' + fmtCh(ch) + (pct != null ? '，' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%' : '') + ')' : '') + '</span>' +
-      '<span class="num muted">量 ' + fmtN(b.volume) + '</span>' + (stale ? '<span class="muted">（這一根沒成交，顯示 ' + tLabel(b.time) + ' 那根）</span>' : '') : '');
+      '<span class="num muted">量 ' + fmtN(b.volume) + '</span>' + (stale ? '<span class="muted">（這一根沒成交，顯示 ' + tLabel(b.time) + ' 那根）</span>' : '') : '') +
+    (b ? indLegend(o, b) : '');
+}
+function indLegend(o, b){
+  const I = o.ind || {}, sp = (t, col) => '<span class="num"' + (col ? ' style="color:' + col + '"' : '') + '>' + t + '</span>';
+  let h = '';
+  if (o.bb){
+    const v = I.bb && I.bb.get(b.time);
+    h += '<span style="flex-basis:100%;height:0"></span>';
+    if (v == null) h += sp(I.bb && I.bb.size ? '布林大底：這根之前的 K 棒還不夠' : '布林大底：這個週期 K 棒不夠（要約 120 根，現在 ' + (I.n || 0) + ' 根），換 1 分、5 分看', css('--muted'));
+    else { h += sp('布林大底 ' + Math.round(v), v >= 50 ? IND_C.bbE : null) + sp(v >= 80 ? '超過 80（極端恐慌）' : v >= 50 ? '大底區' : v >= 30 ? '偏低、波動放大' : '', v >= 50 ? IND_C.bbE : css('--muted'));
+      if (I.bbW && I.bbW.has(b.time)) h += sp('W底', IND_C.bbW); else if (I.bbZ && I.bbZ.has(b.time)) h += sp('進入大底區', IND_C.bbE); }
+  }
+  if (o.lx){
+    const v = I.lx && I.lx.get(b.time), t = I.lxT && I.lxT.get(b.time), vb = I.vb && I.vb.get(b.time);
+    if (!o.bb) h += '<span style="flex-basis:100%;height:0"></span>';
+    h += sp('龍穴能量 ' + (v > 0 ? fmtN(Math.round(v)) : '0'), v > 5000 ? lxColor(v) : null);
+    if (v > 50000) h += sp('紅', IND_C.lxR); else if (v > 10000) h += sp('綠', IND_C.lxG); else if (v > 5000) h += sp('黃', IND_C.lxY); else if (v > 0) h += sp('30 根新低', css('--muted'));
+    if (vb > 0) h += sp('收盤／價值線 ' + Math.round(b.close / vb * 100) + '%' + (b.close * 1.35 <= vb ? '（深）' : ''), css('--muted'));
+    if (t) h += sp(t[0], t[1]);
+  }
+  return h;
 }
 function tLabel(t){ const d = new Date(t * 1000), p = n => String(n).padStart(2, '0');
   return /^[DWM]$/.test(UI.tf) ? (d.getUTCMonth() + 1) + '/' + d.getUTCDate() : p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); }
@@ -591,6 +734,8 @@ function syncBar(){
   for (const b of $('viewSeg').children) b.classList.toggle('on', b.dataset.v === UI.view);
   for (const b of $('rangeSeg').children) b.classList.toggle('on', +b.dataset.r === UI.range);
   $('maBtn').classList.toggle('on', UI.ma);
+  $('bbBtn').classList.toggle('on', !!UI.bb);
+  $('lxBtn').classList.toggle('on', !!UI.lx);
   $('oiBtn').classList.toggle('on', UI.oi);
   $('oiBtn').disabled = !/^[DWM]$/.test(UI.tf);
   $('onlyTraded').checked = UI.onlyTraded;
@@ -605,6 +750,8 @@ $('viewSeg').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) re
 $('rangeSeg').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); syncBar(); renderTable(true); };
 $('onlyTraded').onchange = e => { UI.onlyTraded = e.target.checked; saveUI(); renderTable(true); };
 $('maBtn').onclick = () => { UI.ma = !UI.ma; saveUI(); syncBar(); renderCharts(true); };
+$('bbBtn').onclick = () => { UI.bb = !UI.bb; saveUI(); syncBar(); renderCharts(); };
+$('lxBtn').onclick = () => { UI.lx = !UI.lx; saveUI(); syncBar(); renderCharts(); };
 $('oiBtn').onclick = () => { UI.oi = !UI.oi; saveUI(); syncBar(); renderCharts(true); };
 $('sideBtn').onclick = () => { UI.sideCollapsed = !UI.sideCollapsed; saveUI(); syncBar(); };
 $('themeBtn').onclick = () => { UI.theme = UI.theme === 'light' ? 'dark' : 'light'; saveUI(); applyTheme(); syncBar(); renderCharts(true); };
