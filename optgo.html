@@ -187,18 +187,20 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chead">
       <span class="ttl" id="ttl">—</span>
       <span class="px" id="px"></span>
-      <div class="tfs" id="panes"><button data-p="mo" title="這一檔選擇權的動能：快慢均線差÷平均波幅；紅柱＝往上的力道、綠柱＝往下；顏色深＝力道還在變大、淡＝在變小；虛線是最近 120 根的上下界">動能</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
+      <div class="tfs" id="panes"><button data-p="mo" title="趨勢震盪：這一檔選擇權收盤離 10 根均線多遠（−100～+100）。0 以上紅底＝在均線上（漲勢）、0 以下綠底＝在均線下（跌勢）；±60 是上下界；線紅色＝往上、綠色＝往下">趨勢</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
       <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
     </div>
     <div class="now" id="now"></div>
     <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
     <div class="stats" id="stats"></div>
     <div class="rule">
-      <b>主圖箭頭</b>：<b style="color:#ff6b1a">大的橘色「發動」</b>＝進場條件成立，而且這一檔的動能剛從負翻正（台指期不在擠壓）；小箭頭＝只有進場條件成立。最底下的<b class="gold">金色條</b>＝台指期條件成立的時間。✓＝之後漲到 +50%、✗＝先跌到 −30% 停損。<br>
-      <b>動能</b>：這一檔選擇權自己的力道（快慢均線差÷平均波幅）。紅柱＝往上推、綠柱＝往下壓；顏色深＝力道還在變大、淡＝在變小；虛線是最近 120 根的上下界；金色圓點＝發動。<br>
+      <b>主圖箭頭</b>：<b style="color:#ff6b1a">大的橘色「發動」</b>＝進場條件成立，而且這一檔的動能（12、26 根均線差）剛從負翻正、台指期不在擠壓；小箭頭＝只有進場條件成立。最底下的<b class="gold">金色條</b>＝台指期條件成立的時間。✓＝之後漲到 +50%、✗＝先跌到 −30% 停損。<br>
+      <b>趨勢震盪</b>：這一檔選擇權收盤離最近 10 根均線多遠（用平均波幅換算成 −100～+100），跟著主圖 K 線走。<b class="bull">0 以上紅底</b>＝價格在均線上（漲勢）、<b class="bear">0 以下綠底</b>＝在均線下（跌勢）；<b>上界 +60</b>＝漲勢很強、<b>下界 −60</b>＝跌勢很強；線本身紅色＝正在往上、綠色＝正在往下；細灰線＝訊號線。金色圓點＝發動。<br>
+
       <b>波動</b>：台指期的波動在最近 120 根裡的位置。<b style="color:#c9a000">50 以上黃底</b>（80 以上＝爆發）、<b style="color:#4a9eff">20 以下藍底</b>（擠壓）。<br>
-      <b>回測（8/6～11/6，扣一個跳動點）</b>：<b style="color:#ff6b1a">發動</b> 478 次，先漲 50% 28%、先跌 30% 22%、平均每筆 <b>+9.2%</b>（10/20 以後沒看過的資料 261 次：43%／25%、+16.7%）；一般進場 6,529 次，26%／24%、+7.0%；隨便進場 −1.1%。
-      黃底本身不是買點（單看黃底，平均每筆 −0.8%，和隨便進場差不多），但進場條件成立時碰到黃底比較好（爆發中 +7.6%）；<b>藍底擠壓時就算條件成立也比較差</b>（10/20 以後 −4.6%），可以先不做。發動的次數還不多，結果會有起伏。<br>
+      <b>回測（8/6～11/6，扣一個跳動點）</b>：<b style="color:#ff6b1a">發動</b> 466 次，先漲 50% 28.5%、先跌 30% 21.9%、平均每筆 <b>+9.7%</b>（10/20 以後沒看過的資料 253 次：44.7%／23.3%、+18.2%）；一般進場 6,529 次，26%／24%、+7.0%；隨便進場 −1.1%。
+      黃底本身不是買點（單看黃底，平均每筆 −0.8%），但進場條件成立時碰到黃底比較好；<b>藍底擠壓時就算條件成立也比較差</b>（10/20 以後 −4.6%）。趨勢震盪是看盤用的：拿它的翻正、穿過訊號線當進場都沒有比發動好（+5.7%～+8.1%）；<b>條件成立但趨勢震盪還在下界 −60 以下時比較差</b>（10/20 以後 −1.8%），這時先等它回到下界上面。發動的次數還不多，結果會有起伏。<br>
+
       <b>進場條件</b>（全部同時成立，用 5 分 K 判斷）：台指期超級趨勢方向和這一邊相同（買權要多方、賣權要空方）、平均趨向 30 以上（趨勢夠強）、最近 6 根往有利方向走了半個平均波幅以上（還在推）；選擇權是價外、價格 30 點以上、離到期 24 小時以上。<br>
       <b>出場</b>：漲 50% 停利、跌 30% 停損，都沒碰到就在 4 小時盤中（48 根 5 分 K）後出場。圖上金色＝當時有達到 +50%，灰色＝先停損，白色＝時間到。<br>
       <b>回測</b>（8/6～11/6 全部週選、月選，每檔 50 分鐘內只算一次，扣一個跳動點的價差）：符合條件 6,651 次，先漲 50% 26%、先跌 30% 24%、平均每筆 +7.1%；隨便進場 72,457 次，先漲 50% 18%、先跌 30% 36%、平均每筆 −2.6%。條件是用 10 月挑的，10/20 以後沒看過的資料也一樣比較好。<br>
@@ -467,12 +469,17 @@ function buildChart(){
   chart.priceScale('strip').applyOptions({ scaleMargins:{ top:0.975, bottom:0 }, visible:false });
   let pn = 1; sMo = sVo = null;
   if (UI.mo){
-    // 動能：這一檔選擇權（12 根均線−26 根均線）÷14 根平均波幅；虛線＝最近 120 根動能的 9 成／1 成（動態上下界）
-    sMo = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'動能', priceFormat:{ type:'price', precision:2, minMove:0.01 } }, pn);
-    sMoU = chart.addSeries(L.LineSeries, { color:css('--bull') + '99', lineWidth:1, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }, pn);
-    sMoL = chart.addSeries(L.LineSeries, { color:css('--bear') + '99', lineWidth:1, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false }, pn);
+    // 趨勢震盪（−100～+100）：這一檔收盤離 10 根均線多遠（用 10 根平均波幅換算），平滑後畫線；紅底＝在均線上、綠底＝在均線下；細灰線＝訊號線
+    const tAuto = () => ({ priceRange:{ minValue:-100, maxValue:100 } }), tFmt = { type:'custom', minMove:1, formatter:v => String(Math.round(v)) };
+    sMoU = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineVisible:false,
+      topLineColor:'transparent', topFillColor1:css('--bull') + '55', topFillColor2:css('--bull') + '08', bottomLineColor:'transparent', bottomFillColor1:css('--bear') + '08', bottomFillColor2:css('--bear') + '55',
+      priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:tFmt, autoscaleInfoProvider:tAuto }, pn);
+    sMoL = chart.addSeries(L.LineSeries, { color:faint, lineWidth:1, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:tFmt, autoscaleInfoProvider:tAuto }, pn);
+    sMo = chart.addSeries(L.LineSeries, { color:css('--text'), lineWidth:2, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'趨勢', priceFormat:tFmt, autoscaleInfoProvider:tAuto }, pn);
+    sMo.createPriceLine({ price:60, color:css('--bull') + 'aa', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'上界' });
     sMo.createPriceLine({ price:0, color:faint, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
-    try { chart.panes()[pn].setStretchFactor(0.9); } catch(e){}
+    sMo.createPriceLine({ price:-60, color:css('--bear') + 'aa', lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'下界' });
+    try { chart.panes()[pn].setStretchFactor(1); } catch(e){}
     pn++;
   }
   if (UI.vo){
@@ -498,7 +505,7 @@ function legend(b){
   let s = '<span>' + hm(b.t) + '</span>' + (b.o != null ? '<span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>' : '<span>這一檔這根沒成交</span>');
   if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span></span>'; }
   s += '<span' + (b.ok5 ? ' class="gold"' : '') + '>台指期進場條件 ' + (b.ok5 ? '✓ 成立（金色條）' : '✗ 不成立') + '</span>';
-  if (sMo && b.mo != null && !isNaN(b.mo)) s += '<span>動能 <span class="n" style="color:' + (b.mo >= 0 ? css('--bull') : css('--bear')) + '">' + b.mo.toFixed(2) + '</span>' + (!isNaN(b.moU) && b.mo >= b.moU ? '（上界以上，力道很強）' : !isNaN(b.moL) && b.mo <= b.moL ? '（下界以下，跌勢很強）' : '') + '</span>';
+  if (sMo && b.to != null && !isNaN(b.to)) s += '<span>趨勢 <span class="n" style="color:' + (b.to >= 0 ? css('--bull') : css('--bear')) + '">' + Math.round(b.to) + '</span>' + (b.to >= 60 ? '（上界以上，漲勢強）' : b.to <= -60 ? '（下界以下，跌勢強）' : b.to >= 0 ? '（在均線上）' : '（在均線下）') + (b.to >= b.ts ? '・往上' : '・往下') + '</span>' + (b.ok5 && b.to <= -60 ? '<span style="color:var(--muted)">條件成立但還在下界下面：回測比較差，先等回到下界上面</span>' : '');
   if (b.vp != null && !isNaN(b.vp)) s += '<span>台指期波動 <span class="n">' + Math.round(b.vp) + '</span>' + (b.vp >= 80 ? '（爆發，黃底）' : b.vp >= 50 ? '（黃底）' : b.vp <= 20 ? '（擠壓，藍底：這時候進場回測比較差）' : '') + '</span>';
   if (b.sig) s += '<span style="color:' + (b.sig.kind === 'fire' ? '#ff6b1a' : css('--gold')) + ';font-weight:700">' + (b.sig.kind === 'fire' ? '發動' : '進場') + ' ' + fmtP(b.sig.px) + '（' + b.sig.txt + '）</span>';
   $('lg').innerHTML = s;
@@ -514,6 +521,17 @@ function outcome(B, i, j, ex){
   return { px, res, ret, txt:res === 'win' ? '之後漲到 +50%' : res === 'loss' ? '先碰到 −30% 停損' : res === 'time' ? '4 小時到，' + (ret >= 0 ? '+' : '') + (ret * 100).toFixed(0) + '%' : '進行中' };
 }
 // 動能：（12 根均線−26 根均線）÷14 根平均波幅
+// 趨勢震盪：tanh((收−10 根均線)÷10 根平均波幅÷1.5)×100，再平滑；訊號線＝它的 5 根平均
+function trendOsc(B){
+  const n = B.length, osc = new Array(n).fill(NaN), sg = new Array(n).fill(NaN); let e = NaN, at = NaN, sm = NaN, sl = NaN;
+  for (let i = 0; i < n; i++){ const b = B[i], pc = i ? B[i - 1].c : b.c;
+    e = isNaN(e) ? b.c : e + 2 / 11 * (b.c - e);
+    const tr = Math.max(b.h - b.l, Math.abs(b.h - pc), Math.abs(b.l - pc)); at = isNaN(at) ? tr : (at * 9 + tr) / 10;
+    const raw = at > 0 ? Math.tanh((b.c - e) / at / 1.5) * 100 : 0;
+    sm = isNaN(sm) ? raw : sm + 0.5 * (raw - sm); sl = isNaN(sl) ? sm : sl + (2 / 6) * (sm - sl);
+    if (i >= 5){ osc[i] = sm; sg[i] = sl; } }
+  return { osc, sg };
+}
 function momentum(B){
   let a12 = NaN, a26 = NaN, at = NaN; const mo = new Array(B.length).fill(NaN);
   for (let i = 0; i < B.length; i++){ const b = B[i], pc = i ? B[i - 1].c : b.c;
@@ -556,14 +574,12 @@ async function renderChart(keep){
   sStrip.setData(DATA.map(b => { let j = null; for (let q = tf - 5; q >= 0 && j == null; q -= 5) j = TX5.idx.get(b.t + q);
     b.ok5 = j != null && txOK(TX5, j, want); b.vp = j != null ? TX5.vp[j] : NaN; return { time:b.t * 60, value:1, color:b.ok5 ? gold : 'transparent' }; }));
   if (sMo){
-    const mo = momentum(DATA), hist = [], ub = [], lb = [];
-    DATA.forEach((b, i) => { b.mo = mo[i]; });
-    sMo.setData(DATA.map((b, i) => { if (isNaN(b.mo)) return { time:b.t * 60 }; const pv = i ? DATA[i - 1].mo : NaN, grow = isNaN(pv) || Math.abs(b.mo) >= Math.abs(pv);
-      return { time:b.t * 60, value:b.mo, color:b.mo >= 0 ? (grow ? up : up + '66') : (grow ? dn : dn + '66') }; }));
-    DATA.forEach(b => { if (!isNaN(b.mo)) hist.push(b.mo); const w = hist.slice(-120);
-      if (w.length >= 30){ const srt = w.slice().sort((x, y) => x - y); b.moU = Math.max(0, srt[Math.floor(srt.length * 0.9)]); b.moL = Math.min(0, srt[Math.floor(srt.length * 0.1)]); } else b.moU = b.moL = NaN;
-      ub.push(isNaN(b.moU) ? { time:b.t * 60 } : { time:b.t * 60, value:b.moU }); lb.push(isNaN(b.moL) ? { time:b.t * 60 } : { time:b.t * 60, value:b.moL }); });
-    sMoU.setData(ub); sMoL.setData(lb);
+    const T = trendOsc(DATA);
+    DATA.forEach((b, i) => { b.to = T.osc[i]; b.ts = T.sg[i]; });
+    const pt = (b, v) => isNaN(v) ? { time:b.t * 60 } : { time:b.t * 60, value:v };
+    sMoU.setData(DATA.map(b => pt(b, b.to)));
+    sMoL.setData(DATA.map(b => pt(b, b.ts)));
+    sMo.setData(DATA.map(b => isNaN(b.to) ? { time:b.t * 60 } : { time:b.t * 60, value:b.to, color:b.to >= b.ts ? up : dn }));
     mkMo.setMarkers(fires.map(f => ({ time:bt(f.t) * 60, position:'belowBar', color:gold, shape:'circle', size:0.8 })));
   }
   if (sVo){
