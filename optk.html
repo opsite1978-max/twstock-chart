@@ -528,15 +528,19 @@ function buildCharts(){
       pane++;
     }
     if (UI.sp){
-      const hist = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'台指期趨勢',
+      // 台指期趨勢：0 以上紅色漸層＝多方、0 以下綠色漸層＝空方，離 0 越遠趨勢越強（平均趨向）；±25 細點線＝有趨勢
+      const upc = css('--up'), dnc = css('--down');
+      const hist = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, lineType:L.LineType.Curved,
+        topLineColor:upc, topFillColor1:upc + '66', topFillColor2:upc + '08', bottomLineColor:dnc, bottomFillColor1:dnc + '08', bottomFillColor2:dnc + '66',
+        priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, title:'台指期趨勢',
         priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:orig => { const r = orig(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 6 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; } }, pane);
-      for (const v of [25, -25]) hist.createPriceLine({ price:v, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + '88', lineWidth:1, lineStyle:L.LineStyle.Dotted, axisLabelVisible:false, title:'' });
-      hist.createPriceLine({ price:0, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + '55', lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+      for (const v of [25, -25]) hist.createPriceLine({ price:v, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + '66', lineWidth:1, lineStyle:L.LineStyle.SparseDotted, axisLabelVisible:false, title:'' });
       const spA = { hist, mk:L.createSeriesMarkers(hist, []) };
       try { chart.panes()[pane].setStretchFactor(1.3); } catch(e){}
       pane++;
-      const iv = chart.addSeries(L.LineSeries, { color:'#c77dff', lineWidth:2, priceLineVisible:false, lastValueVisible:true, title:'隱含波動率', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
-      const rv = chart.addSeries(L.LineSeries, { color:'#ff9100', lineWidth:2, lineStyle:L.LineStyle.Dashed, priceLineVisible:false, lastValueVisible:true, title:'實際波動', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
+      // 波動：紫色面積＝這一檔的隱含波動率（保費貴不貴）、橘色細線＝台指期實際波動；紫色在橘線上面很多＝保費偏貴
+      const iv = chart.addSeries(L.AreaSeries, { lineColor:'#b388ff', topColor:'#b388ff55', bottomColor:'#b388ff05', lineWidth:2, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'隱含波動率', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
+      const rv = chart.addSeries(L.LineSeries, { color:'#ffa726', lineWidth:1.5, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'實際波動', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
       o.sp = { A:spA, iv, rv, mk:L.createSeriesMarkers(rv, []) };
       try { chart.panes()[pane].setStretchFactor(1.3); } catch(e){}
       pane++;
@@ -945,10 +949,10 @@ async function renderCharts(keepRange){
           // 這一根和上一根之間台指期有沒有翻轉（選擇權沒成交的時段也算進來）
           let fl = 0; for (let k = i; k > lastFlipShown && k >= 0; k--){ if (SP.flip[k]){ fl = SP.flip[k]; break; } }
           lastFlipShown = i;
-          hd.push({ time:b.time, value:SP.dir[i] * SP.adx[i], color:colOf(SP.dir[i], SP.adx[i]) });
-          if (fl) mkA.push(fl > 0 ? { time:b.time, position:'belowBar', color:'#ff1744', shape:'arrowUp', text:'轉多' } : { time:b.time, position:'aboveBar', color:'#00c853', shape:'arrowDown', text:'轉空' });
+          hd.push({ time:b.time, value:SP.dir[i] * SP.adx[i] });
+          if (fl) mkA.push(fl > 0 ? { time:b.time, position:'inBar', color:css('--up'), shape:'arrowUp', size:0.7 } : { time:b.time, position:'inBar', color:css('--down'), shape:'arrowDown', size:0.7 });
           rvd.push(isNaN(SP.rv[i]) ? { time:b.time } : { time:b.time, value:SP.rv[i] });
-          if (SP.sqStart[i]) mkB.push({ time:b.time, position:'belowBar', color:'#9aa3b2', shape:'circle', text:'擠壓' });
+          if (SP.sqStart[i]) mkB.push({ time:b.time, position:'belowBar', color:'#9aa3b2', shape:'circle', size:0.5 });
           const ob = byT.get(b.time);
           if (ob){ const T = Math.max(15, ex - barCloseMin(ob)) / (365 * 1440), v = impVol(ob.close, UA[i].close, UI.K, T, o.side === 'C');
             if (!isNaN(v) && v < 400){ ivd.push({ time:b.time, value:v }); ivMap.set(b.time, v); } else ivd.push({ time:b.time }); }
@@ -966,11 +970,11 @@ async function renderCharts(keepRange){
             const j = uIdx.get(bars[k].time); if (j == null) continue;
             let hh = -Infinity; for (let q = k - 20; q < k; q++) hh = Math.max(hh, B2.h[q]);
             if (SP.dir[j] === want && SP.adx[j] >= 25 && B2.c[k] > hh && k - lastS > 10){
-              lastS = k; sig.set(bars[k].time, 'S'); mkA.push({ time:bars[k].time, position:want > 0 ? 'aboveBar' : 'belowBar', color:'#ffca28', shape:'circle', text:'順勢突破' }); }
+              lastS = k; sig.set(bars[k].time, 'S'); mkA.push({ time:bars[k].time, position:want > 0 ? 'aboveBar' : 'belowBar', color:'#ffca28', shape:'circle', size:0.6 }); }
             let mn = Infinity; for (let q = Math.max(0, k - 5); q <= k; q++) mn = Math.min(mn, bdx.K[q]);
             let sqn = false; for (let q = Math.max(0, j - 12); q <= j; q++) if (SP.sq[q]) sqn = true;
             if (sqn && bdx.K[k - 1] < bdx.Sg[k - 1] && bdx.K[k] > bdx.Sg[k] && mn < Math.max(25, isNaN(bdx.LB[k]) ? 25 : bdx.LB[k]) && k - lastG > 10){
-              lastG = k; if (!sig.has(bars[k].time)) sig.set(bars[k].time, 'G'); mkA.push({ time:bars[k].time, position:want > 0 ? 'belowBar' : 'aboveBar', color:'#8a93a6', shape:'square', text:'擠壓低檔金叉' }); }
+              lastG = k; if (!sig.has(bars[k].time)) sig.set(bars[k].time, 'G'); mkA.push({ time:bars[k].time, position:want > 0 ? 'belowBar' : 'aboveBar', color:'#8a93a6', shape:'square', size:0.5 }); }
           }
           mkA.sort((a, b) => a.time - b.time);
           o.ind.spSig = sig;

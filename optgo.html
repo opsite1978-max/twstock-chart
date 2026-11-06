@@ -325,7 +325,7 @@ function renderPicker(st){
 }
 
 /* ═════════════ 圖 ═════════════ */
-let chart = null, sCandle = null, sVol = null, sForce = null, mk = null, plines = [], DATA = [];
+let chart = null, sCandle = null, sVol = null, sForce = null, sReady = null, mk = null, plines = [], DATA = [];
 function buildChart(){
   if (chart) chart.remove();
   const el = $('cv');
@@ -342,10 +342,15 @@ function buildChart(){
     priceFormat:{ type:'custom', minMove:0.1, formatter:v => v < 0 ? '' : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) }, autoscaleInfoProvider:o => { const r = o(); if (r && r.priceRange && r.priceRange.minValue < 0) r.priceRange.minValue = 0; return r; } });
   sVol = chart.addSeries(L.HistogramSeries, { priceScaleId:'v', priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false });
   chart.priceScale('v').applyOptions({ scaleMargins:{ top:0.86, bottom:0 }, visible:false });
-  sForce = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'順勢力道', priceFormat:{ type:'price', precision:0, minMove:1 },
-    autoscaleInfoProvider:o => { const r = o(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 5 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; } }, 1);
-  sForce.createPriceLine({ price:R.adx, color:css('--gold'), lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'' });
-  sForce.createPriceLine({ price:0, color:css('--line'), lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+  // 順勢力道：0 以上＝台指期和這一邊同方向（金色），0 以下＝反方向（灰色）；高度＝趨勢強度；全部條件成立的區段用亮金色粗線
+  const gold = css('--gold'), faint = css('--faint'), hx = (c, a) => c + a;
+  const fAuto = o => { const r = o(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 5 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; };
+  sForce = chart.addSeries(L.BaselineSeries, { baseValue:{ type:'price', price:0 }, lineWidth:2, lineType:L.LineType.Curved,
+    topLineColor:hx(gold, 'aa'), topFillColor1:hx(gold, '55'), topFillColor2:hx(gold, '08'),
+    bottomLineColor:hx(faint, 'aa'), bottomFillColor1:hx(faint, '08'), bottomFillColor2:hx(faint, '44'),
+    priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, title:'順勢力道', priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:fAuto }, 1);
+  sReady = chart.addSeries(L.LineSeries, { color:gold, lineWidth:4, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:fAuto }, 1);
+  sForce.createPriceLine({ price:R.adx, color:hx(gold, '88'), lineWidth:1, lineStyle:L.LineStyle.SparseDotted, axisLabelVisible:true, title:'' });
   try { const ps = chart.panes(); ps[0].setStretchFactor(3.2); ps[1].setStretchFactor(1); } catch(e){}
   mk = L.createSeriesMarkers(sCandle, []);
   chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
@@ -391,9 +396,10 @@ async function renderChart(keep){
   const up = css('--bull'), dn = css('--bear'), gold = css('--gold'), faint = css('--faint');
   sCandle.setData(bars.map(b => ({ time:b.t * 60, open:b.o, high:b.h, low:b.l, close:b.c })));
   sVol.setData(bars.map(b => ({ time:b.t * 60, value:b.v, color:(b.c >= b.o ? up : dn) + '55' })));
-  sForce.setData(bars.map(b => { const j = b.j; if (j == null || isNaN(TX.adx[j])) return { time:b.t * 60 };
-    const al = TX.dir[j] === want, v = (al ? 1 : -1) * TX.adx[j], ok = txOK(TX, j, want);
-    return { time:b.t * 60, value:v, color:ok ? gold : al ? (want > 0 ? up : dn) + '88' : faint + '88' }; }));
+  const fv = bars.map(b => { const j = b.j; if (j == null || isNaN(TX.adx[j])) return null; return { v:(TX.dir[j] === want ? 1 : -1) * TX.adx[j], ok:txOK(TX, j, want) }; });
+  sForce.setData(bars.map((b, i) => fv[i] ? { time:b.t * 60, value:fv[i].v } : { time:b.t * 60 }));
+  // 可進場區段（前後各多接一根，線才連得起來）
+  sReady.setData(bars.map((b, i) => { const on = fv[i] && (fv[i].ok || (fv[i - 1] && fv[i - 1].ok) || (fv[i + 1] && fv[i + 1].ok)); return on ? { time:b.t * 60, value:fv[i].v } : { time:b.t * 60 }; }));
   mk.setMarkers(sig.map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:1.1,
     color:s.res === 'win' ? gold : s.res === 'loss' ? faint : s.res === 'open' ? gold : css('--text'),
     text:s.res === 'win' ? '進場 ✓' : s.res === 'loss' ? '進場 ✗' : s.res === 'open' ? '進場' : '進場 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' })));
