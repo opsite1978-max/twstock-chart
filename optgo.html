@@ -177,7 +177,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/06 23:30・箭頭搜尋</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/06 23:10・即時</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optk.html">選擇權K線（舊版）</a>
     <a href="./">看盤</a>
@@ -719,7 +719,7 @@ async function renderChart(keep){
   // 標題、現在狀態、這一檔的統計
   const last = bars[bars.length - 1];
   $('ttl').innerHTML = '<span class="n ' + (UI.cp === 'C' ? 'bull' : 'bear') + '">' + UI.K + '</span> ' + (UI.cp === 'C' ? '買權' : '賣權') + ' <span class="muted" style="font-size:14px;font-weight:400">' + shortLabel(c) + '</span>';
-  $('px').textContent = last ? fmtP(last.c) : '';
+  $('px').innerHTML = last ? fmtP(last.c) + ' <span class="muted" style="font-size:13px;font-weight:400;font-family:var(--zh)">最後成交 ' + hm(min[min.length - 1][0]) + '</span>' : '';
   const j = TX5.U.length - 1, F = TX5.U[j].c, otm = want * (UI.K - F) > 0, longOK = expMin(c) - nowMin() >= R.tte, okNow = txOK(TX5, j, want) && otm && last && last.c >= R.px && longOK;
   const nowEl = $('now');
   nowEl.classList.toggle('show', !!(okNow || open));
@@ -785,9 +785,9 @@ function scanOpen(){
   if (SCAN.res && SCAN.key === key && Date.now() - SCAN.at < 3 * 60e3) scanRender(); else scanRun();
 }
 function scanClose(){ $('scanBg').classList.remove('show'); }
-async function scanRun(){
+async function scanRun(quiet){
   if (SCAN.busy) return; SCAN.busy = true; $('scGo').disabled = true;
-  const prog = (txt, f) => { $('scProg').innerHTML = txt + (f != null ? '<i><s style="width:' + Math.round(f * 100) + '%"></s></i>' : ''); };
+  const prog = (txt, f) => { if (quiet && txt) return; $('scProg').innerHTML = txt + (f != null ? '<i><s style="width:' + Math.round(f * 100) + '%"></s></i>' : ''); };
   try {
     const [t0, tEnd] = scanWindow(), U = TX5.U, onlyFire = (UI.scK || 'all') === 'fire';
     // 那段時間台指期條件成立過的方向，和當時台指期的範圍（判斷價外用）
@@ -844,7 +844,7 @@ function scanRender(){
   const lagTX = TX5.U[TX5.U.length - 1].t - R0.tEnd > 30;
   const head = '<p class="muted" style="font-size:13px;margin:2px 0 8px">範圍 <b>' + hm(R0.t0) + '</b> ～ <b>' + hm(R0.tEnd) + '</b>' + (lagTX ? '（選擇權資料到這裡；夜盤的選擇權資料隔天早上 8 點左右才補上）' : '') + '・' +
     (R0.sides.length ? '台指期條件成立過的方向：' + R0.sides.map(s => s.want > 0 ? '<b class="bull">多方（買權）</b>' : '<b class="bear">空方（賣權）</b>').join('、') : '') +
-    (R0.n != null ? '・掃了 ' + R0.n + ' 檔・' : '・') + '<span class="muted">' + Math.round((Date.now() - SCAN.at) / 60e3) + ' 分鐘前搜尋</span></p>';
+    (R0.n != null ? '・掃了 ' + R0.n + ' 檔・' : '・') + '<span class="gold">即時：開著時每分鐘自動更新（' + new Date(SCAN.at).toTimeString().slice(0, 5) + '）</span></p>';
   if (R0.none){ body.innerHTML = '<div class="empty" style="padding:16px 0">這段時間台指期都沒有「趨勢強度 30 以上、而且還在往同方向推」，所以沒有任何一檔會出現箭頭。可以把時間拉長再找。</div>'; return; }
   if (!R0.list.length){ body.innerHTML = head + '<div class="empty" style="padding:12px 0">這段時間沒有選擇權出現' + ((UI.scK || 'all') === 'fire' ? '發動' : '發動或進場') + '箭頭（台指期條件成立，但沒有 30 點以上、離到期 24 小時以上的價外選擇權符合）。</div>'; return; }
   const st = s => s.res === 'win' ? '<span class="gold">✓ 漲到 +50%</span>' : s.res === 'loss' ? '<span class="muted">✗ 停損</span>' : s.res === 'time' ? '4 小時到 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' :
@@ -891,7 +891,7 @@ async function boot(){
   applyTheme(); syncTf(); buildChart(); $('cheap').checked = !!UI.cheap; saveUI();
   if (!await loadIndex()){ $('verdict').innerHTML = '<small>台指期現在</small>資料讀不到，請稍後重新整理'; return; }
   await refresh(false);
-  setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); }, 60e3);
+  setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); if ($('scanBg').classList.contains('show') && !SCAN.busy) scanRun(true); }, 60e3);
   setInterval(async () => { if (document.hidden) return; await loadIndex(); D.ser.clear(); }, 10 * 60e3);
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && D.idx){ D.live.clear(); D.txAt = 0; refresh(true); } });

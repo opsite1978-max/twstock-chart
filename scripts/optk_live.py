@@ -161,6 +161,16 @@ def push(data):
         log('push fail', r.stderr[-200:])
 
 
+WAIT = int(os.environ.get('WAIT_NEXT_MIN', '240'))     # 下一個時段在幾分鐘內就不要結束，直接等（GitHub 排程常常晚好幾個小時才開）
+
+
+def soon(now):
+    for k in range(0, WAIT + 1, 5):
+        if session(now + datetime.timedelta(minutes=k)):
+            return k
+    return None
+
+
 def main():
     if not TOKEN:
         log('沒有 FINMIND_TOKEN'); return
@@ -171,13 +181,16 @@ def main():
         now = datetime.datetime.now(TW)
         ses = session(now)
         if time.time() - T0 > MAX_RUN:
-            nxt = ses or session(now + datetime.timedelta(minutes=10))
+            nxt = ses or soon(now) is not None
             if nxt and os.environ.get('GH_TOKEN'):
                 subprocess.run(['gh', 'workflow', 'run', 'optk-live.yml', '--ref', 'main'], capture_output=True)
                 log('時段還沒結束，已接著開下一次')
             break
         if not ses:
-            if session(now + datetime.timedelta(minutes=20)):
+            k = soon(now)
+            if k is not None:
+                if k > 20 and int(time.time()) % 1800 < 30:
+                    log('等下一個時段，還有', k, '分鐘')
                 time.sleep(30); continue
             log('不在交易時段，結束'); break
         s, x, a = ses
