@@ -181,7 +181,7 @@
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
     </div>
     <div class="charts" id="charts"></div>
-    <div class="note"><span class="live" id="liveDot"></span><span id="liveTxt">盤中：網站每分鐘錄一次即時報價補上今天的 K 線</span>；
+    <div class="note"><span class="live" id="liveDot"></span><span id="liveTxt">盤中：網站每分鐘錄一次即時報價補上今天的 K 線（網頁約 2～5 分鐘看到）</span>；
       盤後逐筆資料公布後（每天約 07:45、20:35 更新）改用逐筆算出的準確 K 線。量＝口數（單邊）。紅漲綠跌。</div>
   </main>
 </div>
@@ -262,6 +262,8 @@ async function loadIndex(force){
   if (!force && IDX.data && Date.now() - IDX.at < 5 * 60e3) return IDX.data;
   try {
     const j = await getJSON(RAW + 'index.json?t=' + minKey());
+    // 舊格式（陣列）也能讀
+    for (const c of j.contracts || []) c.rows = c.rows.map(r => Array.isArray(r) ? { k:r[0], C:{ c:r[1], ch:r[2], v:r[3], oi:r[4] }, P:{ c:r[5], ch:r[6], v:r[7], oi:r[8] } } : r);
     IDX.data = j; IDX.at = Date.now();
     CAL = j.cal || []; CALSET = new Set(CAL); tdCache.clear();
   } catch(e){ if (!IDX.data) throw e; }
@@ -320,13 +322,35 @@ function renderContracts(){
   const cur = curContract();
   if (cur && cur.expired) $('oldBox').open = true;
 }
+// 清單上每一檔：盤後逐筆資料＋今天盤中錄影（錄影接在逐筆最後一根之後）
+function quote(c, r, cp){
+  const h = r[cp] || {}, lv = LIV.get(c.code), bars = lv && lv.s[r.k + cp];
+  if (!bars || !bars.length) return h;
+  const add = bars.filter(b => b[0] > (h.t || 0));
+  if (!add.length) return h;
+  const last = add[add.length - 1], ltd = sessOf(last[0]).td, lastTd = IDX.data.lastTd;
+  const q = Object.assign({}, h, { c:last[4], live:true });
+  if (ltd === lastTd){ q.v = (h.v || 0) + add.reduce((s, b) => s + b[5], 0); }
+  else { q.v = add.filter(b => sessOf(b[0]).td === ltd).reduce((s, b) => s + b[5], 0);
+    q.b = h.sd === lastTd && h.st > 0 ? h.st : h.c; }          // 新的交易日：基準改成上一個交易日的結算價
+  q.ch = q.b != null ? Math.round((q.c - q.b) * 100) / 100 : null;
+  return q;
+}
+function quotes(c){
+  if (!c) return [];
+  const lv = LIV.get(c.code), tag = lv ? lv.updated : '';
+  if (c._q && c._qTag === tag) return c._q;
+  c._qTag = tag; c._F = undefined;
+  return (c._q = c.rows.map(r => ({ k:r.k, C:quote(c, r, 'C'), P:quote(c, r, 'P') })));
+}
 // 用同一個結算日的買權、賣權價格反推目前指數：履約價＋買權−賣權，取兩邊價差最小、兩邊都有成交的 3 檔平均
 function impliedF(c){
   if (!c) return null;
+  const qs = quotes(c);
   if (c._F !== undefined) return c._F;
-  const cand = c.rows.filter(r => r[1] != null && r[5] != null && (r[3] || 0) > 0 && (r[7] || 0) > 0)
-    .sort((a, b) => Math.abs(a[1] - a[5]) - Math.abs(b[1] - b[5])).slice(0, 3);
-  c._F = cand.length ? Math.round(cand.reduce((s, r) => s + r[0] + r[1] - r[5], 0) / cand.length) : null;
+  const cand = qs.filter(r => r.C.c != null && r.P.c != null && (r.C.v || 0) > 0 && (r.P.v || 0) > 0)
+    .sort((a, b) => Math.abs(a.C.c - a.P.c) - Math.abs(b.C.c - b.P.c)).slice(0, 3);
+  c._F = cand.length ? Math.round(cand.reduce((s, r) => s + r.k + r.C.c - r.P.c, 0) / cand.length) : null;
   return c._F;
 }
 function refPx(c){ return impliedF(c) || (IDX.data && IDX.data.fut && IDX.data.fut.px) || null; }
@@ -334,12 +358,12 @@ function atmIndex(rows){
   const f = refPx(curContract());
   if (!f || !rows.length) return Math.floor(rows.length / 2);
   let bi = 0, bd = Infinity;
-  rows.forEach((r, i) => { const d = Math.abs(r[0] - f); if (d < bd){ bd = d; bi = i; } });
+  rows.forEach((r, i) => { const d = Math.abs(r.k - f); if (d < bd){ bd = d; bi = i; } });
   return bi;
 }
 function visibleRows(c){
-  let rows = c.rows;
-  if (UI.onlyTraded) rows = rows.filter(r => (r[3] || 0) + (r[7] || 0) > 0);
+  let rows = quotes(c);
+  if (UI.onlyTraded) rows = rows.filter(r => (r.C.v || 0) + (r.P.v || 0) > 0);
   if (UI.range){
     const a = atmIndex(rows), lo = Math.max(0, a - UI.range), hi = Math.min(rows.length, a + UI.range + 1);
     rows = rows.slice(lo, hi);
@@ -350,12 +374,12 @@ function renderTable(scrollToSel){
   const c = curContract(), tb = $('tbody');
   if (!c){ tb.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center;padding:30px">沒有資料</td></tr>'; return; }
   const f = refPx(c), rows = visibleRows(c);
-  const ai = atmIndex(c.rows), atmK = c.rows[ai] && c.rows[ai][0];
+  const all = quotes(c), ai = atmIndex(all), atmK = all[ai] && all[ai].k;
   const cell = (v, cls) => '<td class="' + cls + (v == null || v === '' ? ' na' : '') + '">' + (v == null || v === '' ? '–' : v) + '</td>';
   const chc = v => v == null ? '' : v > 0 ? ' up' : v < 0 ? ' dn' : '';
   let h = '';
   for (const r of rows){
-    const [K, cc, cch, cv, coi, pc, pch, pv, poi] = r;
+    const K = r.k, cc = r.C.c, cch = r.C.ch, cv = r.C.v, coi = r.C.oi, pc = r.P.c, pch = r.P.ch, pv = r.P.v, poi = r.P.oi;
     const cls = [K === atmK ? 'atm' : '', f && K < f ? 'itmc' : '', f && K > f ? 'itmp' : '', K === UI.K ? 'sel' : ''].join(' ');
     const sc = K === UI.K && UI.view !== 'P' ? ' selc' : '', sp = K === UI.K && UI.view !== 'C' ? ' selp' : '';
     h += '<tr class="' + cls + '" data-k="' + K + '">' +
@@ -524,6 +548,7 @@ async function renderCharts(keepRange){
     for (const o of CH.list) o.chart.timeScale().setVisibleLogicalRange({ from:Math.max(-2, n - show), to:n + 4 });
   }
   const lv = LIV.get(c.code);
+  if (lv && lv.updated && lv.updated !== c._shownLive){ c._shownLive = lv.updated; renderHeader(); renderTable(false); }
   $('liveDot').classList.toggle('on', liveN > 0);
   $('liveTxt').textContent = liveN > 0 ? '盤中錄影：今天已補上 ' + liveN + ' 根 1 分 K（' + (lv && lv.updated ? lv.updated.slice(11, 16) : '') + ' 更新，影線可能略短）'
     : c.expired ? '這個結算日已經結算，K 線到最後交易日為止' : '盤中：網站每分鐘錄一次即時報價補上今天的 K 線（目前沒有新的成交）';
@@ -586,7 +611,7 @@ $('themeBtn').onclick = () => { UI.theme = UI.theme === 'light' ? 'dark' : 'ligh
 $('jump').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const c = curContract(), v = +e.target.value; if (!c || !v) return;
-  let best = null, bd = Infinity; for (const r of c.rows){ const d = Math.abs(r[0] - v); if (d < bd){ bd = d; best = r[0]; } }
+  let best = null, bd = Infinity; for (const r of c.rows){ const d = Math.abs(r.k - v); if (d < bd){ bd = d; best = r.k; } }
   if (best != null){ UI.range = 0; selectStrike(best); e.target.blur(); }
 });
 function applyTheme(){
@@ -596,17 +621,18 @@ function applyTheme(){
 }
 
 /* ═════════════ 選擇 ═════════════ */
-function defaultStrike(c){ const r = c.rows[atmIndex(c.rows)]; return r ? r[0] : null; }
+function defaultStrike(c){ const r = c.rows[atmIndex(c.rows)]; return r ? r.k : null; }
 function selectContract(code){
   UI.code = code;
   const c = curContract();
-  if (c && !c.rows.some(r => r[0] === UI.K)){
+  if (c && !c.rows.some(r => r.k === UI.K)){
     // 換結算日時，履約價找最接近原本的那一檔；沒有就用價平
     let best = null, bd = Infinity;
-    if (UI.K != null) for (const r of c.rows){ const d = Math.abs(r[0] - UI.K); if (d < bd){ bd = d; best = r[0]; } }
+    if (UI.K != null) for (const r of c.rows){ const d = Math.abs(r.k - UI.K); if (d < bd){ bd = d; best = r.k; } }
     UI.K = best != null && bd <= 200 ? best : defaultStrike(c);
   }
   saveUI(); renderHeader(); renderContracts(); renderTable(true); syncBar(); renderCharts();
+  if (c && !c.expired) loadLive(c.code).then(() => { renderHeader(); renderTable(false); });
 }
 function selectStrike(K, side){
   UI.K = K; if (side) UI.view = side;
@@ -630,8 +656,9 @@ async function boot(){
     UI.code = pick ? pick.code : null;
   }
   const c = curContract();
-  if (c && (UI.K == null || !c.rows.some(r => r[0] === UI.K))) UI.K = defaultStrike(c);
+  if (c && (UI.K == null || !c.rows.some(r => r.k === UI.K))) UI.K = defaultStrike(c);
   saveUI();
+  if (c && !c.expired) await loadLive(c.code);
   renderHeader();
   await refreshAll(true);
   // 盤中每分鐘看一次網站錄影；每 5 分鐘看一次清單
@@ -640,7 +667,7 @@ async function boot(){
     const c = curContract(); if (!c || c.expired) return;
     const before = (LIV.get(c.code) || {}).updated;
     await loadLive(c.code, true);
-    if ((LIV.get(c.code) || {}).updated !== before) renderCharts(true);
+    if ((LIV.get(c.code) || {}).updated !== before){ renderHeader(); renderTable(false); renderCharts(true); }
   }, 60e3);
   setInterval(async () => {
     if (document.hidden) return;
