@@ -16,7 +16,7 @@
 
 FinMind 憑證從環境變數 FINMIND_TOKEN 讀取（GitHub 加密密碼），程式不會印出或存檔。
 """
-import json, os, re, sys, time, datetime, subprocess, urllib.request, urllib.error, urllib.parse, shutil
+import json, os, re, sys, time, glob, datetime, subprocess, urllib.request, urllib.error, urllib.parse, shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN = os.environ.get('FINMIND_TOKEN', '').strip()
@@ -136,6 +136,7 @@ def trade_day(tmin):
 
 # ───────── 資料 ─────────
 SER = {}          # (code, K, cp) -> {'m': {t: [o,h,l,c,v]}, 'oi': {date: [oi, settle]}}
+TXM = {}          # 台指期 1 分 K：分鐘 -> [開, 高, 低, 收, 量]（每個時段取成交量最大的月份，不扣價差）
 META = {'days': {}}
 
 
@@ -170,12 +171,60 @@ def load_prev():
                     continue
                 SER[(code, int(m.group(1)), m.group(2))] = {'m': {b[0]: b[1:] for b in j.get('m', [])}, 'oi': {r[0]: r[1:] for r in j.get('oi', [])}}
                 n += 1
-    log('載入舊資料', n, '檔', len(META['days']), '個日曆日')
+    for f in glob.glob(os.path.join(WORK, 'tx', '*.json')):
+        try:
+            for b in json.load(open(f)).get('bars', []):
+                TXM[b[0]] = b[1:]
+        except Exception:
+            pass
+    log('載入舊資料', n, '檔', len(META['days']), '個日曆日；台指期', len(TXM), '分鐘')
 
 
 def norm_k(v):
     k = float(v)
     return int(round(k))
+
+
+def process_tx(x):
+    """台指期逐筆 → 1 分 K。凌晨夜盤、日盤、晚上夜盤各自挑成交量最大的月份（和看盤軟體一樣，不扣價差）"""
+    rows = api({'dataset': 'TaiwanFuturesTick', 'data_id': 'TX', 'start_date': x}, timeout=600)
+    if rows is None:
+        return None
+    m0 = day_min0(x)
+    ses = lambda m: 'a' if m <= 330 else ('d' if m <= 840 else 'n')
+    vol = {}
+    for r in rows:
+        c = str(r.get('contract_date') or '').strip(); t = str(r.get('date'))
+        if not re.fullmatch(r'\d{6}', c) or t[:10] != x:
+            continue
+        m = int(t[11:13]) * 60 + int(t[14:16])
+        k = (ses(m), c); vol[k] = vol.get(k, 0) + (r.get('volume') or 0)
+    pick = {}
+    for (sid, c), v in vol.items():
+        if v > pick.get(sid, (None, -1))[1]:
+            pick[sid] = (c, v)
+    bars = {}
+    for r in rows:
+        c = str(r.get('contract_date') or '').strip(); t = str(r.get('date')); p = r.get('price'); v = r.get('volume') or 0
+        if t[:10] != x or not p or v <= 0:
+            continue
+        m = int(t[11:13]) * 60 + int(t[14:16])
+        if pick.get(ses(m), (None,))[0] != c:
+            continue
+        tm = m0 + m; p = float(p); a = bars.get(tm)
+        if a is None:
+            bars[tm] = [p, p, p, p, v]
+        else:
+            if p > a[1]: a[1] = p
+            if p < a[2]: a[2] = p
+            a[3] = p; a[4] += v
+    for t in [t for t in TXM if m0 <= t < m0 + 1440]:
+        del TXM[t]
+    for t, a in bars.items():
+        a[4] = (a[4] + 1) // 2           # 逐筆量記兩次
+        TXM[t] = a
+    log('台指期', x, '逐筆', len(rows), '分鐘', len(bars), {k: v[0] for k, v in pick.items()})
+    return len(bars)
 
 
 def process_day(x):
@@ -343,6 +392,15 @@ def save_all(index):
         with open(sfile(code, K, cp), 'w') as f:
             json.dump({'m': m, 'oi': oi}, f, separators=(',', ':'))
         nf += 1; nb += len(m)
+    shutil.rmtree(os.path.join(WORK, 'tx'), ignore_errors=True)
+    os.makedirs(os.path.join(WORK, 'tx'), exist_ok=True)
+    by = {}
+    for t in sorted(TXM):
+        mo = datetime.datetime.fromtimestamp(t * 60, datetime.timezone.utc).strftime('%Y-%m')
+        by.setdefault(mo, []).append([t] + TXM[t])
+    for mo, bars in by.items():
+        json.dump({'cols': ['分鐘（台灣時間當成 UTC）', '開', '高', '低', '收', '量'], 'bars': bars}, open(os.path.join(WORK, 'tx', mo + '.json'), 'w'), separators=(',', ':'))
+    index['txMonths'] = sorted(by)
     json.dump(index, open(os.path.join(WORK, 'index.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
     json.dump(META, open(os.path.join(WORK, 'meta.json'), 'w'), ensure_ascii=False, separators=(',', ':'))
     sz = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(WORK) for f in fs)
@@ -397,6 +455,23 @@ def main():
             add_oi(min(done), max(done))
         except RuntimeError as e:
             log(str(e))
+    # 台指期 1 分 K：最近幾天一定重抓，之前沒做過的補（第一次會往回補 BACKFILL 天）
+    txd = META.setdefault('txd', {})
+    tx_back = max(back, int(os.environ.get('TX_BACKFILL_DAYS', '0') or 0))
+    tx_days = [(today - datetime.timedelta(days=k)).isoformat() for k in range(tx_back, -1, -1)]
+    for x in tx_days:
+        if not has_session(x) and x <= (CAL[-1] if CAL else ''):
+            continue
+        if x not in recent and txd.get(x):
+            continue
+        if (time.time() - T0) / 60 > MAX_MIN:
+            log('到時間上限，台指期下次接著補'); break
+        try:
+            nb = process_tx(x)
+        except RuntimeError as e:
+            log(str(e)); break
+        if nb is not None and x < (today - datetime.timedelta(days=1)).isoformat():
+            txd[x] = 1
     idx = build_index()
     save_all(idx)
     log('FinMind 用了', NREQ[0], '次；花', round((time.time() - T0) / 60, 1), '分鐘')
