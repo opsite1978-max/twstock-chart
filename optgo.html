@@ -96,6 +96,31 @@ table.t9 tr:hover td{filter:brightness(1.15)}
 .pick-ctl input{flex:1;min-width:0;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0 10px;font-family:var(--num);font-size:14px}
 .tscroll{max-height:66vh;overflow:auto;border-radius:6px;border:1px solid var(--line)}
 .more-btn{margin-top:6px;width:100%;border:1px dashed var(--line);background:none;border-radius:8px;padding:7px;font-size:13px;color:var(--muted);cursor:pointer}
+.best{display:block;width:100%;text-align:left;color:var(--text);border:1.5px solid var(--gold);background:var(--goldbg);border-radius:12px;padding:10px 14px 12px;margin:2px 0 10px;cursor:pointer;font:inherit}
+.best:hover{filter:brightness(1.08)}
+.best .t{font-size:12px;color:var(--gold);font-weight:700;letter-spacing:.06em}
+.best .row{display:flex;align-items:baseline;gap:8px;margin-top:2px;flex-wrap:wrap}
+.best .k{font-family:var(--num);font-size:32px;font-weight:800;line-height:1.1}
+.best .nm{font-size:14px}
+.best .p{margin-left:auto;font-family:var(--num);font-size:28px;font-weight:700}
+.best .plan{font-size:13px;margin-top:6px;line-height:1.6}
+.best .plan b{font-family:var(--num);font-size:15px}
+.pk{display:flex;flex-wrap:wrap;gap:4px 5px;margin-top:5px}
+.pk span{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pk span.y{border-color:var(--gold);color:var(--gold)}
+.gb{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;margin-right:4px;vertical-align:1px;white-space:nowrap;font-family:var(--zh)}
+.gb.a{background:var(--gold);color:#1a1300}
+.gb.b{border:1px solid var(--muted);color:var(--text)}
+.gb.c{border:1px dashed var(--muted);color:var(--muted)}
+.prep{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.prep h3{font-size:13px;font-weight:600;margin:6px 0 2px;color:var(--muted)}
+.pickbar{margin:0 18px 8px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.pickbar.a{border-color:var(--gold);background:var(--goldbg)}
+.pickbar.c{border-style:dashed}
+.pickbar .why{color:var(--muted)}
+.pickbar .alt{margin-left:auto;border:1px solid var(--gold);color:var(--gold);background:none;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:var(--zh)}
+.pickbar .alt b{font-family:var(--num)}
+table.t9 td.star::before{content:'★';font-size:10px;color:var(--gold);margin-right:2px;vertical-align:3px}
 .scan-btn{float:right;border:1px solid #ff6b1a;color:#ff6b1a;background:none;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:-3px}
 .scan-btn:hover{background:#ff6b1a22}
 .scanbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:4vh 12px}
@@ -177,7 +202,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/06 23:10・即時</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 09:00・選檔推薦</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optk.html">選擇權K線（舊版）</a>
     <a href="./">看盤</a>
@@ -192,8 +217,8 @@ main{display:flex;flex-direction:column;min-width:0}
 <div class="wrap">
   <aside>
     <section class="sec s1">
-      <h2>現在符合進場條件 <button class="scan-btn" id="scanOpen" title="一次掃過全部未結算的週選、月選，找出最近主圖出現過發動或進場箭頭的">🔍 箭頭搜尋</button></h2>
-      <p class="hint">順著台指期趨勢的價外選擇權，離到期 24 小時以上，依今天成交量排序</p>
+      <h2>選檔推薦 <button class="scan-btn" id="scanOpen" title="一次掃過全部未結算的週選、月選，找出最近主圖出現過發動或進場箭頭的">🔍 箭頭搜尋</button></h2>
+      <p class="hint">台指期條件成立時，從全部週選、月選裡挑最好下手的那一檔。<span class="gb a">★ 首選</span>＝價外距離剛好、剩 2～7 天到期（回測平均每筆 +13.7%，其他 +5.4%）</p>
       <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cheap"> 也列 30 點以下的（回測沒有包含，風險比較高）</label>
       <div class="cands" id="cands"><div class="empty">讀取中…</div></div>
     </section>
@@ -210,7 +235,7 @@ main{display:flex;flex-direction:column;min-width:0}
       <div class="tscroll" id="tscroll"><table class="t9"><thead><tr>
         <th class="ch">未平倉</th><th class="ch">量</th><th class="ch">漲跌</th><th class="ch">買權</th><th>履約價</th><th class="ph">賣權</th><th class="ph">漲跌</th><th class="ph">量</th><th class="ph">未平倉</th>
       </tr></thead><tbody id="tbody"></tbody></table></div>
-      <p class="hint" style="margin-top:8px">金框＝現在符合進場條件；淡黃底＝價內；點買權或賣權那一邊看那一檔的圖。</p>
+      <p class="hint" style="margin-top:8px">金框＝現在符合進場條件；<span class="gold">★</span>＝選檔首選（價外距離剛好、剩 2～7 天）；淡黃底＝價內；點買權或賣權那一邊看那一檔的圖。</p>
     </section>
   </aside>
 
@@ -222,9 +247,11 @@ main{display:flex;flex-direction:column;min-width:0}
       <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
     </div>
     <div class="now" id="now"></div>
+    <div class="pickbar" id="pickbar" style="display:none"></div>
     <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
     <div class="stats" id="stats"></div>
     <div class="rule">
+      <b class="gold">★ 選檔評等</b>：時機對了還要選對檔。回測 8/5～11/6、台指期條件成立的時候，<b>價外距離剛好</b>（大約 0.5～1.5 個標準差，畫面上會依到期天數換算成點數，例如剩 4 天約價外 500～1,600 點）、<b>剩 2～7 天到期</b>的「首選」，去掉重複訊號後平均每筆：前段 +7.4%、後段 +19.6%（先漲 50% 的比例 35%、52%）；同樣規則下的其他檔 +4.7%、+6.3%。權利金高低本身影響不大。跟同一時間的其他選擇比，權利金不到 30 點少 5% 左右、太價外少 4～7%、剩不到 1 天也比較差；14 天以上的月選 4 小時內很少漲到 +50%。<br>
       <b>主圖箭頭</b>：<b style="color:#ff6b1a">大的橘色「發動」</b>＝進場條件成立，而且這一檔的動能（12、26 根均線差）剛從負翻正、台指期不在擠壓；小箭頭＝只有進場條件成立。最底下的<b class="gold">金色條</b>＝台指期條件成立的時間。✓＝之後漲到 +50%、✗＝先跌到 −30% 停損。<br>
       <b class="gold">勝算分數</b>（0～100，最上面的附圖）：把台指期趨勢方向和強弱、推力、這一檔的動能、拉回位置（趨勢震盪）、台指期波動、價內外、離到期時間、價位，一起交給 10/1～10/19 的資料學出每一項的份量，算出這一根之後「先漲 50% 還是先跌 30%」的預期，再換成 0～100。
       <b>10/20 以後沒看過的資料</b>：0～20 平均每筆 −6.8%、20～40 −6.9%、40～60 −3.6%、60～80 +0.2%、80～90 +1.9%、<b class="gold">90 以上約 +5%</b>（先漲 50% 約 26%、先跌 30% 約 29%）。<b>金底＝90 以上（高勝算）、淡金＝80～90、灰底＝40 以下（不利，最好別買）</b>。
@@ -386,7 +413,7 @@ function quote(c, r, cp){
   if (!bars || !bars.length) return h;
   const add = bars.filter(b => b[0] > (h.t || 0)); if (!add.length) return h;
   const last = add[add.length - 1], lastTd = D.idx.lastTd, ltd = tradeDay(last[0]);
-  const q = Object.assign({}, h, { c:last[4], live:true });
+  const q = Object.assign({}, h, { c:last[4], live:true, t:last[0] });
   if (ltd === lastTd) q.v = (h.v || 0) + add.reduce((s, b) => s + b[5], 0);
   else { q.v = add.filter(b => tradeDay(b[0]) === ltd).reduce((s, b) => s + b[5], 0); q.b = h.sd === lastTd && h.st > 0 ? h.st : h.c; }
   q.ch = q.b != null ? Math.round((q.c - q.b) * 100) / 100 : null;
@@ -418,32 +445,87 @@ function renderStatus(){
   let lastOk = -1; for (let k = i; k >= 0; k--) if (S.adx[k] >= R.adx && S.dir[k] * S.mom[k] >= R.mom){ lastOk = k; break; }
   return { d, ok:a >= R.adx && mo >= R.mom, F, lastOk };
 }
+/* ═════════════ 選檔評等 ═════════════
+   回測（8/5～11/6，台指期條件成立的時候）：同一時間、同一方向的候選裡比較，
+   價外「剛好」（約 0.5～1.5 個標準差）、剩 2～7 天的，前後兩段資料都比較好（權利金高低影響不大）；
+   權利金不到 30、剩不到 1 天、太價外、14 天以上的都比較差。 */
+const PICK = { sig:0.25, zb:[0, 0.5, 1, 1.5, 2, 3], tb:[24, 48, 72, 120, 168, 336],
+  w:{ z:[-0.0036, 0.0093, 0.0066, -0.0009, -0.008, -0.0084], tte:[-0.0134, 0.0038, 0.005, 0.0091, -0.0059, -0.0038] } };
+const binOf = (e, x) => { let k = 0; for (let i = 0; i < e.length; i++) if (x >= e[i]) k = i; return k; };
+const GRADE = { A:['首選', 'a'], B:['可以', 'b'], C:['避開', 'c'] }, GORD = { A:0, B:1, C:2 };
+function pickInfo(c, K, cp, px, F, t){
+  const want = cp === 'C' ? 1 : -1, tteH = (expMin(c) - t) / 60, pts = want * (K - F), sd = PICK.sig * Math.sqrt(Math.max(tteH, 1) / 8760);
+  const z = pts / F / sd, lo = Math.round(0.5 * sd * F / 50) * 50, hi = Math.round(1.5 * sd * F / 50) * 50, bad = [];
+  if (tteH < 24) bad.push('剩不到 1 天到期');
+  if (!(px >= R.px)) bad.push('權利金不到 30 點');
+  if (pts <= 0) bad.push('價內');
+  else if (z >= 2) bad.push('太價外');
+  if (tteH >= 336) bad.push('到期還很久，4 小時內很難漲 50%');
+  const okZ = pts > 0 && z >= 0.5 && z < 1.5, okT = tteH >= 48 && tteH < 168;
+  const g = bad.length ? 'C' : okZ && okT ? 'A' : 'B';
+  const score = pts > 0 ? okZ + okT + PICK.w.z[binOf(PICK.zb, z)] + PICK.w.tte[binOf(PICK.tb, tteH)] : -1;
+  const zTxt = pts <= 0 ? '價內' : z < 0.5 ? '太靠近' : z < 1.5 ? '剛好' : z < 2 ? '偏遠' : '太遠';
+  const checks = [
+    [okZ, (pts > 0 ? '價外 ' : '價內 ') + fmtN(Math.abs(Math.round(pts))) + ' 點・' + zTxt + '（理想 ' + fmtN(lo) + '～' + fmtN(hi) + '）'],
+    [okT, '剩 ' + (tteH < 24 ? Math.max(0, Math.round(tteH)) + ' 小時' : (tteH / 24).toFixed(1) + ' 天') + '（理想 2～7 天）'],
+    [null, '權利金 ' + fmtP(px) + ' 點＝每口 ' + fmtN(Math.round(px * 50)) + ' 元' + (px < R.px ? '（太便宜）' : '')]];
+  return { g, score, z, tteH, pts, bad, checks, lo, hi };
+}
+const gBadge = g => '<span class="gb ' + GRADE[g][1] + '">' + (g === 'A' ? '★ ' : '') + GRADE[g][0] + '</span>';
+const gChecks = P => '<span class="pk">' + P.checks.map(([ok, x]) => '<span class="' + (ok ? 'y' : '') + '">' + (ok == null ? '' : ok ? '✓ ' : '✗ ') + x + '</span>').join('') + '</span>';
+// 某一個方向，全部契約裡由好到差排
+async function rankPicks(want, F, t, minPx){
+  const cp = want > 0 ? 'C' : 'P', out = [];
+  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - t >= R.tte);
+  await Promise.all(cs.map(c => loadLive(c.code)));
+  const last = optLast();
+  for (const c of cs) for (const r of c.rows){
+    if (want * (r.k - F) <= 0) continue;
+    const q = quote(c, r, cp); if (!(q.c >= (minPx || 0.1)) || !q.v) continue;
+    out.push({ c, k:r.k, cp, q, P:pickInfo(c, r.k, cp, q.c, F, t), otm:want * (r.k - F) / F, old:last - (q.t || 0) > 60 });
+  }
+  // 首選 → 成交價不舊 → 量夠 → 分數 → 量
+  out.sort((a, b) => GORD[a.P.g] - GORD[b.P.g] || a.old - b.old || ((a.q.v || 0) < 10) - ((b.q.v || 0) < 10) || b.P.score - a.P.score || (b.q.v || 0) - (a.q.v || 0));
+  return out;
+}
+const fAt = t => { const U = TX5.U; let lo = 0, hi = U.length - 1; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (U[m].t <= t) lo = m; else hi = m - 1; } return U[lo].c; };
+const pickLabel = x => '<span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span>';
+
 let candAll = false;
 $('cheap') && ($('cheap').onchange = e => { UI.cheap = e.target.checked; saveUI(); renderCands(ST); renderPicker(ST); });
 async function renderCands(st){
   const box = $('cands'), now = nowMin();
+  const candBtn = (x, i, grp) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-g="' + grp + '" data-i="' + i + '">' +
+    pickLabel(x) + '<span class="c">' + gBadge(x.P.g) + shortLabel(x.c) + ' ' + (x.cp === 'C' ? '買權' : '賣權') + '</span>' +
+    '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + fmtN(Math.round(x.P.pts)) + ' 點・剩 ' + (x.P.tteH / 24).toFixed(1) + ' 天・今天 ' + fmtN(x.q.v) + ' 口' +
+    (x.P.bad.length ? '・' + x.P.bad.join('、') : (x.q.v || 0) < 10 ? '・量少' : '') + (x.old ? '・<b>最後成交 ' + hm(x.q.t).split(" ")[1] + '，價格可能已經變了</b>' : '') + '</span></button>';
+  const G = {};
+  const bind = () => box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const x = G[b.dataset.g][+b.dataset.i]; select(x.c.code, x.k, x.cp); });
   if (!st.ok){
-    box.innerHTML = '<div class="empty">現在沒有符合的。台指期要「趨勢強度 30 以上、而且還在往同方向推」才進場；盤整時買選擇權，時間價值會一直流失。' +
-      (st.lastOk >= 0 ? '<br>上一次符合：' + hm(TX5.U[st.lastOk].t) + '（' + (TX5.dir[st.lastOk] > 0 ? '多方' : '空方') + '）' : '') + '</div>';
-    return;
+    // 還沒成立：先把兩個方向的首選準備好
+    const [pc, pp] = await Promise.all([rankPicks(1, st.F, now, R.px), rankPicks(-1, st.F, now, R.px)]);
+    G.c = pc.filter(x => x.P.g === 'A').slice(0, 2); G.p = pp.filter(x => x.P.g === 'A').slice(0, 2);
+    box.innerHTML = '<div class="empty">現在台指期條件還沒成立，<b>先不要進場</b>。要「趨勢強度 30 以上、而且還在往同方向推」才買；盤整時買選擇權，時間價值會一直流失。' +
+      (st.lastOk >= 0 ? '<br>上一次成立：' + hm(TX5.U[st.lastOk].t) + '（' + (TX5.dir[st.lastOk] > 0 ? '多方' : '空方') + '）' : '') + '</div>' +
+      '<div class="prep"><h3>先準備：如果出現<b class="bull">多方</b>箭頭，先看</h3>' + (G.c.map((x, i) => candBtn(x, i, 'c')).join('') || '<div class="empty">目前沒有首選的買權</div>') +
+      '<h3>如果出現<b class="bear">空方</b>箭頭，先看</h3>' + (G.p.map((x, i) => candBtn(x, i, 'p')).join('') || '<div class="empty">目前沒有首選的賣權</div>') +
+      '<div class="empty">價格會變，條件成立那時這裡會自動換成當下最好的。</div></div>';
+    bind(); return;
   }
-  const cp = st.d > 0 ? 'C' : 'P', list = [];
-  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - now >= R.tte);   // 離到期 24 小時以上（已結算的自然不會列）
-  await Promise.all(cs.map(c => loadLive(c.code)));
-  for (const c of cs) for (const r of c.rows){
-    const q = quote(c, r, cp); if (!(q.c >= (UI.cheap ? 0.1 : R.px)) || !q.v) continue;
-    const otm = st.d * (r.k - st.F) / st.F; if (otm <= 0) continue;
-    list.push({ c, k:r.k, cp, q, otm });
-  }
-  list.sort((a, b) => (b.q.v || 0) - (a.q.v || 0));
-  if (!list.length){ box.innerHTML = '<div class="empty">台指期條件符合，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
-  const shown = candAll ? list : list.slice(0, 12);
-  box.innerHTML = shown.map((x, i) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-i="' + i + '">' +
-    '<span class="k ' + (cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span><span class="c">' + shortLabel(x.c) + ' ' + (cp === 'C' ? '買權' : '賣權') + '</span>' +
-    '<span class="p">' + fmtP(x.q.c) + '</span><span class="s n">價外 ' + (x.otm * 100).toFixed(1) + '%・今天 ' + fmtN(x.q.v) + ' 口' + (x.q.c < R.px ? '・30 點以下（未回測）' : '') + '</span></button>').join('');
-  if (list.length > 12) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 12 檔' : '顯示全部 ' + list.length + ' 檔') + '</button>');
+  const cp = st.d > 0 ? 'C' : 'P';
+  const list = (await rankPicks(st.d, st.F, now, UI.cheap ? 0.1 : R.px));
+  if (!list.length){ box.innerHTML = '<div class="empty">台指期條件成立，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
+  const top = list[0], rest = list.slice(1); G.t = [top]; G.r = rest;
+  const P = top.P, px = top.q.c;
+  const best = '<button class="best" data-g="t" data-i="0"><span class="t">' + (P.g === 'A' ? '★ 現在最好的選擇' : '現在相對最好的（沒有完全符合首選的）') + '・' + (cp === 'C' ? '多方找買權' : '空方找賣權') + '</span>' +
+    '<span class="row">' + pickLabel(top).replace('class="k', 'class="k') + '<span class="nm">' + (cp === 'C' ? '買權' : '賣權') + '<br><span class="muted">' + shortLabel(top.c) + '</span></span><span class="p">' + fmtP(px) + '</span></span>' +
+    gChecks(P) +
+    '<span class="plan">照回測規則：進場 <b>' + fmtP(px) + '</b> → 目標 <b class="gold">' + fmtP(px * 1.5) + '</b>（+50%）、停損 <b>' + fmtP(px * 0.7) + '</b>（−30%），最多抱 4 小時。今天 ' + fmtN(top.q.v) + ' 口' + ((top.q.v || 0) < 10 ? '（量少，掛單小心）' : '') + (top.old ? '。<b>最後成交在 ' + hm(top.q.t) + '，價格可能已經變了，下單前先看報價</b>' : '') + '</span></button>';
+  const shown = candAll ? rest : rest.slice(0, 10);
+  box.innerHTML = best + shown.map((x, i) => candBtn(x, i, 'r')).join('');
+  if (rest.length > 10) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 10 檔' : '顯示全部 ' + rest.length + ' 檔') + '</button>');
   const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
-  box.querySelectorAll('.cand').forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; select(x.c.code, x.k, x.cp); });
+  bind();
 }
 function codeChip(c){
   const m = c.code.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/), e = (c.exp || '').slice(5).replace('-', '/');
@@ -474,11 +556,12 @@ function renderPicker(st){
   $('tbody').innerHTML = vis.map(r => {
     const C = r.C, P = r.P, expired = !(expMin(c) > now);
     const okC = !expired && st.ok && st.d > 0 && longOK && r.k > F && C.c >= minPx && C.v, okP = !expired && st.ok && st.d < 0 && longOK && r.k < F && P.c >= minPx && P.v;
+    const stC = !expired && C.c > 0 && C.v && pickInfo(c, r.k, 'C', C.c, F, now).g === 'A' ? ' star' : '', stP = !expired && P.c > 0 && P.v && pickInfo(c, r.k, 'P', P.c, F, now).g === 'A' ? ' star' : '';
     const sc = c.code === UI.code && r.k === UI.K && UI.cp === 'C' ? ' sel' : '', sp = c.code === UI.code && r.k === UI.K && UI.cp === 'P' ? ' sel' : '';
     return '<tr class="' + [r.k === atmK ? 'atm' : '', r.k < F ? 'itmc' : '', r.k > F ? 'itmp' : ''].join(' ') + '" data-k="' + r.k + '">' +
-      cell(fmtN(C.oi), 'c' + sc) + cell(fmtN(C.v), 'c' + sc) + cell(fch(C.ch), 'c' + sc + chc(C.ch)) + cell(fmtP(C.c), 'c px' + sc + (okC ? ' q' : '')) +
+      cell(fmtN(C.oi), 'c' + sc) + cell(fmtN(C.v), 'c' + sc) + cell(fch(C.ch), 'c' + sc + chc(C.ch)) + cell(fmtP(C.c), 'c px' + sc + stC + (okC ? ' q' : '')) +
       '<td class="k">' + r.k + '</td>' +
-      cell(fmtP(P.c), 'p px' + sp + (okP ? ' q' : '')) + cell(fch(P.ch), 'p' + sp + chc(P.ch)) + cell(fmtN(P.v), 'p' + sp) + cell(fmtN(P.oi), 'p' + sp) + '</tr>'; }).join('')
+      cell(fmtP(P.c), 'p px' + sp + stP + (okP ? ' q' : '')) + cell(fch(P.ch), 'p' + sp + chc(P.ch)) + cell(fmtN(P.v), 'p' + sp) + cell(fmtN(P.oi), 'p' + sp) + '</tr>'; }).join('')
     || '<tr><td colspan="9" class="na" style="text-align:center;padding:20px">沒有符合的履約價</td></tr>';
   $('tbody').querySelectorAll('tr[data-k]').forEach(tr => tr.onclick = e => {
     const td = e.target.closest('td'), K = +tr.dataset.k;
@@ -584,12 +667,15 @@ function legend(b){
   $('lg').innerHTML = s;
 }
 // 之後的結果：先漲 50%、先跌 30%、或 4 小時盤中到
+let OLC = { t:0, at:0 };
+const optLastC = () => { if (Date.now() - OLC.at > 30e3) OLC = { t:optLast(), at:Date.now() }; return OLC.t; };
 function outcome(B, i, j, ex){
   const px = B[i].c, end = j + R.horizon < TX5.U.length ? TX5.U[j + R.horizon].t : Infinity;
   let res = 'open', fin = px;
   for (let k = i + 1; k < B.length; k++){ const x = B[k]; if (x.t > end || x.t >= ex){ res = 'time'; break; }
     fin = x.c; if (x.l <= px * (1 + R.loss)){ res = 'loss'; break; } if (x.h >= px * (1 + R.win)){ res = 'win'; break; } }
-  if (res === 'open' && end !== Infinity && B[B.length - 1].t > end) res = 'time';
+  // 4 小時到了（以台指期 K 棒算），而且選擇權資料也已經涵蓋到那時候：就算這一檔後來沒成交也算時間到
+  if (res === 'open' && end !== Infinity && (B[B.length - 1].t > end || optLastC() >= end)) res = 'time';
   const ret = res === 'win' ? R.win : res === 'loss' ? R.loss : fin / px - 1;
   return { px, res, ret, txt:res === 'win' ? '之後漲到 +50%' : res === 'loss' ? '先碰到 −30% 停損' : res === 'time' ? '4 小時到，' + (ret >= 0 ? '+' : '') + (ret * 100).toFixed(0) + '%' : '進行中' };
 }
@@ -725,6 +811,19 @@ async function renderChart(keep){
   nowEl.classList.toggle('show', !!(okNow || open));
   nowEl.innerHTML = open ? (open.kind === 'fire' ? '發動訊號進行中：' : '進場訊號進行中：') + hm(open.t) + ' 在 <b>' + fmtP(open.px) + '</b> 進場，目標 <b>' + fmtP(open.px * 1.5) + '</b>、停損 <b>' + fmtP(open.px * 0.7) + '</b>，最晚 4 小時盤中出場'
     : okNow ? '這一檔現在符合進場條件（價格 <b>' + fmtP(last.c) + '</b>）：目標 <b>' + fmtP(last.c * 1.5) + '</b>、停損 <b>' + fmtP(last.c * 0.7) + '</b>' : '';
+  const pb = $('pickbar');
+  if (last && expMin(c) > nowMin()){
+    const PI = pickInfo(c, UI.K, UI.cp, last.c, F, nowMin());
+    pb.className = 'pickbar ' + GRADE[PI.g][1]; pb.style.display = '';
+    pb.innerHTML = '<span>選檔 ' + gBadge(PI.g) + '</span>' + gChecks(PI) + (PI.bad.length ? '<span class="why">要避開：' + PI.bad.join('、') + '</span>' : '');
+    if (PI.g !== 'A'){
+      rankPicks(want, F, nowMin(), R.px).then(L0 => {
+        const alt = L0.find(x => x.P.g === 'A' && !x.old && (x.q.v || 0) >= 10); if (!alt || UI.code !== c.code || UI.K == null) return;
+        pb.insertAdjacentHTML('beforeend', '<button class="alt">改看同方向的 ★ 首選：<b>' + alt.k + '</b> ' + (alt.cp === 'C' ? '買權' : '賣權') + '（' + shortLabel(alt.c) + '，' + fmtP(alt.q.c) + '）</button>');
+        pb.querySelector('.alt').onclick = () => select(alt.c.code, alt.k, alt.cp);
+      });
+    }
+  } else pb.style.display = 'none';
   const done = sig.filter(s => s.res !== 'open'), w = done.filter(s => s.res === 'win').length, l = done.filter(s => s.res === 'loss').length;
   const avg = done.length ? done.reduce((a, s) => a + s.ret, 0) / done.length : NaN;
   const reasons = [];
@@ -827,13 +926,13 @@ async function scanRun(quiet){
       if (f.length || e.length){
         const lastF = f[f.length - 1], lastE = e[e.length - 1], pick = lastF || lastE;
         const m = minutes(x.c.code, x.k, x.cp), now = m.length ? m[m.length - 1][4] : pick.px;
-        out.push({ c:x.c, k:x.k, cp:x.cp, s:pick, nf:f.length, ne:e.length, now, v:x.q.v || 0 }); }
+        out.push({ c:x.c, k:x.k, cp:x.cp, s:pick, nf:f.length, ne:e.length, now, v:x.q.v || 0, P:pickInfo(x.c, x.k, x.cp, pick.px, fAt(pick.t), pick.t + 5) }); }
       done++; if (done % 4 === 0 || done === todo.length) prog('掃描 ' + done + ' / ' + todo.length + ' 檔・找到 ' + out.length + ' 檔', done / todo.length);
     };
     const q = todo.slice();
     await Promise.all(Array.from({ length:8 }, async () => { while (q.length) await work(q.shift()); }));
     // 還在進行中的排最前面（還能參考），再來發動、越新越前面
-    out.sort((a, b) => (b.s.res === 'open') - (a.s.res === 'open') || (b.s.kind === 'fire') - (a.s.kind === 'fire') || b.s.t - a.s.t || b.v - a.v);
+    out.sort((a, b) => (b.s.res === 'open') - (a.s.res === 'open') || (b.s.kind === 'fire') - (a.s.kind === 'fire') || GORD[a.P.g] - GORD[b.P.g] || b.s.t - a.s.t || b.v - a.v);
     SCAN.res = { list:out, t0, tEnd, sides, n:todo.length }; SCAN.at = Date.now(); SCAN.key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
     prog(''); scanRender();
   } catch(err){ prog('搜尋失敗，請再按一次「開始搜尋」'); console.error(err); }
@@ -849,10 +948,10 @@ function scanRender(){
   if (!R0.list.length){ body.innerHTML = head + '<div class="empty" style="padding:12px 0">這段時間沒有選擇權出現' + ((UI.scK || 'all') === 'fire' ? '發動' : '發動或進場') + '箭頭（台指期條件成立，但沒有 30 點以上、離到期 24 小時以上的價外選擇權符合）。</div>'; return; }
   const st = s => s.res === 'win' ? '<span class="gold">✓ 漲到 +50%</span>' : s.res === 'loss' ? '<span class="muted">✗ 停損</span>' : s.res === 'time' ? '4 小時到 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' :
     '<span style="color:#ff6b1a;font-weight:700">進行中</span><div class="sub">目標 ' + fmtP(s.px * 1.5) + '・停損 ' + fmtP(s.px * 0.7) + '</div>';
-  body.innerHTML = head + '<table class="sr"><thead><tr><th>箭頭・時間</th><th>選擇權</th><th style="text-align:right">箭頭價</th><th style="text-align:right">現在</th><th>結果</th><th class="hide-m">這段時間</th></tr></thead><tbody>' +
+  body.innerHTML = head + '<table class="sr"><thead><tr><th>箭頭・時間</th><th>選擇權</th><th>選檔</th><th style="text-align:right">箭頭價</th><th style="text-align:right">現在</th><th>結果</th><th class="hide-m">這段時間</th></tr></thead><tbody>' +
     R0.list.map((x, i) => { const r = x.now / x.s.px - 1;
       return '<tr data-i="' + i + '"><td><span class="tag ' + (x.s.kind === 'fire' ? 'f">發動' : 'e">進場') + '</span><div class="sub n" style="text-align:left;margin-top:3px">' + hm(x.s.t) + '</div></td>' +
-        '<td><span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span> ' + (x.cp === 'C' ? '買權' : '賣權') + '<div class="sub">' + shortLabel(x.c) + '</div></td>' +
+        '<td><span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span> ' + (x.cp === 'C' ? '買權' : '賣權') + '<div class="sub">' + shortLabel(x.c) + '</div></td><td>' + gBadge(x.P.g) + '</td>' +
         '<td class="n">' + fmtP(x.s.px) + '</td><td class="n"><b>' + fmtP(x.now) + '</b><div class="sub ' + (r >= 0 ? 'bull' : 'bear') + '">' + (r >= 0 ? '+' : '') + (r * 100).toFixed(0) + '%</div></td>' +
         '<td style="white-space:normal">' + st(x.s) + '</td><td class="hide-m sub">' + (x.nf ? '發動 ' + x.nf + ' 次' : '') + (x.nf && x.ne ? '・' : '') + (x.ne ? '進場 ' + x.ne + ' 次' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
   body.querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { const x = R0.list[+tr.dataset.i]; scanClose(); select(x.c.code, x.k, x.cp); });
