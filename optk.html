@@ -44,6 +44,8 @@
   .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn{display:inline-flex;align-items:center;justify-content:center;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);font-size:13px;cursor:pointer;white-space:nowrap}
   .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.sp{border-color:var(--gold);color:var(--gold);font-weight:700}
+  .btn.sp.on{background:var(--gold);border-color:var(--gold);color:#1b1b1b}
   .btn:disabled{opacity:.45;cursor:default}
   .seg{display:inline-flex}
   .seg .btn{border-radius:0;margin-left:-1px}
@@ -181,6 +183,10 @@
       <button class="btn" id="maBtn" title="5、20 根均線">均線</button>
       <button class="btn" id="oiBtn" title="每天收盤後的未平倉量（日K、週K、月K 才顯示）">未平倉</button>
       <button class="btn" id="bbBtn" title="布林大底（和戰神看盤相同）：大底能量 0～100＝跌到 60 根布林下軌外多深 × 20 根通道寬度在過去 750 根的百分位；50 以上＝大底區、80＝極端；W底＝能量背離後突破。至少要 160 根 K 棒">布林大底</button>
+      <button class="btn sp" id="spBtn" title="超級趨勢波動（選擇權買方專用，兩個副圖）：
+【趨勢】用台指期本身的 K 線算（不受選擇權 K 棒太少影響）：柱子方向＝超級趨勢（真實波幅 10 根 × 3）多空，柱子高度＝平均趨向指標（趨勢強弱），25 以上才算有趨勢；轉多／轉空＝超級趨勢翻轉。
+【波動】紫線＝這一檔選擇權每根 K 棒的隱含波動率（用台指期價格、履約價、到期時間反推）；橘虛線＝台指期近 20 根的實際波動（年化）。隱含遠高於實際＝保費偏貴；隱含快速下滑＝保費在洩氣。擠壓＝台指期波動縮到近 120 根最低 15%，常是大行情前兆。
+【買方提示】把方向、趨勢強弱、保費貴不貴合成一句話（不是保證，只是幫你避開逆風和盤整）。">超級趨勢波動</button>
       <button class="btn" id="bdBtn" title="神奇波段（和戰神看盤相同）：短波線＝(2×收+高+低)÷4 在 34 根高低區間的位置（13 根平均），在訊號線上紅、下綠；長波線往上藍、往下橘；紫色＝短波線過去 250 根的 90%／10% 動態上下界。底＝短波線往上穿訊號線、近 5 根曾低於下界、收盤突破前一根高點；頂＝反過來；頂★＝急漲爆量後轉弱。要約 200 根 K 棒才有上下界和訊號">神奇波段</button>
       <button class="btn" id="lxBtn" title="尋龍底（和戰神看盤相同）：30 根新低時的龍穴能量（黃＞5千、綠＞1萬、紅＞5萬，對數刻度）；龍穴＝能量結束後 3 根內突破前高、尋龍底★＝之前有急跌或跌深、真龍★★＝急跌後而且當根主動買盤強">尋龍底</button>
       <button class="btn" id="favBtn" title="加入／移除自選">☆ 自選</button>
@@ -201,7 +207,7 @@ const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
 const L = LightweightCharts;
 
 /* ═════════════ 設定（存在這台裝置） ═════════════ */
-const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, bd:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
+const UI = Object.assign({ code:null, K:null, view:'both', tf:'5', sess:'all', theme:'dark', ma:false, oi:true, bb:false, lx:false, bd:false, sp:false, range:15, onlyTraded:false, fav:[], sideCollapsed:false },
   (() => { try { return JSON.parse(localStorage.getItem('optk:ui') || '{}') || {}; } catch(e){ return {}; } })());
 function saveUI(){ try { localStorage.setItem('optk:ui', JSON.stringify(UI)); } catch(e){} }
 
@@ -461,7 +467,7 @@ function buildCharts(){
   CH.list = [];
   const box = $('charts'); box.innerHTML = '';
   box.classList.toggle('two', UI.view === 'both');
-  box.classList.toggle('ind', !!(UI.bb || UI.lx || UI.bd));
+  box.classList.toggle('ind', !!(UI.bb || UI.lx || UI.bd || UI.sp));
   const up = css('--up'), dn = css('--down');
   for (const side of sides()){
     const el = document.createElement('div'); el.className = 'cbox';
@@ -469,18 +475,33 @@ function buildCharts(){
     box.appendChild(el);
     const chart = L.createChart(el.querySelector('.cv'), chartOpts());
     const candle = chart.addSeries(L.CandlestickSeries, { upColor:up, downColor:dn, borderUpColor:up, borderDownColor:dn, wickUpColor:up, wickDownColor:dn,
-      priceLineVisible:true, priceLineWidth:1, priceFormat:{ type:'price', precision:1, minMove:0.1 } });
+      priceLineVisible:true, priceLineWidth:1, priceFormat:{ type:'price', precision:1, minMove:0.1 },
+      autoscaleInfoProvider:orig => { const r = orig(); if (r && r.priceRange && r.priceRange.minValue < 0) r.priceRange.minValue = 0; return r; } });
     const vol = chart.addSeries(L.HistogramSeries, { priceFormat:{ type:'volume' }, lastValueVisible:false, priceLineVisible:false }, 1);
-    const indOn = UI.bb || UI.lx || UI.bd;
+    const indOn = UI.bb || UI.lx || UI.bd || UI.sp;
     try { const ps = chart.panes(); ps[0].setStretchFactor(indOn ? 3.4 : 5); ps[1].setStretchFactor(indOn ? 0.7 : 1.2); } catch(e){}
     const ma5 = chart.addSeries(L.LineSeries, { color:'#ffca28', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
     const ma20 = chart.addSeries(L.LineSeries, { color:'#b388ff', lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, visible:UI.ma });
-    const o = { side, chart, candle, vol, ma5, ma20, oi:null, bb:null, lx:null, el, lg:el.querySelector('.lg'), empty:el.querySelector('.empty'), data:[], ind:{} };
+    const o = { side, chart, candle, vol, ma5, ma20, oi:null, bb:null, lx:null, sp:null, el, lg:el.querySelector('.lg'), empty:el.querySelector('.empty'), data:[], ind:{} };
     let pane = 2;
     if (UI.oi && /^[DWM]$/.test(UI.tf)){
       o.oi = chart.addSeries(L.LineSeries, { color:css('--gold'), lineWidth:2, lineType:L.LineType.WithSteps, priceLineVisible:false, lastValueVisible:true,
         priceFormat:{ type:'volume' }, title:'未平倉' }, pane);
       try { chart.panes()[pane].setStretchFactor(indOn ? 0.8 : 1.1); } catch(e){}
+      pane++;
+    }
+    if (UI.sp){
+      const hist = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, title:'台指期趨勢',
+        priceFormat:{ type:'price', precision:0, minMove:1 }, autoscaleInfoProvider:orig => { const r = orig(); const m = Math.max(45, r && r.priceRange ? Math.max(Math.abs(r.priceRange.minValue), Math.abs(r.priceRange.maxValue)) + 6 : 0); return { priceRange:{ minValue:-m, maxValue:m } }; } }, pane);
+      for (const v of [25, -25]) hist.createPriceLine({ price:v, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + '88', lineWidth:1, lineStyle:L.LineStyle.Dotted, axisLabelVisible:false, title:'' });
+      hist.createPriceLine({ price:0, color:(UI.theme === 'light' ? '#5d6676' : '#8a93a6') + '55', lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+      const spA = { hist, mk:L.createSeriesMarkers(hist, []) };
+      try { chart.panes()[pane].setStretchFactor(1.3); } catch(e){}
+      pane++;
+      const iv = chart.addSeries(L.LineSeries, { color:'#c77dff', lineWidth:2, priceLineVisible:false, lastValueVisible:true, title:'隱含波動率', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
+      const rv = chart.addSeries(L.LineSeries, { color:'#ff9100', lineWidth:2, lineStyle:L.LineStyle.Dashed, priceLineVisible:false, lastValueVisible:true, title:'實際波動', priceFormat:{ type:'custom', formatter:v => v.toFixed(0) + '%', minMove:0.1 } }, pane);
+      o.sp = { A:spA, iv, rv, mk:L.createSeriesMarkers(rv, []) };
+      try { chart.panes()[pane].setStretchFactor(1.3); } catch(e){}
       pane++;
     }
     if (UI.bd){
@@ -640,6 +661,101 @@ function calcBD(B){
   }
   return { K, Sg, D3, LB, UB, tag };
 }
+/* ═════════════ 超級趨勢波動：台指期（網站已存的 1 分、5 分資料＋盤中錄影） ═════════════ */
+const UND = { m5:new Map(), m1:new Map(), live:null, liveAt:0 };
+async function fetchJ(url){ try { const r = await fetch(url, { cache:'no-cache' }); return r.ok ? await r.json() : null; } catch(e){ return null; } }
+// 回傳 [[分鐘, 開, 高, 低, 收, 0], ...]（台灣時間當成 UTC 的分鐘數）
+async function loadUnderlying(t0, t1, wantM1){
+  const months = new Set(), days = [];
+  for (let d = Math.floor(t0 / 1440) - 1; d <= Math.floor(t1 / 1440) + 1; d++){ const x = ymd(d); months.add(x.slice(0, 7)); days.push(x); }
+  await Promise.all([...months].map(async m => { const c = UND.m5.get(m);
+    if (c && (Date.now() - c.at < 10 * 60e3 || m < ymd(Math.floor(Date.now() / 6e4 / 1440)).slice(0, 7))) return;
+    const j = await fetchJ('data/force/m5/' + m + '.json?t=' + Math.floor(Date.now() / 600e3));
+    UND.m5.set(m, { at:Date.now(), rows:j ? (j.sessions || []).flatMap(q => q.bars.map(b => [Math.round(b[0] / 60), b[1], b[2], b[3], b[4], 0])) : [] }); }));
+  if (wantM1){
+    const recent = days.slice(-12);
+    await Promise.all(recent.map(async x => { const c = UND.m1.get(x); if (c && (c.done || Date.now() - c.at < 10 * 60e3)) return;
+      const j = await fetchJ('data/force/m1/' + x + '.json?t=' + Math.floor(Date.now() / 600e3)), m0 = Date.parse(x + 'T00:00:00Z') / 6e4;
+      UND.m1.set(x, { at:Date.now(), done:!!(j && j.complete), rows:j && j.bars ? j.bars.map(b => [m0 + b[0], b[1], b[2], b[3], b[4], 0]) : [] }); }));
+  }
+  if (!UND.live || Date.now() - UND.liveAt > 55e3){
+    // 兩個盤中錄影都讀（網站台指期錄影、選擇權錄影裡的台指期），同一分鐘以網站錄影為準
+    const [j, k] = await Promise.all([fetchJ('https://raw.githubusercontent.com/' + REPO + '/live-data/tx_live.json?t=' + minKey()), fetchJ(LIVE + 'tx.json?t=' + minKey())]);
+    UND.liveAt = Date.now();
+    const mp = new Map();
+    if (k && k.bars) for (const b of k.bars) mp.set(b[0], [b[0], b[1], b[2], b[3], b[4], 0]);
+    if (j && j.sessions) for (const q of Object.values(j.sessions)) for (const b of q.bars || []){ const t = Math.round(b[0] / 60); mp.set(t, [t, b[1], b[2], b[3], b[4], 0]); }
+    UND.live = [...mp.values()];
+  }
+  // 合併：5 分 → 有 1 分的日子用 1 分 → 盤中錄影接在最後
+  const byDay = new Map();
+  for (const [m, c] of UND.m5) for (const r of c.rows){ const d = Math.floor(r[0] / 1440); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(r); }
+  if (wantM1) for (const [x, c] of UND.m1) if (c.rows.length) byDay.set(Math.floor(Date.parse(x + 'T00:00:00Z') / 864e5), c.rows);
+  let out = [...byDay.keys()].sort((a, b) => a - b).flatMap(d => byDay.get(d));
+  const last = out.length ? out[out.length - 1][0] : 0;
+  if (UND.live) out = out.concat(UND.live.filter(r => r[0] > last + (wantM1 ? 0 : 4)).sort((a, b) => a[0] - b[0]));
+  return out;
+}
+const rma = (src, n) => { const o = nanArr(src.length); let y = NaN, c = 0, s = 0;
+  for (let i = 0; i < src.length; i++){ const x = src[i]; if (isNaN(x)){ o[i] = y; continue; }
+    if (isNaN(y)){ s += x; c++; if (c === n){ y = s / n; o[i] = y; } } else { y = (y * (n - 1) + x) / n; o[i] = y; } }
+  return o; };
+function calcSuper(U){
+  const n = U.length, H = U.map(b => b.high), Lw = U.map(b => b.low), C = U.map(b => b.close);
+  const tr = nanArr(n), pdm = nanArr(n), mdm = nanArr(n);
+  for (let i = 1; i < n; i++){ tr[i] = Math.max(H[i] - Lw[i], Math.abs(H[i] - C[i - 1]), Math.abs(Lw[i] - C[i - 1]));
+    const up = H[i] - H[i - 1], dn = Lw[i - 1] - Lw[i]; pdm[i] = up > dn && up > 0 ? up : 0; mdm[i] = dn > up && dn > 0 ? dn : 0; }
+  // 超級趨勢（真實波幅 10 根 × 3）
+  const atr = rma(tr, 10), st = nanArr(n), dir = new Int8Array(n), flip = new Int8Array(n); let fu = NaN, fl = NaN, d = 1;
+  for (let i = 1; i < n; i++){ if (isNaN(atr[i])) continue;
+    const hl = (H[i] + Lw[i]) / 2, bu = hl + 3 * atr[i], bl = hl - 3 * atr[i];
+    fu = isNaN(fu) || bu < fu || C[i - 1] > fu ? bu : fu; fl = isNaN(fl) || bl > fl || C[i - 1] < fl ? bl : fl;
+    const pd = d; if (d < 0 && C[i] > fu) d = 1; else if (d > 0 && C[i] < fl) d = -1;
+    dir[i] = d; st[i] = d > 0 ? fl : fu; if (i > 20 && pd !== d) flip[i] = d; }
+  // 平均趨向指標（14）
+  const a14 = rma(tr, 14), p14 = rma(pdm, 14), m14 = rma(mdm, 14), dx = nanArr(n), pdi = nanArr(n), mdi = nanArr(n);
+  for (let i = 0; i < n; i++) if (a14[i] > 0){ pdi[i] = 100 * p14[i] / a14[i]; mdi[i] = 100 * m14[i] / a14[i]; const sm = pdi[i] + mdi[i]; dx[i] = sm > 0 ? 100 * Math.abs(pdi[i] - mdi[i]) / sm : 0; }
+  const adx = rma(dx, 14);
+  // 實際波動（近 20 根對數報酬，年化）＋波動擠壓（真實波幅佔價格比例在近 120 根最低 15%）
+  const tds = new Set(U.map(b => b.td)), bpy = /^[DWM]$/.test(UI.tf) ? ({ D:252, W:52, M:12 })[UI.tf] : 252 * n / Math.max(1, tds.size);
+  const rv = nanArr(n), atrp = nanArr(n), sq = new Uint8Array(n), sqStart = new Uint8Array(n);
+  for (let i = 20; i < n; i++){ let s2 = 0, m = 0; for (let k = i - 19; k <= i; k++){ const r = Math.log(C[k] / C[k - 1]); if (isFinite(r)){ s2 += r * r; m++; } }
+    if (m >= 15) rv[i] = Math.sqrt(s2 / m * bpy) * 100; }
+  for (let i = 0; i < n; i++) if (!isNaN(atr[i]) && C[i] > 0) atrp[i] = atr[i] / C[i];
+  for (let i = 120; i < n; i++){ let below = 0, cnt = 0; for (let k = i - 119; k <= i; k++) if (!isNaN(atrp[k])){ cnt++; if (atrp[k] < atrp[i]) below++; }
+    if (cnt >= 100 && below / cnt <= 0.15){ sq[i] = 1; if (!sq[i - 1]) sqStart[i] = 1; } }
+  return { dir, st, flip, adx, pdi, mdi, rv, sq, sqStart };
+}
+// 選擇權隱含波動率（期貨選擇權公式，利率當 0）
+function ncdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x * x / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+function b76(F, K, T, v, call){ const sd = v * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd, d2 = d1 - sd;
+  return call ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1); }
+function impVol(price, F, K, T, call){
+  if (!(price > 0) || !(F > 0) || !(T > 0)) return NaN;
+  const intr = Math.max(0, call ? F - K : K - F);
+  if (price <= intr + 0.05) return NaN;
+  let lo = 0.01, hi = 6;
+  if (b76(F, K, T, hi, call) < price) return NaN;
+  for (let k = 0; k < 60; k++){ const m = (lo + hi) / 2; if (b76(F, K, T, m, call) < price) lo = m; else hi = m; }
+  return (lo + hi) / 2 * 100;
+}
+function expMin(c){ return c && c.exp ? Date.parse(c.exp + 'T13:30:00Z') / 6e4 : NaN; }
+function barCloseMin(b){
+  if (/^[DWM]$/.test(UI.tf)) return Date.parse(b.td + 'T13:45:00Z') / 6e4;
+  return b.time / 60 + (+UI.tf) - 1;
+}
+function buyerHint(side, d, adx, iv, rv, ivPrev){
+  if (isNaN(adx) || !d) return null;
+  const want = side === 'C' ? 1 : -1;
+  let t, col;
+  if (adx < 20){ t = '盤整：沒有趨勢，時間價值在流失，買方不利'; col = css('--muted'); }
+  else if (d !== want){ t = '逆風：台指期趨勢' + (d > 0 ? '向上' : '向下') + '，和' + (side === 'C' ? '買權' : '賣權') + '相反'; col = '#8a93a6'; }
+  else if (!isNaN(iv) && !isNaN(rv) && iv > rv * 1.3){ t = '方向對，但保費偏貴（隱含比實際高 ' + Math.round((iv / rv - 1) * 100) + '%）'; col = IND_C.bbE; }
+  else { t = '順風：方向對、趨勢' + (adx >= 25 ? '強' : '成形中'); col = side === 'C' ? css('--up') : css('--down'); }
+  if (!isNaN(iv) && !isNaN(ivPrev) && ivPrev > 0 && iv / ivPrev - 1 <= -0.15) t += '・保費正在洩氣';
+  return [t, col];
+}
 function indicators(bars){
   const n = bars.length, B = { n, o:new Float64Array(n), h:new Float64Array(n), l:new Float64Array(n), c:new Float64Array(n), v:new Float64Array(n) };
   bars.forEach((b, i) => { B.o[i] = b.open; B.h[i] = b.high; B.l[i] = b.low; B.c[i] = b.close; B.v[i] = b.volume; });
@@ -656,7 +772,7 @@ const fmtE = v => v >= 1e4 ? (v / 1e4).toFixed(v >= 1e5 ? 0 : 1) + '萬' : v >= 
 let lastBuild = '';
 async function renderCharts(keepRange){
   const c = curContract();
-  const tag = [UI.view, UI.theme, UI.oi && /^[DWM]$/.test(UI.tf), UI.bd, UI.bb, UI.lx].join('|');
+  const tag = [UI.view, UI.theme, UI.oi && /^[DWM]$/.test(UI.tf), UI.sp, UI.bd, UI.bb, UI.lx].join('|');
   if (tag !== lastBuild || !CH.list.length){ buildCharts(); lastBuild = tag; keepRange = false; }
   if (!c || UI.K == null){ for (const o of CH.list){ o.empty.textContent = '在左邊清單點一個履約價'; o.empty.classList.remove('hide'); } return; }
   const sideList = sides();
@@ -667,6 +783,15 @@ async function renderCharts(keepRange){
   // 兩邊的時間合在一起（沒成交的那一邊留空白），兩張圖才能一根對一根
   const times = [...new Set(sideList.flatMap(s => agg[s].map(b => b.time)))].sort((a, b) => a - b);
   const daily = /^[DWM]$/.test(UI.tf);
+  // 超級趨勢波動：台指期 K 線（和選擇權同一個週期、同一個全盤／日盤）
+  let UA = null, SP = null, uIdx = null;
+  if (UI.sp && times.length){
+    // 往前多抓一段給指標暖身（日 K 以上抓到今年初）
+    const tf = UI.tf, from = times[0] / 60 - (daily ? 300 : 20) * 1440, t1 = times[times.length - 1] / 60 + 1440;
+    const U = await loadUnderlying(Math.max(from, Date.parse('2026-01-01T00:00:00Z') / 6e4), t1, tf === '1');
+    UA = aggregate(U, tf, UI.sess);
+    SP = calcSuper(UA); uIdx = new Map(UA.map((b, i) => [b.time, i]));
+  }
   const up = css('--up'), dn = css('--down');
   for (const o of CH.list){
     const bars = agg[o.side], byT = new Map(bars.map(b => [b.time, b]));
@@ -691,6 +816,33 @@ async function renderCharts(keepRange){
     }
     // 指標（只用有成交的 K 棒算，再對回時間軸）
     o.ind = { n:bars.length };
+    if (o.sp){
+      if (SP){
+        const dk = UI.theme === 'light';
+        const colOf = (d, a) => a >= 25 ? (d > 0 ? '#ff1744' : '#00c853') : a >= 20 ? (d > 0 ? '#ff6e6e' : '#4cd98a') : (dk ? '#b8bfcb' : '#4a5263');
+        const hd = [], mkA = [], ivd = [], rvd = [], mkB = [], ivMap = new Map();
+        const byT = new Map(bars.map(b => [b.time, b])), ex = expMin(c);
+        let lastFlipShown = -1;
+        for (const b of full){
+          const i = uIdx.get(b.time);
+          if (i == null || isNaN(SP.adx[i]) || !SP.dir[i]){ hd.push({ time:b.time }); rvd.push({ time:b.time }); ivd.push({ time:b.time }); continue; }
+          // 這一根和上一根之間台指期有沒有翻轉（選擇權沒成交的時段也算進來）
+          let fl = 0; for (let k = i; k > lastFlipShown && k >= 0; k--){ if (SP.flip[k]){ fl = SP.flip[k]; break; } }
+          lastFlipShown = i;
+          hd.push({ time:b.time, value:SP.dir[i] * SP.adx[i], color:colOf(SP.dir[i], SP.adx[i]) });
+          if (fl) mkA.push(fl > 0 ? { time:b.time, position:'belowBar', color:'#ff1744', shape:'arrowUp', text:'轉多' } : { time:b.time, position:'aboveBar', color:'#00c853', shape:'arrowDown', text:'轉空' });
+          rvd.push(isNaN(SP.rv[i]) ? { time:b.time } : { time:b.time, value:SP.rv[i] });
+          if (SP.sqStart[i]) mkB.push({ time:b.time, position:'belowBar', color:'#9aa3b2', shape:'circle', text:'擠壓' });
+          const ob = byT.get(b.time);
+          if (ob){ const T = Math.max(15, ex - barCloseMin(ob)) / (365 * 1440), v = impVol(ob.close, UA[i].close, UI.K, T, o.side === 'C');
+            if (!isNaN(v) && v < 400){ ivd.push({ time:b.time, value:v }); ivMap.set(b.time, v); } else ivd.push({ time:b.time }); }
+          else ivd.push({ time:b.time });
+        }
+        o.sp.A.hist.setData(hd); o.sp.A.mk.setMarkers(mkA);
+        o.sp.iv.setData(ivd); o.sp.rv.setData(rvd); o.sp.mk.setMarkers(mkB);
+        o.ind.sp = { SP, UA, uIdx, ivMap };
+      } else { o.sp.A.hist.setData([]); o.sp.iv.setData([]); o.sp.rv.setData([]); o.ind.sp = null; }
+    }
     if (o.bb || o.lx || o.bd){
       const R = indicators(bars);
       if (o.bd && R.bd){
@@ -759,6 +911,25 @@ function setLegend(o, bar, stale){
 function indLegend(o, b){
   const I = o.ind || {}, sp = (t, col) => '<span class="num"' + (col ? ' style="color:' + col + '"' : '') + '>' + t + '</span>';
   let h = '';
+  if (o.sp){
+    h += '<span style="flex-basis:100%;height:0"></span>';
+    const Z = I.sp, i = Z ? Z.uIdx.get(b.time) : null;
+    if (!Z || i == null || isNaN(Z.SP.adx[i])) h += sp('超級趨勢波動：這個時間還沒有台指期資料', css('--muted'));
+    else {
+      const S2 = Z.SP, d = S2.dir[i], a = S2.adx[i], up = d > 0;
+      h += sp('台指期 ' + fmtN(Math.round(Z.UA[i].close)) + '・趨勢' + (up ? '多方' : '空方') + (a >= 25 ? '（強）' : a >= 20 ? '（成形中）' : '（弱，盤整）'), a >= 20 ? (up ? '#ff1744' : '#00c853') : css('--muted'));
+      h += sp('平均趨向 ' + Math.round(a), css('--muted'));
+      if (!isNaN(S2.st[i])) h += sp('超級趨勢線 ' + fmtN(Math.round(S2.st[i])), css('--muted'));
+      const iv = Z.ivMap.get(b.time), rv = S2.rv[i];
+      let ivPrev = NaN; { const ts = [...Z.ivMap.keys()].filter(t => t < b.time); if (ts.length >= 5) ivPrev = Z.ivMap.get(ts[ts.length - 5]); }
+      if (!isNaN(iv) && iv != null) h += sp('隱含波動率 ' + iv.toFixed(0) + '%' + (!isNaN(ivPrev) ? '（5 根前 ' + ivPrev.toFixed(0) + '%）' : ''), '#c77dff');
+      else h += sp('隱含波動率：這根算不出來（價內太深或沒成交）', css('--muted'));
+      if (!isNaN(rv)) h += sp('實際波動 ' + rv.toFixed(0) + '%', '#ff9100');
+      if (S2.sq[i]) h += sp('波動擠壓中（大行情前兆）', '#9aa3b2');
+      const hint = buyerHint(o.side, d, a, iv == null ? NaN : iv, rv, ivPrev);
+      if (hint){ h += '<span style="flex-basis:100%;height:0"></span>' + '<span class="num" style="font-weight:700;color:' + hint[1] + '">買方提示：' + hint[0] + '</span>'; }
+    }
+  }
   if (o.bd && I.bd){
     const r = I.bd.r, i = I.bd.idx.get(b.time);
     h += '<span style="flex-basis:100%;height:0"></span>';
@@ -815,6 +986,7 @@ function syncBar(){
   $('maBtn').classList.toggle('on', UI.ma);
   $('bbBtn').classList.toggle('on', !!UI.bb);
   $('bdBtn').classList.toggle('on', !!UI.bd);
+  $('spBtn').classList.toggle('on', !!UI.sp);
   $('lxBtn').classList.toggle('on', !!UI.lx);
   $('oiBtn').classList.toggle('on', UI.oi);
   $('oiBtn').disabled = !/^[DWM]$/.test(UI.tf);
@@ -830,6 +1002,7 @@ $('viewSeg').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) re
 $('rangeSeg').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; UI.range = +b.dataset.r; saveUI(); syncBar(); renderTable(true); };
 $('onlyTraded').onchange = e => { UI.onlyTraded = e.target.checked; saveUI(); renderTable(true); };
 $('maBtn').onclick = () => { UI.ma = !UI.ma; saveUI(); syncBar(); renderCharts(true); };
+$('spBtn').onclick = () => { UI.sp = !UI.sp; saveUI(); syncBar(); renderCharts(); };
 $('bdBtn').onclick = () => { UI.bd = !UI.bd; saveUI(); syncBar(); renderCharts(); };
 $('bbBtn').onclick = () => { UI.bb = !UI.bb; saveUI(); syncBar(); renderCharts(); };
 $('lxBtn').onclick = () => { UI.lx = !UI.lx; saveUI(); syncBar(); renderCharts(); };

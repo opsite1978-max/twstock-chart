@@ -30,13 +30,59 @@ def log(*a):
     print(datetime.datetime.now(TW).strftime('%H:%M:%S'), s, flush=True)
 
 
-def snap(did):
-    u = 'https://api.finmindtrade.com/api/v4/taiwan_options_snapshot?' + urllib.parse.urlencode({'data_id': did, 'token': TOKEN})
+def snap(did, path='taiwan_options_snapshot'):
+    u = 'https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode({'data_id': did, 'token': TOKEN})
     with urllib.request.urlopen(u, timeout=40) as r:
         j = json.loads(r.read())
     if j.get('status') != 200:
         raise RuntimeError(str(j.get('msg'))[:80])
     return j.get('data') or []
+
+
+def pick_fut(rows):
+    """台指期近月（成交量最大、最近 10 分鐘有報價的月份）"""
+    c = [r for r in rows if re.fullmatch(r'TXF[A-L]\d', str(r.get('futures_id'))) and (r.get('close') or 0) > 0]
+    if not c:
+        return None
+    tm = lambda r: minute_of(r.get('date')) or 0
+    newest = max(tm(r) for r in c)
+    c = [r for r in c if newest - tm(r) < 10]
+    return max(c, key=lambda r: r.get('total_volume') or 0)
+
+
+TXB = []          # 台指期 1 分 K [[分鐘, 開, 高, 低, 收, 量]]
+TXS = {}          # 上一次的累計量、最高、最低、時段
+
+
+def rec_tx(start):
+    try:
+        f = pick_fut(snap('TX', 'taiwan_futures_snapshot'))
+    except Exception as ex:
+        log('tx fail', ex); return
+    if not f:
+        return
+    tm = minute_of(f.get('date'))
+    if tm is None or tm < start:
+        return
+    c, hi, lo, tv = float(f['close']), float(f.get('high') or 0), float(f.get('low') or 0), int(f.get('total_volume') or 0)
+    if TXS.get('start') != start or tv < TXS.get('tv', 0):
+        TXS.update({'start': start, 'tv': tv, 'hi': hi, 'lo': lo})
+        if now_min() - start > 3:
+            return
+        TXS['tv'] = 0
+    if TXB and TXB[-1][0] == tm:
+        b = TXB[-1]
+    elif TXB and TXB[-1][0] > tm:
+        return
+    else:
+        o = TXB[-1][4] if TXB and tm - TXB[-1][0] <= 3 else c
+        b = [tm, o, max(o, c), min(o, c), c, 0]
+        TXB.append(b)
+    b[2] = max(b[2], c); b[3] = min(b[3], c); b[4] = c
+    if hi > TXS['hi'] > 0: b[2] = max(b[2], hi)
+    if 0 < lo < TXS['lo']: b[3] = min(b[3], lo)
+    b[5] += max(0, tv - TXS['tv'])
+    TXS.update({'tv': tv, 'hi': hi, 'lo': lo})
 
 
 def session(now):
@@ -85,6 +131,11 @@ def load_prev():
             out[code] = {k: [list(b) for b in v] for k, v in s.items()}
     except Exception:
         pass
+    try:
+        with urllib.request.urlopen(f'https://raw.githubusercontent.com/{repo}/{BRANCH}/tx.json?t={int(time.time())}', timeout=30) as r:
+            TXB.extend(list(b) for b in json.loads(r.read()).get('bars') or [] if b[0] >= now_min() - 30 * 60)
+    except Exception:
+        pass
     return out
 
 
@@ -97,6 +148,7 @@ def push(data):
     for code, s in data.items():
         json.dump({'updated': upd, 'code': code, 's': s}, open(os.path.join(WORK, code + '.json'), 'w'), separators=(',', ':'))
     json.dump({'updated': upd, 'c': data}, open(os.path.join(WORK, 'all.json'), 'w'), separators=(',', ':'))
+    json.dump({'updated': upd, 'cols': ['分鐘（台灣時間當成 UTC）', '開', '高', '低', '收', '量'], 'bars': TXB[-2400:]}, open(os.path.join(WORK, 'tx.json'), 'w'), separators=(',', ':'))
     repo = os.environ.get('GITHUB_REPOSITORY'); tok = os.environ.get('GH_TOKEN')
     if not repo or not tok:
         return
@@ -141,6 +193,7 @@ def main():
                 if p:
                     prods.setdefault(p[0], []).append((e['code'], p[1], p[2]))
             nrow = 0
+            rec_tx(start)
             for pid, lst in prods.items():
                 try:
                     rows = snap(pid)
