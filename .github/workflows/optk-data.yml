@@ -1,0 +1,28 @@
+name: 選擇權 K 線資料（週選＋月選，逐筆→1 分 K）
+on:
+  schedule:
+    - cron: '45 23 * * 0-5'   # 台灣時間 週一～週六 07:45（前一晚夜盤的逐筆公布後）
+    - cron: '35 12 * * 1-5'   # 台灣時間 週一～週五 20:35（日盤逐筆公布後）
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '往回補幾個日曆日（0＝一般更新，只重抓最近 3 天）'
+        default: '0'
+permissions:
+  contents: write
+concurrency:
+  group: optk-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: 逐筆成交整理成每一檔選擇權的 1 分 K（結果推到 optk-data 分支）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          BACKFILL_DAYS: ${{ github.event.inputs.backfill || '0' }}
+          MAX_MINUTES: '130'
+        run: python3 scripts/optk_data.py
