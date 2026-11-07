@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1726">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<title>指數走向地圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* 指數走向地圖：用全部選擇權的價格，反推「市場花錢下注的指數落點機率」，畫成機率山、走勢錐、機率階梯 */
+:root{
+  --ink:#0e1726; --panel:#152238; --panel2:#1b2a44; --line:#24344f; --grid:#1d2c46;
+  --text:#e6eaf2; --muted:#8c9ab3; --faint:#5b6a85;
+  --bull:#f0524a; --bear:#1fbf8f; --gold:#f2b544; --goldbg:rgba(242,181,68,.12);
+  --num:"Barlow Semi Condensed","Noto Sans TC",system-ui,sans-serif;
+  --zh:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --ink:#f3f5f9; --panel:#ffffff; --panel2:#eef1f6; --line:#d9dfe9; --grid:#e6eaf1;
+  --text:#14202f; --muted:#5a6880; --faint:#9aa6ba;
+  --bull:#d93b33; --bear:#0d9a6f; --gold:#b9810f; --goldbg:rgba(185,129,15,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--zh);font-size:14px;line-height:1.55}
+button{font:inherit;color:inherit}
+a{color:inherit}
+.n{font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.muted{color:var(--muted)} .bull{color:var(--bull)} .bear{color:var(--bear)} .gold{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.top{padding:max(10px,env(safe-area-inset-top)) 18px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.bar1{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap}
+.bar1 h1{font-size:15px;font-weight:700;margin:0;margin-right:auto}
+.bar1 a,.bar1 button{font-size:13px;color:var(--muted);text-decoration:none;background:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--bear);box-shadow:0 0 0 0 var(--bear);animation:pulse 2s infinite}
+.live.off i{background:var(--faint);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,191,143,.6)}70%{box-shadow:0 0 0 9px rgba(31,191,143,0)}100%{box-shadow:0 0 0 0 rgba(31,191,143,0)}}
+
+main{max-width:1180px;margin:0 auto;padding:14px 16px 40px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;animation:rise .5s ease both}
+.card h2{font-size:16px;margin:0 0 4px;font-weight:700}
+.card .sub{font-size:13px;color:var(--muted);margin:0 0 10px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* 最上面：一句話結論 */
+.hero{display:grid;grid-template-columns:auto 1fr;gap:10px 28px;align-items:center}
+.hero .px small{display:block;font-size:13px;color:var(--muted)}
+.hero .px b{font-family:var(--num);font-size:clamp(40px,7vw,64px);font-weight:700;line-height:1}
+.hero .px .ch{font-family:var(--num);font-size:18px;margin-left:6px}
+.say{font-size:clamp(17px,2.3vw,22px);font-weight:700;line-height:1.5}
+.say .n{font-size:1.15em}
+.say .tag{display:inline-block;font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;margin-left:4px;vertical-align:3px}
+.meter{grid-column:1 / -1;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.meter .lb{font-size:14px;font-weight:700;white-space:nowrap}
+.meter .lb .n{font-size:26px;font-weight:700}
+.mbar{height:16px;border-radius:999px;background:var(--bear);position:relative;overflow:hidden}
+.mbar s{position:absolute;inset:0 auto 0 0;background:var(--bull);transition:width 1s cubic-bezier(.2,.8,.2,1);border-right:2px solid var(--panel)}
+.mbar::after{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;border-left:2px dashed var(--panel)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px}
+.chip{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:5px 13px;cursor:pointer;font-size:14px;transition:all .2s}
+.chip small{color:var(--muted);margin-left:4px;font-size:12px}
+.chip.on{background:var(--gold);border-color:var(--gold);color:#1a1300;font-weight:700}
+.chip.on small{color:#1a1300}
+.facts{grid-column:1 / -1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fact{background:var(--panel2);border-radius:12px;padding:10px 12px}
+.fact span{display:block;font-size:12px;color:var(--muted)}
+.fact b{font-family:var(--num);font-size:24px;font-weight:700;line-height:1.2}
+.fact em{font-style:normal;font-size:12px;color:var(--muted)}
+
+/* 圖 */
+.svgwrap{position:relative;touch-action:pan-y}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--num);fill:var(--muted);font-size:12px;paint-order:stroke;stroke:var(--panel);stroke-width:3px;stroke-linejoin:round}
+svg .zh{font-family:var(--zh)}
+.tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.3);white-space:nowrap;opacity:0;transition:opacity .15s;z-index:3}
+.tip.show{opacity:1}
+.tip b{font-family:var(--num);font-size:16px}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+
+/* 機率階梯 */
+.ladder{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.lad h3{font-size:14px;margin:0 0 6px}
+.lrow{display:grid;grid-template-columns:96px 1fr 52px;gap:8px;align-items:center;padding:3px 0;font-size:13px}
+.lrow .lv{font-family:var(--num);font-size:16px;font-weight:600}
+.lrow .bar{height:12px;border-radius:6px;background:var(--panel2);overflow:hidden}
+.lrow .bar s{display:block;height:100%;border-radius:6px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.lrow .pc{font-family:var(--num);font-size:16px;font-weight:700;text-align:right}
+.lrow.cur{border-top:1px dashed var(--line);border-bottom:1px dashed var(--line)}
+
+.how{font-size:13px;color:var(--muted);line-height:1.8}
+.how b{color:var(--text)}
+.how li{margin-bottom:4px}
+.empty{padding:30px 0;text-align:center;color:var(--muted)}
+
+@media (max-width:760px){
+  main{padding:10px 10px 30px}
+  .card{padding:14px 12px;border-radius:14px}
+  .hero{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr 1fr}
+  .ladder{grid-template-columns:1fr}
+  .meter .lb .n{font-size:22px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar1">
+    <h1>🧭 指數走向地圖 <span class="muted" style="font-size:12px;font-weight:400">用全部選擇權的價格，反推市場下注的指數落點</span></h1>
+    <span class="live off" id="live"><i></i><span id="liveTxt">讀取中…</span></span>
+    <a href="optgo.html">選擇權順勢看盤</a>
+    <a href="./">看盤</a>
+    <button id="themeBtn">白底</button>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="chips" id="chips"></div>
+    <div class="hero" id="hero"><div class="empty">讀取中…</div></div>
+  </section>
+
+  <section class="card" style="animation-delay:.08s">
+    <h2>⛰️ 機率山：結算時指數會落在哪裡</h2>
+    <p class="sub" id="mtSub">山越高的地方，市場越覺得會收在那裡。手指或滑鼠移到圖上，看「收在那個價位以上、以下」的機率。</p>
+    <div class="svgwrap" id="mtWrap"><svg id="mt" viewBox="0 0 1000 432" role="img" aria-label="結算價機率分布"></svg><div class="tip" id="mtTip"></div></div>
+    <div class="legend"><span><i style="background:var(--gold);opacity:.55"></i>最可能的 68%</span><span><i style="background:var(--gold);opacity:.2"></i>95%</span><span><i style="background:var(--bull);opacity:.7"></i>買權未平倉（上方＝壓力）</span><span><i style="background:var(--bear);opacity:.7"></i>賣權未平倉（下方＝支撐）</span></div>
+  </section>
+
+  <section class="card" style="animation-delay:.16s">
+    <h2>🌪️ 走勢錐：接下來幾週可能走的範圍</h2>
+    <p class="sub">左邊是台指期最近走勢，右邊是每一個結算日、市場用選擇權價格算出的可能範圍。錐越寬＝市場覺得波動越大。</p>
+    <div class="svgwrap" id="cnWrap"><svg id="cn" viewBox="0 0 1000 446" role="img" aria-label="未來價格範圍"></svg><div class="tip" id="cnTip"></div></div>
+    <div class="legend"><span><i style="background:var(--gold);opacity:.5"></i>68% 範圍</span><span><i style="background:var(--gold);opacity:.18"></i>95% 範圍</span><span><i style="background:var(--text)"></i>台指期</span></div>
+  </section>
+
+  <section class="card" style="animation-delay:.24s">
+    <h2>🪜 機率階梯</h2>
+    <p class="sub" id="ldSub"></p>
+    <div class="ladder" id="ladder"></div>
+  </section>
+
+  <section class="card how" style="animation-delay:.3s">
+    <h2 style="color:var(--text)">怎麼看</h2>
+    <ul>
+      <li><b>這是「市場用錢下注」的機率，不是預言。</b>每一個履約價的買權、賣權價格，都藏著大家覺得指數會不會到那裡的看法；把全部價格放在一起，就能反推出結算價的機率分布（學理上叫「隱含機率分布」）。</li>
+      <li><b>上漲機率／下跌機率</b>：結算時收在現在價位以上或以下的機率。通常接近 50／50，偏到 55 以上才算明顯。</li>
+      <li><b>市場比較怕哪邊</b>：比較「價外 1 個標準差的賣權」和「價外 1 個標準差的買權」誰比較貴。賣權貴＝怕跌（大家買保險）；買權貴＝怕漲（怕軋空，大跌之後常見）。</li>
+      <li><b>預估波動</b>：選擇權價格隱含的年化波動率。數字越大，錐越寬、選擇權越貴；買方要漲得比這個更多才賺得到。</li>
+      <li><b>未平倉長條</b>：上方買權未平倉多＝賣方大戶在那裡守（壓力）；下方賣權未平倉多＝支撐。但大戶也可能是買方，只當參考。</li>
+      <li>資料：最近一次結算價算出每一檔的波動形狀，盤中再用最新成交價、台指期即時價格更新，每分鐘自動刷新。價位已經換算成台指期點數。</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+"use strict";
+const OWNER = (location.hostname.endsWith('.github.io') ? location.hostname.split('.')[0] : '') || 'opsite1978-max';
+const REPO = OWNER + '/twstock-chart';
+const RAW = 'https://raw.githubusercontent.com/' + REPO + '/optk-data/';
+const LIVE = 'https://raw.githubusercontent.com/' + REPO + '/optk-live/';
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtN = v => v == null || isNaN(v) ? '–' : Math.round(v).toLocaleString('zh-TW');
+const pct = p => (p * 100 < 1 && p > 0 ? '<1' : p * 100 > 99 && p < 1 ? '>99' : Math.round(p * 100)) + '%';
+const minKey = () => Math.floor(Date.now() / 60000);
+const ymd = d => new Date(d * 864e5).toISOString().slice(0, 10);
+const nowMin = () => Math.floor((Date.now() + 8 * 3600e3) / 6e4);      // 台灣時間當成 UTC
+const md = t => { const d = new Date(t * 6e4); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+const hm = t => { const d = new Date(t * 6e4), p = n => String(n).padStart(2, '0'); return md(t) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); };
+const WK = '日一二三四五六';
+async function fetchJ(url){ try { const r = await fetch(url, { cache:'no-store' }); return r.ok ? await r.json() : null; } catch(e){ return null; } }
+const UI = (() => { try { return JSON.parse(localStorage.getItem('optmap:ui') || '{}') || {}; } catch(e){ return {}; } })();
+const saveUI = () => { try { localStorage.setItem('optmap:ui', JSON.stringify(UI)); } catch(e){} };
+
+/* ═════════ 主題 ═════════ */
+function applyTheme(){ const t = UI.theme || (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}').theme; } catch(e){ return null; } })() || 'dark';
+  document.documentElement.dataset.theme = t; $('themeBtn').textContent = t === 'dark' ? '白底' : '黑底';
+  document.querySelector('meta[name=theme-color]').content = t === 'dark' ? '#0e1726' : '#f3f5f9'; }
+$('themeBtn').onclick = () => { UI.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; saveUI(); applyTheme(); if (M) renderAll(false); };
+applyTheme();
+
+/* ═════════ 資料 ═════════ */
+const D = { idx:null, live:new Map(), txm:new Map(), txLive:[], txAt:0 };
+async function loadIndex(){ const j = await fetchJ(RAW + 'index.json?t=' + minKey()); if (j) D.idx = j; return D.idx; }
+async function loadLive(code){
+  const c = D.live.get(code); if (c && Date.now() - c.at < 55e3) return c;
+  const j = await fetchJ(LIVE + code + '.json?t=' + minKey());
+  const v = { s:j ? j.s : (c ? c.s : {}), at:Date.now() }; D.live.set(code, v); return v;
+}
+// 台指期 1 分 K（最近幾天就好）
+async function loadTX(){
+  const now = nowMin(), months = [...new Set([ymd(Math.floor(now / 1440) - 9).slice(0, 7), ymd(Math.floor(now / 1440)).slice(0, 7)])];
+  const have = new Set(D.idx.txMonths || []);
+  await Promise.all(months.filter(m => have.has(m)).map(async m => { const c = D.txm.get(m); if (c && Date.now() - c.at < 10 * 60e3) return;
+    const j = await fetchJ(RAW + 'tx/' + m + '.json?t=' + Math.floor(Date.now() / 600e3)); D.txm.set(m, { at:Date.now(), rows:j ? j.bars : (c ? c.rows : []) }); }));
+  if (Date.now() - D.txAt > 55e3){
+    const [a, b] = await Promise.all([fetchJ(LIVE + 'tx.json?t=' + minKey()), fetchJ('https://raw.githubusercontent.com/' + REPO + '/live-data/tx_live.json?t=' + minKey())]);
+    const mp = new Map();
+    if (a && a.bars) for (const x of a.bars) mp.set(x[0], x.slice(0, 6));
+    if (b && b.sessions) for (const q of Object.values(b.sessions)) for (const x of q.bars || []){ const t = Math.round(x[0] / 60); mp.set(t, [t, x[1], x[2], x[3], x[4], x[7] || 0]); }
+    D.txLive = [...mp.values()].sort((p, q) => p[0] - q[0]); D.txAt = Date.now();
+  }
+  const rows = [...D.txm.keys()].sort().flatMap(m => D.txm.get(m).rows), last = rows.length ? rows[rows.length - 1][0] : 0;
+  return rows.concat(D.txLive.filter(r => r[0] > last));
+}
+const expMin = c => Date.parse(c.exp.slice(0, 10) + 'T13:30:00Z') / 6e4;
+function label(c){ const m = c.code.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/), e = md(expMin(c)), w = WK[new Date(expMin(c) * 6e4).getUTCDay()];
+  return { short:!m || !m[3] ? (+m[2]) + '月' : e + ' 週' + w, sub:!m || !m[3] ? e + ' 結算' : (m[3] === 'W' ? '週三選' : '週五選'), long:!m || !m[3] ? (+m[2]) + '月月選（' + e + ' 週' + w + '結算）' : e + '（週' + w + '）結算的週選' }; }
+
+/* ═════════ 選擇權數學 ═════════ */
+function ncdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804 * Math.exp(-x * x / 2);
+  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))); return x > 0 ? 1 - p : p; }
+function black(F, K, T, s, call){ const sd = s * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd, d2 = d1 - sd;
+  return call ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1); }
+function impVol(p, F, K, T, call){
+  const intr = Math.max(0, call ? F - K : K - F); if (!(p > intr + 0.05) || T <= 0) return null;
+  let lo = 0.02, hi = 4; if (black(F, K, T, hi, call) < p) return null;
+  for (let i = 0; i < 50; i++){ const m = (lo + hi) / 2; if (black(F, K, T, m, call) < p) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+const median = a => { const b = a.slice().sort((x, y) => x - y), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : NaN; };
+// 加權二次式（3×3 正規方程）
+function quadFit(P){
+  const S = Array.from({ length:3 }, () => [0, 0, 0]), y = [0, 0, 0];
+  for (const p of P){ const v = [1, p.z, p.z * p.z]; for (let i = 0; i < 3; i++){ y[i] += p.w * v[i] * p.v; for (let j = 0; j < 3; j++) S[i][j] += p.w * v[i] * v[j]; } }
+  for (let i = 0; i < 3; i++) S[i][i] += 1e-6;
+  const A = S.map((r, i) => r.concat([y[i]]));
+  for (let i = 0; i < 3; i++){ let m = i; for (let r = i + 1; r < 3; r++) if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r; [A[i], A[m]] = [A[m], A[i]];
+    for (let r = 0; r < 3; r++) if (r !== i){ const f = A[r][i] / A[i][i]; for (let k = i; k < 4; k++) A[r][k] -= f * A[i][k]; } }
+  return [A[0][3] / A[0][0], A[1][3] / A[1][1], A[2][3] / A[2][2]];
+}
+
+/* 每一個契約：用最近一次結算價算出波動率微笑（形狀），再用最新成交價調整高低 */
+function modelOf(c, txAt, Fnow, tNow){
+  const rows = c.rows, sds = rows.flatMap(r => [r.C && r.C.sd, r.P && r.P.sd]).filter(Boolean);
+  if (!sds.length) return null;
+  const sd = sds.sort().pop(), tSet = Date.parse(sd + 'T13:45:00Z') / 6e4, Fs = txAt(tSet) || Fnow;
+  const Ts = (expMin(c) - tSet) / 525600, T = (expMin(c) - tNow) / 525600;
+  if (!(Ts > 0) || !(T > 0.3 / 365)) return null;
+  const pts = [];
+  for (const r of rows){
+    const call = r.k >= Fs, o = call ? r.C : r.P; if (!o || o.sd !== sd || !(o.st >= 0.5)) continue;
+    const v = impVol(o.st, Fs, r.k, Ts, call); if (v) pts.push({ x:Math.log(r.k / Fs), v, k:r.k });
+  }
+  if (pts.length < 6) return null;
+  pts.sort((a, b) => Math.abs(a.x) - Math.abs(b.x));
+  const s0 = median(pts.slice(0, 4).map(p => p.v)), sc = s0 * Math.sqrt(Ts);
+  const P = pts.filter(p => Math.abs(p.x / sc) <= 3.2).map(p => ({ z:p.x / sc, v:p.v, w:Math.exp(-p.x * p.x / (sc * sc) / 6) }));
+  if (P.length < 5) return null;
+  const [a, b, qq] = quadFit(P);
+  const zMin = Math.max(-3, Math.min(...P.map(p => p.z))), zMax = Math.min(3, Math.max(...P.map(p => p.z)));
+  const f = z => a + b * z + qq * z * z, df = z => b + 2 * qq * z;
+  // 資料範圍外：順著邊界的斜率直線延伸（平的延伸會讓機率出現假的斷層）
+  const base = x => { const z = x / sc, v = z < zMin ? f(zMin) + df(zMin) * (z - zMin) : z > zMax ? f(zMax) + df(zMax) * (z - zMax) : f(z); return Math.min(3, Math.max(0.04, v)); };
+  // 盤中：用最近 45 分鐘有成交的價外選擇權，把整條微笑等比例調高或調低
+  let scale = 1, nLive = 0, lastLive = 0;
+  const lv = D.live.get(c.code), ratios = [];
+  if (lv && lv.s) for (const key in lv.s){
+    const bars = lv.s[key]; if (!bars.length) continue;
+    const b0 = bars[bars.length - 1], K = +key.slice(0, -1), call = key.endsWith('C');
+    if (b0[0] <= tSet || tNow - b0[0] > 60 || call !== (K >= Fnow)) continue;
+    lastLive = Math.max(lastLive, b0[0]);
+    const Fb = txAt(b0[0]) || Fnow, Tb = (expMin(c) - b0[0]) / 525600, v = impVol(b0[4], Fb, K, Tb, call), x = Math.log(K / Fb);
+    if (v && Math.abs(x / sc) <= 2.5 && b0[4] >= 1) ratios.push(v / base(x));
+  }
+  if (ratios.length >= 3){ scale = Math.min(1.6, Math.max(0.6, median(ratios))); nLive = ratios.length; }
+  const sig = x => base(x) * scale;
+  // 機率分布：P(結算 > K) = −dC/dK（數值微分），再整理成單調
+  const sT = sig(0) * Math.sqrt(T), lo = Fnow * Math.exp(-4.6 * sT), hi = Fnow * Math.exp(4.6 * sT), n = 360, h = (hi - lo) / n;
+  const call = K => black(Fnow, K, T, sig(Math.log(K / Fnow)), true);
+  const Ks = [], surv = [];
+  for (let i = 0; i <= n; i++){ const K = lo + i * h; Ks.push(K); surv.push((call(K - h / 2) - call(K + h / 2)) / h); }
+  for (let i = 0; i <= n; i++) surv[i] = Math.min(1, Math.max(0, surv[i]));
+  for (let i = 1; i <= n; i++) if (surv[i] > surv[i - 1]) surv[i] = surv[i - 1];
+  // 密度＝相鄰兩格的機率差，再輕輕抹平（去掉數值的鋸齒），最後重新加總成累積機率
+  let dens = Ks.map((K, i) => i === 0 ? 0 : Math.max(0, surv[i - 1] - surv[i]));
+  for (let r = 0; r < 4; r++) dens = dens.map((d, i) => i === 0 ? 0 : (dens[i - 1] * (i > 1) + 2 * d + (dens[i + 1] || 0)) / 4);
+  const tot = dens.reduce((a2, b2) => a2 + b2, 0) || 1, cdf = []; let acc = 0;
+  for (let i = 0; i <= n; i++){ acc += dens[i]; cdf.push(acc / tot); dens[i] = dens[i] / tot / h; }
+  const q = p => { for (let i = 1; i <= n; i++) if (cdf[i] >= p){ const f = (p - cdf[i - 1]) / Math.max(1e-12, cdf[i] - cdf[i - 1]); return Ks[i - 1] + f * h; } return hi; };
+  const above = X => { if (X <= lo) return 1; if (X >= hi) return 0; const i = Math.min(n, Math.floor((X - lo) / h)), f = (X - Ks[i]) / h; return 1 - (cdf[i] + f * ((cdf[i + 1] ?? 1) - cdf[i])); };
+  let mi = 1; for (let i = 1; i <= n; i++) if (dens[i] > dens[mi]) mi = i;
+  // 未平倉
+  const oi = rows.map(r => ({ k:r.k, c:(r.C && r.C.oi) || 0, p:(r.P && r.P.oi) || 0 }));
+  return { c, T, sd, s0:sig(0), fear:sig(-sc) - sig(sc), Ks, dens, cdf, q, above, mode:Ks[mi], up:above(Fnow), F:Fnow, oi, nLive, lastLive, h };
+}
+
+/* ═════════ 主流程 ═════════ */
+let M = null, TXB = [], first = true;
+async function refresh(){
+  if (!await loadIndex()){ $('hero').innerHTML = '<div class="empty">資料讀不到，請稍後重新整理</div>'; return; }
+  const tNow = nowMin(), cs = D.idx.contracts.filter(c => !c.expired && expMin(c) - tNow > 0.3 * 1440).sort((a, b) => expMin(a) - expMin(b));
+  await Promise.all(cs.map(c => loadLive(c.code)));
+  TXB = await loadTX();
+  if (!TXB.length){ $('hero').innerHTML = '<div class="empty">台指期資料讀不到</div>'; return; }
+  const TT = TXB.map(b => b[0]);
+  const txAt = t => { let lo = 0, hi = TT.length - 1; if (t < TT[0]) return null; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (TT[m] <= t) lo = m; else hi = m - 1; } return t - TT[lo] < 600 ? TXB[lo][4] : null; };
+  const last = TXB[TXB.length - 1], Fnow = last[4];
+  const models = cs.map(c => modelOf(c, txAt, Fnow, tNow)).filter(Boolean).filter(m => m.T * 365 <= 75);
+  // 前一個交易時段收盤（算漲跌）
+  let prevClose = null; for (let i = TXB.length - 1; i > 0; i--) if (TXB[i][0] - TXB[i - 1][0] > 60){ prevClose = TXB[i - 1][4]; break; }
+  M = { models, Fnow, tLast:last[0], prevClose, tNow };
+  const fresh = tNow - last[0] < 15;
+  $('live').classList.toggle('off', !fresh);
+  $('liveTxt').textContent = (fresh ? '即時・' : '休市・') + '台指期到 ' + hm(last[0]) + '・每分鐘更新';
+  if (!models.some(m => m.c.code === UI.code)) UI.code = (models.find(m => m.T * 365 >= 1.5) || models[0] || {}).c?.code;
+  renderAll(first); first = false;
+}
+function renderAll(anim){
+  if (!M || !M.models.length){ $('hero').innerHTML = '<div class="empty">目前算不出來（沒有可用的選擇權價格）</div>'; return; }
+  const m = M.models.find(x => x.c.code === UI.code) || M.models[0];
+  $('chips').innerHTML = M.models.map(x => { const L0 = label(x.c); return '<button class="chip' + (x === m ? ' on' : '') + '" data-c="' + x.c.code + '">' + L0.short + '<small>' + L0.sub + '</small></button>'; }).join('');
+  $('chips').querySelectorAll('.chip').forEach(b => b.onclick = () => { UI.code = b.dataset.c; saveUI(); renderAll(true); });
+  renderHero(m, anim); drawMountain(m, anim); drawCone(m, anim); renderLadder(m);
+}
+function renderHero(m, anim){
+  const L0 = label(m.c), F = M.Fnow, ch = M.prevClose ? F - M.prevClose : null;
+  const q16 = m.q(0.16), q84 = m.q(0.84), q025 = m.q(0.025), q975 = m.q(0.975), em = (q84 - q16) / 2;
+  const up = m.up, lean = up >= 0.55 ? ['偏多', 'var(--bull)'] : up <= 0.45 ? ['偏空', 'var(--bear)'] : ['中性', 'var(--muted)'];
+  const fv = m.fear * 100, fear = fv > 1.5 ? ['比較怕<b class="bear">跌</b>', '賣權比較貴，大家在買下跌保險'] : fv < -1.5 ? ['比較怕<b class="bull">漲</b>', '買權比較貴，怕突然反彈（軋空）'] : ['兩邊差不多', '買權、賣權的貴賤差不多'];
+  const days = m.T * 365;
+  $('hero').innerHTML =
+    '<div class="px"><small>台指期現在</small><b class="n" id="pxNum">' + fmtN(F) + '</b>' + (ch != null ? '<span class="ch ' + (ch >= 0 ? 'bull' : 'bear') + '">' + (ch >= 0 ? '▲' : '▼') + fmtN(Math.abs(ch)) + '</span>' : '') + '</div>' +
+    '<div class="say">到 ' + L0.long + '（還有 ' + (days < 1 ? Math.round(days * 24) + ' 小時' : days.toFixed(1) + ' 天') + '），市場認為：<br>' +
+      '<span class="gold">68% 機率</span>收在 <span class="n">' + fmtN(q16) + '</span>～<span class="n">' + fmtN(q84) + '</span>，最可能在 <span class="n">' + fmtN(m.mode) + '</span> 附近' +
+      '<span class="tag" style="background:' + lean[1] + ';color:#fff">' + lean[0] + '</span></div>' +
+    '<div class="meter"><span class="lb bull">上漲 <span class="n" id="upN">' + pct(up) + '</span></span><div class="mbar"><s id="mbar" style="width:' + (anim ? 50 : up * 100) + '%"></s></div><span class="lb bear">下跌 <span class="n">' + pct(1 - up) + '</span></span></div>' +
+    '<div class="facts">' +
+      '<div class="fact"><span>預估波動（大約每天）</span><b>±' + fmtN(F * m.s0 * Math.sqrt(1 / 365)) + '</b><em>年化 ' + (m.s0 * 100).toFixed(0) + '%，越大選擇權越貴</em></div>' +
+      '<div class="fact"><span>到結算預估波動（68%）</span><b>±' + fmtN(em) + '</b><em>95%：' + fmtN(q025) + '～' + fmtN(q975) + '</em></div>' +
+      '<div class="fact"><span>市場比較怕哪邊</span><b style="font-family:var(--zh);font-size:20px">' + fear[0] + '</b><em>' + fear[1] + '</em></div>' +
+      '<div class="fact"><span>資料</span><b style="font-family:var(--zh);font-size:17px">' + (m.nLive ? '即時（' + m.nLive + ' 檔最新成交）' : '最近結算價') + '</b><em>' + (m.nLive ? '最新成交 ' + hm(m.lastLive) : '結算日 ' + m.sd.slice(5).replace('-', '/') + '，盤中有成交會更新') + '</em></div>' +
+    '</div>';
+  if (anim) requestAnimationFrame(() => requestAnimationFrame(() => { const e = $('mbar'); if (e) e.style.width = (up * 100) + '%'; }));
+}
+
+/* ═════════ 機率山 ═════════ */
+let mtState = null;
+function drawMountain(m, anim){
+  const svg = $('mt'), W = Math.max(320, Math.min(1000, $('mtWrap').clientWidth || 1000)), cp = W < 600, padL = 14, padR = 14, top = 30, base = cp ? 230 : 290, oiTop = base + 66, oiBot = oiTop + (cp ? 52 : 64), H = oiBot + 20;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const lo = m.q(0.004), hi = m.q(0.996), X = K => padL + (K - lo) / (hi - lo) * (W - padL - padR);
+  const pts = m.Ks.map((K, i) => [K, m.dens[i]]).filter(p => p[0] >= lo && p[0] <= hi);
+  const dmax = Math.max(...pts.map(p => p[1])), Y = d => base - d / dmax * (base - top);
+  const path = (a, b) => { const s = pts.filter(p => p[0] >= a && p[0] <= b); if (!s.length) return '';
+    return 'M' + X(s[0][0]).toFixed(1) + ',' + base + s.map(p => 'L' + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('') + 'L' + X(s[s.length - 1][0]).toFixed(1) + ',' + base + 'Z'; };
+  const line = 'M' + pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('L');
+  const gold = css('--gold'), bull = css('--bull'), bear = css('--bear'), text = css('--text'), muted = css('--muted'), grid = css('--grid');
+  const F = M.Fnow, q16 = m.q(0.16), q84 = m.q(0.84), q025 = m.q(0.025), q975 = m.q(0.975);
+  // 刻度
+  const span = hi - lo, step = [250, 500, 1000, 2000, 5000].find(v => v / span * W >= 72) || 5000;
+  let ticks = ''; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks += '<line x1="' + X(v) + '" x2="' + X(v) + '" y1="' + top + '" y2="' + base + '" stroke="' + grid + '"/><text x="' + X(v) + '" y="' + (base + 16) + '" text-anchor="middle">' + fmtN(v) + '</text>';
+  // 未平倉（換算到台指期點數：本來就是指數點）
+  const oi = m.oi.filter(o => o.k >= lo && o.k <= hi), omax = Math.max(1, ...oi.map(o => Math.max(o.c, o.p)));
+  const bw = Math.max(2, (X(lo + 100) - X(lo)) * 0.42);
+  let bars = '';
+  for (const o of oi){ const x = X(o.k);
+    if (o.c) bars += '<rect x="' + (x - bw).toFixed(1) + '" y="' + (oiBot - o.c / omax * (oiBot - oiTop)).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (o.c / omax * (oiBot - oiTop)).toFixed(1) + '" fill="' + bull + '" opacity="' + (o.k > F ? .85 : .3) + '"/>';
+    if (o.p) bars += '<rect x="' + x.toFixed(1) + '" y="' + (oiBot - o.p / omax * (oiBot - oiTop)).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (o.p / omax * (oiBot - oiTop)).toFixed(1) + '" fill="' + bear + '" opacity="' + (o.k < F ? .85 : .3) + '"/>'; }
+  const r95 = [m.q(0.025), m.q(0.975)], wallC = oi.filter(o => o.k > F && o.k <= r95[1]).sort((a, b) => b.c - a.c)[0], wallP = oi.filter(o => o.k < F && o.k >= r95[0]).sort((a, b) => b.p - a.p)[0];
+  const wl = (o, v, col, txt) => o && v ? '<text class="zh" x="' + X(o.k) + '" y="' + (oiTop - 4) + '" text-anchor="middle" style="fill:' + col + ';font-size:12px;font-weight:700">' + txt + ' ' + fmtN(o.k) + '</text>' : '';
+  const cx = X(F), mx = X(m.mode);
+  svg.innerHTML =
+    '<defs><linearGradient id="gUp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + bull + '" stop-opacity=".55"/><stop offset="1" stop-color="' + bull + '" stop-opacity=".05"/></linearGradient>' +
+    '<linearGradient id="gDn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + bear + '" stop-opacity=".55"/><stop offset="1" stop-color="' + bear + '" stop-opacity=".05"/></linearGradient>' +
+    '<clipPath id="mtClip"><rect id="mtClipR" x="0" y="0" width="' + (anim ? 0 : W) + '" height="' + H + '"/></clipPath></defs>' + ticks +
+    '<g clip-path="url(#mtClip)">' +
+      '<path d="' + path(lo, F) + '" fill="url(#gDn)"/><path d="' + path(F, hi) + '" fill="url(#gUp)"/>' +
+      '<path d="' + path(q025, q975) + '" fill="' + gold + '" opacity=".12"/><path d="' + path(q16, q84) + '" fill="' + gold + '" opacity=".22"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + text + '" stroke-width="2.4" stroke-linejoin="round"/>' +
+    '</g>' +
+    '<line x1="' + base + '" x2="' + W + '" y1="' + base + '" y2="' + base + '" stroke="' + muted + '" opacity=".4"/>' +
+    '<line x1="' + X(q16) + '" x2="' + X(q84) + '" y1="' + (base + 42) + '" y2="' + (base + 42) + '" stroke="' + gold + '" stroke-width="3" stroke-linecap="round"/>' +
+    '<text class="zh" x="' + ((X(q16) + X(q84)) / 2) + '" y="' + (base + 37) + '" text-anchor="middle" style="fill:' + gold + ';font-size:12px">← 68% 會在這裡 →</text>' +
+    '<line x1="' + cx + '" x2="' + cx + '" y1="' + (top - 8) + '" y2="' + base + '" stroke="' + text + '" stroke-dasharray="4 4"/>' +
+    '<circle cx="' + cx + '" cy="' + (top - 8) + '" r="6" fill="' + gold + '"><animate attributeName="r" values="5;9;5" dur="1.8s" repeatCount="indefinite"/></circle>' +
+    '<text class="zh" x="' + cx + '" y="' + (top - 18) + '" text-anchor="middle" style="fill:' + text + ';font-size:13px;font-weight:700">現在 ' + fmtN(F) + '</text>' +
+    (Math.abs(mx - cx) > 40 ? '<text class="zh" x="' + mx + '" y="' + (Y(m.dens[m.Ks.indexOf(m.mode)]) - 8) + '" text-anchor="middle" style="fill:' + gold + ';font-size:12px">最可能 ' + fmtN(m.mode) + '</text>' : '') +
+    '<text class="zh" x="' + (cx + 10) + '" y="' + (top + 30) + '" style="fill:' + bull + ';font-size:14px;font-weight:700">往上 ' + pct(m.up) + '</text>' +
+    '<text class="zh" x="' + (cx - 10) + '" y="' + (top + 30) + '" text-anchor="end" style="fill:' + bear + ';font-size:14px;font-weight:700">往下 ' + pct(1 - m.up) + '</text>' +
+    '<line x1="0" x2="' + W + '" y1="' + oiBot + '" y2="' + oiBot + '" stroke="' + muted + '" opacity=".3"/>' + bars +
+    wl(wallC, wallC && wallC.c, bull, '壓力') + wl(wallP, wallP && wallP.p, bear, '支撐') +
+    '<text class="zh" x="4" y="' + (oiBot + 15) + '" style="font-size:11px">未平倉（紅＝買權、綠＝賣權）</text>' +
+    '<g id="mtHover" style="display:none"><line id="mtHL" y1="' + top + '" y2="' + oiBot + '" stroke="' + gold + '" stroke-width="1.5"/><circle id="mtHC" r="5" fill="' + gold + '"/></g>';
+  if (anim){ const r = $('mtClipR'), t0 = performance.now();
+    const step2 = t => { const k = Math.min(1, Math.max(0, (t - t0) / 900)), e = 1 - Math.pow(1 - k, 3); r.setAttribute('width', W * e); if (k < 1) requestAnimationFrame(step2); }; requestAnimationFrame(step2); }
+  mtState = { m, X, Y, lo, hi, W, padL, padR, top, base };
+}
+function mtMove(ev){
+  if (!mtState) return; const { m, X, Y, lo, hi, W, padL, padR } = mtState, wrap = $('mtWrap'), rc = wrap.getBoundingClientRect();
+  const px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - rc.left) / rc.width * W, K = lo + (px - padL) / (W - padL - padR) * (hi - lo);
+  if (K < lo || K > hi) return mtLeave();
+  const i = Math.max(0, Math.min(m.Ks.length - 1, Math.round((K - m.Ks[0]) / m.h))), Kr = Math.round(K / 50) * 50, ab = m.above(Kr);
+  $('mtHover').style.display = ''; $('mtHL').setAttribute('x1', X(K)); $('mtHL').setAttribute('x2', X(K)); $('mtHC').setAttribute('cx', X(K)); $('mtHC').setAttribute('cy', Y(m.dens[i]));
+  const d = Kr - M.Fnow, tip = $('mtTip');
+  tip.innerHTML = '結算在 <b>' + fmtN(Kr) + '</b>（' + (d >= 0 ? '+' : '') + fmtN(d) + ' 點）<br><span class="bull">以上 <b>' + pct(ab) + '</b></span>　<span class="bear">以下 <b>' + pct(1 - ab) + '</b></span>';
+  tip.classList.add('show');
+  const tx = X(K) / W * rc.width; tip.style.left = Math.min(rc.width - tip.offsetWidth - 4, Math.max(4, tx - tip.offsetWidth / 2)) + 'px'; tip.style.top = '6px';
+}
+function mtLeave(){ $('mtTip').classList.remove('show'); const g = $('mtHover'); if (g) g.style.display = 'none'; }
+$('mtWrap').addEventListener('pointermove', mtMove); $('mtWrap').addEventListener('pointerdown', mtMove); $('mtWrap').addEventListener('pointerleave', mtLeave);
+
+/* ═════════ 走勢錐 ═════════ */
+let cnState = null;
+function drawCone(sel, anim){
+  const svg = $('cn'), W = Math.max(320, Math.min(1000, $('cnWrap').clientWidth || 1000)), cp = W < 600, padL = 8, padR = 58, top = 20, H = cp ? 360 : 446, bot = H - 44;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const tNow = M.tLast, ms = M.models.filter(m => m.T * 365 <= 45);
+  if (!ms.length){ svg.innerHTML = ''; return; }
+  // 過去：最近 3 個交易時段的台指期（30 分 K 收盤）
+  const hist = []; let ses = 0;
+  for (let i = TXB.length - 1; i >= 0 && ses < 5; i--){ if (i < TXB.length - 1 && TXB[i + 1][0] - TXB[i][0] > 60) ses++; if (ses < 5 && (TXB[i][0] % 30 === 0 || i === TXB.length - 1)) hist.unshift([TXB[i][0], TXB[i][4]]); }
+  const tEnd = Math.max(...ms.map(m => expMin(m.c)));
+  // 橫軸：左 28% 是過去（照 K 棒順序排，不留休市空白），右邊是未來（照天數）
+  const xl = padL, xm = padL + (W - padL - padR) * 0.28, xr = W - padR;
+  const XH = i => xl + i / Math.max(1, hist.length - 1) * (xm - xl), XF = t => xm + (t - tNow) / (tEnd - tNow) * (xr - xm);
+  // 每個到期日的分位，用「√時間」在中間補
+  const pts = [{ t:tNow, p:[1, 1, 1, 1, 1].map(() => M.Fnow) }].concat(ms.map(m => ({ t:expMin(m.c), m, p:[0.025, 0.16, 0.5, 0.84, 0.975].map(q => m.q(q)) })));
+  const series = []; for (let k = 0; k < 5; k++) series.push([]);
+  const N = 60;
+  for (let s = 0; s <= N; s++){
+    const t = tNow + (tEnd - tNow) * s / N; let j = 1; while (j < pts.length - 1 && pts[j].t < t) j++;
+    const a = pts[j - 1], b = pts[j], fa = Math.sqrt(Math.max(0, a.t - tNow)), fb = Math.sqrt(Math.max(0, b.t - tNow)), f = (Math.sqrt(Math.max(0, t - tNow)) - fa) / Math.max(1e-9, fb - fa);
+    for (let k = 0; k < 5; k++) series[k].push([t, a.p[k] + (b.p[k] - a.p[k]) * Math.min(1, Math.max(0, f))]);
+  }
+  const all = hist.map(h => h[1]).concat(series[0].map(p => p[1]), series[4].map(p => p[1]));
+  let ymin = Math.min(...all), ymax = Math.max(...all); const pad = (ymax - ymin) * 0.06; ymin -= pad; ymax += pad;
+  const Y = v => bot - (v - ymin) / (ymax - ymin) * (bot - top);
+  const band = (a, b) => 'M' + series[a].map(p => XF(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('L') + 'L' + series[b].slice().reverse().map(p => XF(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('L') + 'Z';
+  const ln = k => 'M' + series[k].map(p => XF(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('L');
+  const gold = css('--gold'), text = css('--text'), muted = css('--muted'), grid = css('--grid'), bull = css('--bull'), bear = css('--bear');
+  const span = ymax - ymin, step = [250, 500, 1000, 2000, 5000].find(v => v / span * (bot - top) >= 30) || 5000;
+  let g = ''; for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) g += '<line x1="' + padL + '" x2="' + xr + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="' + grid + '"/><text x="' + (xr + 6) + '" y="' + (Y(v) + 4) + '">' + fmtN(v) + '</text>';
+  const histPath = 'M' + hist.map((h, i) => XH(i).toFixed(1) + ',' + Y(h[1]).toFixed(1)).join('L');
+  // 到期日標記
+  let marks = '', lastX = -1e9, row = 0;
+  for (const p of pts.slice(1)){ const x = XF(p.t), on = p.m === sel, L0 = label(p.m.c); row = x - lastX < 58 ? 1 - row : 0; lastX = x;
+    marks += '<line x1="' + x + '" x2="' + x + '" y1="' + top + '" y2="' + bot + '" stroke="' + (on ? gold : muted) + '" opacity="' + (on ? .9 : .25) + '" stroke-dasharray="3 4"/>' +
+      '<line x1="' + x + '" x2="' + x + '" y1="' + Y(p.p[1]) + '" y2="' + Y(p.p[3]) + '" stroke="' + gold + '" stroke-width="' + (on ? 5 : 3) + '" stroke-linecap="round"/>' +
+      '<circle cx="' + x + '" cy="' + Y(p.p[2]) + '" r="' + (on ? 5 : 3) + '" fill="' + text + '"/>' +
+      (on ? '<text class="zh" x="' + x + '" y="' + (Y(p.p[3]) - 8) + '" text-anchor="middle" style="fill:' + gold + ';font-weight:700">' + fmtN(p.p[3]) + '</text><text class="zh" x="' + x + '" y="' + (Y(p.p[1]) + 18) + '" text-anchor="middle" style="fill:' + gold + ';font-weight:700">' + fmtN(p.p[1]) + '</text>' : '') +
+      '<text class="zh" x="' + x + '" y="' + (bot + 18 + row * 18) + '" text-anchor="middle" style="fill:' + (on ? gold : muted) + ';font-size:' + (on ? 13 : 11) + 'px;font-weight:' + (on ? 700 : 400) + '">' + L0.short + '</text>'; }
+  const dayMarks = [], seen = new Set(); hist.forEach((h, i) => { const d = md(h[0]), mm = h[0] % 1440; if (mm >= 525 && mm < 600 && !seen.has(d)){ seen.add(d); dayMarks.push('<text x="' + XH(i) + '" y="' + (bot + 18) + '" text-anchor="middle">' + d + '</text>'); } });
+  svg.innerHTML =
+    '<defs><clipPath id="cnClip"><rect id="cnClipR" x="' + xm + '" y="0" width="' + (anim ? 0 : W) + '" height="' + H + '"/></clipPath>' +
+    '<linearGradient id="gCone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + gold + '" stop-opacity=".9"/><stop offset="1" stop-color="' + gold + '" stop-opacity=".35"/></linearGradient></defs>' + g +
+    '<rect x="' + xl + '" y="' + top + '" width="' + (xm - xl) + '" height="' + (bot - top) + '" fill="' + muted + '" opacity=".05"/>' +
+    '<text class="zh" x="' + (xl + 6) + '" y="' + (top + 16) + '" style="font-size:12px">過去</text><text class="zh" x="' + (xm + 8) + '" y="' + (top + 16) + '" style="font-size:12px">未來（市場預估）</text>' +
+    '<g clip-path="url(#cnClip)"><path d="' + band(0, 4) + '" fill="url(#gCone)" opacity=".22"/><path d="' + band(1, 3) + '" fill="url(#gCone)" opacity=".5"/>' +
+    '<path d="' + ln(2) + '" fill="none" stroke="' + text + '" stroke-width="1.2" stroke-dasharray="5 5" opacity=".7"/>' + marks + '</g>' +
+    '<path d="' + histPath + '" fill="none" stroke="' + text + '" stroke-width="2"/>' + dayMarks.join('') +
+    '<circle cx="' + xm + '" cy="' + Y(M.Fnow) + '" r="5" fill="' + gold + '"><animate attributeName="r" values="4;8;4" dur="1.8s" repeatCount="indefinite"/></circle>' +
+    '<g id="cnHover" style="display:none"><line id="cnHL" y1="' + top + '" y2="' + bot + '" stroke="' + gold + '"/></g>';
+  if (anim){ const r = $('cnClipR'), t0 = performance.now();
+    const st = t => { const k = Math.min(1, Math.max(0, (t - t0) / 1100)), e = 1 - Math.pow(1 - k, 3); r.setAttribute('width', (W - xm) * e); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); }
+  cnState = { series, XF, xm, xr, W, tNow, tEnd, pts };
+}
+function cnMove(ev){
+  if (!cnState) return; const { series, xm, xr, W, tNow, tEnd } = cnState, rc = $('cnWrap').getBoundingClientRect();
+  const x = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - rc.left) / rc.width * W; if (x < xm || x > xr) return cnLeave();
+  const s = Math.round((x - xm) / (xr - xm) * (series[0].length - 1)), t = series[0][s][0], tip = $('cnTip');
+  $('cnHover').style.display = ''; $('cnHL').setAttribute('x1', x); $('cnHL').setAttribute('x2', x);
+  tip.innerHTML = '<b>' + md(t) + '</b>（' + ((t - tNow) / 1440).toFixed(1) + ' 天後）<br><span class="gold">68%：' + fmtN(series[1][s][1]) + '～' + fmtN(series[3][s][1]) + '</span><br><span class="muted">95%：' + fmtN(series[0][s][1]) + '～' + fmtN(series[4][s][1]) + '</span>';
+  tip.classList.add('show'); const tx = x / W * rc.width; tip.style.left = Math.min(rc.width - tip.offsetWidth - 4, Math.max(4, tx - tip.offsetWidth - 12)) + 'px'; tip.style.top = '8px';
+}
+function cnLeave(){ $('cnTip').classList.remove('show'); const g = $('cnHover'); if (g) g.style.display = 'none'; }
+$('cnWrap').addEventListener('pointermove', cnMove); $('cnWrap').addEventListener('pointerdown', cnMove); $('cnWrap').addEventListener('pointerleave', cnLeave);
+
+/* ═════════ 機率階梯 ═════════ */
+function renderLadder(m){
+  const F = M.Fnow, em = (m.q(0.84) - m.q(0.16)) / 2, step = em > 1600 ? 500 : em > 700 ? 250 : 100, base = Math.round(F / step) * step;
+  $('ldSub').innerHTML = '到 ' + label(m.c).long + '：每 ' + step + ' 點一格，收在那個價位「以上」或「以下」的機率。';
+  const row = (lv, p, col, cur) => '<div class="lrow' + (cur ? ' cur' : '') + '"><span class="lv">' + (cur ? '現在附近 ' : '') + fmtN(lv) + '</span><span class="bar"><s style="width:0;background:' + col + '" data-w="' + (p * 100).toFixed(1) + '"></s></span><span class="pc" style="color:' + col + '">' + pct(p) + '</span></div>';
+  let upR = '', dnR = '';
+  for (let i = 1; i <= 7; i++){ const lv = base + i * step; upR += row(lv, m.above(lv), 'var(--bull)'); }
+  for (let i = 1; i <= 7; i++){ const lv = base - i * step; dnR += row(lv, 1 - m.above(lv), 'var(--bear)'); }
+  $('ladder').innerHTML = '<div class="lad"><h3 class="bull">漲到以上的機率</h3>' + upR + '</div><div class="lad"><h3 class="bear">跌到以下的機率</h3>' + dnR + '</div>';
+  requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll('#ladder s[data-w]').forEach(s => s.style.width = s.dataset.w + '%')));
+}
+
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 60e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+let rzT = null, lastW = innerWidth;
+window.addEventListener('resize', () => { mtLeave(); cnLeave(); if (Math.abs(innerWidth - lastW) < 20) return; lastW = innerWidth; clearTimeout(rzT); rzT = setTimeout(() => { if (M) renderAll(false); }, 200); });
+</script>
+</body>
+</html>
