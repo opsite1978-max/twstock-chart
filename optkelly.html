@@ -90,6 +90,19 @@
   @media(min-width:760px){.kgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
   .kgrid div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted)}
   .kgrid b{display:block;font-size:18px;color:var(--text);font-variant-numeric:tabular-nums}
+  .plan{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .plan h3{font-size:14.5px;margin:0 0 6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+  .plan h3 .muted{font-weight:400;font-size:12px}
+  .lad{display:grid;grid-template-columns:auto 1fr auto;gap:0 10px;font-variant-numeric:tabular-nums;font-size:13.5px}
+  .lad div{padding:4px 0;border-bottom:1px solid var(--line)} .lad .num{white-space:nowrap}
+  .lad .now{font-weight:700;color:var(--accent)}
+  .pl{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;background:var(--panel2);font-size:13.5px;line-height:1.75}
+  .pl .t{font-weight:700;font-size:14.5px}
+  .pl .act{display:inline-block;font-weight:700;padding:0 8px;border-radius:999px;border:2px solid;margin-right:6px}
+  .act.L{color:var(--good);border-color:var(--good)} .act.S{color:var(--bad);border-color:var(--bad)} .act.N{color:var(--accent);border-color:var(--accent)}
+  .pl .num{font-variant-numeric:tabular-nums}
+  .pl .sm{font-size:12px;color:var(--muted)}
+  details#more>summary{font-size:14px;color:var(--accent);margin:14px 0 4px;padding:8px 2px}
   footer{margin-top:22px;font-size:12px;color:var(--muted);line-height:1.8}
 </style>
 </head>
@@ -118,6 +131,13 @@
       <span id="metaLine" class="small"></span>
     </div>
 
+    <section style="margin-top:4px">
+      <h2>可執行策略<span class="muted">依勝率、凱利值與主力部位自動產生；只是統計參考，不保證獲利</span></h2>
+      <div class="setrow" style="margin:0 0 8px"><label>我的本金 <input id="bankIn" type="number" inputmode="numeric" step="100000" min="0" style="width:130px;height:30px"> 元</label><span class="small">建議口數用「四分之一凱利」並限制單筆最多賠本金 10%</span></div>
+      <div id="planBox"></div>
+    </section>
+
+    <details id="more"><summary>看詳細計算（各群人勝率、主力部位、損益地圖、各履約價明細）</summary>
     <section style="margin-top:4px">
       <h2>所有建倉的人：抱到結算的勝率<span class="muted">用未平倉口數加權；以目前權利金當成本</span></h2>
       <div class="cards" id="cards"></div>
@@ -167,6 +187,7 @@
       <div class="tblx" id="bigTbl"></div>
     </section>
 
+    </details>
     <footer id="foot"></footer>
   </div>
 </main>
@@ -663,7 +684,172 @@ function renderMain(){
     if (lines.length) h += `<div class="who"><div class="hd"><span class="nm">前十大交易人</span><span class="muted small">${mdw(BIG.d)}・包含法人與大戶，無法拆到單一履約價</span></div><ul>${lines.join('')}</ul></div>`;
   }
   wb.innerHTML = h;
-  renderBook();
+  renderBook(); renderPlan();
+}
+
+
+/* ───────── 可執行策略 ───────── */
+let BANK = +(store.get('ok.bank') || 1000000);
+const r10 = v => Math.round(v / 10) * 10, r50 = v => Math.round(v / 50) * 50;
+function smAll(e){ if (!e.sm || e.sm.key !== RETS.length) e.sm = { key:RETS.length, hist:samples(e, 'hist'), rv:samples(e, 'rv'), iv:samples(e, 'iv') }; return e.sm; }
+function evalPay(smp, pay){
+  const X = smp.X, n = X.length; let nw = 0, sw = 0, sl = 0, ev = 0;
+  for (let j = 0; j < n; j++){ const v = pay(X[j]); ev += v; if (v > 0){ nw++; sw += v; } else sl -= v; }
+  const p = nw / n, W = nw ? sw / nw : 0, L = n - nw ? sl / (n - nw) : 0;
+  return { p, W, L, b: L > 0 ? W / L : null, k:kellyOf(p, W, L), ev:ev / n };
+}
+const callV = (K, X) => Math.max(X - K, 0), putV = (K, X) => Math.max(K - X, 0);
+// 候選組合：收租價差（賣近買遠）、買方價差、單買
+function candidates(){
+  const out = [], exps = DATA.exps.filter(e => e.n >= 1).slice(0, 3);
+  for (const e of exps){
+    const sm = smAll(e), byK = new Map(e.S.map(s => [s.K, s])), C = e.C;
+    const add = (o) => {
+      const h = evalPay(sm.hist, o.pay); if (!(h.k > 0 && h.ev > 0)) return;          // 先用過去一年篩，沒優勢就不用再算
+      const r = { hist:h, rv:evalPay(sm.rv, o.pay), iv:evalPay(sm.iv, o.pay) };
+      const k = Math.min(r.hist.k, r.rv.k), ev = Math.min(r.hist.ev, r.rv.ev);
+      if (!(k > 0 && ev > 0)) return;
+      out.push(Object.assign(o, { e, r, k, ev, score:ev / o.maxLoss }));
+    };
+    for (const s of e.S){
+      if (Math.abs(s.K / C - 1) > 0.1) continue;
+      for (const w of [100, 200, 300, 500]){
+        // 賣權多頭價差：賣 K 賣權、買 K−w 賣權（收租，指數不要跌破 K）
+        const lp = byK.get(s.K - w);
+        if (s.K < C && lp && s.p.px > 0 && lp.p.px > 0 && s.p.oi >= 200 && lp.p.oi >= 50){
+          const cr = s.p.px - lp.p.px;
+          if (cr >= 5 && cr < w) add({ kind:'credit', side:'put', name:'賣權多頭價差（收租）', legs:[['賣', 'put', s.K, s.p.px], ['買', 'put', s.K - w, lp.p.px]], prem:cr, maxLoss:w - cr, maxGain:cr, be:s.K - cr, pay:X => cr - putV(s.K, X) + putV(s.K - w, X) });
+        }
+        // 買權空頭價差：賣 K 買權、買 K+w 買權（收租，指數不要漲破 K）
+        const hc = byK.get(s.K + w);
+        if (s.K > C && hc && s.c.px > 0 && hc.c.px > 0 && s.c.oi >= 200 && hc.c.oi >= 50){
+          const cr = s.c.px - hc.c.px;
+          if (cr >= 5 && cr < w) add({ kind:'credit', side:'call', name:'買權空頭價差（收租）', legs:[['賣', 'call', s.K, s.c.px], ['買', 'call', s.K + w, hc.c.px]], prem:cr, maxLoss:w - cr, maxGain:cr, be:s.K + cr, pay:X => cr - callV(s.K, X) + callV(s.K + w, X) });
+        }
+        if (Math.abs(s.K / C - 1) > 0.03) continue;
+        // 買權多頭價差：買 K 買權、賣 K+w 買權（押漲，風險有限）
+        if (hc && s.c.px > 0 && hc.c.px > 0 && s.c.oi >= 100 && hc.c.oi >= 50){
+          const db = s.c.px - hc.c.px;
+          if (db > 3 && db < w) add({ kind:'debit', side:'call', name:'買權多頭價差（押漲）', legs:[['買', 'call', s.K, s.c.px], ['賣', 'call', s.K + w, hc.c.px]], prem:-db, maxLoss:db, maxGain:w - db, be:s.K + db, pay:X => callV(s.K, X) - callV(s.K + w, X) - db });
+        }
+        // 賣權空頭價差：買 K 賣權、賣 K−w 賣權（押跌，風險有限）
+        if (lp && s.p.px > 0 && lp.p.px > 0 && s.p.oi >= 100 && lp.p.oi >= 50){
+          const db = s.p.px - lp.p.px;
+          if (db > 3 && db < w) add({ kind:'debit', side:'put', name:'賣權空頭價差（押跌）', legs:[['買', 'put', s.K, s.p.px], ['賣', 'put', s.K - w, lp.p.px]], prem:-db, maxLoss:db, maxGain:w - db, be:s.K - db, pay:X => putV(s.K, X) - putV(s.K - w, X) - db });
+        }
+      }
+      // 單買（價外 6% 以內）
+      if (Math.abs(s.K / C - 1) <= 0.06){
+        if (s.K >= C && s.c.px >= 3 && s.c.oi >= 200) add({ kind:'debit', side:'call', name:'單買買權（押大漲）', legs:[['買', 'call', s.K, s.c.px]], prem:-s.c.px, maxLoss:s.c.px, maxGain:Infinity, be:s.K + s.c.px, pay:X => callV(s.K, X) - s.c.px });
+        if (s.K <= C && s.p.px >= 3 && s.p.oi >= 200) add({ kind:'debit', side:'put', name:'單買賣權（押大跌）', legs:[['買', 'put', s.K, s.p.px]], prem:-s.p.px, maxLoss:s.p.px, maxGain:Infinity, be:s.K - s.p.px, pay:X => putV(s.K, X) - s.p.px });
+      }
+    }
+  }
+  return out;
+}
+function pickTop(list, n){
+  const seen = new Set(), out = [];
+  for (const c of list.sort((a,b) => b.score - a.score)){ const key = c.name + c.e.code; if (seen.has(key)) continue; seen.add(key); out.push(c); if (out.length >= n) break; }
+  return out;
+}
+// 台指期：從進場價開始，用過去一年的每日漲跌重新抽樣 4,000 條路徑，收盤先碰到目標算贏、先碰到停損算輸，到期沒碰到用最後收盤結算
+function pathPlan(entry, stop, target, dir, days){
+  const r = rng(98765 + Math.round(entry)), n = 4000; let nw = 0, sw = 0, sl = 0, ev = 0;
+  for (let j = 0; j < n; j++){
+    let x = entry, pnl = null;
+    for (let d = 0; d < days; d++){
+      x *= Math.exp(RETS.length ? RETS[(r() * RETS.length) | 0] : (RV20 || 0.015) * gauss(r));
+      if (dir > 0 ? x >= target : x <= target){ pnl = Math.abs(target - entry); break; }
+      if (dir > 0 ? x <= stop : x >= stop){ pnl = -Math.abs(entry - stop) - Math.abs(x - stop) * 0.5; break; }   // 跳空穿過停損，多賠一半缺口
+    }
+    if (pnl == null) pnl = (x - entry) * dir;
+    ev += pnl; if (pnl > 0){ nw++; sw += pnl; } else sl -= pnl;
+  }
+  const p = nw / n, W = nw ? sw / nw : 0, L = n - nw ? sl / (n - nw) : 0;
+  return { p, W, L, b: L > 0 ? W / L : null, k:kellyOf(p, W, L), ev:ev / n };
+}
+const qtl = (X, q) => X[Math.min(X.length - 1, Math.max(0, Math.floor(X.length * q)))];
+function futLevels(){
+  const E = DATA.exps.find(e => e.n >= 1) || DATA.exps[0], sm = smAll(E), X = sm.hist.X, C = DATA.fut ? DATA.fut.price : E.C;
+  const shift = C - E.C;                                    // 選擇權看的是結算價（指數），點位換算成台指期價格
+  const q10 = qtl(X, 0.1), q90 = qtl(X, 0.9), q25 = qtl(X, 0.25), q75 = qtl(X, 0.75);
+  let R1 = null, S1 = null;
+  for (const s of E.S){ if (s.K >= E.C && s.K <= q90 && (!R1 || s.c.oi > R1.c.oi)) R1 = s; if (s.K <= E.C && s.K >= q10 && (!S1 || s.p.oi > S1.p.oi)) S1 = s; }
+  const sd1 = C * (RV20 || 0.015);
+  let r1 = R1 ? r10(R1.K + shift) : r50(q75 + shift), s1 = S1 ? r10(S1.K + shift) : r50(q25 + shift);
+  if (r1 - C < 0.3 * sd1) r1 = r50(Math.max(q75 + shift, C + 0.5 * sd1));
+  if (C - s1 < 0.3 * sd1) s1 = r50(Math.min(q25 + shift, C - 0.5 * sd1));
+  const r2 = r50(Math.max(q90 + shift, r1 + 0.6 * sd1)), s2 = r50(Math.min(q10 + shift, s1 - 0.6 * sd1));
+  let mp = r10(maxPain(E) + shift); if (!(mp > s1 && mp < r1)) mp = r10((s1 + r1) / 2);
+  return { E, C, shift, sd1, r1, r2, s1, s2, mp, rOi:R1 && R1.c.oi, sOi:S1 && S1.p.oi, X };
+}
+function lotsFor(k, Lpts, mult, maxLossPts){
+  if (!(k > 0) || !(Lpts > 0)) return 0;
+  const byK = Math.floor(0.25 * k * BANK / (Lpts * mult)), byCap = maxLossPts ? Math.floor(0.1 * BANK / (maxLossPts * mult)) : byK;
+  return Math.max(0, Math.min(byK, byCap));
+}
+function mainHint(){
+  const out = [];
+  if (BIG){
+    const c = BIG.rows.find(r => r.contract_type === 'week' && r.put_call === 'call'), p = BIG.rows.find(r => r.contract_type === 'week' && r.put_call === 'put');
+    if (c && c.market_open_interest){ const net = c.buy_top10_trader_open_interest - c.sell_top10_trader_open_interest; if (net < 0 && -net / c.market_open_interest > 0.08) out.push({ t:'cap', s:`前十大交易人週選買權淨賣 ${fmtInt(-net)} 口：上方有人壓，壓力比較可信` }); else if (net > 0 && net / c.market_open_interest > 0.08) out.push({ t:'up', s:`前十大交易人週選買權淨買 ${fmtInt(net)} 口：大戶押上漲` }); }
+    if (p && p.market_open_interest){ const net = p.buy_top10_trader_open_interest - p.sell_top10_trader_open_interest; if (net < 0 && -net / p.market_open_interest > 0.08) out.push({ t:'floor', s:`前十大交易人週選賣權淨賣 ${fmtInt(-net)} 口：下方有人撐，支撐比較可信` }); else if (net > 0 && net / p.market_open_interest > 0.08) out.push({ t:'down', s:`前十大交易人週選賣權淨買 ${fmtInt(net)} 口：大戶押下跌` }); }
+  }
+  if (INST && INST.fut && INST.fut.fi5 != null && Math.abs(INST.fut.fi5) > 3000) out.push({ t:INST.fut.fi5 > 0 ? 'up' : 'down', s:`外資台指期 5 天${INST.fut.fi5 > 0 ? '加多（或回補空單）' : '加空'} ${fmtInt(Math.abs(INST.fut.fi5))} 口` });
+  if (INST && INST.who['投信'] && INST.who['投信'].now && INST.who['投信'].p5){ const x = INST.who['投信'].now, y = INST.who['投信'].p5; if (x.SC - y.SC > 3000) out.push({ t:'cap', s:`投信 5 天加賣買權 ${fmtInt(x.SC - y.SC)} 口（收租、封頂）` }); }
+  return out;
+}
+function renderPlan(){
+  const box = $('#planBox'); if (!DATA) return;
+  const lv = futLevels(), C = lv.C, H = 5, hints = mainHint();
+  const cap = hints.some(h => h.t === 'cap'), floor = hints.some(h => h.t === 'floor'), up = hints.filter(h => h.t === 'up').length, dn = hints.filter(h => h.t === 'down').length;
+  const lean = cap && !floor ? 'S' : floor && !cap ? 'L' : up > dn ? 'L' : dn > up ? 'S' : 'N';
+  const sd = lv.sd1;
+  const plans = [
+    { id:'L', act:'L', t:'支撐買進（區間做多）', when:`台指期回到 ${fmtInt(r10(lv.s1 + 0.15 * sd))} 附近`, entry:r10(lv.s1 + 0.15 * sd), stop:r10(lv.s1 - 0.6 * sd), target:r10(lv.mp - lv.s1 > 0.5 * sd ? lv.mp : lv.r1 - 0.15 * sd), dir:1 },
+    { id:'S', act:'S', t:'壓力放空（區間做空）', when:`台指期反彈到 ${fmtInt(r10(lv.r1 - 0.15 * sd))} 附近`, entry:r10(lv.r1 - 0.15 * sd), stop:r10(lv.r1 + 0.6 * sd), target:r10(lv.r1 - lv.mp > 0.5 * sd ? lv.mp : lv.s1 + 0.15 * sd), dir:-1 },
+    { id:'BL', act:'L', t:'突破追多', when:`收盤站上 ${fmtInt(r10(lv.r1 + 0.15 * sd))}`, entry:r10(lv.r1 + 0.15 * sd), stop:r10(lv.r1 - 0.4 * sd), target:lv.r2, dir:1 },
+    { id:'BS', act:'S', t:'跌破追空', when:`收盤跌破 ${fmtInt(r10(lv.s1 - 0.15 * sd))}`, entry:r10(lv.s1 - 0.15 * sd), stop:r10(lv.s1 + 0.4 * sd), target:lv.s2, dir:-1 },
+  ];
+  // 口數：每筆最多賠本金 2%（停損距離 × 每點金額）
+  for (const p of plans){ p.st = pathPlan(p.entry, p.stop, p.target, p.dir, H); p.risk = Math.abs(p.entry - p.stop); p.lots = Math.floor(0.02 * BANK / (p.risk * 10)); }   // 以微台（每點 10 元）計
+  const best = lean === 'N' ? null : plans.find(p => p.id === lean);
+  const dist = (a) => `${a > C ? '+' : '−'}${fmtInt(Math.abs(a - C))}`;
+  const pB = v => pct(lower(lv.X, v - lv.shift) / lv.X.length, 0);
+  const ladder = [['強壓力', lv.r2, '結算有 90% 機率在這以下'], ['壓力', lv.r1, lv.rOi ? `${mdw(lv.E.exp)} 最大買權未平倉 ${fmtInt(lv.rOi)} 口` : '機率 75% 位置'], ['現價', C, '台指期' + (DATA.fut && DATA.fut.night ? '（含夜盤）' : '')], ['中軸', lv.mp, '最大痛點（賣方最賺）'], ['支撐', lv.s1, lv.sOi ? `最大賣權未平倉 ${fmtInt(lv.sOi)} 口` : '機率 25% 位置'], ['強支撐', lv.s2, '結算有 10% 機率在這以下']].sort((a,b) => b[1] - a[1]);
+  let h = `<div class="plan"><h3>台指期點位<span class="muted">${mdw(lv.E.exp)} 結算前；一天正常波動約 ${fmtInt(sd)} 點</span></h3><div class="lad">` +
+    ladder.map(([n, v, d]) => `<div class="${n === '現價' ? 'now' : ''}">${n}</div><div class="${n === '現價' ? 'now' : ''} num">${fmtInt(v)}<span class="sm">　${n === '現價' ? '' : dist(v)}</span></div><div class="sm" style="text-align:right">${d}</div>`).join('') + `</div>`;
+  if (hints.length) h += `<div class="pl"><span class="t">主力訊號</span>：${hints.map(x => x.s).join('；')}。→ ${lean === 'S' ? '<b class="b">偏向空方／壓力放空</b>' : lean === 'L' ? '<b class="g">偏向多方／支撐買進</b>' : '方向不明，以區間操作為主'}</div>`;
+  for (const p of plans){
+    const st = p.st, isBest = p === best;
+    const agree = lean !== 'N' && p.act === lean, against = lean !== 'N' && p.act !== lean;
+    h += `<div class="pl" style="${isBest ? 'border-color:var(--accent);border-width:2px' : against ? 'opacity:.62' : ''}"><span class="act ${p.act}">${p.act === 'L' ? '做多' : '做空'}</span><span class="t">${p.t}</span>${isBest ? '　<b style="color:var(--accent)">← 建議優先</b>' : agree ? '　<span class="sm">和主力同方向</span>' : against ? '　<span class="sm">和主力反方向，不建議</span>' : ''}<br>` +
+      `條件：${p.when}　<span class="num">進場 <b>${fmtInt(p.entry)}</b>・停損 <b class="b">${fmtInt(p.stop)}</b>・目標 <b class="g">${fmtInt(p.target)}</b></span><br>` +
+      `<span class="sm">停損 ${fmtInt(p.risk)} 點、目標 ${fmtInt(Math.abs(p.target - p.entry))} 點；${H} 個交易日內先到目標的機率 ${pct(st.p, 0)}、賺賠比 ${st.b == null ? '–' : st.b.toFixed(2)}</span><br>` +
+      `${against ? '<span class="sm">反方向，不建議做</span>' : (p.lots ? `微台 <b>${p.lots}</b> 口${p.lots >= 5 ? `（＝小台 ${Math.floor(p.lots / 5)} 口${p.lots % 5 ? '＋微台 ' + (p.lots % 5) + ' 口' : ''}）` : ''}<span class="sm">：停損時賠 ${fmtMoney(p.lots * p.risk * 10)}，約本金 2%</span>` : '<span class="sm">本金不夠：停損一口微台就超過本金 2%</span>')}</div>`;
+  }
+  h += `<p class="note"><b>老實說</b>：只看點位，台指期做多做空在統計上大約打平（勝率和賺賠比互相抵銷），進場、停損、目標是用來控制風險的。方向上的優勢只來自主力訊號，所以只建議做和主力同方向的那一個；主力方向不明時兩邊都只能小量做區間。</p><p class="note">以收盤價判斷是否碰到停損或目標，盤中跳空可能賠更多（已多算一半缺口）。點位依 ${mdw(lv.E.exp)} 結算的未平倉分布與過去一年漲跌推算，${lv.shift ? '並換算成台指期價格（加上與指數的價差 ' + fmtInt(lv.shift) + ' 點）。' : ''}</p></div>`;
+
+  // 選擇權建議標的
+  const all = candidates();
+  const credit = pickTop(all.filter(c => c.kind === 'credit'), 3), debit = pickTop(all.filter(c => c.kind === 'debit'), 2);
+  const lbl = { call:'買權', put:'賣權' };
+  const card = c => {
+    const lots = lotsFor(c.k, c.r.hist.L, MULT, c.maxLoss);
+    const legs = c.legs.map(([a, cp, K, px]) => `<b>${a}</b> ${mdw(c.e.exp)} ${fmtInt(K)} ${lbl[cp]}（${px} 點）`).join('＋');
+    const rule = c.kind === 'credit'
+      ? `停利：價差剩下收入的一半（約 ${(c.prem / 2).toFixed(1)} 點）就買回；停損：價差漲到 ${(c.prem * 2).toFixed(1)} 點，或台指期收盤${c.side === 'put' ? '跌破' : '漲破'} ${fmtInt(c.legs[0][2] + lv.shift)}；結算前一天還沒處理就平倉。`
+      : `停損：權利金賠掉一半（剩 ${(c.maxLoss / 2).toFixed(1)} 點）就出場；停利：賺一倍先出一半，其餘抱到目標或結算前一天。`;
+    return `<div class="pl"><span class="act ${c.side === 'put' ? (c.kind === 'credit' ? 'L' : 'S') : (c.kind === 'credit' ? 'S' : 'L')}">${c.kind === 'credit' ? '收租' : '買方'}</span><span class="t">${c.name}</span><br>${legs}<br>` +
+      `<span class="num">${c.kind === 'credit' ? `每組收 <b>${c.prem.toFixed(1)}</b> 點（${fmtMoney(c.prem * MULT)}）` : `每組付 <b>${c.maxLoss.toFixed(1)}</b> 點（${fmtMoney(c.maxLoss * MULT)}）`}・最多賠 ${fmtMoney(c.maxLoss * MULT)}・最多賺 ${isFinite(c.maxGain) ? fmtMoney(c.maxGain * MULT) : '不限'}・損益兩平 ${fmtInt(c.be)}</span><br>` +
+      `<span class="sm">勝率 ${pct(c.r.hist.p, 0)}・賺賠比 ${c.r.hist.b == null ? '–' : c.r.hist.b.toFixed(2)}・凱利（過去一年／近 20 天／隱含波動率）${(c.r.hist.k * 100).toFixed(0)}%／${(c.r.rv.k * 100).toFixed(0)}%／${(c.r.iv.k * 100).toFixed(0)}%</span><br>` +
+      `建議 <b>${lots}</b> 組${lots === 0 ? '（本金不夠一組）' : `（最多賠 ${fmtMoney(lots * c.maxLoss * MULT)}）`}<br><span class="sm">${rule}</span></div>`;
+  };
+  h += `<div class="plan"><h3>選擇權建議組合<span class="muted">兩種實際漲跌估法的凱利值都要是正的才列出；依「期望獲利 ÷ 最大風險」排序</span></h3>`;
+  h += credit.length ? credit.map(card).join('') : '<div class="msg">目前沒有收租組合在兩種估法下都有優勢</div>';
+  h += debit.length ? debit.map(card).join('') : '<div class="pl"><span class="act N">買方</span>目前沒有買方組合在兩種估法下都有優勢（權利金偏貴），不建議當買方。</div>';
+  h += `<p class="note">價格用 ${mdw(DATA.date)} 結算價，實際下單請看即時報價，差太多就重新評估。停利停損是一般做法，還沒有回測。收租組合的「勝率」高，但賠的時候是收入的好幾倍，一定要照停損做。</p></div>`;
+  box.innerHTML = h;
 }
 
 /* ───────── 作圖 ───────── */
@@ -782,7 +968,7 @@ function renderChips(){
   for (const e of DATA.exps) add(e.code, mdw(e.exp) + ' 結算', e.info.label + '・剩 ' + e.n + ' 個交易日・未平倉 ' + fmtInt(e.oiC + e.oiP));
 }
 function renderAll(){
-  renderChips(); renderCards(); renderStk(); renderTbl(); renderInstTbl();
+  renderChips(); renderCards(); renderStk(); renderTbl(); renderInstTbl(); renderPlan();
   const e = stratExp(), f = DATA.fut;
   const mName = { hist:'過去一年台指期實際漲跌（' + RETS.length + ' 天）重新抽樣', rv:'近 20 天實際波動率（年化 ' + (RV20 ? (RV20 * Math.sqrt(252) * 100).toFixed(1) + '%' : '–') + '）', iv:'各結算日的價平隱含波動率' }[MODEL];
   $('#metaLine').textContent = `資料日 ${mdw(DATA.date)}・台指期 ${f ? fmtInt(f.price) + (f.night ? '（含夜盤）' : '') : '–'}・價平隱含波動率 ${e ? (e.atmIv * 100).toFixed(1) + '%' : '–'}`;
@@ -800,6 +986,9 @@ $('#themeBtn').onclick = () => { THEME = THEME === 'dark' ? 'light' : 'dark'; st
 $('#modelSel').onchange = e => { MODEL = e.target.value; store.set('ok.model', MODEL); setStatus('重新計算…'); setTimeout(() => { compute(); setStatus(''); renderAll(); renderMain(); }, 20); };
 $('#rangeSel').onchange = e => { RANGE = +e.target.value; store.set('ok.range', String(RANGE)); renderStk(); renderTbl(); };
 $('#dateSel').onchange = e => loadDate(e.target.value).catch(err => setStatus(err.message, true));
+$('#bankIn').value = BANK;
+$('#bankIn').onchange = e => { const v = +e.target.value; if (v > 0){ BANK = v; store.set('ok.bank', String(v)); renderPlan(); } };
+$('#more').addEventListener('toggle', () => { if ($('#more').open && DATA){ renderStk(); renderBook(); } });
 let rT = null; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA){ renderStk(); renderBook(); } }, 200); });
 
 async function start(){

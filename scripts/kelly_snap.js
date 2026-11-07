@@ -70,11 +70,12 @@ const runner = `
   try { chips = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/txo/chips.json'), 'utf8')).days || []; } catch(e){}
   const date = await ctx.__RUN(TOKEN, hist, chips);
   const res = { updated:new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 16).replace('T', ' '), date, state:ctx.__STATE(), models:{} };
-  for (const m of ['hist', 'rv', 'iv']){
+  for (const m of ['rv', 'iv', 'hist']){
     ctx.__RECALC(m);
     res.models[m] = { groups:ctx.__GROUPS(), flow:strip(el('#flow').innerHTML), main:strip(el('#mainBox').innerHTML), who:strip(el('#whoBox').innerHTML),
       book:strip(el('#bookK').innerHTML), bookNote:strip(el('#bookNote').innerHTML) };
   }
+  res.plan = strip(el('#planBox').innerHTML);
   res.inst = strip(el('#instTbl').innerHTML); res.big = strip(el('#bigTbl').innerHTML);
   fs.mkdirSync(path.join(ROOT, 'data/txo'), { recursive:true });
   fs.writeFileSync(path.join(ROOT, 'data/txo/kelly.json'), JSON.stringify(res, null, 1));
