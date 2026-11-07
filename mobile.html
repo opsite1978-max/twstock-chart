@@ -192,6 +192,8 @@
   <div class="plabel" id="lbl-vpo"></div>
   <div class="plabel" id="lbl-t3"></div>
   <div class="plabel" id="lbl-wt"></div>
+  <div class="plabel" id="lbl-magic"></div>
+  <div class="plabel" id="lbl-dragon"></div>
   <div class="plabel" id="lbl-ztsv"></div>
   <div class="plabel" id="lbl-rsib"></div>
   <div class="plabel" id="lbl-abyss"></div>
@@ -236,6 +238,8 @@
         <label class="chk"><input type="checkbox" data-ind="bbot">布林大底</label>
         <label class="chk"><input type="checkbox" data-ind="pess">超級悲觀線（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="valley">布林谷底線</label>
+        <label class="chk"><input type="checkbox" data-ind="magic">神奇波段</label>
+        <label class="chk"><input type="checkbox" data-ind="dragon">尋龍指標</label>
         <label class="chk"><input type="checkbox" data-ind="taiji">太極週期線</label>
         <label class="chk"><input type="checkbox" data-ind="trap">主力套牢（台指期）</label>
         <label class="chk"><input type="checkbox" data-ind="panic">散戶恐慌（台指期）</label>
@@ -830,7 +834,7 @@ const DEFAULTS = {
   ivx:{ src:'iv30', len:20, mult:2, invert:true, fwd:5, mainSig:true, cIv:'#b8bcc8', cHi:'#22c55e', cLo:'#e04848', cBot:'#ffb020' },
   ovl:{ topg:true, bias:true, bb3:true, ribbon:true, cost:true },
   cost:{ rc:true, top:true, fi:true, fl:true, cFl:'#4fc3f7', w:2, cRc:'#b98cff', cL:'#ff8a65', cS:'#4dd0e1', cFI:'#ffca28' }, fontSize:12, lvlW:2,
-  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, omega:false, big:false, bbot:true, trap:false, panic:true, pess:false, taiji:false, valley:false }, chartH:100, mainRatio:50,
+  ind:{ smi:true, aroon:true, vpo:true, t3:true, wt:true, ztsv:true, rsib:true, abyss:true, qsz:true, shz:true, ivx:true, flow:true, retail:true, ult:false, omega:false, big:false, bbot:true, trap:false, panic:true, pess:false, taiji:false, valley:false, magic:false, dragon:false }, chartH:100, mainRatio:50,
   ma:[ { on:true, len:5,  w:1, col:'#f5c542' }, { on:true, len:20, w:1, col:'#c77dff' }, { on:true, len:60, w:1, col:'#ff8a65' } ],
   bb:{ on:true, len:20, mult:2, w:1, col:'#64b5f6' },
   themeName:'dark', col: Object.assign({}, THEMES.dark),
@@ -888,12 +892,12 @@ const PREF_KEY = BBV ? 'bbv.prefs' : 'clear.prefs';
 if (CLEAN){ let cp = {}; try { cp = JSON.parse(store.get(PREF_KEY) || '{}') || {}; } catch(e){}
   const pn = Object.assign({ big:true, bbot:true }, cp.panes || {}, cp.omegaSeen ? {} : { omega:true }); S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, !!pn[k]])); S.ovl = { cost:true }; S.ma.forEach(m => m.on = false); S.bb.on = false;
   S.lastSym = 'TX'; S.tf = cp.tf || '60'; S.periods = Object.assign({ '5':'10', '15':'20', '30':'40', '60':'60', '240':'120', 'D':'2', 'W':'5', 'M':'10' }, cp.periods || {}); S.night = true; S.auto = cp.auto !== false; if (cp.ult) Object.assign(S.ult, cp.ult); if (cp.cost) Object.assign(S.cost, cp.cost); if (S.cost.cFl === '#e040fb') S.cost.cFl = '#4fc3f7'; if (cp.panic) Object.assign(S.panic, cp.panic); if (cp.trap) Object.assign(S.trap, cp.trap); if (cp.big) Object.assign(S.big, cp.big); if (cp.bbot) Object.assign(S.bbot, cp.bbot); if (cp.omega) Object.assign(S.omega, cp.omega); S.cost.w = 1;   // 成本線用細線
-  if (BBV){ S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, (k === 'pess' || k === 'taiji' || k === 'valley') ? !(cp.panes && cp.panes[k] === false) : false]));
+  if (BBV){ S.ind = Object.fromEntries(Object.keys(S.ind).map(k => [k, (k === 'pess' || k === 'taiji' || k === 'valley' || k === 'magic' || k === 'dragon') ? !(cp.panes && cp.panes[k] === false) : false]));
     S.ovl = { bbr:cp.ovl ? cp.ovl.bbr !== false : true, cost:!!(cp.ovl && cp.ovl.cost) }; S.night = cp.night !== false; if (cp.pess) Object.assign(S.pess, cp.pess); if (cp.bbr) Object.assign(S.bbr, cp.bbr); if (cp.taiji) Object.assign(S.taiji, cp.taiji); if (cp.valley) Object.assign(S.valley, cp.valley); } }
 // 清晰看盤：主圖高度看副圖數量（0 個 100%、1 個 70%、2 個 58%）
-function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 68, 58, 50, 44, 40][['omega', 'big', 'bbot', 'pess', 'taiji', 'valley'].filter(k => S.ind[k]).length]; }
+function cleanRatio(){ if (CLEAN) S.mainRatio = [100, 68, 58, 50, 44, 40, 36, 33, 30][['omega', 'big', 'bbot', 'pess', 'taiji', 'valley', 'magic', 'dragon'].filter(k => S.ind[k]).length]; }
 cleanRatio();
-const save = () => CLEAN ? store.set(PREF_KEY, JSON.stringify({ ovl:S.ovl, pess:S.pess, bbr:S.bbr, taiji:S.taiji, valley:S.valley, tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, omega:S.omega, omegaSeen:1, panes:{ omega:!!S.ind.omega, big:!!S.ind.big, bbot:!!S.ind.bbot, pess:!!S.ind.pess, taiji:!!S.ind.taiji, valley:!!S.ind.valley }, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
+const save = () => CLEAN ? store.set(PREF_KEY, JSON.stringify({ ovl:S.ovl, pess:S.pess, bbr:S.bbr, taiji:S.taiji, valley:S.valley, tf:S.tf, periods:S.periods, night:S.night, auto:S.auto, ult:S.ult, cost:S.cost, panic:S.panic, trap:S.trap, big:S.big, bbot:S.bbot, omega:S.omega, omegaSeen:1, panes:{ omega:!!S.ind.omega, big:!!S.ind.big, bbot:!!S.ind.bbot, pess:!!S.ind.pess, taiji:!!S.ind.taiji, valley:!!S.ind.valley, magic:!!S.ind.magic, dragon:!!S.ind.dragon }, mainRatio:S.mainRatio })) : store.set('twchart.mobile', JSON.stringify(S));
 
 const $ = id => document.getElementById(id);
 
@@ -1417,7 +1421,7 @@ const fixedRange = (a, b) => () => ({ priceRange:{ minValue:a, maxValue:b } });
 const F1 = { type:'price', precision:1, minMove:0.1 }, F2 = { type:'price', precision:2, minMove:0.01 };
 
 // 副圖由上往下的順序；要新增指標就在 IND 裡登記
-const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'omega', 'big', 'bbot', 'pess', 'valley', 'taiji', 'trap', 'panic'];
+const IND_ORDER = ['ult', 'vpo', 't3', 'wt', 'rsib', 'abyss', 'qsz', 'shz', 'ivx', 'flow', 'retail', 'omega', 'big', 'bbot', 'pess', 'valley', 'taiji', 'magic', 'dragon', 'trap', 'panic'];
 
 let chart, candle, maS = [], bbU, bbM, bbL;
 let bars = [], idxByTime = new Map(), currentSym = null, volUnit = '張';
@@ -1829,6 +1833,7 @@ let mainMk = null;
 function refreshMarkers(){
   if (!chart) return;
   if (!mainMk) mainMk = LC().createSeriesMarkers(candle, []);
+  if (BBV){ mainMk.setMarkers([]); return; }   // 布林悲觀看盤：主圖不標訊號，訊號只看副圖
   let list = [];
   for (const k of OVL_ORDER) if (S.ovl[k] && OVL[k].vals) list = list.concat(OVL[k].markers());
   if (paneOf.wt !== undefined && IND.wt.vals && S.wt.mainSig) list = list.concat(IND.wt.mainMarkers());
@@ -3893,6 +3898,152 @@ Object.assign(IND, {
   },
 });
 
+/* ───────────── 神奇波段、尋龍指標（和戰神看盤、選擇權K線同一套算法，包在 MBX 裡避免撞名） ───────────── */
+const MBX = (() => {
+const IND_C = { bdUp:'#ff1744', bdDn:'#00c853', bdLU:'#2979ff', bdLD:'#ff8f00', bdBand:'#b388ff', bdBot:'#ff1744', bdTop:'#00a152', bbE:'#ffca28', bbW:'#ff9800', lxY:'#ffd600', lxG:'#00e676', lxR:'#ff1744', lxBot:'#ff1744', lxBot2:'#ff9100' };
+const nanArr = n => new Float64Array(n).fill(NaN);
+function smaN(src, n){ const len = src.length, out = nanArr(len); let s = 0, bad = 0;
+  for (let i = 0; i < len; i++){ const x = src[i]; if (isNaN(x)) bad++; else s += x;
+    if (i >= n){ const y = src[i - n]; if (isNaN(y)) bad--; else s -= y; }
+    if (i >= n - 1 && bad === 0) out[i] = s / n; }
+  return out; }
+function tdxSMA(a, N, M){ const o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : (M * x + (N - M) * y) / N; o[i] = y; } return o; }
+function llv(a, n, i){ let m = Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] < m) m = a[k]; return m; }
+function hhv(a, n, i){ let m = -Infinity; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (a[k] > m) m = a[k]; return m; }
+// 尋龍底：龍穴能量、長期價值線、龍穴／尋龍底★／真龍★★
+function calcLX(B){
+  const n = B.n, O = B.o, H = B.h, Lw = B.l, C = B.c, buyMin = 0.25;
+  const hv = (a, N) => { const o = nanArr(n); for (let i = 0; i < n; i++){ const v = hhv(a, N, i); o[i] = v === -Infinity ? NaN : v; } return o; };
+  const lv = (a, N) => { const o = nanArr(n); for (let i = 0; i < n; i++){ const v = llv(a, N, i); o[i] = v === Infinity ? NaN : v; } return o; };
+  const V1 = smaN(hv(H, 485), 17), V2 = smaN(hv(H, 222), 17), V3 = smaN(hv(H, 96), 17), V4 = smaN(lv(Lw, 485), 17), V5 = smaN(lv(Lw, 222), 17), V6 = smaN(lv(Lw, 96), 17);
+  const t7 = nanArr(n), t8 = nanArr(n), t9 = nanArr(n);
+  for (let i = 0; i < n; i++){ t7[i] = (V4[i] * .96 + V5[i] * .96 + V6[i] * .96 + V1[i] * .558 + V2[i] * .558 + V3[i] * .558) / 6; t8[i] = (V4[i] * 1.25 + V5[i] * 1.23 + V6[i] * 1.2 + V1[i] * .55 + V2[i] * .55 + V3[i] * .65) / 6; t9[i] = (V4[i] * 1.3 + V5[i] * 1.3 + V6[i] * 1.3 + V1[i] * .68 + V2[i] * .68 + V3[i] * .68) / 6; }
+  const V7 = smaN(t7, 17), V8 = smaN(t8, 17), V9 = smaN(t9, 17), ta = nanArr(n); for (let i = 0; i < n; i++) ta[i] = (V7[i] * 3 + V8[i] * 2 + V9[i]) / 6 * 1.738;
+  const VB = smaN(ta, 17), dA = nanArr(n), dU = nanArr(n); for (let i = 1; i < n; i++){ const d = Lw[i] - Lw[i - 1]; dA[i] = Math.abs(d); dU[i] = Math.max(d, 0); }
+  const sa = tdxSMA(dA, 3, 1), su = tdxSMA(dU, 3, 1), vf0 = nanArr(n);
+  for (let i = 0; i < n; i++){ const ve = su[i] > 0 ? sa[i] / su[i] * 100 : 0; vf0[i] = C[i] * 1.35 <= VB[i] ? ve * 10 : ve / 10; }
+  const VF = smaN(vf0, 3), V10 = lv(Lw, 30), V11 = hv(VF, 30), sraw = nanArr(n); for (let i = 0; i < n; i++) sraw[i] = Lw[i] <= V10[i] ? (VF[i] + V11[i] * 2) / 2 : 0;
+  const SS = smaN(sraw, 3), m5 = smaN(C, 5), m10 = smaN(C, 10), tag = new Array(n).fill(null);
+  let lb = -99, lend = -99, lch = -99, ldd = -99;
+  for (let i = 1; i < n; i++){
+    const s0 = isNaN(SS[i]) || SS[i] < 1e-6 ? 0 : SS[i], s1 = isNaN(SS[i - 1]) || SS[i - 1] < 1e-6 ? 0 : SS[i - 1];
+    if (s0 === 0 && s1 > 0) lend = i;
+    const j = i - 1; if ((m5[j] - C[j]) / C[j] > 0.04 && (m10[j] - m5[j]) / m5[j] > 0.04) lch = i;
+    if (C[i] < 0.85 * hhv(H, 20, i)) ldd = i;
+    if (i - lend < 3 && C[i] > H[i - 1] && i - lb > 10){
+      lb = i; const dtc = (C[i] - O[i]) / (2 * (H[i] - Lw[i]) + Math.abs(C[i] - O[i]) + 0.0003), ch = i - lch < 10;
+      const s2 = ch && dtc > buyMin, s1b = ch || i - ldd < 10;
+      tag[i] = s2 ? ['真龍★★', IND_C.lxBot2, 2] : s1b ? ['尋龍底★', IND_C.lxBot, 1] : ['龍穴', IND_C.lxBot, 0];
+    }
+  }
+  return { SS, VB, tag };
+}
+function tdxEMA(a, N){ const k = 2 / (N + 1), o = nanArr(a.length); let y = NaN; for (let i = 0; i < a.length; i++){ const x = a[i]; if (isNaN(x)){ o[i] = y; continue; } y = isNaN(y) ? x : y + k * (x - y); o[i] = y; } return o; }
+// 滾動百分位（過去 N 根，至少 8 成有值才算）
+function rollPct(a, N, q, minN){
+  const n = a.length, out = nanArr(n), w = new Float64Array(N + 1), need = N * 0.8; let m = 0;
+  const find = x => { let lo = 0, hi = m; while (lo < hi){ const mid = (lo + hi) >> 1; if (w[mid] < x) lo = mid + 1; else hi = mid; } return lo; };
+  for (let i = 0; i < n; i++){
+    if (i >= N){ const y = a[i - N]; if (!isNaN(y)){ const k = find(+y); if (k < m){ w.copyWithin(k, k + 1, m); m--; } } }
+    const x = a[i]; if (!isNaN(x)){ const v = +x, k = find(v); w.copyWithin(k + 1, k, m); w[k] = v; m++; }
+    if ((i >= N - 1 && m >= need) || (i < N - 1 && minN && m >= minN)) out[i] = w[Math.min(m - 1, Math.floor(m * q))];
+  }
+  return out;
+}
+// 神奇波段：短波線、訊號線、長波線、動態上下界、底／頂／頂★
+function calcBD(B){
+  const n = B.n, C = B.c, H = B.h, Lw = B.l, bandLen = 250, bandPct = 0.10, starRise = 15, starVol = 2;
+  const pos = nanArr(n), rsv = nanArr(n);
+  for (let i = 0; i < n; i++){
+    let lo = llv(Lw, 34, i), hi = hhv(H, 34, i); pos[i] = hi > lo ? ((2 * C[i] + H[i] + Lw[i]) / 4 - lo) / (hi - lo) * 100 : 0;
+    lo = llv(Lw, 35, i); hi = hhv(H, 35, i); rsv[i] = hi > lo ? (C[i] - lo) / (hi - lo) * 100 : 0;
+  }
+  const K = tdxEMA(pos, 13), mix = nanArr(n); for (let i = 1; i < n; i++) mix[i] = 0.667 * K[i - 1] + 0.333 * K[i];
+  const Sg = tdxEMA(mix, 2), D3 = tdxEMA(tdxSMA(tdxSMA(rsv, 13, 1), 13, 1), 3);
+  // 選擇權 K 棒常常不到 250 根：不夠時改用目前全部的 K 棒（至少 40 根）算上下界
+  const LB = rollPct(K, bandLen, bandPct, 40), UB = rollPct(K, bandLen, 1 - bandPct, 40);
+  const tag = new Array(n).fill(null), Vm = smaN(B.v, 20); let lb = -99, lt = -99;
+  for (let i = 5; i < n; i++){
+    if (isNaN(Sg[i - 1]) || isNaN(LB[i])) continue;
+    let mn = Infinity, mx = -Infinity; for (let k = i - 4; k <= i; k++){ if (K[k] < mn) mn = K[k]; if (K[k] > mx) mx = K[k]; }
+    if (K[i - 1] < Sg[i - 1] && K[i] > Sg[i] && mn < LB[i] && C[i] > H[i - 1] && i - lb > 10){ lb = i; tag[i] = ['底', IND_C.bdBot, 'bot']; }
+    if (K[i - 1] > Sg[i - 1] && K[i] < Sg[i] && mx > UB[i] && C[i] < Lw[i - 1] && i - lt > 10){
+      lt = i; let star = false;
+      if (i >= 20 && !isNaN(Vm[i])){ let vx = 0; for (let k = i - 4; k <= i; k++) if (B.v[k] > vx) vx = B.v[k];
+        const rise = hhv(H, 10, i) / llv(Lw, 20, i) - 1; star = rise * 100 > starRise && vx > starVol * Vm[i]; }
+      tag[i] = [star ? '頂★' : '頂', IND_C.bdTop, 'top'];
+    }
+  }
+  return { K, Sg, D3, LB, UB, tag };
+}
+  const L5 = Math.log10(5000), L10 = 4, L50 = Math.log10(50000);
+  const fmtE = v => v >= 1e4 ? (v / 1e4).toFixed(v >= 1e5 ? 0 : 1) + '萬' : v >= 1e3 ? (v / 1e3).toFixed(1) + '千' : String(Math.round(v));
+  const lxColor = v => v > 50000 ? IND_C.lxR : v > 10000 ? IND_C.lxG : v > 5000 ? IND_C.lxY : '#5d6676';
+  return { calcBD, calcLX, IND_C, L5, L10, L50, fmtE, lxColor };
+})();
+function mbxBars(){ const n = bars.length, f = k => Float64Array.from(bars, b => +b[k] || 0); return { n, o:f('open'), h:f('high'), l:f('low'), c:f('close'), v:f('volume') }; }
+Object.assign(IND, {
+  magic: {
+    s:{}, vals:null,
+    create(p){
+      const { LineSeries } = LC(), auto = () => ({ priceRange:{ minValue:-4, maxValue:106 } }), F0 = { type:'price', precision:0, minMove:1 };
+      const mk = o => chart.addSeries(LineSeries, Object.assign({ priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, autoscaleInfoProvider:auto, priceFormat:F0 }, o), p);
+      this.s.ub = mk({ color:MBX.IND_C.bdBand, lineWidth:2, lastValueVisible:true, title:'上界' }); this.s.lb = mk({ color:MBX.IND_C.bdBand, lineWidth:2, lastValueVisible:true, title:'下界' });
+      this.s.d3 = mk({ lineWidth:3 }); this.s.sg = mk({ color:'#78829a', lineWidth:1 }); this.s.k = mk({ lineWidth:2, lastValueVisible:true, title:'神奇波段' });
+      for (const [v, a] of [[20, '55'], [80, '55'], [50, '88']]) this.s.k.createPriceLine({ price:v, color:'#8a93a6' + a, lineWidth:1, lineStyle:v === 50 ? 0 : 1, axisLabelVisible:false, title:'' });
+      this.mk = LC().createSeriesMarkers(this.s.k, []);
+    },
+    draw(){
+      const r = this.vals = MBX.calcBD(mbxBars()), C = MBX.IND_C;
+      const ser = (arr, colFn) => bars.map((b, i) => isNaN(arr[i]) ? { time:b.time } : colFn ? { time:b.time, value:arr[i], color:colFn(i) } : { time:b.time, value:arr[i] });
+      this.s.k.setData(ser(r.K, i => r.K[i] >= r.Sg[i] ? C.bdUp : C.bdDn)); this.s.sg.setData(ser(r.Sg));
+      this.s.d3.setData(ser(r.D3, i => i > 0 && r.D3[i] >= r.D3[i - 1] ? C.bdLU : C.bdLD));
+      this.s.ub.setData(ser(r.UB)); this.s.lb.setData(ser(r.LB));
+      const mk = []; bars.forEach((b, i) => { const t = r.tag[i]; if (t) mk.push(t[2] === 'bot' ? { time:b.time, position:'belowBar', color:t[1], shape:'arrowUp', text:t[0] } : { time:b.time, position:'aboveBar', color:t[1], shape:'arrowDown', text:t[0] }); });
+      this.mk.setMarkers(mk);
+    },
+    label(i){
+      const r = this.vals, C = MBX.IND_C; if (!r) return '';
+      if (isNaN(r.K[i])) return '神奇波段 <span class="muted">K 棒還不夠</span>';
+      const k = r.K[i], upS = k >= r.Sg[i], d3 = r.D3[i], dUp = i > 0 && d3 >= r.D3[i - 1];
+      let h = `神奇波段 短波 <b style="color:${upS ? C.bdUp : C.bdDn}">${k.toFixed(1)}</b>　<span class="muted">${upS ? '短波在訊號線上' : '短波在訊號線下'}</span>`;
+      if (!isNaN(d3)) h += `　<span style="color:${dUp ? C.bdLU : C.bdLD}">長波 ${d3.toFixed(1)} ${dUp ? '往上' : '往下'}</span>`;
+      if (!isNaN(r.UB[i])) h += `　<span style="color:${C.bdBand}">上界 ${Math.round(r.UB[i])}・下界 ${Math.round(r.LB[i])}${k > r.UB[i] ? '（高於上界）' : k < r.LB[i] ? '（低於下界）' : ''}</span>`;
+      else h += '　<span class="muted">上下界要約 40 根以上</span>';
+      if (r.tag[i]) h += `　<span class="tag" style="background:${r.tag[i][1]};color:#fff">${r.tag[i][0]}</span>`;
+      return h;
+    },
+  },
+  dragon: {
+    s:{}, vals:null,
+    create(p){
+      const { HistogramSeries, LineSeries } = LC();
+      this.s.hist = chart.addSeries(HistogramSeries, { base:2, priceLineVisible:false, lastValueVisible:false,
+        priceFormat:{ type:'custom', formatter:v => v > 2.0001 ? MBX.fmtE(Math.pow(10, v)) : '', minMove:0.01 },
+        autoscaleInfoProvider:orig => { const r = orig(); const mx = Math.max(4.9, r && r.priceRange ? r.priceRange.maxValue + 0.15 : 0); return { priceRange:{ minValue:1.35, maxValue:mx } }; } }, p);
+      for (const [v, col] of [[MBX.L5, MBX.IND_C.lxY], [MBX.L10, MBX.IND_C.lxG], [MBX.L50, MBX.IND_C.lxR]]) this.s.hist.createPriceLine({ price:v, color:col + '99', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'' });
+      this.s.anchor = chart.addSeries(LineSeries, { lineVisible:false, pointMarkersVisible:false, lastValueVisible:false, priceLineVisible:false, crosshairMarkerVisible:false }, p);
+      this.mk = LC().createSeriesMarkers(this.s.anchor, []);
+    },
+    draw(){
+      const r = this.vals = MBX.calcLX(mbxBars()), v = i => isNaN(r.SS[i]) || r.SS[i] < 1e-6 ? 0 : r.SS[i];
+      this.s.hist.setData(bars.map((b, i) => v(i) > 100 ? { time:b.time, value:Math.log10(v(i)), color:MBX.lxColor(v(i)) } : { time:b.time }));
+      this.s.anchor.setData(bars.map(b => ({ time:b.time, value:1.62 })));
+      const mk = []; bars.forEach((b, i) => { const t = r.tag[i]; if (t) mk.push({ time:b.time, position:'inBar', color:t[1], shape:'arrowUp', text:t[0], size:t[2] ? 1.2 : 0.8 }); });
+      this.mk.setMarkers(mk);
+    },
+    label(i){
+      const r = this.vals, C = MBX.IND_C; if (!r) return '';
+      const v = isNaN(r.SS[i]) || r.SS[i] < 1e-6 ? 0 : r.SS[i], vb = r.VB[i], b = bars[i];
+      let h = `尋龍指標 龍穴能量 <b style="color:${v > 5000 ? MBX.lxColor(v) : 'inherit'}">${v > 0 ? MBX.fmtE(v) : '0'}</b>`;
+      h += v > 50000 ? `　<span style="color:${C.lxR}">紅（>5萬）</span>` : v > 10000 ? `　<span style="color:${C.lxG}">綠（>1萬）</span>` : v > 5000 ? `　<span style="color:${C.lxY}">黃（>5千）</span>` : v > 0 ? '　<span class="muted">30 根新低</span>' : '';
+      if (vb > 0) h += `　<span class="muted">收盤／長期價值線 ${Math.round(b.close / vb * 100)}%${b.close * 1.35 <= vb ? '（跌深）' : ''}</span>`;
+      if (r.tag[i]) h += `　<span class="tag" style="background:${r.tag[i][1]};color:#fff">${r.tag[i][0]}</span>`;
+      return h;
+    },
+  },
+});
+
 /* ───────────── 太極週期線（所有商品、所有週期） ─────────────
    研發：比較了 Ehlers 屋頂濾波、更好正弦波、希爾伯特正弦波、網路週期、費雪轉換、拉蓋爾相對強弱、沙夫趨勢週期，
    看「勾頭」那根是不是剛好在波段低點後 3 根內。最好的是網路週期和費雪轉換，兩個平均更穩，就用這個：
@@ -4532,7 +4683,7 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
     tg.append(seg);
     chip('布林軌道', S.bbr.col, S.ovl.bbr, v => { S.ovl = Object.assign({}, S.ovl, { bbr:v }); save(); buildOverlays(); });
     chip('成本線', S.cost.cL, S.ovl.cost, v => { S.ovl = Object.assign({}, S.ovl, { cost:v }); save(); buildOverlays(); });
-    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v)); chip('布林谷底線', S.valley.cBot, S.ind.valley, v => paneT('valley', v)); chip('終極太極', S.taiji.cYang, S.ind.taiji, v => paneT('taiji', v));
+    chip('超級悲觀線', S.pess.cP, S.ind.pess, v => paneT('pess', v)); chip('布林谷底線', S.valley.cBot, S.ind.valley, v => paneT('valley', v)); chip('終極太極', S.taiji.cYang, S.ind.taiji, v => paneT('taiji', v)); chip('神奇波段', '#b388ff', S.ind.magic, v => paneT('magic', v)); chip('尋龍指標', '#ffb300', S.ind.dragon, v => paneT('dragon', v));
   } else {
   const costT = (k, v) => { S.cost[k] = v; save(); drawOverlays(); renderLegend(); };
   chip('主力成本', S.cost.cL, S.cost.top, v => costT('top', v)); chip('散戶成本', S.cost.cRc, S.cost.rc, v => costT('rc', v)); chip('主力底線', S.cost.cFl, S.cost.fl, v => costT('fl', v));
