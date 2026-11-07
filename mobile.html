@@ -1595,6 +1595,7 @@ function initChart(){
     timeScale: { rightOffset:4, minBarSpacing:1 },
     localization: { locale:'zh-TW', dateFormat:'yyyy/MM/dd' },
   });
+  if (BBV && innerWidth < 760) chart.applyOptions({ handleScroll:{ vertTouchDrag:false }, layout:{ fontSize:12 } });   // 手機布林悲觀：上下滑動捲頁面
   candle = chart.addSeries(CandlestickSeries, Object.assign({ priceLineVisible:false }, CLEAN ? { priceFormat:{ type:'price', precision:0, minMove:1 } } : {}), 0);
   const lineOpt = () => ({ lineWidth:1, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false });
   bbU = chart.addSeries(LineSeries, lineOpt(), 0);
@@ -1663,6 +1664,7 @@ function drawIndicators(){ for (const k of IND_ORDER) if (bars.length && paneOf[
 function layoutPanes(){
   $('chartWrap').style.height = S.chartH + '%';
   if (!chart) return;
+  if (BBV && innerWidth < 760) $('area').style.height = Math.max(innerHeight - 132, 330 + 125 * (chart.panes().length - 1)) + 'px';   // 副圖越多、圖越高，每個副圖都夠大
   const panes = chart.panes(), n = panes.length - 1, R = S.mainRatio / 100;
   panes.forEach((pn, i) => pn.setStretchFactor(n === 0 ? 1 : (i === 0 ? R : (1 - R) / n)));
   if (paneRO) paneRO.disconnect();
@@ -4675,6 +4677,24 @@ if (CLEAN){   // 清晰看盤：藏起和台指期無關的按鈕，代號固定
   const chip = (txt, col, on, fn) => { const l = document.createElement('label'); l.className = 'chk'; l.style.color = col; const c = document.createElement('input'); c.type = 'checkbox'; c.checked = !!on; c.onchange = () => fn(c.checked); l.append(c, txt); tg.append(l); };
   const paneT = (k, v) => { S.ind = Object.assign({}, S.ind, { [k]: v }); cleanRatio(); save(); buildIndicators(); };
   if (BBV){   // 布林悲觀看盤的開關：近全／近月、布林軌道、成本線、超級悲觀線
+
+    if (innerWidth < 760){   // 手機：控制列收小、圖表拉成一整個螢幕高，載入後自動捲到圖表
+      const st2 = document.createElement('style');
+      st2.textContent = 'body{height:auto!important;min-height:100dvh;overflow-y:auto!important;overflow-x:hidden}' +
+        '#area{flex:none!important;height:calc(100dvh - 116px);min-height:440px}' +
+        '#txoBtn,#forceBtn,#goBtn,#mapBtn,#okBtn,#olBtn,#zsBtn,#ovBtn,#jbBtn{display:none!important}' +
+        '#cleanTg{font-size:14px!important;gap:6px 14px!important;margin-top:2px!important}' +
+        '.plabel{font-size:13px!important}#legend{padding-bottom:4px}';
+      document.head.appendChild(st2);
+      const nav = document.createElement('select'); nav.title = '切換到其他看盤'; nav.style.cssText = 'max-width:132px';
+      nav.innerHTML = '<option value="">其他看盤 ▾</option>' + [['zsBtn', '戰神看盤'], ['ovBtn', '總覽'], ['txoBtn', '選擇權'], ['forceBtn', '多空力道'], ['goBtn', '選擇權順勢'], ['mapBtn', '指數走向地圖'], ['okBtn', '選擇權K線'], ['olBtn', '即時力道']]
+        .filter(([id]) => $(id)).map(([id, t]) => '<option value="' + id + '">' + t + '</option>').join('');
+      nav.onchange = () => { const b = $(nav.value); nav.value = ''; if (b) b.click(); };
+      full.after(nav);
+      let scrolled = false; const mo = new MutationObserver(() => { if (scrolled || !/資料至/.test($('status').textContent)) return; scrolled = true; mo.disconnect();
+        setTimeout(() => window.scrollTo({ top:$('info').getBoundingClientRect().top + window.scrollY - 2, behavior:'smooth' }), 300); });
+      mo.observe($('status'), { childList:true, characterData:true, subtree:true });
+    }
     const seg = document.createElement('span'); seg.style.cssText = 'display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden';
     [['近全（含夜盤）', true], ['近月（日盤）', false]].forEach(([t, nv]) => { const b = document.createElement('button'); b.textContent = t; b.className = 'small';
       b.style.cssText = 'border:0;border-radius:0;margin:0;padding:3px 10px;' + (S.night === nv ? 'background:var(--accent,#4c8dff);color:#fff' : '');
