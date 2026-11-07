@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>選擇權勝率・凱利・主力佈局</title>
+<meta name="theme-color" content="#131722">
+<link rel="manifest" href="manifest-m.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#131722; --panel:#1b2130; --panel2:#222a3b; --line:#2a3245; --grid:#252d3e;
+    --text:#d6dbe6; --muted:#8a93a6; --accent:#4c8dff;
+    --call:#3987e5; --put:#d95926; --good:#22b07d; --bad:#ef5350; --pain:#199e70; --fut:#c9a227;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#ffffff; --panel:#f4f5f8; --panel2:#ffffff; --line:#d8dce4; --grid:#e6e9ef;
+    --text:#1f2430; --muted:#667085;
+    --call:#2a78d6; --put:#eb6834; --good:#089981; --bad:#e53935; --pain:#1baf7a; --fut:#a8841a;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:14px;line-height:1.5}
+  header{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+  header h1{font-size:15px;margin:0 2px 0 0;font-weight:600;white-space:nowrap}
+  input,select,button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;height:34px}
+  button{cursor:pointer;white-space:nowrap}
+  .spacer{flex:1}
+  main{max-width:1100px;margin:0 auto;padding:10px 12px 40px}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;height:auto;text-align:left;line-height:1.35}
+  .chip small{display:block;color:var(--muted);font-size:11px}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.on small{color:#e8eeff}
+  .setrow{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--muted);margin:2px 0 10px}
+  .setrow label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .setrow select{height:30px;padding:3px 6px;font-size:13px}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .msg{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);margin:10px 0}
+  .msg.err{color:#ff6e6e;border-color:#ff6e6e55}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  @media(min-width:760px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+  .card .k{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .card .k i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .card .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin:1px 0}
+  .card .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:4px}
+  .card .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.6}
+  .card .kl{display:inline-block;font-weight:700;padding:0 7px;border-radius:999px;font-size:12px;border:1px solid}
+  .kl.g{color:var(--good);border-color:var(--good)} .kl.b{color:var(--bad);border-color:var(--bad)}
+  .verdict{margin:10px 0 0;padding:10px 12px;border-left:3px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.75}
+  section{margin-top:18px}
+  h2{font-size:15px;margin:0 0 6px;font-weight:600;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+  h2 .muted{font-weight:400;font-size:12px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 6px 2px;position:relative}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:30px;vertical-align:middle}
+  .seg button{border:0;border-radius:0;height:28px;padding:0 10px;background:var(--panel2);color:var(--muted);font-size:13px}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  svg{display:block;width:100%;touch-action:pan-y;overflow:visible}
+  svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+  .tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:12px;line-height:1.6;min-width:170px;box-shadow:0 4px 14px #0006;display:none;z-index:3;font-variant-numeric:tabular-nums}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);padding:2px 4px 6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .legend i.ln{height:2px;width:14px;vertical-align:3px}
+  .legend i.dash{height:0;width:14px;border-top:2px dashed currentColor;background:none!important;vertical-align:3px}
+  .note{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.7}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}
+  th,td{padding:5px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--panel)}
+  td:first-child,th:first-child{text-align:left}
+  tr.atm td{background:var(--panel2);font-weight:600}
+  .tbl{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .tblx{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+  .g{color:var(--good)} .b{color:var(--bad)} .pc{color:var(--call)} .pp{color:var(--put)}
+  .who{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .who .hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:4px}
+  .who .nm{font-weight:700;font-size:15px}
+  .who .st{font-weight:700;font-size:14.5px;padding:1px 10px;border-radius:999px;border:2px solid var(--accent)}
+  .who ul{margin:4px 0 2px;padding-left:20px;line-height:1.75;font-size:13.5px}
+  .big{background:var(--panel);border:2px solid var(--accent);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.85}
+  .big b{font-size:15px}
+  .kgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+  @media(min-width:760px){.kgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .kgrid div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted)}
+  .kgrid b{display:block;font-size:18px;color:var(--text);font-variant-numeric:tabular-nums}
+  footer{margin-top:22px;font-size:12px;color:var(--muted);line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <h1>選擇權勝率・凱利</h1>
+  <select id="dateSel" title="資料日期"></select>
+  <span class="spacer"></span>
+  <button id="themeBtn">白底</button>
+  <button onclick="location.href='txo.html'">選擇權籌碼</button>
+  <button onclick="location.href='optsim.html'">買方推演</button>
+  <button onclick="location.href='mobile.html'">看盤</button>
+</header>
+<main>
+  <div id="status" class="msg">讀取中…</div>
+  <div id="app" hidden>
+    <div class="chips" id="expChips" role="tablist" aria-label="結算日"></div>
+    <div class="setrow">
+      <label>機率怎麼估 <select id="modelSel">
+        <option value="hist">過去一年台指期實際漲跌（建議）</option>
+        <option value="rv">近 20 天實際波動率</option>
+        <option value="iv">選擇權隱含波動率（市場自己的定價）</option></select></label>
+      <label>履約價範圍 <select id="rangeSel">
+        <option value="0.03">上下 3%</option><option value="0.05">上下 5%</option>
+        <option value="0.08">上下 8%</option><option value="0.12">上下 12%</option></select></label>
+      <span id="metaLine" class="small"></span>
+    </div>
+
+    <section style="margin-top:4px">
+      <h2>所有建倉的人：抱到結算的勝率<span class="muted">用未平倉口數加權；以目前權利金當成本</span></h2>
+      <div class="cards" id="cards"></div>
+      <div class="verdict" id="flow"></div>
+    </section>
+
+    <section>
+      <h2>今天新進場的人<span class="muted">只算未平倉比前一天增加的口數（今天新建的倉位）</span></h2>
+      <div class="cards" id="cardsNew"></div>
+    </section>
+
+    <section>
+      <h2>主力用哪一種策略在佈局<span class="muted">三大法人四種部位＋前十大交易人＋外資台指期</span></h2>
+      <div class="big" id="mainBox"></div>
+      <div id="whoBox" style="margin-top:8px"></div>
+    </section>
+
+    <section>
+      <h2>外資部位的損益地圖<span class="muted" id="bookCap"></span></h2>
+      <div class="panel">
+        <div class="legend" id="lgBook"></div>
+        <svg id="svgBook" role="img" aria-label="外資部位在不同結算價的損益與結算價機率"></svg>
+        <div class="tip" id="tipBook"></div>
+      </div>
+      <div class="kgrid" id="bookK"></div>
+      <p class="note" id="bookNote"></p>
+    </section>
+
+    <section>
+      <h2>各履約價：未平倉與買方勝率<span class="muted">長條＝未平倉（上買權、下賣權），線＝買方抱到結算的勝率</span></h2>
+      <div class="panel">
+        <div class="legend" id="lgStk"></div>
+        <svg id="svgStk" role="img" aria-label="各履約價未平倉與買方勝率"></svg>
+        <div class="tip" id="tipStk"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>各履約價明細<span class="muted">凱利值為正（綠色）＝這一邊有優勢；負數＝長期押越多虧越多</span></h2>
+      <div class="tbl" id="stkTbl"></div>
+    </section>
+
+    <section>
+      <h2>三大法人選擇權部位<span class="muted">平均權利金＝未平倉契約金額 ÷ 口數</span></h2>
+      <div class="tblx" id="instTbl"></div>
+      <h2 style="margin-top:12px">前十大交易人</h2>
+      <div class="tblx" id="bigTbl"></div>
+    </section>
+
+    <footer id="foot"></footer>
+  </div>
+</main>
+<script>
+'use strict';
+let SET = {};
+try { SET = JSON.parse(localStorage.getItem('twchart.settings') || '{}') || {}; } catch(e){}
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch(e){} } };
+let THEME = store.get('ok.theme') || (SET.themeName === 'light' ? 'light' : 'dark');
+function applyTheme(){ document.documentElement.dataset.theme = THEME; $('#themeBtn').textContent = THEME === 'dark' ? '白底' : '黑底'; }
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtInt = n => n == null || isNaN(n) ? '–' : Math.round(n).toLocaleString('en-US');
+const signInt = n => n == null || isNaN(n) ? '–' : (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('en-US');
+const pct = (v, d = 1) => v == null || isNaN(v) ? '–' : (v * 100).toFixed(d) + '%';
+const spct = (v, d = 1) => v == null || isNaN(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v * 100).toFixed(d) + '%';
+const WD = '日一二三四五六';
+const md = d => +d.slice(5,7) + '/' + +d.slice(8,10);
+const mdw = d => md(d) + '（' + WD[new Date(d + 'T00:00:00Z').getUTCDay()] + '）';
+const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0,10);
+const shiftDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0,10);
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+function fmtMoney(v, signed){
+  if (v == null || isNaN(v)) return '–';
+  const a = Math.abs(v), s = signed ? (v > 0 ? '+' : v < 0 ? '−' : '') : (v < 0 ? '−' : '');
+  if (a >= 1e8) return s + (a / 1e8).toFixed(a >= 1e10 ? 0 : 2) + ' 億';
+  if (a >= 1e4) return s + Math.round(a / 1e4).toLocaleString('en-US') + ' 萬';
+  return s + Math.round(a).toLocaleString('en-US') + ' 元';
+}
+const MULT = 50, FUT_MULT = 200;
+
+/* ───────── FinMind ───────── */
+const FM = 'https://api.finmindtrade.com/api/v4/data';
+const qCache = new Map();
+function finmind(params){
+  const key = JSON.stringify(params);
+  if (qCache.has(key)) return qCache.get(key);
+  const p = (async () => {
+    const qs = new URLSearchParams(params), tok = (SET.token || '').trim();
+    if (tok) qs.set('token', tok);
+    let res;
+    try { res = await fetch(FM + '?' + qs); }
+    catch(e){
+      try { await new Promise(r => setTimeout(r, 800)); res = await fetch(FM + '?' + qs); }
+      catch(e2){ throw new Error('連不上 FinMind（網路不穩，或憑證失效）。請確認網路，或到看盤頁「⚙ 設定」重新貼上 FinMind 憑證'); }
+    }
+    if (res.status === 401 || res.status === 403) throw new Error('FinMind 不接受這組憑證，請到看盤頁「⚙ 設定」重新貼上');
+    const j = await res.json().catch(() => null);
+    if (res.status === 402 || (j && j.status === 402)) throw new Error('本小時 FinMind 查詢次數已用完，請稍後再試');
+    if (!res.ok || !j || j.status !== 200) throw new Error('FinMind：' + ((j && j.msg) || res.status));
+    return j.data || [];
+  })();
+  qCache.set(key, p); p.catch(() => qCache.delete(key));
+  return p;
+}
+async function repoJson(path){ try { const r = await fetch(path + '?t=' + Date.now()); return r.ok ? await r.json() : null; } catch(e){ return null; } }
+
+/* ───────── 選擇權數學（Black-76） ───────── */
+const SQ2PI = Math.sqrt(2 * Math.PI);
+const npdf = x => Math.exp(-x * x / 2) / SQ2PI;
+function ncdf(x){
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const y = 1 - npdf(x) * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x >= 0 ? y : 1 - y;
+}
+function b76(F, K, T, v, call){
+  if (v <= 0 || T <= 0) return Math.max(0, call ? F - K : K - F);
+  const sd = v * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd, d2 = d1 - sd;
+  return call ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1);
+}
+function impliedVol(price, F, K, T, call){
+  const intr = Math.max(0, call ? F - K : K - F);
+  if (!(price > intr + 0.05) || T <= 0) return null;
+  let lo = 0.005, hi = 4;
+  if (b76(F, K, T, hi, call) < price) return null;
+  for (let i = 0; i < 70; i++){ const m = (lo + hi) / 2; if (b76(F, K, T, m, call) > price) hi = m; else lo = m; }
+  return (lo + hi) / 2;
+}
+
+/* ───────── 結算日 ───────── */
+function nthWeekday(y, m, wd, n){
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const day = 1 + ((wd - first + 7) % 7) + (n - 1) * 7;
+  return new Date(Date.UTC(y, m - 1, day)).toISOString().slice(0,10);
+}
+function contractInfo(code){
+  const m = /^(\d{4})(\d{2})(?:([WF])(\d))?$/.exec(code); if (!m) return null;
+  const y = +m[1], mo = +m[2];
+  if (!m[3]) return { code, kind:'月', exp:nthWeekday(y, mo, 3, 3), label:mo + '月（月選）' };
+  const n = +m[4];
+  return m[3] === 'W' ? { code, kind:'週三', exp:nthWeekday(y, mo, 3, n), label:'週三 W' + n }
+                      : { code, kind:'週五', exp:nthWeekday(y, mo, 5, n), label:'週五 F' + n };
+}
+let CAL = [], TD = [];
+async function tradingDates(){
+  const today = twToday();
+  const rows = await finmind({ dataset:'TaiwanStockTradingDate', start_date:shiftDay(today, -60) });
+  CAL = [...new Set(rows.map(r => r.date))].sort();
+  return CAL.filter(d => d <= today);
+}
+function adjustExp(exp, nextTD){
+  if (CAL.length && exp <= CAL[CAL.length - 1] && !CAL.includes(exp)) return CAL.find(d => d > exp) || exp;
+  if (!CAL.length && nextTD && exp < nextTD) return nextTD;
+  return exp;
+}
+// 資料日收盤後到結算日之間還有幾個完整交易日（結算當天只算開盤後半天：結算價取開盤後的指數）
+function tradeDaysBetween(d, exp){
+  let n = 0; const end = CAL.length ? CAL[CAL.length - 1] : d;
+  for (const x of CAL) if (x > d && x < exp) n++;
+  for (let t = shiftDay(end > d ? end : d, 1); t < exp; t = shiftDay(t, 1)){ const w = new Date(t + 'T00:00:00Z').getUTCDay(); if (w > 0 && w < 6) n++; }   // 日曆沒涵蓋到的日期：平日都算
+  return n;
+}
+
+/* ───────── 讀取 ───────── */
+async function optionDay(date, withNext){
+  const params = { dataset:'TaiwanOptionDaily', data_id:'TXO', start_date:date };
+  if (!withNext) params.end_date = date;
+  const rows = await finmind(params);
+  const day = rows.filter(r => r.date === date);
+  if (!day.some(r => r.trading_session === 'position' && r.open_interest > 0)) return null;
+  const next = rows.filter(r => r.date > date).map(r => r.date).sort()[0] || null;
+  return { day, next };
+}
+async function futPrice(date){
+  const rows = await finmind({ dataset:'TaiwanFuturesDaily', data_id:'TX', start_date:date });
+  const mono = r => /^\d{6}$/.test(String(r.contract_date || '').trim()) && +r.close > 0;
+  const day = rows.filter(r => r.date === date && r.trading_session === 'position' && mono(r)).sort((a,b) => b.volume - a.volume)[0];
+  if (!day) return null;
+  const next = rows.filter(r => r.date > date).map(r => r.date).sort()[0];
+  const nightRows = rows.filter(r => r.date === next && r.trading_session === 'after_market' && mono(r));
+  const night = nightRows.find(r => r.contract_date === day.contract_date && +r.volume > 0) || null;
+  return { dayClose:+day.close, night: night ? +night.close : null, price: night ? +night.close : +day.close };
+}
+function buildChain(day, prevDay){
+  const prev = new Map();
+  if (prevDay) for (const r of prevDay) if (r.trading_session === 'position') prev.set(r.contract_date + '|' + r.strike_price + '|' + r.call_put, +r.open_interest || 0);
+  const by = new Map();
+  for (const r of day){
+    if (r.trading_session !== 'position') continue;
+    const code = String(r.contract_date || '').trim(); if (!contractInfo(code)) continue;
+    let c = by.get(code); if (!c){ c = new Map(); by.set(code, c); }
+    const K = +r.strike_price; let s = c.get(K);
+    if (!s){ s = { K, c:{ oi:0, px:0, prev:null }, p:{ oi:0, px:0, prev:null } }; c.set(K, s); }
+    const side = r.call_put === 'call' ? s.c : s.p;
+    side.oi = +r.open_interest || 0;
+    side.px = +r.settlement_price > 0 ? +r.settlement_price : +r.close > 0 ? +r.close : 0;
+    const pk = code + '|' + r.strike_price + '|' + r.call_put;
+    side.prev = prev.has(pk) ? prev.get(pk) : (prevDay ? 0 : null);
+  }
+  return by;
+}
+function parityF(m){
+  let F = null, best = Infinity;
+  for (const s of m.values()) if (s.c.px > 0 && s.p.px > 0){ const d = Math.abs(s.c.px - s.p.px); if (d < best){ best = d; F = s.K + s.c.px - s.p.px; } }
+  return F;
+}
+
+/* ───────── 機率模型：未來結算價的 6,000 種可能 ───────── */
+const NP = 6000;
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r){ let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+let RETS = [];          // 過去一年台指期每天的漲跌（對數報酬，去掉平均值＝不假設會漲或會跌）
+let RV20 = null;
+function prepHist(H){
+  const r = [];
+  for (let i = 1; i < H.length; i++){
+    const a = H[i - 1], b = H[i];
+    if (!(a.c > 0 && b.c > 0) || (a.fc && b.fc && a.fc !== b.fc)) continue;   // 換月那天不算（近月、次月價差）
+    r.push(Math.log(b.c / a.c));
+  }
+  const m = r.reduce((t, v) => t + v, 0) / (r.length || 1);
+  RETS = r.map(v => v - m);
+  const last = RETS.slice(-20);
+  RV20 = last.length >= 10 ? Math.sqrt(last.reduce((t, v) => t + v * v, 0) / last.length) : null;
+}
+function samples(e, model){
+  const n = e.n, eff = n + 0.5, r = rng(1234567 + n * 97 + Math.round(e.C));
+  const X = new Float64Array(NP);
+  let m = 0;
+  for (let j = 0; j < NP; j++){
+    let R;
+    if (model === 'hist' && RETS.length > 60){
+      R = 0; for (let i = 0; i < n; i++) R += RETS[(r() * RETS.length) | 0];
+      R += RETS[(r() * RETS.length) | 0] * Math.SQRT1_2;
+    } else if (model === 'rv' && RV20){
+      R = RV20 * Math.sqrt(eff) * gauss(r);
+    } else {
+      R = (e.atmIv || 0.2) * Math.sqrt(e.T) * gauss(r);
+    }
+    X[j] = Math.exp(R); m += X[j];
+  }
+  m /= NP;
+  for (let j = 0; j < NP; j++) X[j] = e.C * X[j] / m;      // 平均落在目前價位（不預設多空）
+  X.sort();
+  const pre = new Float64Array(NP + 1);
+  for (let j = 0; j < NP; j++) pre[j + 1] = pre[j] + X[j];
+  return { X, pre };
+}
+const upper = (X, v) => { let lo = 0, hi = X.length; while (lo < hi){ const m = (lo + hi) >> 1; if (X[m] <= v) lo = m + 1; else hi = m; } return lo; };  // 第一個 > v
+const lower = (X, v) => { let lo = 0, hi = X.length; while (lo < hi){ const m = (lo + hi) >> 1; if (X[m] < v) lo = m + 1; else hi = m; } return lo; };  // 第一個 ≥ v（＝小於 v 的個數）
+
+// 買方、賣方各自抱到結算：勝率 p、贏的時候平均賺 W、輸的時候平均賠 L（點）、賺賠比 b＝W÷L、凱利值 f＝p − q÷b
+function kellyOf(p, W, L){
+  if (!(W > 0)) return -1;
+  if (!(L > 0)) return 1;
+  return p - (1 - p) / (W / L);
+}
+function sideStats(S, K, P, call){
+  const { X, pre } = S, n = X.length;
+  let sumPos, wSum, nWin;
+  if (call){
+    const i0 = upper(X, K); sumPos = (pre[n] - pre[i0]) - K * (n - i0);
+    const i1 = upper(X, K + P); wSum = (pre[n] - pre[i1]) - (K + P) * (n - i1); nWin = n - i1;
+  } else {
+    const i0 = lower(X, K); sumPos = K * i0 - pre[i0];
+    const i1 = lower(X, K - P); wSum = (K - P) * i1 - pre[i1]; nWin = i1;
+  }
+  const ev = sumPos / n - P, lSum = wSum - n * ev, p = nWin / n, nLose = n - nWin;
+  const W = nWin ? wSum / nWin : 0, L = nLose ? lSum / nLose : 0;
+  return { buy:{ p, W, L, b: L > 0 ? W / L : null, k:kellyOf(p, W, L), ev },
+           sell:{ p:1 - p, W:L, L:W, b: W > 0 ? L / W : null, k:kellyOf(1 - p, L, W), ev:-ev } };
+}
+
+/* ───────── 資料狀態 ───────── */
+let DATA = null, CUR = store.get('ok.cur') || 'ALL', MODEL = store.get('ok.model') || 'hist', RANGE = +(store.get('ok.range') || 0.05);
+let INST = null, BIG = null, CHIPS = null, HISTD = null;
+
+async function loadDate(date){
+  setStatus('讀取 ' + date + ' 的台指選擇權…'); $('#app').hidden = true;
+  const i = TD.indexOf(date), isLatest = i === TD.length - 1;
+  const cur = await optionDay(date, true);
+  if (!cur) throw new Error(date + ' 還沒有選擇權資料');
+  const prevDate = i > 0 ? TD[i - 1] : null;
+  const prev = prevDate ? await optionDay(prevDate, false).catch(() => null) : null;
+  const chain = buildChain(cur.day, prev && prev.day);
+  const fut = await futPrice(date).catch(() => null);
+  const nextTD = cur.next || (isLatest ? null : TD[i + 1]);
+  const exps = [];
+  for (const [code, m] of chain){
+    const info = contractInfo(code), exp = adjustExp(info.exp, nextTD);
+    if (exp <= date) continue;
+    const S = [...m.values()].sort((a,b) => a.K - b.K);
+    const oiC = S.reduce((t,s) => t + s.c.oi, 0), oiP = S.reduce((t,s) => t + s.p.oi, 0);
+    if (oiC + oiP < 50) continue;
+    const F = parityF(m); if (F == null) continue;
+    const T = Math.max(0.15, dayDiff(date, exp) - 0.01) / 365;
+    const atm = S.reduce((a,b) => Math.abs(b.K - F) < Math.abs(a.K - F) ? b : a);
+    const atmIv = impliedVol(F >= atm.K ? atm.p.px : atm.c.px, F, atm.K, T, F < atm.K) || impliedVol(atm.c.px, F, atm.K, T, true) || 0.2;
+    // 結算價的中心：遠期價依台指期夜盤的漲跌同比例移動（用最新資訊）
+    const C = fut && fut.night ? F * fut.night / fut.dayClose : F;
+    exps.push({ code, info, exp, T, F, C, S, oiC, oiP, atmIv, n:tradeDaysBetween(date, exp) });
+  }
+  exps.sort((a,b) => a.exp.localeCompare(b.exp) || a.code.localeCompare(b.code));
+  if (!exps.length) throw new Error('這一天找不到可以計算的選擇權');
+  DATA = { date, exps, fut, hasPrev: !!prev };
+  if (CUR !== 'ALL' && !exps.some(e => e.code === CUR)) CUR = 'ALL';
+  compute();
+  setStatus(''); $('#app').hidden = false;
+  INST = null; BIG = null;
+  renderAll();
+  loadInst(date).then(renderMain).catch(e => { $('#instTbl').innerHTML = '<div class="msg">法人資料讀取失敗：' + esc(e.message) + '</div>'; renderMain(); });
+}
+
+function compute(){
+  for (const e of DATA.exps){
+    e.smp = samples(e, MODEL);
+    for (const s of e.S){
+      s.cs = s.c.px > 0 ? sideStats(e.smp, s.K, s.c.px, true) : null;
+      s.ps = s.p.px > 0 ? sideStats(e.smp, s.K, s.p.px, false) : null;
+    }
+  }
+}
+const listOf = () => CUR === 'ALL' ? DATA.exps : DATA.exps.filter(e => e.code === CUR);
+// 主力策略用的結算日：選單一結算日就用它，全部合計時用未平倉最多的那個
+const stratExp = () => CUR !== 'ALL' ? DATA.exps.find(e => e.code === CUR) : DATA.exps.slice().sort((a,b) => (b.oiC + b.oiP) - (a.oiC + a.oiP))[0];
+
+// 一群人（例如所有買權買方）合計：用口數加權的勝率、平均賺、平均賠
+function group(list, side, role, wfn){
+  let w = 0, wp = 0, wpW = 0, wq = 0, wqL = 0, ev = 0, prem = 0;
+  for (const e of list) for (const s of e.S){
+    const st = side === 'c' ? s.cs : s.ps; if (!st) continue;
+    const x = wfn(s[side]); if (!(x > 0)) continue;
+    const r = st[role];
+    w += x; wp += x * r.p; wpW += x * r.p * r.W; wq += x * (1 - r.p); wqL += x * (1 - r.p) * r.L;
+    ev += x * r.ev * MULT; prem += x * s[side].px * MULT;
+  }
+  if (!w) return null;
+  const p = wp / w, W = wp ? wpW / wp : 0, L = wq ? wqL / wq : 0;
+  return { lots:w, p, W, L, b: L > 0 ? W / L : null, k:kellyOf(p, W, L), ev, prem };
+}
+
+/* ───────── 畫面：勝率卡 ───────── */
+function kLabel(k){ if (k == null || isNaN(k)) return ''; return k > 0 ? `<span class="kl g">凱利 +${(k * 100).toFixed(1)}%</span>` : `<span class="kl b">凱利 ${(k * 100).toFixed(0)}%</span>`; }
+function cardsHtml(wfn){
+  const L = listOf();
+  const defs = [['c','buy','買權買方','var(--call)'],['c','sell','買權賣方','var(--call)'],['p','buy','賣權買方','var(--put)'],['p','sell','賣權賣方','var(--put)']];
+  return defs.map(([sd, role, name, col]) => {
+    const g = group(L, sd, role, wfn);
+    if (!g) return `<div class="card"><div class="k"><i style="background:${col}"></i>${name}</div><div class="v">–</div><div class="s">沒有口數</div></div>`;
+    return `<div class="card"><div class="k"><i style="background:${col}${role === 'sell' ? ';opacity:.55' : ''}"></i>${name}</div>` +
+      `<div class="v">${pct(g.p)}<small>勝率</small></div>` +
+      `<div class="s">賺賠比 ${g.b == null ? '–' : g.b.toFixed(2)}（贏平均 ${fmtInt(g.W)} 點／輸平均 ${fmtInt(g.L)} 點）<br>${fmtInt(g.lots)} 口・期望值 ${fmtMoney(g.ev, true)}<br>${kLabel(g.k)}</div></div>`;
+  }).join('');
+}
+function renderCards(){
+  $('#cards').innerHTML = cardsHtml(x => x.oi);
+  $('#cardsNew').innerHTML = DATA.hasPrev ? cardsHtml(x => x.prev == null ? 0 : x.oi - x.prev) : '<div class="msg">沒有前一天的資料，算不出新倉</div>';
+  const L = listOf();
+  const gb = ['c','p'].map(sd => group(L, sd, 'buy', x => x.oi)).filter(Boolean);
+  const evB = gb.reduce((t, g) => t + g.ev, 0), premB = gb.reduce((t, g) => t + g.prem, 0);
+  const lotsB = gb.reduce((t, g) => t + g.lots, 0), pB = lotsB ? gb.reduce((t, g) => t + g.p * g.lots, 0) / lotsB : null;
+  const who = evB < 0 ? '賣方' : '買方';
+  $('#flow').innerHTML = `買方整體勝率 <b>${pct(pB)}</b>，賣方整體勝率 <b>${pct(pB == null ? null : 1 - pB)}</b>。` +
+    `市場上買方總共付出權利金約 <b>${fmtMoney(premB)}</b>；依這個機率模型，抱到結算買方合計的期望損益是 <b class="${evB < 0 ? 'b' : 'g'}">${fmtMoney(evB, true)}</b>（${spct(premB ? evB / premB : null)}），這筆錢期望上流向<b>${who}</b>。` +
+    `<br><span class="small muted">勝率高不代表有優勢：賣方常常勝率八成以上，但輸一次可能賠掉好幾次的收入。看「凱利值」才知道哪一邊真正有優勢（正數＝有優勢，數字越大可以押越多）。</span>`;
+}
+
+/* ───────── 三大法人、大額交易人 ───────── */
+async function loadInst(date){
+  const from = shiftDay(date, -16);
+  const [inst, big, chips] = await Promise.all([
+    finmind({ dataset:'TaiwanOptionInstitutionalInvestors', data_id:'TXO', start_date:from, end_date:date }),
+    finmind({ dataset:'TaiwanOptionOpenInterestLargeTraders', data_id:'TXO', start_date:from, end_date:date }).catch(() => []),
+    CHIPS ? Promise.resolve(CHIPS) : repoJson('data/txo/chips.json').then(j => (CHIPS = j && j.days || []))
+  ]);
+  const days = [...new Set(inst.map(r => r.date))].sort();
+  const pick = (d, who, cp) => inst.find(x => x.date === d && x.institutional_investors === who && x.call_put === cp);
+  const leg = (d, who) => {
+    const c = pick(d, who, '買權'), p = pick(d, who, '賣權'); if (!c || !p) return null;
+    const v = (r, k) => +r[k] || 0;
+    const o = { LC:v(c,'long_open_interest_balance_volume'), SC:v(c,'short_open_interest_balance_volume'), LP:v(p,'long_open_interest_balance_volume'), SP:v(p,'short_open_interest_balance_volume'),
+      aLC:v(c,'long_open_interest_balance_amount') * 1000, aSC:v(c,'short_open_interest_balance_amount') * 1000, aLP:v(p,'long_open_interest_balance_amount') * 1000, aSP:v(p,'short_open_interest_balance_amount') * 1000 };
+    for (const k of ['LC','SC','LP','SP']) o['p' + k] = o[k] ? o['a' + k] / o[k] / MULT : null;     // 平均權利金（點）
+    return o;
+  };
+  const d1 = days[days.length - 1], d0 = days[days.length - 2], d5 = days[Math.max(0, days.length - 6)];
+  INST = d1 ? { d:d1, d0, d5, who:{} } : null;
+  if (INST) for (const w of ['外資','自營商','投信']) INST.who[w] = { now:leg(d1, w), prev:d0 ? leg(d0, w) : null, p5:d5 && d5 !== d1 ? leg(d5, w) : null };
+  // 前十大交易人
+  const bd = [...new Set(big.map(r => r.date))].sort().pop();
+  BIG = bd ? { d:bd, rows:big.filter(r => r.date === bd) } : null;
+  const fd = (CHIPS || []).filter(x => x.d <= date);
+  const fx = fd[fd.length - 1], fx5 = fd[fd.length - 6];
+  INST && (INST.fut = fx && fx.d === d1 ? { fi:fx.fi, fi5: fx5 ? fx.fi - fx5.fi : null, t10:fx.t10 } : (fx ? { fi:fx.fi, fi5: fx5 ? fx.fi - fx5.fi : null, t10:fx.t10, stale:fx.d } : null));
+  renderInstTbl();
+}
+function renderInstTbl(){
+  if (!INST){ $('#instTbl').innerHTML = '<div class="msg">沒有法人資料</div>'; return; }
+  let h = `<table><thead><tr><th>${mdw(INST.d)}</th><th>買進買權</th><th>賣出買權</th><th>買進賣權</th><th>賣出賣權</th><th>淨收權利金</th></tr></thead><tbody>`;
+  for (const w of ['外資','自營商','投信']){
+    const x = INST.who[w].now, p = INST.who[w].p5; if (!x) continue;
+    const cell = k => `${fmtInt(x[k])} 口<br><span class="muted small">均價 ${x['p' + k] == null ? '–' : x['p' + k].toFixed(1)} 點${p ? '・5天 ' + signInt(x[k] - p[k]) : ''}</span>`;
+    const net = x.aSC + x.aSP - x.aLC - x.aLP;
+    h += `<tr><td>${w}</td><td>${cell('LC')}</td><td>${cell('SC')}</td><td>${cell('LP')}</td><td>${cell('SP')}</td><td class="${net > 0 ? 'g' : 'b'}">${fmtMoney(net, true)}</td></tr>`;
+  }
+  $('#instTbl').innerHTML = h + '</tbody></table>';
+  if (!BIG){ $('#bigTbl').innerHTML = '<div class="msg">沒有前十大交易人資料</div>'; return; }
+  const nm = ct => ct === 'week' ? '週選擇權' : ct === 'all' ? '全部月份' : /^\d{6}$/.test(ct) ? (+ct.slice(4)) + '月' : ct;
+  const types = [...new Set(BIG.rows.map(r => r.contract_type))].sort((a,b) => (a === 'week' ? 0 : a === 'all' ? 2 : 1) - (b === 'week' ? 0 : b === 'all' ? 2 : 1));
+  let t = `<table><thead><tr><th>${mdw(BIG.d)}</th><th>前十大 買方</th><th>前十大 賣方</th><th>淨部位</th><th>占市場</th></tr></thead><tbody>`;
+  for (const ct of types) for (const cp of ['call','put']){
+    const r = BIG.rows.find(x => x.contract_type === ct && x.put_call === cp); if (!r) continue;
+    const net = r.buy_top10_trader_open_interest - r.sell_top10_trader_open_interest;
+    t += `<tr><td>${nm(ct)} ${cp === 'call' ? '買權' : '賣權'}</td><td>${fmtInt(r.buy_top10_trader_open_interest)}</td><td>${fmtInt(r.sell_top10_trader_open_interest)}</td>` +
+         `<td class="${net > 0 ? 'g' : 'b'}">${signInt(net)}</td><td>${r.market_open_interest ? pct(Math.max(r.buy_top10_trader_open_interest, r.sell_top10_trader_open_interest) / r.market_open_interest, 0) : '–'}</td></tr>`;
+  }
+  $('#bigTbl').innerHTML = t + '</tbody></table>';
+}
+
+/* ───────── 主力策略判讀 ───────── */
+// 在這個結算日找權利金最接近法人平均權利金的履約價（推估法人大致佈在哪裡）
+function estStrike(e, call, prem){
+  if (!(prem > 0)) return null;
+  let best = null, bd = Infinity;
+  for (const s of e.S){ const x = call ? s.c.px : s.p.px; if (!(x > 0)) continue; const d = Math.abs(Math.log(x / prem)); if (d < bd){ bd = d; best = s; } }
+  return best ? best.K : null;
+}
+function classify(x){
+  const big = Math.max(x.LC, x.SC, x.LP, x.SP) || 1, has = v => v >= big * 0.25 && v >= 300;
+  const parts = [], tags = [];
+  // 買權那一邊
+  if (has(x.LC) && has(x.SC) && Math.min(x.LC, x.SC) / Math.max(x.LC, x.SC) > 0.55){
+    if ((x.pLC || 0) > (x.pSC || 0)){ parts.push('買權多頭價差（買近、賣遠）'); tags.push('CB'); } else { parts.push('買權空頭價差（賣近、買遠收租）'); tags.push('CR'); }
+  } else if (x.LC - x.SC > big * 0.2){ parts.push('買進買權'); tags.push('LC'); }
+  else if (x.SC - x.LC > big * 0.2){ parts.push('賣出買權'); tags.push('SC'); }
+  // 賣權那一邊
+  if (has(x.LP) && has(x.SP) && Math.min(x.LP, x.SP) / Math.max(x.LP, x.SP) > 0.55){
+    if ((x.pLP || 0) > (x.pSP || 0)){ parts.push('賣權空頭價差（買近、賣遠）'); tags.push('PB'); } else { parts.push('賣權多頭價差（賣近、買遠收租）'); tags.push('PR'); }
+  } else if (x.LP - x.SP > big * 0.2){ parts.push('買進賣權'); tags.push('LP'); }
+  else if (x.SP - x.LP > big * 0.2){ parts.push('賣出賣權'); tags.push('SP'); }
+  const T = new Set(tags);
+  let name = parts.join('＋') || '買賣大致相抵';
+  if (T.has('SC') && T.has('SP')) name = '賣出勒式（兩邊都賣，收租控盤）';
+  else if (T.has('LC') && T.has('LP')) name = '買進勒式（兩邊都買，押大波動）';
+  else if (T.has('LC') && T.has('SP')) name = '合成多單（買買權＋賣賣權，強烈偏多）';
+  else if (T.has('SC') && T.has('LP')) name = '合成空單（賣買權＋買賣權，強烈偏空）';
+  else if (T.has('CR') && T.has('PR')) name = '鐵兀鷹（兩邊都賣近買遠：收租控盤、風險有限）';
+  else if (T.has('CB') && T.has('PB')) name = '兩邊買價差（押大行情、風險有限）';
+  else if ((T.has('CR') || T.has('SC')) && (T.has('PR') || T.has('SP'))) name = '兩邊收租（' + parts.join('＋') + '）';
+  const premNet = x.aSC + x.aSP - x.aLC - x.aLP;
+  const dir = (x.aLC - x.aSC) - (x.aLP - x.aSP), tot = x.aLC + x.aSC + x.aLP + x.aSP || 1;
+  return { name, parts, premNet, dir, dirR: dir / tot, seller: premNet > 0 };
+}
+function bookOf(x, e, withFut){
+  const legs = [];
+  const add = (call, q, prem) => { if (!q) return; const K = estStrike(e, call, prem); if (K == null) return; legs.push({ call, q, P:prem, K }); };
+  add(true, x.LC, x.pLC); add(true, -x.SC, x.pSC); add(false, x.LP, x.pLP); add(false, -x.SP, x.pSP);
+  return { legs, fut: withFut || 0, C:e.C };
+}
+const bookPay = (bk, X) => { let v = 0; for (const l of bk.legs) v += l.q * ((l.call ? Math.max(X - l.K, 0) : Math.max(l.K - X, 0)) - l.P) * MULT; if (bk.fut) v += bk.fut * FUT_MULT * (X - bk.C); return v; };
+function bookStats(bk, smp){
+  const X = smp.X, n = X.length; let nw = 0, sw = 0, sl = 0, ev = 0;
+  for (let j = 0; j < n; j++){ const v = bookPay(bk, X[j]); ev += v; if (v > 0){ nw++; sw += v; } else sl -= v; }
+  const p = nw / n, W = nw ? sw / nw : 0, L = n - nw ? sl / (n - nw) : 0;
+  // 最有利結算價、損益兩平點
+  const lo = X[Math.floor(n * 0.005)], hi = X[Math.floor(n * 0.995)], st = (hi - lo) / 400;
+  let bx = lo, bv = -Infinity, prevV = null; const be = [];
+  for (let x = lo; x <= hi; x += st){ const v = bookPay(bk, x); if (v > bv){ bv = v; bx = x; } if (prevV != null && (prevV > 0) !== (v > 0)) be.push(x); prevV = v; }
+  return { p, W, L, b: L > 0 ? W / L : null, k:kellyOf(p, W, L), ev:ev / n, best:bx, bestV:bv, be, lo, hi };
+}
+function maxPain(e){
+  let best = null, bv = Infinity;
+  for (const t of e.S){ let v = 0; for (const s of e.S){ v += s.c.oi * Math.max(t.K - s.K, 0) + s.p.oi * Math.max(s.K - t.K, 0); } if (v < bv){ bv = v; best = t.K; } }
+  return best;
+}
+function walls(e){
+  let cw = null, pw = null;
+  for (const s of e.S){ if (s.K >= e.C && (!cw || s.c.oi > cw.c.oi)) cw = s; if (s.K <= e.C && (!pw || s.p.oi > pw.p.oi)) pw = s; }
+  return { cw: cw && cw.K, pw: pw && pw.K };
+}
+const probIn = (smp, a, b) => (upper(smp.X, b) - lower(smp.X, a)) / smp.X.length;
+
+function renderMain(){
+  const e = stratExp(); if (!e) return;
+  const box = $('#mainBox'), wb = $('#whoBox');
+  const W = walls(e), MP = maxPain(e), pin = W.pw && W.cw ? probIn(e.smp, W.pw, W.cw) : null;
+  const fx = INST && INST.who['外資'] && INST.who['外資'].now;
+  let out = '';
+  if (!INST || !fx){
+    box.innerHTML = `${INST ? '' : '法人資料讀取中…<br>'}${mdw(e.exp)} 結算：最大賣權未平倉 <b>${fmtInt(W.pw)}</b>、最大買權未平倉 <b>${fmtInt(W.cw)}</b>，結算落在這中間的機率 <b>${pct(pin)}</b>（賣方控盤成功率）；最大痛點 ${fmtInt(MP)}。`;
+    wb.innerHTML = ''; return;
+  }
+  const cls = classify(fx), fut = INST.fut;
+  const bkO = bookOf(fx, e, 0), bkF = bookOf(fx, e, fut ? fut.fi : 0);
+  const sO = bookStats(bkO, e.smp), sF = fut ? bookStats(bkF, e.smp) : null;
+  BOOK = { e, bkO, bkF: fut ? bkF : null, sO, sF, MP, W };
+  const shortC = bkO.legs.find(l => l.call && l.q < 0), shortP = bkO.legs.find(l => !l.call && l.q < 0);
+  const range = cls.seller && shortC && shortP ? [shortP.K - shortP.P, shortC.K + shortC.P] : null;
+  // 外資期貨與選擇權方向是否相反（避險）
+  const optBull = cls.dirR > 0.08, optBear = cls.dirR < -0.08;
+  let hedge = '';
+  if (fut && Math.abs(fut.fi) > 5000){
+    if (fut.fi < 0 && optBull) hedge = `外資台指期淨空 ${fmtInt(-fut.fi)} 口（大台等值），選擇權卻偏多：比較像<b>期貨空單（替手上的現股避險）＋選擇權偏多</b>，用選擇權賺上漲、用期貨鎖住下跌。`;
+    else if (fut.fi > 0 && optBear) hedge = `外資台指期淨多 ${fmtInt(fut.fi)} 口，選擇權卻偏空：比較像<b>期貨多單＋買保險（賣權）</b>。`;
+    else if (fut.fi < 0) hedge = `外資台指期淨空 ${fmtInt(-fut.fi)} 口（大台等值），選擇權也${optBear ? '偏空' : '沒有明顯偏多'}：期貨是主要部位，選擇權只是輔助。外資手上有大量台股現貨，期貨空單有很大一部分是避險，不能直接當成看空。`;
+    else hedge = `外資台指期淨多 ${fmtInt(fut.fi)} 口，選擇權${optBull ? '也偏多：多方一致' : '沒有偏空'}。`;
+    if (fut.fi5 != null) hedge += `近 5 天期貨淨部位 ${signInt(fut.fi5)} 口。`;
+  }
+  const p5 = INST.who['外資'].p5;
+  let add5 = '';
+  if (p5){
+    const ch = [['LC','買進買權'],['SC','賣出買權'],['LP','買進賣權'],['SP','賣出賣權']].map(([k, n]) => ({ n, v:(fx['a' + k] - p5['a' + k]), q:fx[k] - p5[k] })).sort((a,b) => Math.abs(b.v) - Math.abs(a.v));
+    add5 = `近 5 天變化最大：${ch.slice(0, 2).map(c => `${c.n} ${signInt(c.q)} 口（${fmtMoney(c.v, true)}）`).join('、')}。`;
+  }
+  out += `<b>外資目前像是用「${esc(cls.name)}」在佈局</b>（${cls.seller ? '淨收權利金 ' + fmtMoney(cls.premNet) + '，賣方心態：時間站在他那邊' : '淨付出權利金 ' + fmtMoney(-cls.premNet) + '，買方心態：要等行情'}；方向${optBull ? '<b class="g">偏多</b>' : optBear ? '<b class="b">偏空</b>' : '中性'}）。<br>`;
+  if (range) out += `推估的控盤區間：<b>${fmtInt(range[0])}～${fmtInt(range[1])}</b>（賣出的履約價加減收到的權利金），結算落在區間內的機率 <b>${pct(probIn(e.smp, range[0], range[1]))}</b>。<br>`;
+  out += `把外資的選擇權部位（依平均權利金推估成 ${mdw(e.exp)} 結算的履約價）抱到結算：勝率 <b>${pct(sO.p)}</b>、賺賠比 <b>${sO.b == null ? '–' : sO.b.toFixed(2)}</b>、${kLabel(sO.k)}，最有利的結算價約 <b>${fmtInt(sO.best)}</b>。<br>`;
+  if (sF) out += `連同台指期一起算：勝率 ${pct(sF.p)}、賺賠比 ${sF.b == null ? '–' : sF.b.toFixed(2)}、${kLabel(sF.k)}。<br>`;
+  if (hedge) out += hedge + '<br>';
+  if (add5) out += add5 + '<br>';
+  out += `市場整體（${mdw(e.exp)} 結算）：最大賣權未平倉 <b>${fmtInt(W.pw)}</b>（支撐）、最大買權未平倉 <b>${fmtInt(W.cw)}</b>（壓力），結算落在中間的機率 <b>${pct(pin)}</b>；最大痛點（賣方整體最賺）<b>${fmtInt(MP)}</b>，目前 ${fmtInt(e.C)}。`;
+  box.innerHTML = out;
+
+  // 各法人與前十大交易人
+  let h = '';
+  for (const w of ['自營商','投信']){
+    const x = INST.who[w].now; if (!x) continue;
+    const c = classify(x), s = bookStats(bookOf(x, e, 0), e.smp);
+    h += `<div class="who"><div class="hd"><span class="nm">${w}</span><span class="st">${esc(c.name)}</span></div><ul>` +
+      `<li>${c.seller ? '淨收權利金 ' + fmtMoney(c.premNet) : '淨付權利金 ' + fmtMoney(-c.premNet)}；方向 ${c.dirR > 0.08 ? '<b class="g">偏多</b>' : c.dirR < -0.08 ? '<b class="b">偏空</b>' : '中性'}</li>` +
+      `<li>抱到 ${mdw(e.exp)} 結算：勝率 ${pct(s.p)}、賺賠比 ${s.b == null ? '–' : s.b.toFixed(2)}、${kLabel(s.k)}；最有利結算價約 ${fmtInt(s.best)}</li></ul></div>`;
+  }
+  if (BIG){
+    const g = (ct, cp) => BIG.rows.find(r => r.contract_type === ct && r.put_call === cp);
+    const lines = [];
+    for (const ct of ['week', ...new Set(BIG.rows.map(r => r.contract_type).filter(c => /^\d{6}$/.test(c)))]){
+      const c = g(ct, 'call'), p = g(ct, 'put'); if (!c || !p) continue;
+      const nc = c.buy_top10_trader_open_interest - c.sell_top10_trader_open_interest, np = p.buy_top10_trader_open_interest - p.sell_top10_trader_open_interest;
+      const nm = ct === 'week' ? '週選擇權' : (+ct.slice(4)) + '月';
+      let s = nc < 0 && np < 0 ? '兩邊都淨賣：<b>賣方控盤</b>' : nc > 0 && np > 0 ? '兩邊都淨買：押大波動' : nc > 0 && np < 0 ? '買買權、賣賣權：<b class="g">偏多</b>' : '賣買權、買賣權：<b class="b">偏空</b>';
+      lines.push(`<li>${nm}：買權淨 ${signInt(nc)} 口、賣權淨 ${signInt(np)} 口 → ${s}</li>`);
+    }
+    if (lines.length) h += `<div class="who"><div class="hd"><span class="nm">前十大交易人</span><span class="muted small">${mdw(BIG.d)}・包含法人與大戶，無法拆到單一履約價</span></div><ul>${lines.join('')}</ul></div>`;
+  }
+  wb.innerHTML = h;
+  renderBook();
+}
+
+/* ───────── 作圖 ───────── */
+let BOOK = null;
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(svg, tag, attrs, text){ const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); if (text != null) el.textContent = text; svg.appendChild(el); return el; }
+function niceTicks(a, b, n){ const span = b - a, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0))); const f = step0 / mag; const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag; const t = []; for (let v = Math.ceil(a / step) * step; v <= b + 1e-9; v += step) t.push(+v.toFixed(6)); return t; }
+
+function renderBook(){
+  const svg = $('#svgBook'); svg.innerHTML = '';
+  if (!BOOK){ return; }
+  const { e, bkO, bkF, sO, MP, W } = BOOK;
+  $('#bookCap').textContent = `橫軸＝${mdw(e.exp)} 結算價，縱軸＝損益（億元）；灰色山丘＝結算價落點機率`;
+  const Wd = svg.clientWidth || 360, H = Math.max(240, Math.min(340, Wd * 0.62)), m = { l:44, r:10, t:10, b:26 };
+  svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+  const lo = sO.lo, hi = sO.hi, N = 160, xs = [];
+  for (let i = 0; i <= N; i++) xs.push(lo + (hi - lo) * i / N);
+  const yO = xs.map(x => bookPay(bkO, x) / 1e8), yF = bkF ? xs.map(x => bookPay(bkF, x) / 1e8) : null;
+  let ymin = Math.min(0, ...yO), ymax = Math.max(0, ...yO);
+  if (yF){ ymin = Math.min(ymin, ...yF); ymax = Math.max(ymax, ...yF); }
+  const pad = (ymax - ymin) * 0.08 || 1; ymin -= pad; ymax += pad;
+  const X = v => m.l + (v - lo) / (hi - lo) * (Wd - m.l - m.r), Y = v => m.t + (ymax - v) / (ymax - ymin) * (H - m.t - m.b);
+  // 機率山丘
+  const bins = 60, cnt = new Array(bins).fill(0); for (const v of e.smp.X){ const k = Math.floor((v - lo) / (hi - lo) * bins); if (k >= 0 && k < bins) cnt[k]++; }
+  const cmax = Math.max(...cnt) || 1; let dp = `M${X(lo)},${H - m.b}`;
+  cnt.forEach((c, k) => { const x0 = X(lo + (hi - lo) * k / bins), x1 = X(lo + (hi - lo) * (k + 1) / bins), y = H - m.b - c / cmax * (H - m.t - m.b) * 0.45; dp += `L${x0},${y}L${x1},${y}`; });
+  svgEl(svg, 'path', { d:dp + `L${X(hi)},${H - m.b}Z`, fill:css('--muted'), opacity:0.16 });
+  for (const t of niceTicks(ymin, ymax, 5)){ svgEl(svg, 'line', { x1:m.l, x2:Wd - m.r, y1:Y(t), y2:Y(t), stroke:css('--grid') }); svgEl(svg, 'text', { x:m.l - 4, y:Y(t) + 4, 'text-anchor':'end', 'font-size':11, fill:css('--muted') }, t.toFixed(Math.abs(ymax - ymin) < 5 ? 1 : 0)); }
+  for (const t of niceTicks(lo, hi, 5)) svgEl(svg, 'text', { x:X(t), y:H - 8, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, fmtInt(t));
+  svgEl(svg, 'line', { x1:m.l, x2:Wd - m.r, y1:Y(0), y2:Y(0), stroke:css('--muted'), 'stroke-width':1 });
+  const vline = (v, col, lab, dash) => { if (v == null || v < lo || v > hi) return; svgEl(svg, 'line', { x1:X(v), x2:X(v), y1:m.t, y2:H - m.b, stroke:col, 'stroke-dasharray':dash || '4 3' }); svgEl(svg, 'text', { x:X(v) + 3, y:m.t + 10, 'font-size':10.5, fill:col }, lab); };
+  vline(e.C, css('--text'), '現價', '2 2'); vline(MP, css('--pain'), '最大痛點'); vline(W.pw, css('--put'), '賣權牆'); vline(W.cw, css('--call'), '買權牆');
+  const path = ys => ys.map((y, i) => (i ? 'L' : 'M') + X(xs[i]).toFixed(1) + ',' + Y(y).toFixed(1)).join('');
+  if (yF) svgEl(svg, 'path', { d:path(yF), fill:'none', stroke:css('--fut'), 'stroke-width':1.6, 'stroke-dasharray':'5 3' });
+  svgEl(svg, 'path', { d:path(yO), fill:'none', stroke:css('--accent'), 'stroke-width':2.2 });
+  $('#lgBook').innerHTML = `<span><i class="ln" style="background:${css('--accent')}"></i>外資選擇權部位</span>` + (yF ? `<span><i class="dash" style="color:${css('--fut')}"></i>連同台指期</span>` : '') + `<span><i style="background:${css('--muted')};opacity:.4"></i>結算價機率</span>`;
+  // 互動提示
+  const tip = $('#tipBook');
+  svg.onpointermove = ev => { const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * Wd / r.width; if (px < m.l || px > Wd - m.r) { tip.style.display = 'none'; return; }
+    const v = lo + (px - m.l) / (Wd - m.l - m.r) * (hi - lo), below = lower(e.smp.X, v) / e.smp.X.length;
+    tip.innerHTML = `結算價 <b>${fmtInt(v)}</b><br>選擇權部位 ${fmtMoney(bookPay(bkO, v), true)}` + (bkF ? `<br>連同台指期 ${fmtMoney(bookPay(bkF, v), true)}` : '') + `<br><span class="muted">結算低於這裡的機率 ${pct(below, 0)}</span>`;
+    tip.style.display = 'block'; tip.style.left = Math.min(r.width - 180, Math.max(0, ev.clientX - r.left + 10)) + 'px'; tip.style.top = '30px'; };
+  svg.onpointerleave = () => tip.style.display = 'none';
+  const legTxt = bkO.legs.map(l => `${l.q > 0 ? '買進' : '賣出'}${l.call ? '買權' : '賣權'} ${fmtInt(Math.abs(l.q))} 口 @ ${fmtInt(l.K)}（均價 ${l.P.toFixed(1)} 點）`).join('；');
+  $('#bookK').innerHTML = `<div>勝率<b>${pct(sO.p)}</b></div><div>賺賠比<b>${sO.b == null ? '–' : sO.b.toFixed(2)}</b></div><div>凱利值<b class="${sO.k > 0 ? 'g' : 'b'}">${(sO.k * 100).toFixed(1)}%</b></div><div>期望損益<b>${fmtMoney(sO.ev, true)}</b></div>`;
+  $('#bookNote').innerHTML = `推估的部位：${legTxt || '–'}。<br>法人資料只公布四種部位「全部月份合計」的口數和金額，看不到在哪個履約價。這裡用平均權利金去找 ${mdw(e.exp)} 結算權利金差不多的履約價，等於把外資整本部位「換算」成這個結算日來看，<b>履約價是推估值</b>；損益兩平點：${sO.be.length ? sO.be.map(fmtInt).join('、') : '無'}。`;
+}
+
+function renderStk(){
+  const svg = $('#svgStk'); svg.innerHTML = '';
+  const L = listOf(), C = L[0].C;
+  const map = new Map();
+  for (const e of L) for (const s of e.S){
+    let x = map.get(s.K); if (!x){ x = { K:s.K, cOi:0, pOi:0, cw:0, pw:0, cp:0, pp:0 }; map.set(s.K, x); }
+    x.cOi += s.c.oi; x.pOi += s.p.oi;
+    if (s.cs){ const w = Math.max(1, s.c.oi); x.cp += s.cs.buy.p * w; x.cw += w; }
+    if (s.ps){ const w = Math.max(1, s.p.oi); x.pp += s.ps.buy.p * w; x.pw += w; }
+  }
+  const rows = [...map.values()].filter(r => Math.abs(r.K / C - 1) <= RANGE).sort((a,b) => a.K - b.K);
+  if (!rows.length) return;
+  const Wd = svg.clientWidth || 360, H = Math.max(240, Math.min(320, Wd * 0.6)), m = { l:44, r:34, t:10, b:26 };
+  svg.setAttribute('viewBox', `0 0 ${Wd} ${H}`); svg.setAttribute('height', H);
+  const k0 = rows[0].K, k1 = rows[rows.length - 1].K, step = rows.length > 1 ? Math.min(...rows.slice(1).map((r, i) => r.K - rows[i].K)) : 50;
+  const X = k => m.l + (k - k0 + step / 2) / (k1 - k0 + step) * (Wd - m.l - m.r);
+  const omax = Math.max(1, ...rows.map(r => Math.max(r.cOi, r.pOi))), mid = m.t + (H - m.t - m.b) / 2, hh = (H - m.t - m.b) / 2;
+  const bw = Math.max(1, (Wd - m.l - m.r) / (rows.length + 1) * 0.75);
+  svgEl(svg, 'line', { x1:m.l, x2:Wd - m.r, y1:mid, y2:mid, stroke:css('--muted') });
+  for (const r of rows){
+    svgEl(svg, 'rect', { x:X(r.K) - bw / 2, y:mid - r.cOi / omax * hh, width:bw, height:r.cOi / omax * hh, fill:css('--call'), opacity:0.55 });
+    svgEl(svg, 'rect', { x:X(r.K) - bw / 2, y:mid, width:bw, height:r.pOi / omax * hh, fill:css('--put'), opacity:0.55 });
+  }
+  const Yp = p => m.t + (1 - p) * (H - m.t - m.b);
+  for (const p of [0.25, 0.5, 0.75]) svgEl(svg, 'text', { x:Wd - m.r + 3, y:Yp(p) + 4, 'font-size':10.5, fill:css('--muted') }, (p * 100) + '%');
+  svgEl(svg, 'text', { x:m.l - 4, y:m.t + 10, 'text-anchor':'end', 'font-size':10.5, fill:css('--muted') }, fmtInt(omax));
+  const ln = (key, wkey, col) => { const pts = rows.filter(r => r[wkey]).map(r => [X(r.K), Yp(r[key] / r[wkey])]); if (pts.length) svgEl(svg, 'path', { d:pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(''), fill:'none', stroke:col, 'stroke-width':2 }); };
+  ln('cp', 'cw', css('--call')); ln('pp', 'pw', css('--put'));
+  svgEl(svg, 'line', { x1:X(C), x2:X(C), y1:m.t, y2:H - m.b, stroke:css('--text'), 'stroke-dasharray':'2 2' });
+  for (const t of niceTicks(k0, k1, 5)) svgEl(svg, 'text', { x:X(t), y:H - 8, 'text-anchor':'middle', 'font-size':11, fill:css('--muted') }, fmtInt(t));
+  $('#lgStk').innerHTML = `<span><i style="background:${css('--call')};opacity:.6"></i>買權未平倉</span><span><i style="background:${css('--put')};opacity:.6"></i>賣權未平倉</span><span><i class="ln" style="background:${css('--call')}"></i>買權買方勝率</span><span><i class="ln" style="background:${css('--put')}"></i>賣權買方勝率</span><span>（賣方勝率＝100% 減買方）</span>`;
+  const tip = $('#tipStk');
+  svg.onpointermove = ev => { const rc = svg.getBoundingClientRect(), px = (ev.clientX - rc.left) * Wd / rc.width;
+    const r = rows.reduce((a, b) => Math.abs(X(b.K) - px) < Math.abs(X(a.K) - px) ? b : a);
+    tip.innerHTML = `履約價 <b>${fmtInt(r.K)}</b><br><span class="pc">買權</span> 未平倉 ${fmtInt(r.cOi)}・買方勝率 ${r.cw ? pct(r.cp / r.cw) : '–'}<br><span class="pp">賣權</span> 未平倉 ${fmtInt(r.pOi)}・買方勝率 ${r.pw ? pct(r.pp / r.pw) : '–'}`;
+    tip.style.display = 'block'; tip.style.left = Math.min(rc.width - 190, Math.max(0, ev.clientX - rc.left + 10)) + 'px'; tip.style.top = '30px'; };
+  svg.onpointerleave = () => tip.style.display = 'none';
+}
+
+function renderTbl(){
+  const box = $('#stkTbl');
+  if (CUR === 'ALL'){ box.innerHTML = '<div class="msg">明細請在上面選一個結算日（每個結算日的權利金不同，不能直接相加）</div>'; return; }
+  const e = DATA.exps.find(x => x.code === CUR), C = e.C;
+  const rows = e.S.filter(s => Math.abs(s.K / C - 1) <= RANGE);
+  const atm = rows.length ? rows.reduce((a,b) => Math.abs(b.K - C) < Math.abs(a.K - C) ? b : a) : null;
+  const kc = k => k == null ? '–' : `<span class="${k > 0 ? 'g' : 'b'}">${k > 0 ? '+' : ''}${(k * 100).toFixed(k > -1 ? 1 : 0)}%</span>`;
+  const oi = x => `${fmtInt(x.oi)}${x.prev != null ? `<span class="muted small">（${signInt(x.oi - x.prev)}）</span>` : ''}`;
+  let h = `<table><thead><tr><th>履約價</th><th class="pc">買權價</th><th class="pc">未平倉</th><th class="pc">買方勝率</th><th class="pc">買方凱利</th><th class="pc">賣方凱利</th>` +
+          `<th class="pp">賣權價</th><th class="pp">未平倉</th><th class="pp">買方勝率</th><th class="pp">買方凱利</th><th class="pp">賣方凱利</th></tr></thead><tbody>`;
+  for (const s of rows.slice().reverse()){
+    h += `<tr class="${s === atm ? 'atm' : ''}"><td>${fmtInt(s.K)}</td>` +
+      `<td>${s.c.px ? s.c.px : '–'}</td><td>${oi(s.c)}</td><td>${s.cs ? pct(s.cs.buy.p) : '–'}</td><td>${s.cs ? kc(s.cs.buy.k) : '–'}</td><td>${s.cs ? kc(s.cs.sell.k) : '–'}</td>` +
+      `<td>${s.p.px ? s.p.px : '–'}</td><td>${oi(s.p)}</td><td>${s.ps ? pct(s.ps.buy.p) : '–'}</td><td>${s.ps ? kc(s.ps.buy.k) : '–'}</td><td>${s.ps ? kc(s.ps.sell.k) : '–'}</td></tr>`;
+  }
+  box.innerHTML = h + '</tbody></table>';
+  requestAnimationFrame(() => { const tr = box.querySelector('tr.atm'); if (tr) box.scrollTop = tr.offsetTop - box.clientHeight / 2; });
+}
+
+function renderChips(){
+  const box = $('#expChips'); box.innerHTML = '';
+  const add = (key, top, sub) => {
+    const b = document.createElement('button'); b.className = 'chip' + (CUR === key ? ' on' : ''); b.setAttribute('role', 'tab');
+    b.innerHTML = esc(top) + '<small>' + esc(sub) + '</small>';
+    b.onclick = () => { CUR = key; store.set('ok.cur', key); renderAll(); renderMain(); };
+    box.appendChild(b);
+  };
+  add('ALL', '全部合計', DATA.exps.length + ' 個結算日');
+  for (const e of DATA.exps) add(e.code, mdw(e.exp) + ' 結算', e.info.label + '・剩 ' + e.n + ' 個交易日・未平倉 ' + fmtInt(e.oiC + e.oiP));
+}
+function renderAll(){
+  renderChips(); renderCards(); renderStk(); renderTbl(); renderInstTbl();
+  const e = stratExp(), f = DATA.fut;
+  const mName = { hist:'過去一年台指期實際漲跌（' + RETS.length + ' 天）重新抽樣', rv:'近 20 天實際波動率（年化 ' + (RV20 ? (RV20 * Math.sqrt(252) * 100).toFixed(1) + '%' : '–') + '）', iv:'各結算日的價平隱含波動率' }[MODEL];
+  $('#metaLine').textContent = `資料日 ${mdw(DATA.date)}・台指期 ${f ? fmtInt(f.price) + (f.night ? '（含夜盤）' : '') : '–'}・價平隱含波動率 ${e ? (e.atmIv * 100).toFixed(1) + '%' : '–'}`;
+  $('#foot').innerHTML = `<b>怎麼算的</b><br>1. 機率：用「${esc(mName)}」產生 ${NP.toLocaleString()} 種結算價的可能，平均值放在目前價位（不預設會漲或會跌）；結算當天只算開盤後半天，因為結算價取開盤後的指數。<br>` +
+    `2. 每個履約價：以目前權利金當成本，買方要結算價超過「履約價＋權利金」（賣權是低於「履約價－權利金」）才賺；勝率＝賺錢的情境占幾成，賺賠比＝贏的時候平均賺÷輸的時候平均賠，凱利值＝勝率 − 敗率÷賺賠比（你說的 f* = (bp − q) / b）。凱利值是「每次最多押本金幾成」，正數才有優勢；實務上建議只押一半或四分之一。<br>` +
+    `3. 一群人合計：用未平倉口數加權。「今天新進場的人」只算比前一天增加的口數，最接近「用今天價格建倉的人」。<br>` +
+    `4. 選「隱含波動率」時，等於用市場自己的定價去算，買賣雙方大致公平（凱利值接近 0）；用「實際漲跌」時，差距就是市場定價和實際走勢的落差，這才是優勢的來源。<br>` +
+    `5. 主力策略：三大法人只公布四種部位的口數與金額（全部月份合計），看不到履約價；履約價是用平均權利金推估，只能當方向參考。前十大交易人包含法人與大戶。<br>這是統計推估，不保證獲利，也不是投資建議。`;
+}
+
+function setStatus(t, err){ const s = $('#status'); s.hidden = !t; s.textContent = t || ''; s.className = 'msg' + (err ? ' err' : ''); }
+
+/* ───────── 事件 ───────── */
+$('#themeBtn').onclick = () => { THEME = THEME === 'dark' ? 'light' : 'dark'; store.set('ok.theme', THEME); applyTheme(); if (DATA){ renderStk(); renderBook(); } };
+$('#modelSel').onchange = e => { MODEL = e.target.value; store.set('ok.model', MODEL); setStatus('重新計算…'); setTimeout(() => { compute(); setStatus(''); renderAll(); renderMain(); }, 20); };
+$('#rangeSel').onchange = e => { RANGE = +e.target.value; store.set('ok.range', String(RANGE)); renderStk(); renderTbl(); };
+$('#dateSel').onchange = e => loadDate(e.target.value).catch(err => setStatus(err.message, true));
+let rT = null; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA){ renderStk(); renderBook(); } }, 200); });
+
+async function start(){
+  applyTheme();
+  $('#modelSel').value = MODEL; $('#rangeSel').value = String(RANGE);
+  if (!(SET.token || '').trim()) setStatus('提醒：還沒有 FinMind 憑證，可能很快就用完免費查詢次數。請先到看盤頁「⚙ 設定」貼上憑證。讀取中…');
+  try {
+    const [td, hist] = await Promise.all([tradingDates(), repoJson('data/txo/history.json')]);
+    HISTD = hist && hist.days || [];
+    prepHist(HISTD);
+    TD = td;
+    const sel = $('#dateSel');
+    sel.innerHTML = TD.slice(-20).reverse().map(d => `<option value="${d}">${mdw(d)}</option>`).join('');
+    // 最近一個有選擇權資料的交易日（今天收盤資料還沒公布就往前找）
+    for (let i = TD.length - 1; i >= Math.max(0, TD.length - 4); i--){
+      try { sel.value = TD[i]; await loadDate(TD[i]); return; }
+      catch(e){ if (!/還沒有/.test(e.message) || i === Math.max(0, TD.length - 4)) throw e; }
+    }
+  } catch(e){ setStatus(e.message, true); }
+}
+start();
+</script>
+<script src="autoreload.js"></script>
+</body>
+</html>
