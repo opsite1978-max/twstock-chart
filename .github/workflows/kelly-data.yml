@@ -1,0 +1,42 @@
+name: 選擇權勝率・凱利・主力佈局
+on:
+  schedule:
+    - cron: '45 8,10,13 * * 1-5'   # 台灣時間 16:45、18:45、21:45（選擇權、法人資料公布後）
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/kelly_snap.js', 'optkelly.html', '.github/workflows/kelly-data.yml']
+permissions:
+  contents: write
+concurrency:
+  group: kelly-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 計算勝率、凱利值與主力策略（FinMind）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+        run: node scripts/kelly_snap.js
+      - name: 存回專案
+        run: |
+          f=data/txo/kelly.json
+          [ -f "$f" ] || exit 0
+          cp "$f" /tmp/kelly.json
+          ok=0
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main && cp /tmp/kelly.json "$f" && git add "$f"
+            if git diff --cached --quiet; then ok=1; break; fi
+            git config user.name "txo-bot"; git config user.email "txo-bot@users.noreply.github.com"; git commit -qm "選擇權勝率・凱利更新 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            if git push -q origin HEAD:main; then ok=1; break; fi
+            sleep $((RANDOM % 10 + 5))
+          done
+          [ "$ok" = 1 ]
