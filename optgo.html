@@ -121,6 +121,21 @@ table.t9 tr:hover td{filter:brightness(1.15)}
 .pickbar .alt{margin-left:auto;border:1px solid var(--gold);color:var(--gold);background:none;border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;font-family:var(--zh)}
 .pickbar .alt b{font-family:var(--num)}
 table.t9 td.star::before{content:'★';font-size:10px;color:var(--gold);margin-right:2px;vertical-align:3px}
+.radar{border:1px solid rgba(179,136,255,.45);background:rgba(179,136,255,.06);border-radius:12px;padding:10px 12px 8px;margin:0 0 12px}
+.radar .rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700;color:#b388ff;font-size:14px}
+.radar .rh span{font-weight:400;font-size:12px;color:var(--muted)}
+.gauge{position:relative;height:12px;border-radius:6px;background:var(--panel2);margin:14px 0 18px}
+.gauge .zl,.gauge .zh{position:absolute;top:0;bottom:0}
+.gauge .zl{left:0;background:rgba(31,191,143,.35);border-radius:6px 0 0 6px}
+.gauge .zh{right:0;background:rgba(240,82,74,.35);border-radius:0 6px 6px 0}
+.gauge b{position:absolute;top:-4px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#b388ff;border:3px solid var(--panel);box-shadow:0 0 0 2px #b388ff66;transition:left .6s}
+.gauge em{position:absolute;top:15px;font-style:normal;font-size:11px;color:var(--muted);white-space:nowrap}
+.rs{display:grid;grid-template-columns:76px 1fr;gap:6px;padding:6px 0;border-top:1px dashed var(--line);font-size:13px;align-items:baseline}
+.rs .rn{font-weight:700}
+.rs.go .rst{color:var(--gold);font-weight:700}
+.rs.watch .rst{color:#b388ff;font-weight:700}
+.rs.no .rst,.rs.idle .rst{color:var(--muted)}
+.radar .rnote{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
 .scan-btn{float:right;border:1px solid #ff6b1a;color:#ff6b1a;background:none;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:-3px}
 .scan-btn:hover{background:#ff6b1a22}
 .scanbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:4vh 12px}
@@ -203,7 +218,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 14:30・轉折雷達</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 15:30・轉折雷達現況</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optmap.html">🧭 指數走向地圖</a>
     <a href="optk.html">選擇權K線（舊版）</a>
@@ -522,6 +537,33 @@ const pickLabel = x => '<span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '"
 
 let candAll = false;
 $('cheap') && ($('cheap').onchange = e => { UI.cheap = e.target.checked; saveUI(); renderCands(ST); renderPicker(ST); });
+// 轉折雷達現況：買權全部看同一條台指期偏離度、賣權看翻過來的那一條，所以「超賣」是整個市場的狀態，不是個別履約價
+function radarNow(){
+  const S = TX5, n = S.U.length, i = n - 1; let rec = 0, rt = null;
+  for (let k = n - 1; k >= Math.max(0, n - 3); k--) if (S.tsig[k]){ rec = S.tsig[k]; rt = S.U[k].t; break; }
+  return { z:S.tz[i], lo:S.tlo[i], hi:S.thi[i], trd:S.ttrd[i], rec, rt, t:S.U[i].t };
+}
+function radarHTML(r, picks, candBtn){
+  if (!(r.hi > r.lo)) return '';
+  const w = r.hi - r.lo, a = r.lo - w * 0.7, b = r.hi + w * 0.7, ps = v => Math.max(1, Math.min(99, (v - a) / (b - a) * 100));
+  const side = want => {
+    const z = want * r.z, lo = want > 0 ? r.lo : -r.hi, hi = want > 0 ? r.hi : -r.lo, trd = want * r.trd;
+    const W = want > 0 ? { past:'回檔', far:'漲', dirOk:'向上', dirNo:'向下', back:'站回下界', act:'不抄底' } : { past:'反彈', far:'跌', dirOk:'向下', dirNo:'向上', back:'跌回上界', act:'不摸頭' };
+    if (r.rec === want) return ['go', '★ 轉折買點剛出現（' + hm(r.rt).split(' ')[1] + '）：' + W.past + '結束、大趨勢' + W.dirOk];
+    if (z < lo && trd > 0) return ['watch', W.past + '過頭、大趨勢' + W.dirOk + ' → 等' + W.back + '就是轉折，先準備'];
+    if (z < lo) return ['no', W.past + '過頭，但大趨勢' + W.dirNo + ' → ' + W.act + '（回測跟亂買差不多）'];
+    if (z < lo + 0.3 * (hi - lo) && trd > 0) return ['near', '接近界線、大趨勢' + W.dirOk + ' → 留意'];
+    if (z > hi) return ['idle', '已經' + W.far + '離均線很遠，別追'];
+    return ['idle', trd > 0 ? '大趨勢' + W.dirOk + '，等' + W.past + '到界線' : '大趨勢' + W.dirNo + '，這一邊先不看'];
+  };
+  const c = side(1), p = side(-1), pk = (want, cls) => picks[want] && picks[want].length ? picks[want].map((x, i) => candBtn(x, i, want > 0 ? 'zc' : 'zp')).join('') : '';
+  return '<div class="radar"><div class="rh">🎯 轉折雷達現況<span>台指期 5 分 K・' + hm(r.t) + '・大趨勢' + (r.trd > 0 ? '<b class="bull">向上</b>' : r.trd < 0 ? '<b class="bear">向下</b>' : '持平') + '</span></div>' +
+    '<div class="gauge"><i class="zl" style="width:' + ps(r.lo) + '%"></i><i class="zh" style="left:' + ps(r.hi) + '%"></i><b style="left:' + ps(r.z) + '%" title="偏離度 ' + r.z.toFixed(2) + '"></b>' +
+      '<em style="left:0">回檔過深</em><em style="left:50%;transform:translateX(-50%)">偏離度 ' + r.z.toFixed(1) + '（下界 ' + r.lo.toFixed(1) + '、上界 ' + r.hi.toFixed(1) + '）</em><em style="right:0">反彈過頭</em></div>' +
+    '<div class="rs ' + c[0] + '"><span class="rn bull">買權</span><span class="rst">' + c[1] + '</span></div>' + pk(1) +
+    '<div class="rs ' + p[0] + '"><span class="rn bear">賣權</span><span class="rst">' + p[1] + '</span></div>' + pk(-1) +
+    '<div class="rnote">這個指標看的是台指期，所以所有買權的超賣、超買都一樣（賣權相反）；不是個別選擇權各自算。只有「順大趨勢」的轉折回測有賺，出現時這裡會直接列出要買的 ★ 首選。</div></div>';
+}
 async function renderCands(st){
   const box = $('cands'), now = nowMin();
   const candBtn = (x, i, grp) => '<button class="cand' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? ' on' : '') + '" data-g="' + grp + '" data-i="' + i + '">' +
@@ -530,11 +572,18 @@ async function renderCands(st){
     (x.P.bad.length ? '・' + x.P.bad.join('、') : (x.q.v || 0) < 10 ? '・量少' : '') + (x.old ? '・<b>最後成交 ' + hm(x.q.t).split(" ")[1] + '，價格可能已經變了</b>' : '') + '</span></button>';
   const G = {};
   const bind = () => box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const x = G[b.dataset.g][+b.dataset.i]; select(x.c.code, x.k, x.cp); });
+  // 轉折雷達：剛出現轉折 → 列 3 檔；超賣等站回 → 先列 1 檔
+  const RD = TX5 && TX5.tz ? radarNow() : null, picks = {};
+  if (RD) for (const want of [1, -1]){
+    const z = want * RD.z, lo = want > 0 ? RD.lo : -RD.hi, n = RD.rec === want ? 3 : (z < lo && want * RD.trd > 0) ? 1 : 0;
+    if (n){ const L0 = (await rankPicks(want, st.F, now, R.px)).filter(x => !x.old); picks[want] = L0.slice(0, n); G[want > 0 ? 'zc' : 'zp'] = picks[want]; }
+  }
+  const radar = RD ? radarHTML(RD, picks, candBtn) : '';
   if (!st.ok){
     // 還沒成立：先把兩個方向的首選準備好
     const [pc, pp] = await Promise.all([rankPicks(1, st.F, now, R.px), rankPicks(-1, st.F, now, R.px)]);
     G.c = pc.filter(x => x.P.g === 'A').slice(0, 2); G.p = pp.filter(x => x.P.g === 'A').slice(0, 2);
-    box.innerHTML = '<div class="empty">現在台指期條件還沒成立，<b>先不要進場</b>。要「趨勢強度 30 以上、而且還在往同方向推」才買；盤整時買選擇權，時間價值會一直流失。' +
+    box.innerHTML = radar + '<div class="empty">現在台指期條件還沒成立，<b>先不要進場</b>。要「趨勢強度 30 以上、而且還在往同方向推」才買；盤整時買選擇權，時間價值會一直流失。' +
       (st.lastOk >= 0 ? '<br>上一次成立：' + hm(TX5.U[st.lastOk].t) + '（' + (TX5.dir[st.lastOk] > 0 ? '多方' : '空方') + '）' : '') + '</div>' +
       '<div class="prep"><h3>先準備：如果出現<b class="bull">多方</b>箭頭，先看</h3>' + (G.c.map((x, i) => candBtn(x, i, 'c')).join('') || '<div class="empty">目前沒有首選的買權</div>') +
       '<h3>如果出現<b class="bear">空方</b>箭頭，先看</h3>' + (G.p.map((x, i) => candBtn(x, i, 'p')).join('') || '<div class="empty">目前沒有首選的賣權</div>') +
@@ -543,7 +592,7 @@ async function renderCands(st){
   }
   const cp = st.d > 0 ? 'C' : 'P';
   const list = (await rankPicks(st.d, st.F, now, UI.cheap ? 0.1 : R.px));
-  if (!list.length){ box.innerHTML = '<div class="empty">台指期條件成立，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
+  if (!list.length){ box.innerHTML = radar + '<div class="empty">台指期條件成立，但目前沒有價格 30 點以上、今天有成交的價外' + (cp === 'C' ? '買權' : '賣權') + '。</div>'; return; }
   const top = list[0], rest = list.slice(1); G.t = [top]; G.r = rest;
   const P = top.P, px = top.q.c;
   const best = '<button class="best" data-g="t" data-i="0"><span class="t">' + (P.g === 'A' ? '★ 現在最好的選擇' : '現在相對最好的（沒有完全符合首選的）') + '・' + (cp === 'C' ? '多方找買權' : '空方找賣權') + '</span>' +
@@ -551,7 +600,7 @@ async function renderCands(st){
     gChecks(P) +
     '<span class="plan">照回測規則：進場 <b>' + fmtP(px) + '</b> → 目標 <b class="gold">' + fmtP(px * 1.5) + '</b>（+50%）、停損 <b>' + fmtP(px * 0.7) + '</b>（−30%），最多抱 4 小時。今天 ' + fmtN(top.q.v) + ' 口' + ((top.q.v || 0) < 10 ? '（量少，掛單小心）' : '') + (top.old ? '。<b>最後成交在 ' + hm(top.q.t) + '，價格可能已經變了，下單前先看報價</b>' : '') + '</span></button>';
   const shown = candAll ? rest : rest.slice(0, 10);
-  box.innerHTML = best + shown.map((x, i) => candBtn(x, i, 'r')).join('');
+  box.innerHTML = radar + best + shown.map((x, i) => candBtn(x, i, 'r')).join('');
   if (rest.length > 10) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 10 檔' : '顯示全部 ' + rest.length + ' 檔') + '</button>');
   const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
   bind();
@@ -838,7 +887,11 @@ async function renderChart(keep){
     DATA.forEach(b => { const j = b.j5; b.rz = b.rlo = b.rhi = NaN; b.rtrd = 0; b.rsig = 0; b.rraw = 0;
       if (j == null) return;
       b.rz = want * TX5.tz[j]; b.rlo = want > 0 ? TX5.tlo[j] : -TX5.thi[j]; b.rhi = want > 0 ? TX5.thi[j] : -TX5.tlo[j]; b.rtrd = want * TX5.ttrd[j];
-      for (let q = 0; q < tf; q += 5){ const k = TX5.idx.get(b.t + q); if (k == null) continue; if (TX5.tsig[k] === want) b.rsig = 1; else if (TX5.traw[k] === want) b.rraw = 1; }
+      let mn = b.rz;
+      for (let q = 0; q < tf; q += 5){ const k = TX5.idx.get(b.t + q); if (k == null) continue;
+        if (TX5.tsig[k] === want || TX5.traw[k] === want){ if (TX5.tsig[k] === want) b.rsig = 1; else b.rraw = 1; mn = Math.min(mn, want * TX5.tz[k - 1], want * TX5.tz[k]); } }
+      // 大週期看不到 5 分 K 那一下跌破界線，所以有轉折的那一根畫最低點
+      if (b.rsig || b.rraw) b.rz = mn;
       if (b.rsig) mks.push({ time:b.t * 60, position:'belowBar', shape:'arrowUp', color:gold, size:1.6, text:'轉折' });
       else if (b.rraw) mks.push({ time:b.t * 60, position:'belowBar', shape:'circle', color:faint, size:0.6 });
     });
