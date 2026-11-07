@@ -239,7 +239,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 16:30・選擇權選擇器</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 17:30・波動突破</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optmap.html">🧭 指數走向地圖</a>
     <a href="optk.html">選擇權K線（舊版）</a>
@@ -281,7 +281,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chead">
       <span class="ttl" id="ttl">—</span>
       <span class="px" id="px"></span>
-      <div class="tfs" id="panes"><button data-p="sc" title="勝算分數 0～100：把台指期趨勢、推力、選擇權動能、拉回位置、波動、價內外、到期時間一起交給資料學出來的分數。分數越高，歷史上之後的結果越好（沒看過的資料也一樣）">勝算</button><button data-p="mo" title="趨勢震盪 Pro：寬色帶＝大趨勢（30 根，紅在 0 上、綠在 0 下）；粗線＝快線（10 根），勝算 90 以上變金色；紫點線＝這一檔自己的動態上下界。原本：趨勢震盪：這一檔選擇權收盤離 10 根均線多遠（−100～+100）。0 以上紅底＝在均線上（漲勢）、0 以下綠底＝在均線下（跌勢）；±60 是上下界；線紅色＝往上、綠色＝往下">趨勢</button><button data-p="tr" title="轉折雷達（台指期 5 分 K）：粗線＝偏離度（收盤離 20 根均線幾個平均波幅）；紫虛線＝動態上下界（最近 300 根的 85%／15%）；淡金底＝大趨勢（50 根均線）往這一檔有利的方向。金色「轉折」＝順著大趨勢的回檔結束（跌破下界後站回），回測平均每筆 +12%；灰點＝逆著大趨勢的超買超賣，回測跟亂買差不多，不追">轉折</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
+      <div class="tfs" id="panes"><button data-p="sc" title="勝算分數 0～100：把台指期趨勢、推力、選擇權動能、拉回位置、波動、價內外、到期時間一起交給資料學出來的分數。分數越高，歷史上之後的結果越好（沒看過的資料也一樣）">勝算</button><button data-p="mo" title="趨勢震盪 Pro：寬色帶＝大趨勢（30 根，紅在 0 上、綠在 0 下）；粗線＝快線（10 根），勝算 90 以上變金色；紫點線＝這一檔自己的動態上下界。原本：趨勢震盪：這一檔選擇權收盤離 10 根均線多遠（−100～+100）。0 以上紅底＝在均線上（漲勢）、0 以下綠底＝在均線下（跌勢）；±60 是上下界；線紅色＝往上、綠色＝往下">趨勢</button><button data-p="tr" title="轉折雷達（台指期 5 分 K）：粗線＝偏離度（收盤離 20 根均線幾個平均波幅）；紫虛線＝動態上下界（最近 300 根的 85%／15%）；淡金底＝大趨勢（50 根均線）往這一檔有利的方向。金色「轉折」＝順著大趨勢的回檔結束（跌破下界後站回），回測平均每筆 +12%；灰點＝逆著大趨勢的超買超賣，回測跟亂買差不多，不追">轉折</button><button data-p="bk" title="波動突破：粗線＝這一檔選擇權的隱含波動，在最近 60 根裡的位置（0～100）。80 以上紅底＝選擇權偏貴，回測前後兩段都比較差，少買；20 以下綠底＝偏便宜。虛線＝台指期波動位置。「破牆」＝台指期突破今天的未平倉壓力牆（買權）或跌破支撐牆（賣權），資料只有 5 週、樣本太少，只當參考">突破</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
       <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
     </div>
     <div class="now" id="now"></div>
@@ -289,6 +289,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
     <div class="stats" id="stats"></div>
     <div class="rule">
+      <b style="color:#00c2ff">波動突破（附圖）</b>：粗線是這一檔選擇權的隱含波動（用價格反推的波動率），在最近 60 根裡排第幾（0～100），也就是「現在買貴不貴」。回測 8/5～11/6：在 80 以上（紅底，偏貴）買，前後兩段都比同時間其他選擇少賺約 1.2%，不管台指期條件時差更多（−2.2%、−3.0%，便宜區是 +0.5%、+3.9%）；所以紅底少買、綠底優先。虛線是台指期波動位置。「破牆」＝台指期突破今天的未平倉壓力牆（買權）或跌破支撐牆（賣權）；我測了 5 週資料只有 13 次，8 小時內翻倍的比例 22～25%（隨便買買權約 6～8%），看起來有機會但次數太少，只當參考。「之前擠壓、現在放大」再突破的，回測反而平均 −14%～−18%，所以沒有當成買點。<br>
       <b style="color:#b388ff">轉折雷達（附圖）</b>：粗線是台指期收盤離 20 根均線幾個平均波幅（賣權已上下翻轉，往上＝對這一檔有利），紫色虛線是最近 300 根的動態上下界。<b>只有順著大趨勢的轉折才是買點</b>：大趨勢（50 根均線）往這一檔有利的方向（淡金底），偏離度跌破下界後又站回＝回檔結束，畫金色「轉折」，主圖畫紫色「轉折」箭頭。回測 8/5～11/6（同樣價外、30 點以上、離到期 24 小時以上），平均每筆：前段 +12.0%、後段 +11.5%；挑 ★ 首選的 +18.6%、+14.4%。逆著大趨勢的超買超賣（灰點）回測跟亂買差不多，所以不當買點。<br>
       <b class="gold">★ 選檔評等</b>：時機對了還要選對檔。回測 8/5～11/6、台指期條件成立的時候，<b>價外距離剛好</b>（大約 0.5～1.5 個標準差，畫面上會依到期天數換算成點數，例如剩 4 天約價外 500～1,600 點）、<b>剩 2～7 天到期</b>的「首選」，去掉重複訊號後平均每筆：前段 +7.4%、後段 +19.6%（先漲 50% 的比例 35%、52%）；同樣規則下的其他檔 +4.7%、+6.3%。權利金高低本身影響不大。跟同一時間的其他選擇比，權利金不到 30 點少 5% 左右、太價外少 4～7%、剩不到 1 天也比較差；14 天以上的月選 4 小時內很少漲到 +50%。<br>
       <b>主圖箭頭</b>：<b style="color:#ff6b1a">大的橘色「發動」</b>＝進場條件成立，而且這一檔的動能（12、26 根均線差）剛從負翻正、台指期不在擠壓；小箭頭＝只有進場條件成立。最底下的<b class="gold">金色條</b>＝台指期條件成立的時間。✓＝之後漲到 +50%、✗＝先跌到 −30% 停損。<br>
@@ -360,7 +361,8 @@ const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', sc:t
 // 之前存過 ±20 的，改成預設全部價位（只做一次）
 try { const raw = JSON.parse(localStorage.getItem('optgo:ui') || '{}'); if (raw && raw.rangeV !== 2){ UI.range = 0; UI.rangeV = 2; }
   if (raw && raw.paneV !== 2){ UI.sc = false; UI.vo = false; UI.mo = true; UI.paneV = 2; }
-  if (UI.paneV !== 3){ UI.tr = true; UI.paneV = 3; } } catch(e){}
+  if (UI.paneV !== 3){ UI.tr = true; UI.paneV = 3; }
+  if (UI.paneV !== 4){ UI.bk = true; UI.paneV = 4; } } catch(e){}
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -578,6 +580,19 @@ const pickLabel = x => '<span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '"
 
 let candAll = false;
 $('cheap') && ($('cheap').onchange = e => { UI.cheap = e.target.checked; saveUI(); renderCands(ST); renderPicker(ST); });
+// 今天的未平倉牆：前一個交易日的未平倉、10 天內到期裡總未平倉最多的契約；上方買權最多＝壓力牆，下方賣權最多＝支撐牆
+function oiWalls(){
+  const ix = D.idx, f = ix && ix.fut; if (!f || !f.px) return null;
+  const ref = f.px, d0 = Date.parse(f.d + 'T00:00:00Z') / 6e4; let best = null;
+  for (const c of ix.contracts){ if (c.expired) continue; const e = expMin(c); if (e <= d0 + 1440 || e - d0 > 11 * 1440) continue;
+    const tot = c.rows.reduce((a, r) => a + ((r.C && r.C.oi) || 0) + ((r.P && r.P.oi) || 0), 0); if (!best || tot > best.tot) best = { c, tot }; }
+  if (!best) return null;
+  let cw = null, pw = null;
+  for (const r of best.c.rows){ const co = (r.C && r.C.oi) || 0, po = (r.P && r.P.oi) || 0;
+    if (r.k > ref && r.k <= ref * 1.05 && co && (!cw || co > cw.oi)) cw = { k:r.k, oi:co };
+    if (r.k < ref && r.k >= ref * 0.95 && po && (!pw || po > pw.oi)) pw = { k:r.k, oi:po }; }
+  return { c:best.c, ref, d:f.d, cw, pw };
+}
 // 轉折雷達現況：買權全部看同一條台指期偏離度、賣權看翻過來的那一條，所以「超賣」是整個市場的狀態，不是個別履約價
 function radarNow(){
   const S = TX5, n = S.U.length, i = n - 1; let rec = 0, rt = null;
@@ -701,7 +716,7 @@ $('jump').addEventListener('keydown', e => {
 });
 
 /* ═════════════ 圖 ═════════════ */
-let sTr = null, sTrBg = null, sTrHi = null, sTrLo = null, mkTr = null, sSc = null, sScBg = null, sMoHi = null, sMoLo = null, chart = null, sCandle = null, sVol = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, sVoBg = null, mkMo = null, mk = null, plines = [], DATA = [];
+let sBk = null, sBkBg = null, sBkTx = null, mkBk = null, sTr = null, sTrBg = null, sTrHi = null, sTrLo = null, mkTr = null, sSc = null, sScBg = null, sMoHi = null, sMoLo = null, chart = null, sCandle = null, sVol = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, sVoBg = null, mkMo = null, mk = null, plines = [], DATA = [];
 function buildChart(){
   if (chart) chart.remove();
   const el = $('cv');
@@ -723,7 +738,7 @@ function buildChart(){
   // 主圖最底下的金色條＝台指期進場條件成立
   sStrip = chart.addSeries(L.HistogramSeries, { priceScaleId:'strip', priceLineVisible:false, lastValueVisible:false });
   chart.priceScale('strip').applyOptions({ scaleMargins:{ top:0.975, bottom:0 }, visible:false });
-  let pn = 1; sMo = sVo = sSc = sTr = null;
+  let pn = 1; sMo = sVo = sSc = sTr = sBk = null;
   if (UI.sc){
     // 勝算分數：底色分區（90 以上金、80～90 淡金、40 以下灰），線＝分數
     const sAuto = () => ({ priceRange:{ minValue:0, maxValue:100 } }), sFmt = { type:'custom', minMove:1, formatter:v => String(Math.round(v)) };
@@ -766,6 +781,17 @@ function buildChart(){
     try { chart.panes()[pn].setStretchFactor(1.3); } catch(e){}
     pn++;
   }
+  if (UI.bk){
+    // 波動突破：這一檔的隱含波動在最近 60 根的位置；80 以上偏貴（回測較差）、20 以下偏便宜
+    const fx = { minValue:0, maxValue:100 };
+    sBkBg = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:fx }) }, pn);
+    sBkTx = chart.addSeries(L.LineSeries, { color:faint, lineWidth:1, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:false, crosshairMarkerVisible:false, priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:fx }) }, pn);
+    sBk = chart.addSeries(L.LineSeries, { color:css('--text'), lineWidth:3, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'貴賤', priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:fx }) }, pn);
+    sBk.createPriceLine({ price:80, color:up, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'偏貴' });
+    sBk.createPriceLine({ price:20, color:dn, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'便宜' });
+    try { chart.panes()[pn].setStretchFactor(1); } catch(e){}
+    pn++;
+  }
   if (UI.vo){
     // 台指期波動：在最近 120 根裡的位置（0～100）。50 以上黃底、20 以下藍底
     sVoBg = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }) }, pn);
@@ -782,6 +808,7 @@ function buildChart(){
   mk = L.createSeriesMarkers(sCandle, []);
   mkMo = sMo ? L.createSeriesMarkers(sMo, []) : null;
   mkTr = sTr ? L.createSeriesMarkers(sTr, []) : null;
+  mkBk = sBk ? L.createSeriesMarkers(sBk, []) : null;
   chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
 }
 function legend(b){
@@ -790,6 +817,9 @@ function legend(b){
   let s = '<span>' + hm(b.t) + '</span>' + (b.o != null ? '<span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>' : '<span>這一檔這根沒成交</span>');
   if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span></span>'; }
   s += '<span' + (b.ok5 ? ' class="gold"' : '') + '>台指期進場條件 ' + (b.ok5 ? '✓ 成立（金色條）' : '✗ 不成立') + '</span>';
+  if (UI.bk && !isNaN(b.ivpF)) { const W0 = oiWalls(), wk = W0 ? (UI.cp === 'C' ? W0.cw : W0.pw) : null;
+    s += '<span>選擇權貴不貴 <span class="n">' + Math.round(b.ivpF) + '</span>' + (b.ivpF >= 80 ? '（<b class="bull">偏貴，少買</b>）' : b.ivpF <= 20 ? '（<b class="bear">偏便宜</b>）' : '（正常）') + (isNaN(b.iv) ? '' : '・隱含波動 ' + Math.round(b.iv * 100) + '%') +
+      (wk ? '・今天' + (UI.cp === 'C' ? '壓力牆 ' : '支撐牆 ') + wk.k + '（' + fmtN(wk.oi) + ' 口）' : '') + '</span>'; }
   if (UI.tr && b.rz != null && !isNaN(b.rz)) s += '<span>轉折雷達 <span class="n">' + b.rz.toFixed(1) + '</span>（下界 ' + b.rlo.toFixed(1) + '、上界 ' + b.rhi.toFixed(1) + '）・大趨勢' + (b.rtrd > 0 ? '<span class="gold">順這一檔</span>' : b.rtrd < 0 ? '逆這一檔' : '持平') + (b.rsig ? '・<b class="gold">轉折買點</b>' : b.rraw ? '・逆勢超賣（不追）' : '') + '</span>';
   if (sSc && b.sc != null && !isNaN(b.sc)){ const bd = bandOf(b.sc);
     s += '<span style="flex-basis:100%;height:0"></span><span style="font-weight:700;color:' + (b.sc >= 90 ? css('--gold') : b.sc >= 60 ? css('--text') : css('--muted')) + '">勝算 <span class="n" style="font-size:16px">' + Math.round(b.sc) + '</span>・' + bd[2] + '（歷史上這一區平均每筆 ' + bd[3] + '）</span>'; }
@@ -922,6 +952,26 @@ async function renderChart(keep){
     sMo.setData(DATA.map(b => isNaN(b.to) ? { time:b.t * 60 } : { time:b.t * 60, value:b.to, color:b.sc >= 90 ? gold : b.to >= b.ts ? up : dn }));
     mkMo.setMarkers(fires.map(f => ({ time:bt(f.t) * 60, position:'belowBar', color:gold, shape:'circle', size:0.8 })));
   }
+  // 這一檔的隱含波動、在最近 60 根裡的位置（量不到 2 口的不算）
+  { const ivs = [], ex0 = expMin(c);
+    DATA.forEach(b => { b.iv = b.ivp = NaN; const j = b.j5, T = (ex0 - b.t - tf) / 525600;
+      if (j == null || !(b.c >= 1) || b.v < 2 || T * 525600 < 60){ ivs.push(NaN); return; }
+      const v = impVol(b.c, TX5.U[j].c, UI.K, T, UI.cp === 'C'), hist = ivs.slice(-60).filter(x => !isNaN(x));
+      if (v){ b.iv = v; if (hist.length >= 20) b.ivp = 100 * hist.filter(x => x < v).length / hist.length; }
+      ivs.push(v || NaN); });
+    let lastP = NaN; DATA.forEach(b => { if (!isNaN(b.ivp)) lastP = b.ivp; b.ivpF = lastP; }); }
+  const WL = oiWalls();
+  if (sBk){
+    const mks = [], wk = WL ? (want > 0 ? WL.cw : WL.pw) : null;
+    if (wk){ let done0 = false;
+      for (let i = 1; i < TX5.U.length && !done0; i++){ const a = TX5.U[i - 1], b0 = TX5.U[i]; if (tradeDay(b0.t) <= WL.d) continue;
+        if (want > 0 ? a.c <= wk.k && b0.c > wk.k : a.c >= wk.k && b0.c < wk.k){ done0 = true; const tb = bt(b0.t);
+          if (tb != null && DATA.some(x => x.t === tb)) mks.push({ time:tb * 60, position:'aboveBar', shape:'square', color:'#00c2ff', size:1.2, text:'破牆 ' + wk.k }); } } }
+    sBkBg.setData(DATA.map(b => isNaN(b.ivpF) ? { time:b.t * 60 } : { time:b.t * 60, value:100, color:b.ivpF >= 80 ? 'rgba(240,82,74,.16)' : b.ivpF <= 20 ? 'rgba(31,191,143,.14)' : 'transparent' }));
+    sBkTx.setData(DATA.map(b => isNaN(b.vp) ? { time:b.t * 60 } : { time:b.t * 60, value:b.vp }));
+    sBk.setData(DATA.map(b => isNaN(b.ivp) ? { time:b.t * 60 } : { time:b.t * 60, value:b.ivp, color:b.ivp >= 80 ? up : b.ivp <= 20 ? dn : css('--text') }));
+    mkBk.setMarkers(mks);
+  }
   if (sTr){
     // 這一根（含裡面每根 5 分 K）有沒有轉折
     const pt = (b, v) => v == null || isNaN(v) ? { time:b.t * 60 } : { time:b.t * 60, value:v };
@@ -973,7 +1023,8 @@ async function renderChart(keep){
   if (last && expMin(c) > nowMin()){
     const PI = pickInfo(c, UI.K, UI.cp, last.c, F, nowMin());
     pb.className = 'pickbar ' + GRADE[PI.g][1]; pb.style.display = '';
-    pb.innerHTML = '<span>選檔 ' + gBadge(PI.g) + '</span>' + gChecks(PI) + (PI.bad.length ? '<span class="why">要避開：' + PI.bad.join('、') + '</span>' : '');
+    const lp = DATA.length ? DATA[DATA.length - 1].ivpF : NaN;
+    pb.innerHTML = '<span>選檔 ' + gBadge(PI.g) + '</span>' + gChecks(PI) + (isNaN(lp) ? '' : '<span class="pk"><span class="' + (lp >= 80 ? '' : 'y') + '">' + (lp >= 80 ? '✗ 現在偏貴（隱含波動在最近 60 根的 ' + Math.round(lp) + '%，回測較差）' : lp <= 20 ? '✓ 現在偏便宜（隱含波動位置 ' + Math.round(lp) + '）' : '隱含波動位置 ' + Math.round(lp) + '（正常）') + '</span></span>') + (PI.bad.length ? '<span class="why">要避開：' + PI.bad.join('、') + '</span>' : '');
     if (PI.g !== 'A'){
       rankPicks(want, F, nowMin(), R.px).then(L0 => {
         const alt = L0.find(x => x.P.g === 'A' && !x.old && (x.q.v || 0) >= 10); if (!alt || UI.code !== c.code || UI.K == null) return;
