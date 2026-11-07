@@ -136,6 +136,27 @@ table.t9 td.star::before{content:'★';font-size:10px;color:var(--gold);margin-r
 .rs.watch .rst{color:#b388ff;font-weight:700}
 .rs.no .rst,.rs.idle .rst{color:var(--muted)}
 .radar .rnote{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}
+.sel-btn{float:right;border:1px solid #b388ff;color:#b388ff;background:none;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer;margin:-3px 6px 0 0}
+.sel-btn:hover{background:rgba(179,136,255,.12)}
+.selbox{width:min(1180px,100%)}
+.selbox .sum{padding:0 16px 8px;font-size:13px;color:var(--muted);line-height:1.7}
+.selbox .sum b{color:var(--text)}
+table.sl{width:100%;border-collapse:collapse;font-size:14px}
+table.sl th{position:sticky;top:0;background:var(--panel);font-size:12px;font-weight:500;color:var(--muted);padding:6px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+table.sl th:first-child,table.sl th.l{text-align:left}
+table.sl th.on{color:var(--gold)}
+table.sl td{padding:7px 6px;border-bottom:1px solid var(--grid);white-space:nowrap;cursor:pointer;text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums;vertical-align:middle}
+table.sl td.l{text-align:left;font-family:var(--zh)}
+table.sl tr:hover td{background:var(--panel2)}
+table.sl tr.cur td{background:var(--goldbg)}
+table.sl .k{font-size:17px;font-weight:700}
+table.sl .sub{display:block;font-size:11px;color:var(--muted);font-family:var(--zh)}
+table.sl .ok{color:var(--gold)}
+table.sl .now{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:1px 6px;font-family:var(--zh);margin-left:2px}
+table.sl .now.e{background:var(--gold);color:#1a1300}
+table.sl .now.t{background:#b388ff;color:#140a26}
+.selbox .ctl .dl{margin-left:auto;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--text)}
+@media (max-width:640px){ table.sl .hm{display:none} table.sl td,table.sl th{padding:7px 4px} table.sl{font-size:13px} }
 .scan-btn{float:right;border:1px solid #ff6b1a;color:#ff6b1a;background:none;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer;margin-top:-3px}
 .scan-btn:hover{background:#ff6b1a22}
 .scanbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:4vh 12px}
@@ -218,7 +239,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 15:30・轉折雷達現況</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 16:30・選擇權選擇器</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optmap.html">🧭 指數走向地圖</a>
     <a href="optk.html">選擇權K線（舊版）</a>
@@ -234,7 +255,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <div class="wrap">
   <aside>
     <section class="sec s1">
-      <h2>選檔推薦 <button class="scan-btn" id="scanOpen" title="一次掃過全部未結算的週選、月選，找出最近主圖出現過發動或進場箭頭的">🔍 箭頭搜尋</button></h2>
+      <h2>選檔推薦 <button class="scan-btn" id="scanOpen" title="一次掃過全部未結算的週選、月選，找出最近主圖出現過發動或進場箭頭的">🔍 箭頭搜尋</button><button class="sel-btn" id="selOpen" title="全部未結算的週選、月選，照選檔評等排好的完整清單，可以篩選、排序、下載">📋 選擇器</button></h2>
       <p class="hint">台指期條件成立時，從全部週選、月選裡挑最好下手的那一檔。<span class="gb a">★ 首選</span>＝價外距離剛好、剩 2～7 天到期（回測平均每筆 +13.7%，其他 +5.4%）</p>
       <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cheap"> 也列 30 點以下的（回測沒有包含，風險比較高）</label>
       <div class="cands" id="cands"><div class="empty">讀取中…</div></div>
@@ -288,6 +309,26 @@ main{display:flex;flex-direction:column;min-width:0}
       <b>要知道的</b>：這三個月大多是下跌行情，賣權平均 +10%、買權只有 +2%；14 週裡有 8 週賺、6 週賠。這是「勝算比較好」，不是保證；每筆先決定好金額，碰到停損就出場。
     </div>
   </main>
+</div>
+
+<div class="scanbg" id="selBg">
+  <div class="scanbox selbox" role="dialog" aria-label="選擇權選擇器">
+    <div class="hd"><b>📋 選擇權選擇器</b><span class="muted" style="font-size:13px">全部未結算的週選、月選，照選檔評等排好</span><button class="x" id="selX" aria-label="關閉">✕</button></div>
+    <div class="ctl">
+      <span class="seg" id="slSide"><button data-v="both">兩邊</button><button data-v="C">買權</button><button data-v="P">賣權</button></span>
+      <span class="seg" id="slG"><button data-v="A">只看首選</button><button data-v="AB">首選＋可以</button><button data-v="all">全部</button></span>
+      <span class="seg" id="slPx"><button data-v="30">30 點以上</button><button data-v="10">10 點以上</button><button data-v="0">不限</button></span>
+      <span class="seg" id="slV"><button data-v="10">今天 10 口以上</button><button data-v="1">今天有成交</button><button data-v="0">不限</button></span>
+      <select id="slC" aria-label="哪一個契約"></select>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="slItm"> 也列價內</label>
+      <button class="dl" id="slDl">⬇ 下載清單</button>
+    </div>
+    <div class="sum" id="slSum"></div>
+    <div class="body" id="slBody"></div>
+    <div class="scannote"><b class="gold">★ 首選</b>＝價外距離剛好（依到期天數換算，表上「價外」欄打 ✓）、剩 2～7 天；回測平均每筆 +13.7%，其他 +5.4%。<b>避開</b>＝權利金不到 30、剩不到 1 天、太價外、價內、或 14 天以上。<br>
+    「+50% 要走」＝用這一檔現在的價格反推波動率，算 2 小時後要漲 50%，台指期大約要往有利方向走幾點；括號是「一天正常波動」的幾倍，越小越容易。「停損時」＝跌 30% 大約是台指期反向走幾點（0＝光等時間就會跌到）。這兩欄是理論估計，實際還會受買賣價差、波動率變化影響。<br>
+    「現在」：<span class="gold">進場</span>＝台指期進場條件成立且這一檔符合；<span style="color:#b388ff">轉折</span>＝轉折雷達剛出現這個方向的轉折。點表頭可以排序，點一列打開那一檔的圖；開著時每分鐘自動更新。</div>
+  </div>
 </div>
 
 <div class="scanbg" id="scanBg">
@@ -587,8 +628,8 @@ async function renderCands(st){
       (st.lastOk >= 0 ? '<br>上一次成立：' + hm(TX5.U[st.lastOk].t) + '（' + (TX5.dir[st.lastOk] > 0 ? '多方' : '空方') + '）' : '') + '</div>' +
       '<div class="prep"><h3>先準備：如果出現<b class="bull">多方</b>箭頭，先看</h3>' + (G.c.map((x, i) => candBtn(x, i, 'c')).join('') || '<div class="empty">目前沒有首選的買權</div>') +
       '<h3>如果出現<b class="bear">空方</b>箭頭，先看</h3>' + (G.p.map((x, i) => candBtn(x, i, 'p')).join('') || '<div class="empty">目前沒有首選的賣權</div>') +
-      '<div class="empty">價格會變，條件成立那時這裡會自動換成當下最好的。</div></div>';
-    bind(); return;
+      '<div class="empty">價格會變，條件成立那時這裡會自動換成當下最好的。</div><button class="more-btn" id="selMore">📋 打開選擇器看完整清單</button></div>';
+    bind(); const sm = $('selMore'); if (sm) sm.onclick = selOpen; return;
   }
   const cp = st.d > 0 ? 'C' : 'P';
   const list = (await rankPicks(st.d, st.F, now, UI.cheap ? 0.1 : R.px));
@@ -602,6 +643,7 @@ async function renderCands(st){
   const shown = candAll ? rest : rest.slice(0, 10);
   box.innerHTML = radar + best + shown.map((x, i) => candBtn(x, i, 'r')).join('');
   if (rest.length > 10) box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="candMore">' + (candAll ? '只看前 10 檔' : '顯示全部 ' + rest.length + ' 檔') + '</button>');
+  box.insertAdjacentHTML('beforeend', '<button class="more-btn" id="selMore">📋 打開選擇器看完整清單</button>'); $('selMore').onclick = selOpen;
   const mb = $('candMore'); if (mb) mb.onclick = () => { candAll = !candAll; renderCands(st); };
   bind();
 }
@@ -1084,6 +1126,102 @@ $('scK').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return
 $('scC').onchange = e => { UI.scC = e.target.value; saveUI(); scanRun(); };
 $('scGo').onclick = () => scanRun();
 
+/* ═════════════ 選擇權選擇器（完整清單） ═════════════ */
+function ncdf(x){ const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804 * Math.exp(-x * x / 2);
+  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))); return x > 0 ? 1 - p : p; }
+function black(F, K, T, sg, call){ const sd = sg * Math.sqrt(T), d1 = (Math.log(F / K) + sd * sd / 2) / sd, d2 = d1 - sd; return call ? F * ncdf(d1) - K * ncdf(d2) : K * ncdf(-d2) - F * ncdf(-d1); }
+function impVol(p, F, K, T, call){ const intr = Math.max(0, call ? F - K : K - F); if (!(p > intr + 0.05) || T <= 0) return null;
+  let lo = 0.02, hi = 4; if (black(F, K, T, hi, call) < p) return null; for (let i = 0; i < 50; i++){ const m = (lo + hi) / 2; if (black(F, K, T, m, call) < p) lo = m; else hi = m; } return (lo + hi) / 2; }
+// 要漲 50%／跌 30%，台指期大概要走幾點（2 小時後、波動率不變）
+function moveNeed(c, K, cp, px, F, t){
+  const call = cp === 'C', T = (expMin(c) - t) / 525600; if (!(T > 0) || !(px > 0)) return null;
+  const sg = impVol(px, F, K, T, call); if (!sg) return null;
+  const T2 = Math.max(1 / 525600, T - 120 / 525600), d = call ? 1 : -1, val = m => black(F + d * m, K, T2, sg, call);
+  const solve = (target, sgn) => { let lo = 0, hi = F * 0.15; const f = m => val(sgn * m) - target;
+    if (sgn > 0 ? f(0) >= 0 : f(0) <= 0) return 0; if (sgn > 0 ? f(hi) < 0 : f(hi) > 0) return null;
+    for (let i = 0; i < 40; i++){ const m = (lo + hi) / 2; if (sgn > 0 ? f(m) < 0 : f(m) > 0) lo = m; else hi = m; } return (lo + hi) / 2; };
+  const up = solve(px * 1.5, 1), dn = solve(px * 0.7, -1), day = sg * F * Math.sqrt(1 / 365);
+  return { up, dn, day, iv:sg };
+}
+let SEL = { sort:'g', dir:1, list:[] };
+function selSync(){
+  const set = (id, v) => { for (const b of $(id).children) b.classList.toggle('on', b.dataset.v === v); };
+  set('slSide', UI.slSide || 'both'); set('slG', UI.slG || 'AB'); set('slPx', UI.slPx || '30'); set('slV', UI.slV || '1');
+  $('slItm').checked = !!UI.slItm;
+  const now = nowMin(), live = D.idx.contracts.filter(c => !c.expired && expMin(c) > now);
+  $('slC').innerHTML = '<option value="">全部未結算</option>' + live.map(c => '<option value="' + c.code + '"' + (UI.slC === c.code ? ' selected' : '') + '>' + shortLabel(c) + '</option>').join('');
+}
+async function selBuild(){
+  const now = nowMin(), j = TX5.U.length - 1, F = TX5.U[j].c, RD = radarNow(), last = optLast();
+  const cs = D.idx.contracts.filter(c => !c.expired && expMin(c) > now && (!UI.slC || c.code === UI.slC));
+  await Promise.all(cs.map(c => loadLive(c.code)));
+  const sides = (UI.slSide || 'both') === 'both' ? ['C', 'P'] : [UI.slSide], minPx = +(UI.slPx || 30), minV = +(UI.slV || 1), gset = UI.slG || 'AB';
+  const out = [], cnt = { A:0, B:0, C:0 };
+  for (const c of cs) for (const r of c.rows) for (const cp of sides){
+    const want = cp === 'C' ? 1 : -1, q = quote(c, r, cp);
+    if (!(q.c > 0) || q.c < minPx || (q.v || 0) < minV) continue;
+    if (!UI.slItm && want * (r.k - F) <= 0) continue;
+    const P = pickInfo(c, r.k, cp, q.c, F, now); cnt[P.g]++;
+    if (gset === 'A' && P.g !== 'A') continue; if (gset === 'AB' && P.g === 'C') continue;
+    const ent = txOK(TX5, j, want) && want * (r.k - F) > 0 && q.c >= R.px && expMin(c) - now >= R.tte, turn = RD.rec === want && want * (r.k - F) > 0 && q.c >= R.px && expMin(c) - now >= R.tte;
+    out.push({ c, k:r.k, cp, q, P, oi:(r[cp] || {}).oi || 0, mv:moveNeed(c, r.k, cp, q.c, F, now), ent, turn, old:last - (q.t || 0) > 60 });
+  }
+  SEL.list = out; SEL.cnt = cnt; SEL.F = F; SEL.at = Date.now(); SEL.RD = RD; SEL.okC = txOK(TX5, j, 1); SEL.okP = txOK(TX5, j, -1);
+  selRender();
+}
+const SELCOL = [
+  ['g', '評等', x => GORD[x.P.g] * 10 + (x.old ? 4 : 0) + ((x.q.v || 0) < 10 ? 2 : 0) - x.P.score, 'l'],
+  ['k', '選擇權', x => x.k, 'l'],
+  ['px', '價格', x => x.q.c],
+  ['otm', '價外', x => x.P.pts],
+  ['d', '剩', x => x.P.tteH],
+  ['v', '今天量', x => -(x.q.v || 0)],
+  ['oi', '未平倉', x => -x.oi, 'hm'],
+  ['up', '+50% 要走', x => x.mv && x.mv.up != null ? x.mv.up / x.mv.day : 99],
+  ['dn', '停損時', x => x.mv && x.mv.dn != null ? x.mv.dn : 1e9, 'hm'],
+  ['now', '現在', x => -(x.turn * 2 + x.ent)]];
+function selRender(){
+  const L0 = SEL.list.slice(), col = SELCOL.find(c => c[0] === SEL.sort) || SELCOL[0];
+  L0.sort((a, b) => (col[2](a) - col[2](b)) * SEL.dir || GORD[a.P.g] - GORD[b.P.g] || b.P.score - a.P.score);
+  const RD = SEL.RD, sd = w => (w > 0 ? '買權：' : '賣權：') + ((w > 0 ? SEL.okC : SEL.okP) ? '<b class="gold">進場條件成立</b>' : '進場條件不成立') + (RD.rec === w ? '・<b style="color:#b388ff">剛出現轉折</b>' : '');
+  $('slSum').innerHTML = '符合 <b>' + L0.length + '</b> 檔（這次篩選裡：首選 ' + SEL.cnt.A + '、可以 ' + SEL.cnt.B + '、避開 ' + SEL.cnt.C + '）・台指期 <b class="n">' + fmtN(Math.round(SEL.F)) + '</b>・' + sd(1) + '　' + sd(-1) +
+    '・<span class="gold">' + new Date(SEL.at).toTimeString().slice(0, 5) + ' 更新</span>';
+  if (!L0.length){ $('slBody').innerHTML = '<div class="empty" style="padding:20px 0">沒有符合的選擇權，把篩選放寬一點試試。</div>'; return; }
+  const th = SELCOL.map(c => '<th data-s="' + c[0] + '" class="' + (c[3] || '') + (SEL.sort === c[0] ? ' on' : '') + '">' + c[1] + (SEL.sort === c[0] ? (SEL.dir > 0 ? ' ↑' : ' ↓') : '') + '</th>').join('');
+  const rows = L0.slice(0, 400).map((x, i) => { const P = x.P, mv = x.mv, okZ = P.checks[0][0], okT = P.checks[1][0];
+    return '<tr data-i="' + i + '" class="' + (x.c.code === UI.code && x.k === UI.K && x.cp === UI.cp ? 'cur' : '') + '">' +
+      '<td class="l">' + gBadge(P.g) + (P.bad.length ? '<span class="sub">' + P.bad.join('、') + '</span>' : '') + '</td>' +
+      '<td class="l"><span class="k n ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span> ' + (x.cp === 'C' ? '買權' : '賣權') + '<span class="sub">' + shortLabel(x.c) + '</span></td>' +
+      '<td>' + fmtP(x.q.c) + '<span class="sub">每口 ' + fmtN(Math.round(x.q.c * 50)) + ' 元' + (x.old ? '・' + hm(x.q.t).split(' ')[1] : '') + '</span></td>' +
+      '<td class="' + (okZ ? 'ok' : '') + '">' + (P.pts > 0 ? '' : '價內 ') + fmtN(Math.abs(Math.round(P.pts))) + (okZ ? ' ✓' : '') + '<span class="sub">理想 ' + fmtN(P.lo) + '～' + fmtN(P.hi) + '</span></td>' +
+      '<td class="' + (okT ? 'ok' : '') + '">' + (P.tteH < 24 ? Math.max(0, Math.round(P.tteH)) + ' 時' : (P.tteH / 24).toFixed(1) + ' 天') + (okT ? ' ✓' : '') + '</td>' +
+      '<td>' + fmtN(x.q.v || 0) + '</td><td class="hm">' + fmtN(x.oi) + '</td>' +
+      '<td>' + (mv && mv.up != null ? fmtN(Math.round(mv.up)) + ' 點<span class="sub">一天波動的 ' + (mv.up / mv.day).toFixed(1) + ' 倍</span>' : '–') + '</td>' +
+      '<td class="hm">' + (mv && mv.dn != null ? (mv.dn < 1 ? '<span class="muted">光等就會到</span>' : '反向 ' + fmtN(Math.round(mv.dn)) + ' 點') : '–') + '</td>' +
+      '<td>' + (x.turn ? '<span class="now t">轉折</span>' : '') + (x.ent ? '<span class="now e">進場</span>' : '') + (!x.turn && !x.ent ? '<span class="muted">—</span>' : '') + '</td></tr>'; }).join('');
+  $('slBody').innerHTML = '<table class="sl"><thead><tr>' + th + '</tr></thead><tbody>' + rows + '</tbody></table>' + (L0.length > 400 ? '<div class="empty">只列前 400 檔，請縮小篩選</div>' : '');
+  $('slBody').querySelectorAll('th[data-s]').forEach(h => h.onclick = () => { const k = h.dataset.s; if (SEL.sort === k) SEL.dir = -SEL.dir; else { SEL.sort = k; SEL.dir = 1; } selRender(); });
+  $('slBody').querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { const x = L0[+tr.dataset.i]; selClose(); select(x.c.code, x.k, x.cp); });
+  SEL.shown = L0;
+}
+function selDownload(){
+  const L0 = SEL.shown || [], esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const head = ['評等', '契約', '履約價', '買賣權', '價格', '每口金額', '價外點數', '理想價外', '剩幾天', '今天量', '未平倉', '+50%要走幾點', '是一天波動的幾倍', '停損時反向幾點', '現在', '要避開的原因'];
+  const lines = [head.join(',')].concat(L0.map(x => [GRADE[x.P.g][0], shortLabel(x.c), x.k, x.cp === 'C' ? '買權' : '賣權', x.q.c, Math.round(x.q.c * 50), Math.round(x.P.pts), x.P.lo + '~' + x.P.hi, (x.P.tteH / 24).toFixed(1), x.q.v || 0, x.oi,
+    x.mv && x.mv.up != null ? Math.round(x.mv.up) : '', x.mv && x.mv.up != null ? (x.mv.up / x.mv.day).toFixed(2) : '', x.mv && x.mv.dn != null ? Math.round(x.mv.dn) : '', [x.turn ? '轉折' : '', x.ent ? '進場' : ''].filter(Boolean).join('+'), x.P.bad.join('、')].map(esc).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\n')], { type:'text/csv;charset=utf-8' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = '選擇權清單_' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '') + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function selOpen(){ if (!TX5 || !D.idx) return; selSync(); $('selBg').classList.add('show'); $('slBody').innerHTML = '<div class="empty" style="padding:20px 0">整理中…</div>'; selBuild(); }
+function selClose(){ $('selBg').classList.remove('show'); }
+$('selOpen').onclick = selOpen; $('selX').onclick = selClose; $('slDl').onclick = selDownload;
+$('selBg').onclick = e => { if (e.target === $('selBg')) selClose(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') selClose(); });
+for (const [id, key] of [['slSide', 'slSide'], ['slG', 'slG'], ['slPx', 'slPx'], ['slV', 'slV']])
+  $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; UI[key] = b.dataset.v; saveUI(); selSync(); selBuild(); };
+$('slC').onchange = e => { UI.slC = e.target.value; saveUI(); selBuild(); };
+$('slItm').onchange = e => { UI.slItm = e.target.checked; saveUI(); selBuild(); };
+
 /* ═════════════ 操作 ═════════════ */
 let ST = null;
 function select(code, K, cp){ UI.code = code; UI.K = K; UI.cp = cp; saveUI(); renderPicker(ST); renderCands(ST); renderChart(); if (matchMedia('(max-width:900px)').matches) window.scrollTo({ top:0, behavior:'smooth' }); }
@@ -1109,7 +1247,7 @@ async function boot(){
   applyTheme(); syncTf(); buildChart(); $('cheap').checked = !!UI.cheap; saveUI();
   if (!await loadIndex()){ $('verdict').innerHTML = '<small>台指期現在</small>資料讀不到，請稍後重新整理'; return; }
   await refresh(false);
-  setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); if ($('scanBg').classList.contains('show') && !SCAN.busy) scanRun(true); }, 60e3);
+  setInterval(async () => { if (document.hidden) return; D.live.clear(); await refresh(true); if ($('scanBg').classList.contains('show') && !SCAN.busy) scanRun(true); if ($('selBg').classList.contains('show')) selBuild(); }, 60e3);
   setInterval(async () => { if (document.hidden) return; await loadIndex(); D.ser.clear(); }, 10 * 60e3);
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && D.idx){ D.live.clear(); D.txAt = 0; refresh(true); } });
