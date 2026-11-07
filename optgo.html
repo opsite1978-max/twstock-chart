@@ -147,6 +147,7 @@ table.sr tr:hover td{background:var(--panel2)}
 table.sr td.n{font-family:var(--num);font-variant-numeric:tabular-nums;text-align:right}
 table.sr .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:700}
 table.sr .tag.f{background:#ff6b1a;color:#fff}
+table.sr .tag.t{background:#b388ff;color:#140a26}
 table.sr .tag.e{border:1px solid var(--gold);color:var(--gold)}
 table.sr .k{font-family:var(--num);font-size:17px;font-weight:700}
 table.sr .sub{font-size:12px;color:var(--muted)}
@@ -202,7 +203,7 @@ main{display:flex;flex-direction:column;min-width:0}
 <body>
 <header class="top">
   <div class="bar1">
-    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 09:00・選檔推薦</span></h1>
+    <h1>選擇權順勢看盤 <span class="muted" style="font-size:12px;font-weight:400">版本 11/07 14:30・轉折雷達</span></h1>
     <span class="muted n" id="txInfo"></span>
     <a href="optmap.html">🧭 指數走向地圖</a>
     <a href="optk.html">選擇權K線（舊版）</a>
@@ -244,7 +245,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chead">
       <span class="ttl" id="ttl">—</span>
       <span class="px" id="px"></span>
-      <div class="tfs" id="panes"><button data-p="sc" title="勝算分數 0～100：把台指期趨勢、推力、選擇權動能、拉回位置、波動、價內外、到期時間一起交給資料學出來的分數。分數越高，歷史上之後的結果越好（沒看過的資料也一樣）">勝算</button><button data-p="mo" title="趨勢震盪 Pro：寬色帶＝大趨勢（30 根，紅在 0 上、綠在 0 下）；粗線＝快線（10 根），勝算 90 以上變金色；紫點線＝這一檔自己的動態上下界。原本：趨勢震盪：這一檔選擇權收盤離 10 根均線多遠（−100～+100）。0 以上紅底＝在均線上（漲勢）、0 以下綠底＝在均線下（跌勢）；±60 是上下界；線紅色＝往上、綠色＝往下">趨勢</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
+      <div class="tfs" id="panes"><button data-p="sc" title="勝算分數 0～100：把台指期趨勢、推力、選擇權動能、拉回位置、波動、價內外、到期時間一起交給資料學出來的分數。分數越高，歷史上之後的結果越好（沒看過的資料也一樣）">勝算</button><button data-p="mo" title="趨勢震盪 Pro：寬色帶＝大趨勢（30 根，紅在 0 上、綠在 0 下）；粗線＝快線（10 根），勝算 90 以上變金色；紫點線＝這一檔自己的動態上下界。原本：趨勢震盪：這一檔選擇權收盤離 10 根均線多遠（−100～+100）。0 以上紅底＝在均線上（漲勢）、0 以下綠底＝在均線下（跌勢）；±60 是上下界；線紅色＝往上、綠色＝往下">趨勢</button><button data-p="tr" title="轉折雷達（台指期 5 分 K）：粗線＝偏離度（收盤離 20 根均線幾個平均波幅）；紫虛線＝動態上下界（最近 300 根的 85%／15%）；淡金底＝大趨勢（50 根均線）往這一檔有利的方向。金色「轉折」＝順著大趨勢的回檔結束（跌破下界後站回），回測平均每筆 +12%；灰點＝逆著大趨勢的超買超賣，回測跟亂買差不多，不追">轉折</button><button data-p="vo" title="台指期波動：平均波幅佔價格，在最近 120 根裡的位置 0～100；50 以上黃底、80 以上爆發；20 以下藍底（擠壓）">波動</button></div>
       <div class="tfs" id="tfs"><button data-tf="5">5 分</button><button data-tf="15">15 分</button><button data-tf="30">30 分</button><button data-tf="60">60 分</button></div>
     </div>
     <div class="now" id="now"></div>
@@ -252,6 +253,7 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="chart"><div class="cv" id="cv"></div><div class="lg" id="lg"></div></div>
     <div class="stats" id="stats"></div>
     <div class="rule">
+      <b style="color:#b388ff">轉折雷達（附圖）</b>：粗線是台指期收盤離 20 根均線幾個平均波幅（賣權已上下翻轉，往上＝對這一檔有利），紫色虛線是最近 300 根的動態上下界。<b>只有順著大趨勢的轉折才是買點</b>：大趨勢（50 根均線）往這一檔有利的方向（淡金底），偏離度跌破下界後又站回＝回檔結束，畫金色「轉折」，主圖畫紫色「轉折」箭頭。回測 8/5～11/6（同樣價外、30 點以上、離到期 24 小時以上），平均每筆：前段 +12.0%、後段 +11.5%；挑 ★ 首選的 +18.6%、+14.4%。逆著大趨勢的超買超賣（灰點）回測跟亂買差不多，所以不當買點。<br>
       <b class="gold">★ 選檔評等</b>：時機對了還要選對檔。回測 8/5～11/6、台指期條件成立的時候，<b>價外距離剛好</b>（大約 0.5～1.5 個標準差，畫面上會依到期天數換算成點數，例如剩 4 天約價外 500～1,600 點）、<b>剩 2～7 天到期</b>的「首選」，去掉重複訊號後平均每筆：前段 +7.4%、後段 +19.6%（先漲 50% 的比例 35%、52%）；同樣規則下的其他檔 +4.7%、+6.3%。權利金高低本身影響不大。跟同一時間的其他選擇比，權利金不到 30 點少 5% 左右、太價外少 4～7%、剩不到 1 天也比較差；14 天以上的月選 4 小時內很少漲到 +50%。<br>
       <b>主圖箭頭</b>：<b style="color:#ff6b1a">大的橘色「發動」</b>＝進場條件成立，而且這一檔的動能（12、26 根均線差）剛從負翻正、台指期不在擠壓；小箭頭＝只有進場條件成立。最底下的<b class="gold">金色條</b>＝台指期條件成立的時間。✓＝之後漲到 +50%、✗＝先跌到 −30% 停損。<br>
       <b class="gold">勝算分數</b>（0～100，最上面的附圖）：把台指期趨勢方向和強弱、推力、這一檔的動能、拉回位置（趨勢震盪）、台指期波動、價內外、離到期時間、價位，一起交給 10/1～10/19 的資料學出每一項的份量，算出這一根之後「先漲 50% 還是先跌 30%」的預期，再換成 0～100。
@@ -278,14 +280,14 @@ main{display:flex;flex-direction:column;min-width:0}
     <div class="hd"><b>🔍 主圖箭頭搜尋</b><span class="muted" style="font-size:13px">找最近主圖出現過箭頭的選擇權</span><button class="x" id="scanX" aria-label="關閉">✕</button></div>
     <div class="ctl">
       <span>時間</span><span class="seg" id="scW"><button data-w="h1">最近 1 小時</button><button data-w="h4">最近 4 小時</button><button data-w="s1">這一盤</button><button data-w="s3">最近 3 盤</button></span>
-      <span>箭頭</span><span class="seg" id="scK"><button data-k="all">發動＋進場</button><button data-k="fire">只要發動</button></span>
+      <span>箭頭</span><span class="seg" id="scK"><button data-k="all">全部箭頭</button><button data-k="fire">只要發動</button><button data-k="turn">只要轉折</button></span>
       <select id="scC" aria-label="哪一個契約"></select>
       <button class="go" id="scGo">開始搜尋</button>
     </div>
     <div class="prog" id="scProg"></div>
     <div class="body" id="scBody"></div>
-    <div class="scannote">箭頭和主圖一模一樣（5 分 K 判斷）：<b style="color:#ff6b1a">發動</b>＝大橘箭頭（回測平均每筆 +9.7%）、<b class="gold">進場</b>＝小箭頭（+7.0%）。「現在」是最新成交價，跟箭頭那時的價格比；✓＝已經漲到 +50%、✗＝先碰到 −30% 停損。點一列就打開那一檔的圖。<br>
-    為了少下載資料，只掃「那段時間台指期條件成立的方向」、價外、離到期 24 小時以上、有成交的履約價。</div>
+    <div class="scannote">箭頭和主圖一模一樣（5 分 K 判斷）：<b style="color:#ff6b1a">發動</b>＝大橘箭頭（回測平均每筆 +9.7%）、<b style="color:#b388ff">轉折</b>＝順著大趨勢的回檔結束（+12%）、<b class="gold">進場</b>＝小箭頭（+7.0%）。「現在」是最新成交價，跟箭頭那時的價格比；✓＝已經漲到 +50%、✗＝先碰到 −30% 停損。點一列就打開那一檔的圖。<br>
+    為了少下載資料，只掃「那段時間台指期條件成立或出現轉折的方向」、價外、離到期 24 小時以上、有成交的履約價。</div>
   </div>
 </div>
 
@@ -301,7 +303,8 @@ const R = { adx:30, mom:0.5, px:30, tte:24 * 60, gap:10, horizon:48, win:0.5, lo
 const UI = Object.assign({ code:null, K:null, cp:'P', tf:'5', theme:'dark', sc:true, mo:true, vo:true, range:0, cheap:false, onlyTraded:false }, (() => { try { return JSON.parse(localStorage.getItem('optgo:ui') || '{}') || {}; } catch(e){ return {}; } })());
 // 之前存過 ±20 的，改成預設全部價位（只做一次）
 try { const raw = JSON.parse(localStorage.getItem('optgo:ui') || '{}'); if (raw && raw.rangeV !== 2){ UI.range = 0; UI.rangeV = 2; }
-  if (raw && raw.paneV !== 2){ UI.sc = false; UI.vo = false; UI.mo = true; UI.paneV = 2; } } catch(e){}
+  if (raw && raw.paneV !== 2){ UI.sc = false; UI.vo = false; UI.mo = true; UI.paneV = 2; }
+  if (UI.paneV !== 3){ UI.tr = true; UI.paneV = 3; } } catch(e){}
 const saveUI = () => { try { localStorage.setItem('optgo:ui', JSON.stringify(UI)); } catch(e){} };
 const $ = id => document.getElementById(id);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -405,6 +408,31 @@ const txOK = (S, i, want) => S.dir[i] === want && S.adx[i] >= R.adx && want * S.
 const osc = (S, i, want) => isNaN(S.mom[i]) ? NaN : 50 + 50 * Math.tanh(0.847 * want * S.mom[i]);
 
 /* ═════════════ 狀態 ═════════════ */
+/* 轉折雷達（台指期 5 分 K）
+   偏離度＝(收盤 − 20 根均線) ÷ 14 根平均波幅；上下界＝最近 300 根偏離度的 85%／15%；大趨勢＝50 根均線 6 根內的斜率。
+   轉折＝偏離度跌破下界後站回（往上）／漲破上界後跌回（往下），同方向 12 根內只算一次；
+   只有「順著大趨勢」的才算買點（回測 8/5～11/6：前段 +12.0%、後段 +11.5%）；逆著大趨勢的超買超賣跟亂買差不多。 */
+function turnRadar(S){
+  const U = S.U, n = U.length, z = new Array(n).fill(NaN), lo = new Array(n).fill(NaN), hi = new Array(n).fill(NaN), trd = new Int8Array(n), sig = new Int8Array(n), raw = new Int8Array(n), tr = new Array(n).fill(NaN);
+  if (n) tr[0] = U[0].h - U[0].l;
+  for (let i = 1; i < n; i++){ const a = U[i], p = U[i - 1]; tr[i] = Math.max(a.h - a.l, Math.abs(a.h - p.c), Math.abs(a.l - p.c)); }
+  const at = rma(tr, 14), E50 = new Array(n); let e20 = NaN, e50 = NaN;
+  for (let i = 0; i < n; i++){ const c = U[i].c; e20 = isNaN(e20) ? c : e20 + 2 / 21 * (c - e20); e50 = isNaN(e50) ? c : e50 + 2 / 51 * (c - e50); E50[i] = e50;
+    if (at[i] > 0) z[i] = (c - e20) / at[i]; if (i >= 6) trd[i] = Math.sign(E50[i] - E50[i - 6]); }
+  const w = [], N = 300, pos = x => { let a = 0, b = w.length; while (a < b){ const m = (a + b) >> 1; if (w[m] < x) a = m + 1; else b = m; } return a; };
+  for (let i = 0; i < n; i++){
+    if (i >= N && !isNaN(z[i - N])) w.splice(pos(z[i - N]), 1);
+    if (!isNaN(z[i])) w.splice(pos(z[i]), 0, z[i]);
+    const m = w.length; if ((i >= N - 1 && m >= N * 0.8) || (i < N - 1 && m >= 40)){ lo[i] = w[Math.min(m - 1, Math.floor(m * 0.15))]; hi[i] = w[Math.min(m - 1, Math.floor(m * 0.85))]; }
+  }
+  const last = { 1:-99, '-1':-99 };
+  for (let i = 3; i < n; i++){
+    let s0 = 0; if (z[i - 1] < lo[i - 1] && z[i] >= lo[i]) s0 = 1; if (z[i - 1] > hi[i - 1] && z[i] <= hi[i]) s0 = -1;
+    if (s0){ if (i - last[s0] < 12) s0 = 0; else last[s0] = i; }
+    raw[i] = s0; if (s0 && trd[i] === s0) sig[i] = s0;
+  }
+  Object.assign(S, { tz:z, tlo:lo, thi:hi, ttrd:trd, tsig:sig, traw:raw });
+}
 let TX = null, TX5 = null;
 function expMin(c){ return Date.parse(c.exp + 'T13:30:00Z') / 6e4; }
 function shortLabel(c){ const m = c.code.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/), e = (c.exp || '').slice(5).replace('-', '/');
@@ -582,7 +610,7 @@ $('jump').addEventListener('keydown', e => {
 });
 
 /* ═════════════ 圖 ═════════════ */
-let sSc = null, sScBg = null, sMoHi = null, sMoLo = null, chart = null, sCandle = null, sVol = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, sVoBg = null, mkMo = null, mk = null, plines = [], DATA = [];
+let sTr = null, sTrBg = null, sTrHi = null, sTrLo = null, mkTr = null, sSc = null, sScBg = null, sMoHi = null, sMoLo = null, chart = null, sCandle = null, sVol = null, sStrip = null, sMo = null, sMoU = null, sMoL = null, sVo = null, sVoBg = null, mkMo = null, mk = null, plines = [], DATA = [];
 function buildChart(){
   if (chart) chart.remove();
   const el = $('cv');
@@ -604,7 +632,7 @@ function buildChart(){
   // 主圖最底下的金色條＝台指期進場條件成立
   sStrip = chart.addSeries(L.HistogramSeries, { priceScaleId:'strip', priceLineVisible:false, lastValueVisible:false });
   chart.priceScale('strip').applyOptions({ scaleMargins:{ top:0.975, bottom:0 }, visible:false });
-  let pn = 1; sMo = sVo = sSc = null;
+  let pn = 1; sMo = sVo = sSc = sTr = null;
   if (UI.sc){
     // 勝算分數：底色分區（90 以上金、80～90 淡金、40 以下灰），線＝分數
     const sAuto = () => ({ priceRange:{ minValue:0, maxValue:100 } }), sFmt = { type:'custom', minMove:1, formatter:v => String(Math.round(v)) };
@@ -635,6 +663,18 @@ function buildChart(){
     try { chart.panes()[pn].setStretchFactor(1.4); } catch(e){}
     pn++;
   }
+  if (UI.tr){
+    // 轉折雷達：淡金底＝大趨勢順這一檔；紫虛線＝動態上下界；粗線＝偏離度（賣權已上下翻轉：往上＝對這一檔有利）
+    const rFmt = { type:'custom', minMove:0.1, formatter:v => v.toFixed(1) };
+    sTrBg = chart.addSeries(L.HistogramSeries, { priceScaleId:'trbg', base:0, priceLineVisible:false, lastValueVisible:false }, pn);
+    sTrBg.priceScale().applyOptions({ scaleMargins:{ top:0, bottom:0 }, visible:false });
+    sTrHi = chart.addSeries(L.LineSeries, { color:'#b388ff', lineWidth:2, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'上界', priceFormat:rFmt }, pn);
+    sTrLo = chart.addSeries(L.LineSeries, { color:'#b388ff', lineWidth:2, lineStyle:L.LineStyle.Dashed, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'下界', priceFormat:rFmt }, pn);
+    sTr = chart.addSeries(L.LineSeries, { color:css('--text'), lineWidth:3, lineType:L.LineType.Curved, priceLineVisible:false, lastValueVisible:true, crosshairMarkerVisible:false, title:'轉折', priceFormat:rFmt }, pn);
+    sTr.createPriceLine({ price:0, color:faint, lineWidth:1, lineStyle:L.LineStyle.Solid, axisLabelVisible:false, title:'' });
+    try { chart.panes()[pn].setStretchFactor(1.3); } catch(e){}
+    pn++;
+  }
   if (UI.vo){
     // 台指期波動：在最近 120 根裡的位置（0～100）。50 以上黃底、20 以下藍底
     sVoBg = chart.addSeries(L.HistogramSeries, { base:0, priceLineVisible:false, lastValueVisible:false, priceFormat:oFmt, autoscaleInfoProvider:() => ({ priceRange:{ minValue:0, maxValue:100 } }) }, pn);
@@ -650,6 +690,7 @@ function buildChart(){
   try { chart.panes()[0].setStretchFactor(pn > 2 ? 2.6 : 3); } catch(e){}
   mk = L.createSeriesMarkers(sCandle, []);
   mkMo = sMo ? L.createSeriesMarkers(sMo, []) : null;
+  mkTr = sTr ? L.createSeriesMarkers(sTr, []) : null;
   chart.subscribeCrosshairMove(p => legend(p && p.time != null ? DATA.find(b => b.t * 60 === p.time) : null));
 }
 function legend(b){
@@ -658,6 +699,7 @@ function legend(b){
   let s = '<span>' + hm(b.t) + '</span>' + (b.o != null ? '<span>開 <span class="n">' + fmtP(b.o) + '</span></span><span>高 <span class="n">' + fmtP(b.h) + '</span></span><span>低 <span class="n">' + fmtP(b.l) + '</span></span><span>收 <span class="n">' + fmtP(b.c) + '</span></span><span>量 <span class="n">' + fmtN(b.v) + '</span></span>' : '<span>這一檔這根沒成交</span>');
   if (j != null){ const S = TX; s += '<span>台指期 <span class="n">' + fmtN(Math.round(S.U[j].c)) + '</span></span>'; }
   s += '<span' + (b.ok5 ? ' class="gold"' : '') + '>台指期進場條件 ' + (b.ok5 ? '✓ 成立（金色條）' : '✗ 不成立') + '</span>';
+  if (UI.tr && b.rz != null && !isNaN(b.rz)) s += '<span>轉折雷達 <span class="n">' + b.rz.toFixed(1) + '</span>（下界 ' + b.rlo.toFixed(1) + '、上界 ' + b.rhi.toFixed(1) + '）・大趨勢' + (b.rtrd > 0 ? '<span class="gold">順這一檔</span>' : b.rtrd < 0 ? '逆這一檔' : '持平') + (b.rsig ? '・<b class="gold">轉折買點</b>' : b.rraw ? '・逆勢超賣（不追）' : '') + '</span>';
   if (sSc && b.sc != null && !isNaN(b.sc)){ const bd = bandOf(b.sc);
     s += '<span style="flex-basis:100%;height:0"></span><span style="font-weight:700;color:' + (b.sc >= 90 ? css('--gold') : b.sc >= 60 ? css('--text') : css('--muted')) + '">勝算 <span class="n" style="font-size:16px">' + Math.round(b.sc) + '</span>・' + bd[2] + '（歷史上這一區平均每筆 ' + bd[3] + '）</span>'; }
   if (sMo && b.tw != null && !isNaN(b.tw)) s += '<span style="flex-basis:100%;height:0"></span><span style="font-weight:700;color:' + (b.tw >= 0 ? css('--bull') : css('--bear')) + '">大趨勢 ' + (b.tw >= 0 ? '向上' : '向下') + ' <span class="n">' + Math.round(b.tw) + '</span></span><span class="muted">' + (b.tw >= 0 && b.to >= 0 ? '快慢線都在 0 上面：回測平均每筆 +3.2%（隨便買約 −1%）' : b.tw < 0 ? '大趨勢在 0 下面：回測平均每筆約 −3%，少買' : '大趨勢向上、快線回檔中') + '</span>';
@@ -738,15 +780,18 @@ function momentum(B){
 //   進場＝台指期條件（趨勢強、同方向、還在推）＋價外、30 點以上、離到期 24 小時以上
 //   發動＝進場條件成立的那一根，選擇權自己的動能剛從負翻正，而且台指期不在擠壓（波動位置 > 20）
 function signals(c, K, cp, min){
-  const want = cp === 'C' ? 1 : -1, B = agg(min, 5), ex = expMin(c), mo = momentum(B), ent = [], fire = []; let le = -99, lf = -99;
+  const want = cp === 'C' ? 1 : -1, B = agg(min, 5), ex = expMin(c), mo = momentum(B), ent = [], fire = [], turn = []; let le = -99, lf = -99, lt = -99;
   for (let i = 21; i < B.length; i++){
     const b = B[i], j = TX5.idx.get(b.t); if (j == null || j < 20) continue;
-    if (!txOK(TX5, j, want) || b.c < R.px || b.v < 2 || ex - (b.t + 5) < R.tte) continue;
+    if (b.c < R.px || b.v < 2 || ex - (b.t + 5) < R.tte) continue;
     if (want * (K - TX5.U[j].c) <= 0) continue;                         // 價外
+    // 轉折：台指期順著大趨勢的回檔結束
+    if (TX5.tsig && TX5.tsig[j] === want && i - lt >= R.gap){ lt = i; turn.push(Object.assign({ t:b.t, kind:'turn' }, outcome(B, i, j, ex))); }
+    if (!txOK(TX5, j, want)) continue;
     if (i - le >= R.gap){ le = i; ent.push(Object.assign({ t:b.t, kind:'entry' }, outcome(B, i, j, ex))); }
     if (mo[i - 1] <= 0 && mo[i] > 0 && TX5.vp[j] > 20 && i - lf >= R.gap){ lf = i; fire.push(Object.assign({ t:b.t, kind:'fire' }, outcome(B, i, j, ex))); }
   }
-  return { ent, fire };
+  return { ent, fire, turn };
 }
 async function renderChart(keep){
   const c = D.idx.contracts.find(x => x.code === UI.code);
@@ -756,7 +801,7 @@ async function renderChart(keep){
   const bars = agg(min, tf);
   TX = tf === 5 ? TX5 : txState(agg(TX5.raw, tf));
   const line = bars;
-  const SG = signals(c, UI.K, UI.cp, min), sig = SG.ent, fires = SG.fire;
+  const SG = signals(c, UI.K, UI.cp, min), sig = SG.ent, fires = SG.fire, turns = SG.turn;
   // 進場點對到目前週期的那一根（同一根有發動就顯示發動）
   const bt = t => { const s = sesStart(t); return s + Math.floor((t - s) / tf) * tf; };
   const sigAt = new Map(sig.map(s => [bt(s.t), s])); for (const f of fires) sigAt.set(bt(f.t), f);
@@ -766,7 +811,7 @@ async function renderChart(keep){
   sVol.setData(DATA.map(b => b.o == null ? { time:b.t * 60 } : { time:b.t * 60, value:b.v, color:(b.c >= b.o ? up : dn) + '55' }));
   // 金色條：台指期進場條件（5 分 K 判斷，取這一根結束前最後一根 5 分 K）
   sStrip.setData(DATA.map(b => { let j = null; for (let q = tf - 5; q >= 0 && j == null; q -= 5) j = TX5.idx.get(b.t + q);
-    b.ok5 = j != null && txOK(TX5, j, want); b.vp = j != null ? TX5.vp[j] : NaN; return { time:b.t * 60, value:1, color:b.ok5 ? gold : 'transparent' }; }));
+    b.j5 = j; b.ok5 = j != null && txOK(TX5, j, want); b.vp = j != null ? TX5.vp[j] : NaN; return { time:b.t * 60, value:1, color:b.ok5 ? gold : 'transparent' }; }));
   if (sSc){
     const B5 = agg(min, 5), sc5 = scoreSeries(c, UI.K, UI.cp, B5), m5 = new Map(B5.map((b, i) => [b.t, sc5[i]]));
     DATA.forEach(b => { let v = NaN; for (let q = tf - 5; q >= 0 && isNaN(v); q -= 5){ const x = m5.get(b.t + q); if (x != null && !isNaN(x)) v = x; } b.sc = v; });
@@ -786,6 +831,22 @@ async function renderChart(keep){
     sMo.setData(DATA.map(b => isNaN(b.to) ? { time:b.t * 60 } : { time:b.t * 60, value:b.to, color:b.sc >= 90 ? gold : b.to >= b.ts ? up : dn }));
     mkMo.setMarkers(fires.map(f => ({ time:bt(f.t) * 60, position:'belowBar', color:gold, shape:'circle', size:0.8 })));
   }
+  if (sTr){
+    // 這一根（含裡面每根 5 分 K）有沒有轉折
+    const pt = (b, v) => v == null || isNaN(v) ? { time:b.t * 60 } : { time:b.t * 60, value:v };
+    const mks = [];
+    DATA.forEach(b => { const j = b.j5; b.rz = b.rlo = b.rhi = NaN; b.rtrd = 0; b.rsig = 0; b.rraw = 0;
+      if (j == null) return;
+      b.rz = want * TX5.tz[j]; b.rlo = want > 0 ? TX5.tlo[j] : -TX5.thi[j]; b.rhi = want > 0 ? TX5.thi[j] : -TX5.tlo[j]; b.rtrd = want * TX5.ttrd[j];
+      for (let q = 0; q < tf; q += 5){ const k = TX5.idx.get(b.t + q); if (k == null) continue; if (TX5.tsig[k] === want) b.rsig = 1; else if (TX5.traw[k] === want) b.rraw = 1; }
+      if (b.rsig) mks.push({ time:b.t * 60, position:'belowBar', shape:'arrowUp', color:gold, size:1.6, text:'轉折' });
+      else if (b.rraw) mks.push({ time:b.t * 60, position:'belowBar', shape:'circle', color:faint, size:0.6 });
+    });
+    sTrBg.setData(DATA.map(b => b.j5 == null ? { time:b.t * 60 } : { time:b.t * 60, value:1, color:b.rtrd > 0 ? gold + '22' : b.rtrd < 0 ? faint + '18' : 'transparent' }));
+    sTrHi.setData(DATA.map(b => pt(b, b.rhi))); sTrLo.setData(DATA.map(b => pt(b, b.rlo)));
+    sTr.setData(DATA.map(b => isNaN(b.rz) ? { time:b.t * 60 } : { time:b.t * 60, value:b.rz, color:b.rsig ? gold : b.rz < b.rlo ? dn : b.rz > b.rhi ? up : css('--text') }));
+    mkTr.setMarkers(mks);
+  }
   if (sVo){
     sVoBg.setData(DATA.map(b => isNaN(b.vp) ? { time:b.t * 60 } : { time:b.t * 60, value:100, color:b.vp >= 50 ? '#f5c51838' : b.vp <= 20 ? '#4a9eff24' : 'transparent' }));
     sVo.setData(DATA.map(b => isNaN(b.vp) ? { time:b.t * 60 } : { time:b.t * 60, value:b.vp }));
@@ -796,9 +857,10 @@ async function renderChart(keep){
   const col = s => s.res === 'win' ? gold : s.res === 'loss' ? faint : s.res === 'open' ? gold : css('--text');
   mk.setMarkers(sig.filter(s => !fireT.has(bt(s.t))).map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:0.7, color:col(s) }))
     .concat(fires.map(f => ({ time:bt(f.t) * 60, position:'belowBar', shape:'arrowUp', size:1.6, color:f.res === 'loss' ? faint : '#ff6b1a', text:'發動 ' + tag(f) })))
+    .concat(turns.filter(s => !fireT.has(bt(s.t))).map(s => ({ time:bt(s.t) * 60, position:'belowBar', shape:'arrowUp', size:1.2, color:s.res === 'loss' ? faint : '#b388ff', text:'轉折 ' + tag(s) })))
     .sort((a, b) => a.time - b.time));
   for (const p of plines) sCandle.removePriceLine(p); plines = [];
-  const open = fires.filter(s => s.res === 'open').pop() || sig.filter(s => s.res === 'open').pop();
+  const open = fires.filter(s => s.res === 'open').pop() || turns.filter(s => s.res === 'open').pop() || sig.filter(s => s.res === 'open').pop();
   if (open){ plines.push(sCandle.createPriceLine({ price:open.px * 1.5, color:gold, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'目標 +50%' }));
     plines.push(sCandle.createPriceLine({ price:open.px, color:css('--text'), lineWidth:1, lineStyle:L.LineStyle.Dotted, axisLabelVisible:true, title:'進場' }));
     plines.push(sCandle.createPriceLine({ price:open.px * 0.7, color:faint, lineWidth:1, lineStyle:L.LineStyle.Dashed, axisLabelVisible:true, title:'停損 −30%' })); }
@@ -810,7 +872,7 @@ async function renderChart(keep){
   const j = TX5.U.length - 1, F = TX5.U[j].c, otm = want * (UI.K - F) > 0, longOK = expMin(c) - nowMin() >= R.tte, okNow = txOK(TX5, j, want) && otm && last && last.c >= R.px && longOK;
   const nowEl = $('now');
   nowEl.classList.toggle('show', !!(okNow || open));
-  nowEl.innerHTML = open ? (open.kind === 'fire' ? '發動訊號進行中：' : '進場訊號進行中：') + hm(open.t) + ' 在 <b>' + fmtP(open.px) + '</b> 進場，目標 <b>' + fmtP(open.px * 1.5) + '</b>、停損 <b>' + fmtP(open.px * 0.7) + '</b>，最晚 4 小時盤中出場'
+  nowEl.innerHTML = open ? (open.kind === 'fire' ? '發動訊號進行中：' : open.kind === 'turn' ? '轉折訊號進行中：' : '進場訊號進行中：') + hm(open.t) + ' 在 <b>' + fmtP(open.px) + '</b> 進場，目標 <b>' + fmtP(open.px * 1.5) + '</b>、停損 <b>' + fmtP(open.px * 0.7) + '</b>，最晚 4 小時盤中出場'
     : okNow ? '這一檔現在符合進場條件（價格 <b>' + fmtP(last.c) + '</b>）：目標 <b>' + fmtP(last.c * 1.5) + '</b>、停損 <b>' + fmtP(last.c * 0.7) + '</b>' : '';
   const pb = $('pickbar');
   if (last && expMin(c) > nowMin()){
@@ -836,6 +898,8 @@ async function renderChart(keep){
   const favg = fd.length ? fd.reduce((a, s) => a + s.ret, 0) / fd.length : NaN;
   $('stats').innerHTML =
     '<div>這一檔的發動訊號<b style="color:#ff6b1a">' + fires.length + ' 次</b><span>達到 +50% ' + fw + '、停損 ' + fl + (isNaN(favg) ? '' : '、平均 ' + (favg >= 0 ? '+' : '') + (favg * 100).toFixed(1) + '%') + '</span></div>' +
+    (() => { const td = turns.filter(s => s.res !== 'open'), tw = td.filter(s => s.res === 'win').length, tl = td.filter(s => s.res === 'loss').length, ta = td.length ? td.reduce((a, s) => a + s.ret, 0) / td.length : NaN;
+      return '<div>這一檔的轉折訊號<b style="color:#b388ff">' + turns.length + ' 次</b><span>達到 +50% ' + tw + '、停損 ' + tl + (isNaN(ta) ? '' : '、平均 ' + (ta >= 0 ? '+' : '') + (ta * 100).toFixed(1) + '%') + '</span></div>'; })() +
     '<div>這一檔過去的進場訊號<b>' + sig.length + ' 次</b></div>' +
     '<div>達到 +50%／先停損<b><span class="gold">' + w + '</span> ／ ' + l + '</b></div>' +
     '<div>平均每筆（已結束的）<b>' + (isNaN(avg) ? '–' : (avg >= 0 ? '+' : '') + (avg * 100).toFixed(1) + '%') + '</b></div>' +
@@ -893,7 +957,7 @@ async function scanRun(quiet){
     // 那段時間台指期條件成立過的方向，和當時台指期的範圍（判斷價外用）
     const sides = [];
     for (const want of [1, -1]){ let lo = Infinity, hi = -Infinity, n = 0;
-      for (let j = U.length - 1; j >= 20 && U[j].t >= t0; j--) if (U[j].t <= tEnd && txOK(TX5, j, want)){ n++; lo = Math.min(lo, U[j].c); hi = Math.max(hi, U[j].c); }
+      for (let j = U.length - 1; j >= 20 && U[j].t >= t0; j--) if (U[j].t <= tEnd && (txOK(TX5, j, want) || TX5.tsig[j] === want)){ n++; lo = Math.min(lo, U[j].c); hi = Math.max(hi, U[j].c); }
       if (n) sides.push({ want, cp:want > 0 ? 'C' : 'P', lo, hi }); }
     if (!sides.length){
       SCAN.res = { list:[], t0, tEnd, sides, none:true }; SCAN.at = Date.now(); SCAN.key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
@@ -903,7 +967,7 @@ async function scanRun(quiet){
     const [el] = await Promise.all([loadElig(), Promise.all(cs.map(c => loadLive(c.code)))]);
     const elOK = el && el.days && el.days.length && el.days[0] <= tradeDay(t0);
     const okAt = new Map(sides.map(sd => [sd.want, []]));
-    for (let j = 20; j < U.length; j++) if (U[j].t >= t0 && U[j].t <= tEnd) for (const sd of sides) if (txOK(TX5, j, sd.want)) okAt.get(sd.want).push(j);
+    for (let j = 20; j < U.length; j++) if (U[j].t >= t0 && U[j].t <= tEnd) for (const sd of sides) if (txOK(TX5, j, sd.want) || TX5.tsig[j] === sd.want) okAt.get(sd.want).push(j);
     const todo = [];
     for (const c of cs) for (const r of c.rows) for (const sd of sides){
       const otm = sd.want > 0 ? r.k > sd.lo : r.k < sd.hi; if (!otm) continue;
@@ -923,17 +987,18 @@ async function scanRun(quiet){
     const work = async x => {
       await loadSeries(x.c.code, x.k, x.cp);
       const SG = signals(x.c, x.k, x.cp, minutes(x.c.code, x.k, x.cp));
-      const f = SG.fire.filter(s => s.t >= t0 && s.t <= tEnd), e = onlyFire ? [] : SG.ent.filter(s => s.t >= t0 && s.t <= tEnd);
-      if (f.length || e.length){
-        const lastF = f[f.length - 1], lastE = e[e.length - 1], pick = lastF || lastE;
+      const K0 = UI.scK || 'all', inW = s => s.t >= t0 && s.t <= tEnd;
+      const f = K0 === 'turn' ? [] : SG.fire.filter(inW), e = K0 === 'all' ? SG.ent.filter(inW) : [], tn = K0 === 'fire' ? [] : SG.turn.filter(inW);
+      if (f.length || e.length || tn.length){
+        const pick = f[f.length - 1] || tn[tn.length - 1] || e[e.length - 1];
         const m = minutes(x.c.code, x.k, x.cp), now = m.length ? m[m.length - 1][4] : pick.px;
-        out.push({ c:x.c, k:x.k, cp:x.cp, s:pick, nf:f.length, ne:e.length, now, v:x.q.v || 0, P:pickInfo(x.c, x.k, x.cp, pick.px, fAt(pick.t), pick.t + 5) }); }
+        out.push({ c:x.c, k:x.k, cp:x.cp, s:pick, nf:f.length, ne:e.length, nt:tn.length, now, v:x.q.v || 0, P:pickInfo(x.c, x.k, x.cp, pick.px, fAt(pick.t), pick.t + 5) }); }
       done++; if (done % 4 === 0 || done === todo.length) prog('掃描 ' + done + ' / ' + todo.length + ' 檔・找到 ' + out.length + ' 檔', done / todo.length);
     };
     const q = todo.slice();
     await Promise.all(Array.from({ length:8 }, async () => { while (q.length) await work(q.shift()); }));
     // 還在進行中的排最前面（還能參考），再來發動、越新越前面
-    out.sort((a, b) => (b.s.res === 'open') - (a.s.res === 'open') || (b.s.kind === 'fire') - (a.s.kind === 'fire') || GORD[a.P.g] - GORD[b.P.g] || b.s.t - a.s.t || b.v - a.v);
+    out.sort((a, b) => (b.s.res === 'open') - (a.s.res === 'open') || (b.s.kind === 'fire') - (a.s.kind === 'fire') || (b.s.kind === 'turn') - (a.s.kind === 'turn') || GORD[a.P.g] - GORD[b.P.g] || b.s.t - a.s.t || b.v - a.v);
     SCAN.res = { list:out, t0, tEnd, sides, n:todo.length }; SCAN.at = Date.now(); SCAN.key = [UI.scW || 's1', UI.scK || 'all', UI.scC || ''].join('|');
     prog(''); scanRender();
   } catch(err){ prog('搜尋失敗，請再按一次「開始搜尋」'); console.error(err); }
@@ -946,15 +1011,15 @@ function scanRender(){
     (R0.sides.length ? '台指期條件成立過的方向：' + R0.sides.map(s => s.want > 0 ? '<b class="bull">多方（買權）</b>' : '<b class="bear">空方（賣權）</b>').join('、') : '') +
     (R0.n != null ? '・掃了 ' + R0.n + ' 檔・' : '・') + '<span class="gold">即時：開著時每分鐘自動更新（' + new Date(SCAN.at).toTimeString().slice(0, 5) + '）</span></p>';
   if (R0.none){ body.innerHTML = '<div class="empty" style="padding:16px 0">這段時間台指期都沒有「趨勢強度 30 以上、而且還在往同方向推」，所以沒有任何一檔會出現箭頭。可以把時間拉長再找。</div>'; return; }
-  if (!R0.list.length){ body.innerHTML = head + '<div class="empty" style="padding:12px 0">這段時間沒有選擇權出現' + ((UI.scK || 'all') === 'fire' ? '發動' : '發動或進場') + '箭頭（台指期條件成立，但沒有 30 點以上、離到期 24 小時以上的價外選擇權符合）。</div>'; return; }
+  if (!R0.list.length){ body.innerHTML = head + '<div class="empty" style="padding:12px 0">這段時間沒有選擇權出現' + ({ fire:'發動', turn:'轉折' }[UI.scK || 'all'] || '發動、轉折或進場') + '箭頭（台指期條件成立，但沒有 30 點以上、離到期 24 小時以上的價外選擇權符合）。</div>'; return; }
   const st = s => s.res === 'win' ? '<span class="gold">✓ 漲到 +50%</span>' : s.res === 'loss' ? '<span class="muted">✗ 停損</span>' : s.res === 'time' ? '4 小時到 ' + (s.ret >= 0 ? '+' : '') + Math.round(s.ret * 100) + '%' :
     '<span style="color:#ff6b1a;font-weight:700">進行中</span><div class="sub">目標 ' + fmtP(s.px * 1.5) + '・停損 ' + fmtP(s.px * 0.7) + '</div>';
   body.innerHTML = head + '<table class="sr"><thead><tr><th>箭頭・時間</th><th>選擇權</th><th>選檔</th><th style="text-align:right">箭頭價</th><th style="text-align:right">現在</th><th>結果</th><th class="hide-m">這段時間</th></tr></thead><tbody>' +
     R0.list.map((x, i) => { const r = x.now / x.s.px - 1;
-      return '<tr data-i="' + i + '"><td><span class="tag ' + (x.s.kind === 'fire' ? 'f">發動' : 'e">進場') + '</span><div class="sub n" style="text-align:left;margin-top:3px">' + hm(x.s.t) + '</div></td>' +
+      return '<tr data-i="' + i + '"><td><span class="tag ' + (x.s.kind === 'fire' ? 'f">發動' : x.s.kind === 'turn' ? 't">轉折' : 'e">進場') + '</span><div class="sub n" style="text-align:left;margin-top:3px">' + hm(x.s.t) + '</div></td>' +
         '<td><span class="k ' + (x.cp === 'C' ? 'bull' : 'bear') + '">' + x.k + '</span> ' + (x.cp === 'C' ? '買權' : '賣權') + '<div class="sub">' + shortLabel(x.c) + '</div></td><td>' + gBadge(x.P.g) + '</td>' +
         '<td class="n">' + fmtP(x.s.px) + '</td><td class="n"><b>' + fmtP(x.now) + '</b><div class="sub ' + (r >= 0 ? 'bull' : 'bear') + '">' + (r >= 0 ? '+' : '') + (r * 100).toFixed(0) + '%</div></td>' +
-        '<td style="white-space:normal">' + st(x.s) + '</td><td class="hide-m sub">' + (x.nf ? '發動 ' + x.nf + ' 次' : '') + (x.nf && x.ne ? '・' : '') + (x.ne ? '進場 ' + x.ne + ' 次' : '') + '</td></tr>'; }).join('') + '</tbody></table>';
+        '<td style="white-space:normal">' + st(x.s) + '</td><td class="hide-m sub">' + [x.nf ? '發動 ' + x.nf + ' 次' : '', x.nt ? '轉折 ' + x.nt + ' 次' : '', x.ne ? '進場 ' + x.ne + ' 次' : ''].filter(Boolean).join('・') + '</td></tr>'; }).join('') + '</tbody></table>';
   body.querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => { const x = R0.list[+tr.dataset.i]; scanClose(); select(x.c.code, x.k, x.cp); });
 }
 $('scanOpen').onclick = scanOpen;
@@ -979,7 +1044,7 @@ function applyTheme(){ document.documentElement.dataset.theme = UI.theme; $('the
 async function refresh(keep){
   if (!D.idx) return;
   const raw = await loadTX();
-  TX5 = txState(agg(raw, 5)); TX5.raw = raw; volIgnite(TX5);
+  TX5 = txState(agg(raw, 5)); TX5.raw = raw; volIgnite(TX5); turnRadar(TX5);
   ST = renderStatus();
   // 第一次打開：預設挑「現在符合」清單第一檔，否則價平附近順勢那一邊
   if (UI.K == null){ const c = D.idx.contracts.find(x => !x.expired && expMin(x) - nowMin() >= R.tte);
