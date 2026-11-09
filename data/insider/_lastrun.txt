@@ -1,0 +1,31 @@
+11-09 14:57:03 shard 0 / 8 stocks 264 months 2023-11 ~ 2026-10
+11-09 14:59:00   retry query6_1 2948 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 15:01:06   retry stapap1 6488 115 10 HTTPError HTTP Error 502: Bad Gateway
+11-09 15:01:38   retry query6_1 6938 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 15:02:43 result shard 0 done requests 43 ok 25 none 18 files 42 in 339 s
+11-09 14:57:02 shard 1 / 8 stocks 266 months 2023-11 ~ 2026-10
+11-09 14:59:03   retry query6_1 2849 115 10 URLError <urlopen error timed out>
+11-09 15:01:03   retry query6_1 5534 115 10 HTTPError HTTP Error 502: Bad Gateway
+11-09 15:03:11 result shard 1 done requests 34 ok 19 none 15 files 33 in 368 s
+11-09 14:57:02 shard 2 / 8 stocks 269 months 2023-11 ~ 2026-10
+11-09 15:00:18 result shard 2 done requests 41 ok 19 none 22 files 41 in 195 s
+11-09 14:57:03 shard 3 / 8 stocks 271 months 2023-11 ~ 2026-10
+11-09 14:58:56 result shard 3 done requests 34 ok 15 none 19 files 33 in 113 s
+11-09 14:57:03 shard 4 / 8 stocks 271 months 2023-11 ~ 2026-10
+11-09 15:00:48   retry query6_1 6173 115 10 URLError <urlopen error timed out>
+11-09 15:01:41   retry query6_1 6240 115 10 URLError <urlopen error timed out>
+11-09 15:03:38 result shard 4 done requests 39 ok 23 none 16 files 39 in 395 s
+11-09 14:57:03 shard 5 / 8 stocks 273 months 2023-11 ~ 2026-10
+11-09 14:58:50   retry query6_1 3264 115 10 URLError <urlopen error timed out>
+11-09 14:59:40   retry query6_1 3264 115 10 URLError <urlopen error timed out>
+11-09 15:01:11   retry query6_1 5321 115 10 HTTPError HTTP Error 502: Bad Gateway
+11-09 15:03:29 result shard 5 done requests 46 ok 28 none 18 files 46 in 385 s
+11-09 14:57:03 shard 6 / 8 stocks 267 months 2023-11 ~ 2026-10
+11-09 14:59:41 result shard 6 done requests 45 ok 23 none 22 files 45 in 158 s
+11-09 14:57:03 shard 7 / 8 stocks 272 months 2023-11 ~ 2026-10
+11-09 14:57:37   retry query6_1 1435 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 14:59:50   retry query6_1 6122 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 15:00:15   retry query6_1 6122 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 15:01:06   retry query6_1 6122 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-09 15:01:36 FAIL 6122 2026-10 RuntimeError request failed
+11-09 15:03:49 result shard 7 done requests 40 ok 27 none 12 files 39 in 406 s
