@@ -301,7 +301,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 06:30</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 06:20</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -920,14 +920,14 @@ SCHEMA.km = { tab:'KD+MACD', title:'KD＋MACD 合一（照你提供的通達信�
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
 ]};
-SCHEMA.kmo = { tab:'KD MACD 原版', title:'KD MACD 原版（照你 11/10 提供的通達信公式逐條移植，畫法和顏色照原公式）：RSV＝9 日隨機值的 3 日指數平均，K＝RSV 的 3 日指數平均（白線，往上的那段加畫紅），D＝K 的 3 日平均（黃線，往上的那段加畫洋紅）；20 洋紅、50 白、80 黃三條點線。MACD（12／26／9）放大後以 50 為零軸，快線在慢線上方塗紅、下方塗綠，快慢線交叉畫圓點。50 線上下的短柱：5 日線在 10 日線上方畫洋紅（45～50）、下方畫青色（50～55）。KD 金叉在 D 下方畫紅色向上箭頭，死叉在 D 上方畫綠色向下箭頭。【縮放】原公式的放大倍數是「KD 最大值 ÷ MACD 最大值」再取整數除以 2，股價高的股票、台指期這個倍數會變成 0，MACD 整條貼在 50 看不到，所以預設改成用過去 250 根 MACD 的最大值放大到 5～95；可以在下面切回原版。【和「KD+MACD」副圖的差別】這個照原公式畫，不加訊號；「KD+MACD」副圖是同一組 KD、MACD，另外有動態上中下界和回測過的雙金叉底、頂★。', groups:[
+SCHEMA.kmo = { tab:'KD MACD 原版', title:'KD MACD 原版（照你 11/10 提供的通達信公式逐條移植，畫法和顏色照原公式）：RSV＝9 日隨機值的 3 日指數平均，K＝RSV 的 3 日指數平均（白線，往上的那段加畫紅），D＝K 的 3 日平均（黃線，往上的那段加畫洋紅）；20 洋紅、50 白、80 黃三條點線。MACD（12／26／9）放大後以 50 為零軸，快線在慢線上方塗紅、下方塗綠，快慢線交叉畫圓點。50 線上下的短柱：5 日線在 10 日線上方畫洋紅（45～50）、下方畫青色（50～55）。KD 金叉、死叉箭頭和 MACD 交叉圓點照你的要求預設不畫（太雜），要看可以在下面打開。20／80 是清楚的實線、50 是虛線（白底黑線、黑底白線）。【縮放】原公式的放大倍數是「KD 最大值 ÷ MACD 最大值」再取整數除以 2，股價高的股票、台指期這個倍數會變成 0，MACD 整條貼在 50 看不到，所以預設改成用過去 250 根 MACD 的最大值放大到 5～95；可以在下面切回原版。【和「KD+MACD」副圖的差別】這個照原公式畫，不加訊號；「KD+MACD」副圖是同一組 KD、MACD，另外有動態上中下界和回測過的雙金叉底、頂★。', groups:[
   { name:'縮放', items:[
     {k:'origScale', l:'用原公式的放大倍數（取整數，高價股會變 0）', t:'bool', d:false}
   ]},
   { name:'顯示', items:[
     {k:'showMA', l:'50 線上下的 5 日／10 日線短柱', t:'bool', d:true},
-    {k:'showKDX', l:'KD 金叉、死叉箭頭', t:'bool', d:true},
-    {k:'showMX', l:'MACD 交叉圓點', t:'bool', d:true}
+    {k:'showKDX', l:'KD 金叉、死叉箭頭', t:'bool', d:false},
+    {k:'showMX', l:'MACD 交叉圓點', t:'bool', d:false}
   ]},
   { name:'顏色', items:[
     {k:'cK', l:'K 線', t:'color', d:'#ffffff'},
@@ -1737,6 +1737,8 @@ SCHEMA.qlw = { tab:'擒龍操盤王', title:'擒龍操盤王（副圖，照你�
 function defaults(ind){ const o = {}; for (const g of SCHEMA[ind].groups) for (const it of g.items) o[it.k] = it.d; return o; }
 const P = {};
 for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.get(PFX + 'p:' + ind, {}));
+// 11/10：KD MACD 原版的箭頭、圓點改成預設不畫（就算之前存過設定也關一次）
+if (P.kmo && !LS.get(PFX + 'mig:kmo1', false)){ P.kmo.showKDX = false; P.kmo.showMX = false; if (LS.get(PFX + 'p:kmo', null)) LS.set(PFX + 'p:kmo', P.kmo); LS.set(PFX + 'mig:kmo1', true); }
 
 const UI = Object.assign({
   symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showQLW:false, showJGN:true, live:true, subMarks:false, wFilter:'',
@@ -2748,9 +2750,9 @@ function calcKMO(B, p){
   const cx = (a, b, i) => i > 0 && a[i - 1] < b[i - 1] && a[i] > b[i];
   for (let i = 1; i < n; i++){
     if (p.showMX){ if (cx(F50, E50, i)) ev.push({ i, y:E50[i], shape:'circle', col:p.cMUp, size:0.55 }); if (cx(E50, F50, i)) ev.push({ i, y:E50[i] * 1.05, shape:'circle', col:p.cMDn, size:0.55 }); }
-    if (cx(K, D, i)){ (tag[i] = tag[i] || []).push(['KD 金叉', p.cKUp]); if (p.showKDX) ev.push({ i, y:D[i] * 0.98, shape:'arrowUp', col:p.cKUp, size:0.8 }); }
-    if (cx(D, K, i)){ (tag[i] = tag[i] || []).push(['KD 死叉', '#00c853']); if (p.showKDX) ev.push({ i, y:D[i] * 1.05, shape:'arrowDown', col:'#00c853', size:0.8 }); }
-    if (cx(F50, E50, i)) (tag[i] = tag[i] || []).push(['MACD 金叉', p.cMUp]); else if (cx(E50, F50, i)) (tag[i] = tag[i] || []).push(['MACD 死叉', p.cMDn]);
+    if (cx(K, D, i)){ if (p.showKDX) (tag[i] = tag[i] || []).push(['KD 金叉', p.cKUp]); if (p.showKDX) ev.push({ i, y:D[i] * 0.98, shape:'arrowUp', col:p.cKUp, size:0.8 }); }
+    if (cx(D, K, i)){ if (p.showKDX) (tag[i] = tag[i] || []).push(['KD 死叉', '#00c853']); if (p.showKDX) ev.push({ i, y:D[i] * 1.05, shape:'arrowDown', col:'#00c853', size:0.8 }); }
+    if (p.showMX){ if (cx(F50, E50, i)) (tag[i] = tag[i] || []).push(['MACD 金叉', p.cMUp]); else if (cx(E50, F50, i)) (tag[i] = tag[i] || []).push(['MACD 死叉', p.cMDn]); }
   }
   return { K, D, F50, E50, m5, m10, ev, tag };
 }
@@ -5449,8 +5451,10 @@ function drawKMO(p, i0, i1, ci){
   let [mn, mx] = extent([r.K, r.D, r.F50, r.E50], i0, i1, markerExtra(r.ev, i0, i1)); mn = Math.min(mn, -2); mx = Math.max(mx, 102);
   S = makeScale(p.top, p.h, ...rng('kmo', mn - 2, mx + 2), 26, 8);
   gridAndAxis(0);
-  const W = plotW(), hl = (v, col) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash([1.5, 3]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
-  hl(20, rgba(q.cDUp, 25)); hl(50, rgba('#ffffff', 45)); hl(80, rgba(q.cD, 25));
+  // 20／50／80：清楚的實線（白底黑線、黑底白線），50 中線用虛線
+  const W = plotW(), hl = (v, a, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = rgba(CC.text, a); ctx.lineWidth = 1; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  hl(20, 35, []); hl(80, 35, []); hl(50, 55, [5, 4]);
+  const lightBg = UI.theme === 'light', kC = lightBg && /^#f{6}$/i.test(q.cK) ? CC.text : q.cK, dC = lightBg ? ink(q.cD) : q.cD;
   // MACD 帶：快線在上紅、在下綠（DRAWBAND）
   fillBetween(i => r.F50[i], i => r.E50[i], i => rgba(r.F50[i] >= r.E50[i] ? q.cMUp : q.cMDn, 45), i0, i1);
   strokeSeries(i => r.F50[i], i => rgba(r.F50[i] >= r.E50[i] ? q.cMUp : q.cMDn, 15), i0, i1, 1);
@@ -5460,16 +5464,16 @@ function drawKMO(p, i0, i1, ci){
     for (let i = i0; i <= i1; i++){ const a = r.m5[i], b = r.m10[i]; if (isNaN(a) || isNaN(b) || a === b) continue; const yy = S.y(a > b ? 45 : 55);
       ctx.fillStyle = a > b ? q.cMA5 : q.cMA10; ctx.fillRect(X(i) - bw / 2, Math.min(yy, y50), bw, Math.abs(yy - y50)); } }
   // K 白、D 黃；往上的那段加畫紅／洋紅
-  strokeSeries(i => r.D[i], () => q.cD, i0, i1, 1.3);
-  strokeSeries(i => r.K[i], () => q.cK, i0, i1, 1.3);
+  strokeSeries(i => r.D[i], () => dC, i0, i1, 1.3);
+  strokeSeries(i => r.K[i], () => kC, i0, i1, 1.3);
   strokeSeries(i => r.D[i], i => r.D[i] >= r.D[i - 1] ? q.cDUp : null, i0, i1, 2);
   strokeSeries(i => r.K[i], i => r.K[i] >= r.K[i - 1] ? q.cKUp : null, i0, i1, 2);
   visibleMarkers(r.ev, i0, i1);
   const lv = r.K[B.n - 1]; if (!isNaN(lv)) axisTag(lv, lv >= r.K[B.n - 2] ? q.cKUp : q.cK, '#000', v => fmtNum(v, 1));
   const k = r.K[ci], d = r.D[ci], up = r.F50[ci] >= r.E50[ci];
-  const parts = [['KD MACD 原版', CC.axis], ['K ' + fmtNum(k, 1), k >= r.K[ci - 1] ? q.cKUp : q.cK], ['D ' + fmtNum(d, 1), d >= r.D[ci - 1] ? q.cDUp : q.cD],
-    [k > 80 ? '高檔（80 以上）' : k < 20 ? '低檔（20 以下）' : '中間', k > 80 ? q.cD : k < 20 ? q.cDUp : CC.axis],
-    ['MACD ' + (up ? '快線在上' : '快線在下'), up ? q.cMUp : q.cMDn], [r.m5[ci] > r.m10[ci] ? '5 日線在 10 日線上' : '5 日線在 10 日線下', r.m5[ci] > r.m10[ci] ? q.cMA5 : q.cMA10]];
+  const parts = [['KD MACD', CC.axis], ['K ' + fmtNum(k, 1), k >= r.K[ci - 1] ? q.cKUp : kC], ['D ' + fmtNum(d, 1), d >= r.D[ci - 1] ? q.cDUp : dC]];
+  if (k > 80 || k < 20) parts.push([k > 80 ? '高檔' : '低檔', CC.text]);
+  parts.push(['MACD ' + (up ? '多' : '空'), up ? q.cMUp : q.cMDn], ['均線 ' + (r.m5[ci] > r.m10[ci] ? '多' : '空'), r.m5[ci] > r.m10[ci] ? q.cMA5 : q.cMA10]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
 }
