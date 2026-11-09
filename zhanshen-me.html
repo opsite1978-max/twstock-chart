@@ -301,7 +301,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 06:20</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 06:40</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -4970,8 +4970,11 @@ function axisTag(v, color, txtColor, fmt){
   ctx.fillStyle = color; roundRect(W + 2, y - 9, AXIS_W - 4, 18, 3); ctx.fill();
   ctx.fillStyle = txtColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v), W + 6, y + 0.5);
 }
+// 副圖左上角的指標名稱（例如「神奇波段」「尋龍底」）：預設不顯示，只留數值；可在「指標設定 → 資料與顯示」打開
+const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪']);
 function legend(lines, top){
   ctx.font = '11.5px "IBM Plex Mono", "Noto Sans TC", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if (!UI.showPaneName && lines.length && lines[0].length > 1 && PANE_NAMES.has(String(lines[0][0][0]).trim())) lines = [lines[0].slice(1)].concat(lines.slice(1));
   let y = top + 11;
   for (const parts of lines){
     let w = 0; for (const p of parts) w += ctx.measureText(p[0]).width + 8;
@@ -7631,6 +7634,7 @@ function appHTML(){
     '<div class="row"><label for="a-vol">主圖底部顯示成交量</label><input type="checkbox" id="a-vol"' + (UI.showVolume ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-scale">價格座標納入 3／9 倍外通道</label><input type="checkbox" id="a-scale"' + (UI.scaleAll ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-zoom">圖上顯示縮放按鈕（－＋、自動、最新）</label><input type="checkbox" id="a-zoom"' + (UI.showZoom ? ' checked' : '') + '></div>' +
+    '<div class="row"><label for="a-pname">副圖左上角顯示指標名稱</label><input type="checkbox" id="a-pname"' + (UI.showPaneName ? ' checked' : '') + '></div>' +
     '<p class="help">預設只用 K 棒與內通道決定縱軸範圍，外通道超出時會被裁切，K 棒才不會被壓扁。</p></fieldset>' +
     colorsHTML() +
     '<div class="dfoot"><button id="a-apply">套用並重新載入</button><button class="danger" id="a-clear">清除暫存的行情資料</button></div>';
@@ -7660,6 +7664,7 @@ function bindApp(){
   }
   document.getElementById('a-vol').onchange = e => { UI.showVolume = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-scale').onchange = e => { UI.scaleAll = e.target.checked; saveUI(); schedule(); };
+  document.getElementById('a-pname').onchange = e => { UI.showPaneName = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-zoom').onchange = e => { UI.showZoom = e.target.checked; saveUI(); document.getElementById('zoomBox').hidden = !UI.showZoom; };
   document.getElementById('a-adj').onchange = e => { UI.adj = e.target.checked; saveUI(); syncToolbar(); };
   document.getElementById('a-token').onchange = e => { UI.token = e.target.value.trim(); saveUI(); };
