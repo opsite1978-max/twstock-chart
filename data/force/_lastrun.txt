@@ -1,6 +1,6 @@
-11-09 10:45:17 本小時 FinMind 已用 0 ／上限 6000
-11-09 10:45:18 targets 237 todo 2 this run max 60
-11-09 10:45:22 file 2026-11-07 bars 300 dup None cls 0.932 fb 0.0 last 04:59:59 complete True 3s req 6
-11-09 10:45:22 no ticks 2026-11-09
-11-09 10:45:24 strikes: no option daily yet 2026-11-09
-11-09 10:45:26 strikes written 2026-11-06
+11-10 06:14:18 本小時 FinMind 已用 9 ／上限 6000
+11-10 06:14:19 targets 238 todo 2 this run max 60
+11-10 06:14:34 file 2026-11-09 bars 841 dup 2.0 cls 0.99 fb 0.0 last 23:59:59 complete False 15s req 7
+11-10 06:14:37 no futures kbar 2026-11-10
+11-10 06:14:39 strikes: no option daily yet 2026-11-10
+11-10 06:14:41 strikes written 2026-11-09
