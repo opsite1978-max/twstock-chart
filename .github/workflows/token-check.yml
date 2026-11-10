@@ -8,55 +8,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 匯率資料來源探查
-        env:
-          T: ${{ secrets.FINMIND_TOKEN }}
+      - name: EODHD 探查
         run: |
           mkdir -p out
           python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import os, json, urllib.request, urllib.parse, time
-          T = os.environ['T']
-          H = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
-          def get(u, hdr=True):
+          import json, urllib.request
+          def go(u, method='GET'):
+              rq = urllib.request.Request(u, method=method, headers={'Origin': 'https://opsite1978-max.github.io', 'Access-Control-Request-Method': 'GET', 'User-Agent': 'Mozilla/5.0'})
               try:
-                  rq = urllib.request.Request(u, headers=H if hdr else {})
-                  with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
-              except Exception as e: return 0, str(e)[:300]
-          def fm(p):
-              st, b = get('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T)), False)
-              try: j = json.loads(b); return j.get('status'), j.get('msg'), j.get('data') or []
-              except Exception: return st, b[:200], []
-          import datetime as DT
-          def tw(t): return (DT.datetime.utcfromtimestamp(t) + DT.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
-          def cn(res, frm=None, to=None, sym='FX:USDTWD:FOREX'):
-              u = f'https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution={res}&symbol={sym}&quote=1' + (f'&from={frm}' if frm else '') + (f'&to={to}' if to else '')
-              try:
-                  rq = urllib.request.Request(u, headers=dict(H, Origin='https://opsite1978-max.github.io'))
                   with urllib.request.urlopen(rq, timeout=60) as r:
-                      hd = {k: v for k, v in r.headers.items() if 'access-control' in k.lower()}
-                      return hd, json.loads(r.read().decode())
-              except Exception as e: return str(e)[:200], None
-          now = int(time.time())
-          def show(tag, hd, j):
-              d = (j or {}).get('data') or {}; t = d.get('t') or []
-              print(tag, 'n', len(t), tw(min(t)) if t else '', '->', tw(max(t)) if t else '', 'session', d.get('session'), 'next', d.get('nextTime'), '' if j else hd)
-              return d, t
-          for res in ['1', '5', '10', '15', '30', '60', '120', '240', 'D', 'W', 'M']:
-              show('CN ' + res + ' 預設', *cn(res))
-          for res, back in [('5', 3), ('5', 10), ('60', 30), ('60', 200), ('D', 365), ('D', 4000), ('W', 4000), ('M', 9000)]:
-              show(f'CN {res} from=now to=-{back}d', *cn(res, now, now - back * 86400))
-              show(f'CN {res} from=-{back}d to=now', *cn(res, now - back * 86400, now))
-          # 往回翻頁：5 分 K 昨天
-          y0 = now - 86400 * 1
-          show('CN 5 昨天以前', *cn('5', y0, y0 - 86400 * 5))
-          show('CN 1 昨天以前', *cn('1', y0, y0 - 86400 * 5))
-          d, t = show('CN D 長', *cn('D', now, now - 86400 * 365 * 30))
-          if t: k = t.index(min(t)); print('   first', tw(t[k]), d['o'][k], d['h'][k], d['l'][k], d['c'][k], d['v'][k])
-          if t: k = t.index(max(t)); print('   last', tw(t[k]), d['o'][k], d['h'][k], d['l'][k], d['c'][k], d['v'][k])
-          d, t = show('CN 60 長', *cn('60', now, now - 86400 * 365 * 3))
-          if t: print('   hours', sorted(set(tw(x)[11:16] for x in t))[:40])
+                      hd = {k: v for k, v in r.headers.items() if 'access-control' in k.lower() or k.lower() == 'content-type'}
+                      return r.status, hd, r.read().decode('utf-8', 'replace')
+              except urllib.error.HTTPError as e:
+                  return e.code, {k: v for k, v in e.headers.items() if 'access-control' in k.lower()}, e.read().decode('utf-8', 'replace')[:200]
+              except Exception as e: return 0, {}, str(e)[:200]
+          B = 'https://eodhd.com/api/'
+          for path in ['eod/AAPL.US?api_token=demo&fmt=json&from=2026-10-25', 'intraday/AAPL.US?api_token=demo&fmt=json&interval=5m', 'real-time/AAPL.US?api_token=demo&fmt=json', 'eod/2330.TW?api_token=demo&fmt=json&from=2026-10-25', 'exchange-symbol-list/TW?api_token=demo&fmt=json', 'search/TSMC?api_token=demo']:
+              st, hd, b = go(B + path)
+              print(path.split('?')[0], st, hd, b[:300].replace('\n', ' '))
+          st, hd, b = go(B + 'eod/AAPL.US?api_token=demo&fmt=json', 'OPTIONS'); print('OPTIONS', st, hd)
           PY2
-          sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
         if: always()
         run: |
