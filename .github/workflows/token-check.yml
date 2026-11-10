@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: EPS 預估方法回測
+      - name: EPS 預估方法回測 2
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
@@ -50,22 +50,46 @@ jobs:
                   ly = next((i for i in range(j) if Q[i][0] == (y-1, q)), None)
                   if ly is not None and R[ly]: ks['kly'] = Q[ly][1] / R[ly]
                   if ks.get('k2') is not None and ks.get('kly') is not None: ks['k2ly'] = (ks['k2'] + ks['kly']) / 2
+                  fin = sid[:2] in ('28', '58')
+                  tag = '金融' if fin else '一般'
+                  def add2(k, e): add(tag + '_' + k, e); add('全部_' + k, e)
                   for n, k in ks.items():
                       if k is None: continue
-                      add('known_' + n, abs(R[j]*k - act) / abs(act))
-                  # 營收還不知道：去年同季營收 ×（1+近三月年增）
-                  m0 = 3*q-2   # 該季第一個月，用前三個月
+                      add2('known_' + n, abs(R[j]*k - act) / abs(act))
+                  def reg(n):
+                      pts = [(R[i], Q[i][1]) for i in range(j-n, j) if i >= 0 and R[i]]
+                      if len(pts) < n - 1: return None
+                      mx = sum(a for a, _ in pts)/len(pts); my = sum(b for _, b in pts)/len(pts)
+                      vx = sum((a-mx)**2 for a, _ in pts)
+                      if vx <= 0: return None
+                      b = sum((a-mx)*(c-my) for a, c in pts)/vx
+                      # 限制斜率：不讓固定成本解釋超過合理範圍
+                      kavg = my/mx if mx else 0
+                      if kavg > 0: b = max(0.5*kavg, min(2.5*kavg, b))
+                      return lambda r: my + b*(r - mx)
+                  for n in (6, 8):
+                      f = reg(n)
+                      if f: add2(f'known_reg{n}', abs(f(R[j]) - act)/abs(act))
+                  f8 = reg(8)
+                  if ks.get('k4') is not None and f8:
+                      add2('known_mix_reg8_k4', abs((f8(R[j]) + R[j]*ks['k4'])/2 - act)/abs(act))
+                      add2('known_mix_k4_naive', abs(0.7*R[j]*ks['k4'] + 0.3*Q[j-1][1] - act)/abs(act))
+                  m0 = 3*q-2
                   def ym(y, m):
                       while m <= 0: y -= 1; m += 12
                       return y, m
                   last3 = [mon.get(ym(y, m0-1-i)) for i in range(3)]; prev3 = [mon.get(ym(y-1, m0-1-i)) for i in range(3)]
                   lyr = qrev(y-1, q)
-                  if all(last3) and all(prev3) and lyr and ks.get('k2') is not None:
+                  if all(last3) and all(prev3) and lyr and ks.get('k4') is not None:
                       g = max(-0.6, min(1.5, sum(last3)/sum(prev3) - 1))
-                      add('unk_ly_g_k2', abs(lyr*(1+g)*ks['k2'] - act)/abs(act))
-                      add('unk_last3x3_k2', abs(sum(last3)*ks['k2'] - act)/abs(act))
-                      if ly is not None: add('unk_epsly_g', abs(Q[ly][1]*(1+g) - act)/abs(act))
-                      add('unk_naive_lastQ', abs(Q[j-1][1] - act)/abs(act))
+                      rA = lyr*(1+g); rB = sum(last3)
+                      add2('unk_naive_lastQ', abs(Q[j-1][1] - act)/abs(act))
+                      add2('unk_lyg_k4', abs(rA*ks['k4'] - act)/abs(act))
+                      add2('unk_avgR_k4', abs((rA+rB)/2*ks['k4'] - act)/abs(act))
+                      if f8:
+                          add2('unk_avgR_reg8', abs(f8((rA+rB)/2) - act)/abs(act))
+                          add2('unk_avgR_mix', abs((f8((rA+rB)/2) + (rA+rB)/2*ks['k4'])/2 - act)/abs(act))
+                      add2('unk_half_naive', abs(0.5*Q[j-1][1] + 0.5*(rA+rB)/2*ks['k4'] - act)/abs(act))
           for k, v in sorted(res.items()):
               v = sorted(v)
               print(f'{k:20s} n={len(v):4d} 中位誤差 {S.median(v)*100:5.1f}%  平均(截20%尾) {S.mean(v[:int(len(v)*.8)])*100:5.1f}%  誤差<15%比例 {sum(1 for e in v if e<0.15)/len(v)*100:4.0f}%')
