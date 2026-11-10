@@ -105,7 +105,8 @@ def main():
     today, nowm = tw(now)
 
     # 開市日：鉅亨日 K（台北外匯市場有成交的日子）
-    open_days = {tw(t)[0] for t, *_ in cnyes('D', now, now - 86400 * 365 * 3)}
+    dk = {tw(t)[0]: (o, h, l, c) for t, o, h, l, c in cnyes('D', now, now - 86400 * 365 * 3)}
+    open_days = set(dk)
     print('鉅亨日 K 開市日', len(open_days))
 
     # 鉅亨當天 1 分 K → 5 分、60 分
@@ -117,9 +118,27 @@ def main():
         m60[d] = ['C' if done else 'c', regroup(bars, 60)]
         print('鉅亨', d, len(bars), '根 5 分 K', '（收盤）' if done else '（盤中，之後會覆蓋）')
 
-    # Yahoo 補歷史（只補鉅亨沒有的日子）
-    y5 = bucket(yahoo('5m', '60d'), 5)
-    y60 = bucket(yahoo('60m', '730d'), 60)
+    # Yahoo 補歷史（只補鉅亨沒有的日子）。Yahoo 是境外報價，和台北外匯市場有價差，
+    # 所以每天的走勢等比例對到鉅亨當天的最高、最低（形狀用 Yahoo，價位用台北外匯市場）
+    errs = []
+    def fit(days, P):
+        out = {}
+        for d, bars in days.items():
+            if d not in dk: continue
+            o, h, l, c = dk[d]
+            yh = max(b[2] for b in bars); yl = min(b[3] for b in bars)
+            if yh - yl <= 1e-9 or h - l <= 0: continue
+            f = lambda x: round(l + (x - yl) / (yh - yl) * (h - l), 4)
+            nb = [[b[0], f(b[1]), f(b[2]), f(b[3]), f(b[4])] for b in bars]
+            if P == 5: errs.append((abs(nb[0][1] - o), abs(nb[-1][4] - c)))
+            out[d] = nb
+        return out
+    y5raw = bucket(yahoo('5m', '60d'), 5)
+    y5 = fit(y5raw, 5)
+    y60 = fit(bucket(yahoo('60m', '730d'), 60), 60)
+    if errs:
+        eo = sorted(e[0] for e in errs); ec = sorted(e[1] for e in errs)
+        print('Yahoo 對到台北外匯後：開盤差中位', round(eo[len(eo) // 2], 4), '收盤差中位', round(ec[len(ec) // 2], 4), '（', len(errs), '天）')
     add5 = add60 = 0
     for d, bars in y5.items():
         if d in open_days and d != today and (d not in m5 or m5[d][0] in ('Y', 'c')) and len(bars) >= 20:
@@ -134,7 +153,7 @@ def main():
     # 比對：同一天鉅亨和 Yahoo 都有的 5 分 K，收盤價差多少
     diffs = []
     for d, bars in got.items():
-        yb = {b[0]: b[4] for b in y5.get(d, [])}
+        yb = {b[0]: b[4] for b in y5raw.get(d, [])}
         diffs += [abs(b[4] - yb[b[0]]) for b in bars if b[0] in yb]
     if diffs:
         diffs.sort()

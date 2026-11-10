@@ -22,7 +22,7 @@ jobs:
       - name: 存當天 1 分 K（鉅亨），補歷史（Yahoo）
         run: |
           python3 scripts/usdtwd_data.py usdtwd | tee ux.log
-          echo "::notice::$(grep 比對 -A0 ux.log; grep 收盤差 ux.log; tail -1 ux.log)"
+          echo "::notice::$(grep -h "差" ux.log | tr "\n" " ") $(tail -1 ux.log)"
       - name: 推到 usdtwd-data 分支
         run: |
           cd usdtwd
