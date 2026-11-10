@@ -8,36 +8,67 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 財報、月營收、本益比資料探查
+      - name: EPS 預估方法回測
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
           python3 - <<'PY' > out/fund.txt 2>&1 || true
-          import os, json, time, urllib.request, urllib.parse, collections
+          import os, json, urllib.request, urllib.parse, statistics as S
           T = os.environ['T']
           def js(p):
               u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T))
               try:
-                  with urllib.request.urlopen(u, timeout=120) as r: j = json.loads(r.read().decode())
-                  return j.get('status'), j.get('msg'), j.get('data') or []
-              except Exception as e: return 0, str(e)[:200], []
-          for sid in ['2330', '2317', '2884']:
-              st, msg, d = js({'dataset': 'TaiwanStockFinancialStatements', 'data_id': sid, 'start_date': '2024-01-01'})
-              print('FS', sid, st, msg, len(d))
-              print(' types', sorted(collections.Counter(x['type'] for x in d).items())[:80])
-              for x in d:
-                  if x['type'] in ('EPS', 'Revenue', 'IncomeAfterTaxes', 'EquityAttributableToOwnersOfParent', 'NetIncomeAttributableToOwnersOfParent', 'IncomeFromContinuingOperations', 'TotalConsolidatedProfitForThePeriod'):
-                      print('  ', x['date'], x['type'], x['value'], x.get('origin_name'))
-              st, msg, d = js({'dataset': 'TaiwanStockMonthRevenue', 'data_id': sid, 'start_date': '2025-01-01'})
-              print('REV', sid, st, msg, len(d))
-              for x in d[-14:]: print('  ', json.dumps(x, ensure_ascii=False))
-              st, msg, d = js({'dataset': 'TaiwanStockPER', 'data_id': sid, 'start_date': '2026-10-20'})
-              print('PER', sid, st, msg, len(d))
-              for x in d[-3:]: print('  ', json.dumps(x, ensure_ascii=False))
-          for ds in ['TaiwanStockFinancialStatements']:
-              st, msg, d = js({'dataset': ds, 'data_id': '0050', 'start_date': '2025-01-01'})
-              print('ETF', ds, st, msg, len(d))
+                  with urllib.request.urlopen(u, timeout=120) as r: return json.loads(r.read().decode()).get('data') or []
+              except Exception as e: print('ERR', p, str(e)[:100]); return []
+          ids = '2330 2317 2454 2308 2382 2881 2882 2891 2303 3711 2412 2886 2884 1216 2885 2357 3231 2892 2345 5880 2880 2603 3008 2395 1303 2002 1301 6505 2912 4938 2379 3034 2327 2301 3045 2207 1101 2408 3037 6669 2376 2890 5871 2883 2887 1326 4904 2360 3661 2474 8046 3443 2449 6415 3017 2059 1513 2609 9910 1504'.split()
+          res = {}
+          def add(k, e):
+              res.setdefault(k, []).append(e)
+          for sid in ids:
+              fs = js({'dataset':'TaiwanStockFinancialStatements','data_id':sid,'start_date':'2020-01-01'})
+              rv = js({'dataset':'TaiwanStockMonthRevenue','data_id':sid,'start_date':'2019-01-01'})
+              eps = {}
+              for x in fs:
+                  if x['type'] == 'EPS': eps[x['date'][:7]] = x['value']
+              mon = {(x['revenue_year'], x['revenue_month']): x['revenue'] for x in rv}
+              qs = sorted(eps)
+              def qkey(s): y, m = int(s[:4]), int(s[5:7]); return y, (m + 2) // 3
+              def qrev(y, q):
+                  ms = [mon.get((y, 3*q-2+i)) for i in range(3)]
+                  return sum(ms) if all(ms) else None
+              Q = [(qkey(s), eps[s]) for s in qs]
+              R = [qrev(*k) for k, _ in Q]
+              for j in range(4, len(Q)):
+                  (y, q), act = Q[j]
+                  if abs(act) < 0.05 or R[j] is None: continue
+                  def kk(idx):
+                      e = sum(Q[i][1] for i in idx); r = [R[i] for i in idx]
+                      return None if any(v is None for v in r) else e / sum(r)
+                  ks = {'k1':kk([j-1]), 'k2':kk([j-1, j-2]), 'k4':kk([j-1, j-2, j-3, j-4])}
+                  # 去年同季利潤率
+                  ly = next((i for i in range(j) if Q[i][0] == (y-1, q)), None)
+                  if ly is not None and R[ly]: ks['kly'] = Q[ly][1] / R[ly]
+                  if ks.get('k2') is not None and ks.get('kly') is not None: ks['k2ly'] = (ks['k2'] + ks['kly']) / 2
+                  for n, k in ks.items():
+                      if k is None: continue
+                      add('known_' + n, abs(R[j]*k - act) / abs(act))
+                  # 營收還不知道：去年同季營收 ×（1+近三月年增）
+                  m0 = 3*q-2   # 該季第一個月，用前三個月
+                  def ym(y, m):
+                      while m <= 0: y -= 1; m += 12
+                      return y, m
+                  last3 = [mon.get(ym(y, m0-1-i)) for i in range(3)]; prev3 = [mon.get(ym(y-1, m0-1-i)) for i in range(3)]
+                  lyr = qrev(y-1, q)
+                  if all(last3) and all(prev3) and lyr and ks.get('k2') is not None:
+                      g = max(-0.6, min(1.5, sum(last3)/sum(prev3) - 1))
+                      add('unk_ly_g_k2', abs(lyr*(1+g)*ks['k2'] - act)/abs(act))
+                      add('unk_last3x3_k2', abs(sum(last3)*ks['k2'] - act)/abs(act))
+                      if ly is not None: add('unk_epsly_g', abs(Q[ly][1]*(1+g) - act)/abs(act))
+                      add('unk_naive_lastQ', abs(Q[j-1][1] - act)/abs(act))
+          for k, v in sorted(res.items()):
+              v = sorted(v)
+              print(f'{k:20s} n={len(v):4d} 中位誤差 {S.median(v)*100:5.1f}%  平均(截20%尾) {S.mean(v[:int(len(v)*.8)])*100:5.1f}%  誤差<15%比例 {sum(1 for e in v if e<0.15)/len(v)*100:4.0f}%')
           PY
           sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
