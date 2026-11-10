@@ -1,0 +1,33 @@
+name: 美元台幣分K
+on:
+  schedule:
+    - cron: '23 8 * * 1-5'    # 台灣 16:23（台北外匯收盤後）
+    - cron: '43 10 * * 1-5'   # 台灣 18:43（備援）
+    - cron: '13 14 * * 1-5'   # 台灣 22:13（備援）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: usdtwd-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 取出 usdtwd-data 分支
+        run: |
+          git fetch -q origin usdtwd-data && git worktree add -q usdtwd origin/usdtwd-data || { mkdir -p usdtwd; }
+      - name: 存當天 1 分 K（鉅亨），補歷史（Yahoo）
+        run: |
+          python3 scripts/usdtwd_data.py usdtwd | tee ux.log
+          echo "::notice::$(grep 比對 -A0 ux.log; grep 收盤差 ux.log; tail -1 ux.log)"
+      - name: 推到 usdtwd-data 分支
+        run: |
+          cd usdtwd
+          rm -rf .git_tmp; cp m5.json m60.json /tmp/
+          cd .. && rm -rf pub && mkdir pub && cp /tmp/m5.json /tmp/m60.json pub/ && cd pub
+          git init -q && git checkout -q -b usdtwd-data && git add -A
+          git -c user.name=fx-bot -c user.email=fx-bot@users.noreply.github.com commit -qm "美元台幣分K $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" usdtwd-data
