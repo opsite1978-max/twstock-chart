@@ -109,6 +109,32 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chipsec h2 span{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
 .chipsec iframe{width:100%;border:0;min-height:240px;display:block;background:transparent}
 .chipsec .note2{font-size:13px;color:var(--muted)}
+.valsum{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.vt{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px 12px;min-width:0}
+.vt .k{font-size:12px;color:var(--muted)}
+.vt .v{font:600 19px var(--mono);color:var(--fg);margin:2px 0;white-space:nowrap}
+.vt .s{font-size:11.5px;color:var(--dim);line-height:1.35}
+.vt.hl{border-color:var(--accent)} .vt.hl .v{color:var(--accent)}
+.valgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:10px}
+@media (max-width:760px){.valgrid{grid-template-columns:minmax(0,1fr)}}
+.valcard{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:10px 12px;min-width:0}
+.valcard .vh{font-size:13.5px;font-weight:700;margin-bottom:6px}
+.valcard .vh span{font-size:11.5px;color:var(--muted);font-weight:400;margin-left:6px}
+.vgauge{position:relative;height:22px;margin:4px 6px 10px}
+.vgauge .bar{position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--down),var(--line2) 50%,var(--up))}
+.vgauge i{position:absolute;top:6px;width:1px;height:10px;background:var(--muted)}
+.vgauge b{position:absolute;top:2px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);box-shadow:0 0 0 1px var(--accent)}
+.vtab{width:100%;border-collapse:collapse;font-size:13px}
+.vtab th{color:var(--muted);font-weight:500;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.vtab td{text-align:right;padding:5px 6px;border-top:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.vtab th:first-child,.vtab td:first-child{text-align:left;font-family:var(--sans)}
+.vtab td small{color:var(--dim);margin-left:4px;font-family:var(--mono);font-size:11px}
+.vtab tr.near td{background:var(--panel2);font-weight:600}
+.vtab td.u{color:var(--up)} .vtab td.d{color:var(--down)}
+.vdet summary{cursor:pointer;font-size:12.5px;color:var(--accent);margin-top:-2px}
+.vdet p{margin:6px 0 0}
+#valBox{display:flex;flex-direction:column;gap:10px}
+#valBox .help{margin:0}
 .wsum{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
 .wsum b{color:var(--fg);font-family:var(--mono);font-weight:600}
 .wtable{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
@@ -301,7 +327,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 07:00</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 21:00・估值</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -432,6 +458,15 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="wpick" id="wPick"></div>
     <div class="wtable"><table id="wTable"></table></div>
     <p class="help" id="wNote">價格用近 20 個交易日成交最多的 60 檔權證、各自最新一天的收盤價，不是即時買賣價；隱含波動率用 Black–Scholes 從收盤價反推（無風險利率 1.6%、不計股利）。「放 10 天不動」＝股價和隱含波動率都不變，10 天後權證剩多少。「抱 5 天要漲」＝今天用收盤價買、5 個交易日後賣，股價至少要往有利方向動這麼多才開始賺（已含買賣手續費 0.1425% 與權證交易稅 0.1%，隱含波動率假設不變）。點任一列可以打開試算，看不同持有天數要漲多少、漲多少賺多少。建議權證＝評等最好的幾檔裡，抱 5 天要漲最少的前 3 檔。評等：<b>甜</b>＝剩 60 天以上、價外 15% 以內、隱含波動率不超過實際波動 1.3 倍、槓桿 3～9 倍、20 天成交 500 萬以上；<b>苦</b>＝剩不到 30 天、隱含波動率貴 1.6 倍以上、價外超過 25%、槓桿超過 12 倍、成交太少，或收盤價低於內含價值；其餘為<b>可</b>。這是篩選參考，不是買進建議。</p>
+  </section>
+
+  <section class="chipsec" id="valSec" hidden>
+    <div class="head">
+      <h2>估值<span>EPS 預估與本益比（用財報和月營收推算，不是法人預估）</span></h2>
+      <span class="spacer"></span>
+      <button class="tog" id="togVal" aria-pressed="true">顯示</button>
+    </div>
+    <div id="valBox"></div>
   </section>
 
   <section class="chipsec" id="chipSec" hidden>
@@ -4764,7 +4799,7 @@ function recompute(){
   if (R.kui && R.kui.main) for (const m of R.kui.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:'魁', col:m.col, tcol:'#3a2a00', size:1.15, dy:6 + k * 20 }); }
   if (R.bao && R.bao.main) for (const m of R.bao.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'arrowUp', text:m.text, col:m.col, tcol:m.col, size:1.3, dy:24 + k * 18 }); }
   btOnRecompute();
-  syncChips(); syncWarrants();
+  syncChips(); syncWarrants(); syncVal();
   schedule(); renderSignals();
 }
 
@@ -7434,6 +7469,173 @@ addEventListener('message', e => {
 });
 document.getElementById('togChips').onclick = () => { UI.showChips = !UI.showChips; saveUI(); syncChips(); };
 
+/* ═════════════ 估值：EPS 預估與本益比（用公開財報＋月營收自己推算，不是法人預估） ═════════════ */
+const VALC = new Map(); let valKey = '';
+const valFmt = (x, d = 2) => x == null || !isFinite(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const valPct = (x, d = 1) => x == null || !isFinite(x) ? '—' : (x > 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
+async function valFetch(id){
+  const key = 'val:' + id, c = await DSTORE.get(key);
+  if (c && c.v === 2 && Date.now() - c.t < 6 * 36e5) return c;
+  const y = +tpNow().date.slice(0, 4);
+  const [fs, rv, per] = await Promise.all([
+    finmind({ dataset:'TaiwanStockFinancialStatements', data_id:id, start_date:(y - 4) + '-01-01' }),
+    finmind({ dataset:'TaiwanStockMonthRevenue', data_id:id, start_date:(y - 5) + '-01-01' }),
+    finmind({ dataset:'TaiwanStockPER', data_id:id, start_date:isoDay(Date.now() - 3 * 365.25 * 864e5) })]);
+  const v = { v:2, t:Date.now(),
+    eps:fs.filter(x => x.type === 'EPS' && x.value != null).map(x => [x.date.slice(0, 7), +x.value]),
+    rev:rv.filter(x => x.revenue > 0).map(x => [+x.revenue_year, +x.revenue_month, +x.revenue]),
+    per:per.filter(x => x.PER > 0).map(x => [x.date, +x.PER]) };
+  DSTORE.put(key, v); return v;
+}
+function valModel(v, price){
+  const mon = new Map(v.rev.map(r => [r[0] * 100 + r[1], r[2]]));
+  const M = (y, m) => { while (m <= 0){ y--; m += 12; } while (m > 12){ y++; m -= 12; } return mon.get(y * 100 + m) || null; };
+  const qrev = (y, q) => { let s = 0; for (let i = 1; i <= 3; i++){ const r = M(y, 3 * q - 3 + i); if (!r) return null; s += r; } return s; };
+  const seen = new Set();
+  const Q = v.eps.slice().sort((a, b) => a[0] < b[0] ? -1 : 1).filter(([d]) => !seen.has(d) && seen.add(d))
+    .map(([d, e]) => { const y = +d.slice(0, 4), q = (+d.slice(5, 7) + 2) / 3 | 0; return { y, q, e, r:qrev(y, q) }; });
+  if (Q.length < 4) return null;
+  const n = Q.length, last = Q[n - 1];
+  // 每 1 元營收賺多少 EPS：用最近四季（回測 60 檔大型股 1300 多季，四季比一季、兩季穩）
+  const kOf = j => { let e = 0, r = 0; for (let i = j - 4; i < j; i++){ if (i < 0 || !Q[i].r) return null; e += Q[i].e; r += Q[i].r; } return r > 0 ? e / r : null; };
+  const regOf = j => {   // 營收和 EPS 的直線關係（把固定成本算進去）：最近 8 季
+    const pts = []; for (let i = Math.max(0, j - 8); i < j; i++) if (Q[i].r) pts.push([Q[i].r, Q[i].e]);
+    if (pts.length < 6) return null;
+    const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length, my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    let vx = 0, cv = 0; for (const [a, b] of pts){ vx += (a - mx) ** 2; cv += (a - mx) * (b - my); }
+    if (vx <= 0) return null;
+    let b = cv / vx; const ka = my / mx; if (ka > 0) b = Math.max(0.5 * ka, Math.min(2.5 * ka, b));
+    return r => my + b * (r - mx);
+  };
+  const estOf = (j, r) => { const k = kOf(j), f = regOf(j); if (k == null) return null; return f ? (f(r) + r * k) / 2 : r * k; };
+  // 營收動能：最近公布的 3 個月 對 去年同 3 個月
+  const keys = [...mon.keys()].sort((a, b) => a - b), lk = keys[keys.length - 1];
+  let g = null, ly = lk ? Math.floor(lk / 100) : 0, lm = lk ? lk % 100 : 0;
+  if (lk){ let a = 0, b = 0, ok = true; for (let i = 0; i < 3; i++){ const x = M(ly, lm - i), z = M(ly - 1, lm - i); if (!x || !z) ok = false; else { a += x; b += z; } } if (ok && b > 0) g = Math.max(-0.6, Math.min(1.5, a / b - 1)); }
+  // 未來四季：營收公布 2 個月以上的季用「營收已知」做法；其餘用「營收未知」做法（上一季 EPS 和推估營收各占一半）
+  const fut = []; let y = last.y, q = last.q, anchor = last.e;
+  const kNow = kOf(n), fNow = regOf(n);
+  let run = null; if (lk){ let a = 0, c = 0; for (let i = 0; i < 3; i++){ const x = M(ly, lm - i); if (x){ a += x; c++; } } if (c) run = a / c; }
+  for (let s = 0; s < 4; s++){
+    q++; if (q > 4){ q = 1; y++; }
+    let r = 0, known = 0, ok = true;
+    for (let i = 1; i <= 3; i++){
+      const m = 3 * q - 3 + i, a = M(y, m);
+      if (a){ r += a; known++; continue; }
+      const b = M(y - 1, m), pa = b && g != null ? b * (1 + g) : null;
+      const e = pa != null && run != null ? (pa + run) / 2 : (pa != null ? pa : run);
+      if (e) r += e; else ok = false;
+    }
+    let e = null;
+    if (ok && kNow != null){
+      const base = fNow ? (fNow(r) + r * kNow) / 2 : r * kNow;
+      e = known >= 2 ? base : 0.5 * anchor + 0.5 * r * kNow;
+      if (known >= 2) anchor = e;
+    } else { const lyq = Q.find(o => o.y === y - 1 && o.q === q); e = lyq ? lyq.e * (1 + (g || 0)) : null; }
+    fut.push({ y, q, e, r, known, est:true });
+  }
+  // 這個方法用在這檔過去的準確度：營收已知時（財報出來前那段時間），和營收還不知道時
+  const errK = [], errU = [];
+  for (let j = Math.max(4, n - 12); j < n; j++){
+    const o = Q[j]; if (Math.abs(o.e) < 0.05 || !o.r) continue;
+    const e1 = estOf(j, o.r); if (e1 != null) errK.push(Math.abs(e1 - o.e) / Math.abs(o.e));
+    const lyr = qrev(o.y - 1, o.q), m0 = 3 * o.q - 2, k = kOf(j);
+    let a = 0, b = 0, ok = !!lyr && k != null; for (let i = 1; i <= 3; i++){ const x = M(o.y, m0 - i), z = M(o.y - 1, m0 - i); if (!x || !z) ok = false; else { a += x; b += z; } }
+    if (ok && b > 0){ const gg = Math.max(-0.6, Math.min(1.5, a / b - 1)), rr = (lyr * (1 + gg) + a) / 2, e2 = 0.5 * Q[j - 1].e + 0.5 * rr * k; errU.push(Math.abs(e2 - o.e) / Math.abs(o.e)); }
+  }
+  const med = a => { if (a.length < 4) return null; const s = a.slice().sort((x, z) => x - z); return s[s.length >> 1]; };
+  const ttm = Q.slice(-4).reduce((s, o) => s + o.e, 0), fwd = fut.every(o => o.e != null) ? fut.reduce((s, o) => s + o.e, 0) : null;
+  // 今年 EPS：還沒出財報的那一年
+  const Y = fut[0].y, yRep = Q.filter(o => o.y === Y), yFut = fut.filter(o => o.y === Y);
+  const yEps = yFut.every(o => o.e != null) ? yRep.concat(yFut).reduce((s, o) => s + o.e, 0) : null;
+  const pY = Q.filter(o => o.y === Y - 1), prevY = pY.length === 4 ? pY.reduce((s, o) => s + o.e, 0) : null;
+  // 本益比區間：證交所每天公布的本益比，過去 3 年
+  const pers = v.per.map(p => p[1]).filter(x => x > 0 && x < 300).sort((a, b) => a - b);
+  const pctl = p => pers.length ? pers[Math.min(pers.length - 1, Math.max(0, Math.round(p * (pers.length - 1))))] : null;
+  const perNow = v.per.length ? v.per[v.per.length - 1][1] : null;
+  const peNow = ttm > 0 ? price / ttm : null, pos = peNow && pers.length > 60 ? pers.filter(x => x < peNow).length / pers.length : null;
+  const band = pers.length > 60 ? [[0.1, '便宜'], [0.25, '偏低'], [0.5, '中間'], [0.75, '偏高'], [0.9, '昂貴']].map(([p, nm]) => ({ p, nm, pe:pctl(p) })) : [];
+  return { Q, fut, ttm, fwd, yEps, Y, prevY, g, lastMon:lk ? { y:ly, m:lm } : null, price,
+    pe:peNow, fpe:fwd > 0 ? price / fwd : null, perNow, pos, band,
+    errK:med(errK), errU:med(errU), nK:errK.length, last };
+}
+function valChart(m){
+  const W = Math.max(280, document.getElementById('valChart').clientWidth || 520), bars = m.Q.slice(W < 560 ? -4 : -8).concat(m.fut), H = 190;
+  const padL = 8, padR = 8, top = 22, bot = 34, bw = (W - padL - padR) / bars.length;
+  const vals = bars.map(o => o.e).filter(x => x != null), hi = Math.max(0, ...vals), lo = Math.min(0, ...vals), span = (hi - lo) || 1;
+  const Y = x => top + (hi - x) / span * (H - top - bot);
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="每季 EPS：實際與預估">';
+  s += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(0) + '" y2="' + Y(0) + '" style="stroke:var(--line2)"/>';
+  bars.forEach((o, i) => {
+    const x = padL + i * bw + bw * 0.16, w = bw * 0.68;
+    if (o.e == null) return;
+    const y0 = Y(Math.max(0, o.e)), h = Math.max(1, Math.abs(Y(o.e) - Y(0))), neg = o.e < 0;
+    if (o.est) s += '<rect x="' + x + '" y="' + y0 + '" width="' + w + '" height="' + h + '" rx="2" style="fill:var(--accent);fill-opacity:.18;stroke:var(--accent);stroke-dasharray:3 2"/>';
+    else s += '<rect x="' + x + '" y="' + y0 + '" width="' + w + '" height="' + h + '" rx="2" style="fill:' + (neg ? 'var(--down)' : 'var(--accent)') + ';fill-opacity:.85"/>';
+    const ty = neg ? Y(o.e) + 12 : y0 - 5;
+    s += '<text x="' + (x + w / 2) + '" y="' + ty + '" text-anchor="middle" style="fill:' + (o.est ? 'var(--accent)' : 'var(--fg)') + ';font:600 ' + (bw < 34 ? 9.5 : 11) + 'px var(--mono)">' + o.e.toFixed(Math.abs(o.e) >= 100 ? 0 : 2) + '</text>';
+    s += '<text x="' + (x + w / 2) + '" y="' + (H - bot + 15) + '" text-anchor="middle" style="fill:var(--muted);font:' + (bw < 34 ? 9.5 : 11) + 'px var(--mono)">' + String(o.y).slice(2) + 'Q' + o.q + '</text>';
+    if (o.est) s += '<text x="' + (x + w / 2) + '" y="' + (H - bot + 28) + '" text-anchor="middle" style="fill:var(--dim);font:' + (bw < 34 ? 9 : 10) + 'px var(--sans)">' + (o.known === 3 ? '營收齊' : o.known ? '營收' + o.known + '/3' : '推估') + '</text>';
+  });
+  return s + '</svg>';
+}
+function valRender(id, m){
+  const box = document.getElementById('valBox');
+  const qn = o => String(o.y).slice(2) + 'Q' + o.q;
+  const f0 = m.fut[0], f3 = m.fut[3];
+  const tile = (k, v, sub, cls) => '<div class="vt' + (cls ? ' ' + cls : '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + sub + '</div></div>';
+  const posTxt = m.pos == null ? '資料不足' : '過去 3 年第 ' + Math.round(m.pos * 100) + ' 百分位' + (m.pos < 0.25 ? '（偏便宜）' : m.pos > 0.75 ? '（偏貴）' : '');
+  let h = '<div class="valsum">';
+  h += tile('近四季 EPS', valFmt(m.ttm) + ' 元', qn(m.Q[m.Q.length - 4]) + '～' + qn(m.last) + ' 實際');
+  h += tile('目前本益比', m.pe ? valFmt(m.pe, 1) + ' 倍' : '虧損', posTxt);
+  h += tile(m.Y + ' 年 EPS 預估', valFmt(m.yEps) + ' 元', m.prevY != null && m.yEps != null && m.prevY > 0 ? '去年 ' + valFmt(m.prevY) + ' 元，' + valPct(m.yEps / m.prevY - 1) : '已公布 ' + m.Q.filter(o => o.y === m.Y).length + ' 季＋預估');
+  h += tile('未來四季 EPS 預估', valFmt(m.fwd) + ' 元', qn(f0) + '～' + qn(f3), 'hl');
+  h += tile('預估本益比', m.fpe ? valFmt(m.fpe, 1) + ' 倍' : (m.fwd != null ? '預估虧損' : '—'), '股價 ' + valFmt(m.price, m.price >= 100 ? 1 : 2) + ' ÷ 未來四季 EPS', 'hl');
+  h += tile('營收動能', valPct(m.g), m.lastMon ? '近 3 個月年增（最新 ' + m.lastMon.m + ' 月）' : '沒有月營收');
+  h += '</div><div class="valgrid"><div class="valcard"><div class="vh">每季 EPS<span>實心＝已公布財報　虛線＝預估</span></div><div id="valChart">' + '' + '</div></div>';
+  // 本益比區間 × 預估 EPS
+  h += '<div class="valcard"><div class="vh">合理價區間<span>過去 3 年本益比 × 未來四季 EPS 預估</span></div>';
+  if (m.band.length && m.fwd > 0){
+    const prices = m.band.map(b => b.pe * m.fwd), lo = prices[0], hi = prices[prices.length - 1];
+    const at = x => Math.max(0, Math.min(100, (x - lo) / ((hi - lo) || 1) * 100));
+    h += '<div class="vgauge"><div class="bar"></div>' + prices.map((p, i) => '<i style="left:' + at(p) + '%"></i>').join('') + '<b style="left:' + at(m.price) + '%" title="現價"></b></div>';
+    h += '<table class="vtab"><thead><tr><th>位置</th><th>本益比</th><th>合理價</th><th>距現價</th></tr></thead><tbody>';
+    let near = 0; prices.forEach((p, i) => { if (Math.abs(p - m.price) < Math.abs(prices[near] - m.price)) near = i; });
+    m.band.forEach((b, i) => { const p = prices[i], d = p / m.price - 1;
+      h += '<tr' + (i === near ? ' class="near"' : '') + '><td>' + b.nm + '<small>' + Math.round(b.p * 100) + '%</small></td><td>' + valFmt(b.pe, 1) + '</td><td>' + valFmt(p, p >= 100 ? 0 : 1) + '</td><td class="' + (d >= 0 ? 'u' : 'd') + '">' + valPct(d, 0) + '</td></tr>'; });
+    h += '</tbody></table>';
+  } else h += '<p class="note2">' + (m.fwd != null && m.fwd <= 0 ? '預估未來四季虧損，本益比不適用。' : '本益比歷史資料不足（新上市或長期虧損）。') + '</p>';
+  h += '</div></div>';
+  const acc = m.errK != null ? '用同樣方法回推這檔過去 ' + m.nK + ' 季：營收公布完、財報還沒出時，誤差中位數約 ±' + Math.round(m.errK * 100) + '%' + (m.errU != null ? '；營收都還不知道時約 ±' + Math.round(m.errU * 100) + '%' : '') + '。' : '這檔歷史季數不夠，還算不出這方法的誤差。';
+  h += '<p class="help"><b>' + acc + '</b>這是用公開財報和月營收自己推的，不是法人或券商的預估；業外收益、匯兌、一次性損益抓不到。</p>';
+  h += '<details class="vdet"><summary>怎麼算的、整體準不準</summary><p class="help">每季營收先算出來——已公布的月份用實際數字，還沒公布的月份取「去年同月 ×（1＋近 3 個月年增率）」和「最近 3 個月平均」兩者平均。營收公布 2 個月以上的季，EPS＝營收 × 最近四季平均獲利率，和最近 8 季營收與 EPS 的直線關係（把固定成本算進去）兩者平均；營收還不知道的季，EPS＝上一季 EPS 和「推估營收 × 獲利率」各占一半。拿 60 檔大型股、1300 多季回測：營收公布完時誤差中位數約 17%，營收還不知道時約 20%（直接拿上一季 EPS 當預估是 22%）；越後面的季誤差越大。本益比區間用證交所每天公布的本益比（過去 3 年）。僅供研究參考。</p></details>';
+  box.innerHTML = h;
+  document.getElementById('valChart').innerHTML = valChart(m);
+}
+function syncVal(){
+  const sec = document.getElementById('valSec'), box = document.getElementById('valBox');
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
+  sec.hidden = !stock;
+  document.getElementById('togVal').setAttribute('aria-pressed', String(UI.showVal !== false));
+  if (!stock) return;
+  box.hidden = UI.showVal === false;
+  if (box.hidden) return;
+  if (/^00/.test(id)){ valKey = id; box.innerHTML = '<p class="note2">ETF 沒有自己的財報和 EPS，估值只適用個股。</p>'; return; }
+  const rows = RAW.rows, price = rows && rows.length ? rows[rows.length - 1][4] : null;
+  const key = id + '|' + price + '|' + UI.theme;
+  if (key === valKey) return;
+  valKey = key;
+  if (!VALC.has(id)){ box.innerHTML = '<p class="note2">讀取財報、月營收、本益比中…</p>'; VALC.set(id, valFetch(id).catch(e => { VALC.delete(id); throw e; })); }
+  VALC.get(id).then(v => {
+    if (!RAW || RAW.id !== id) return;
+    const m = v.eps.length ? valModel(v, price) : null;
+    if (!m){ box.innerHTML = '<p class="note2">' + (v.eps.length ? '財報季數太少，還算不出預估（剛上市或資料不足）。' : '這檔沒有財報資料（ETF、受益證券或資料源沒有），無法估 EPS。') + '</p>'; return; }
+    valRender(id, m);
+  }).catch(e => { if (RAW && RAW.id === id){ valKey = ''; box.innerHTML = '<p class="note2">估值資料讀取失敗：' + esc(e.message) + '</p>'; } });
+}
+document.getElementById('togVal').onclick = () => { UI.showVal = UI.showVal === false; saveUI(); valKey = ''; syncVal(); };
+addEventListener('resize', () => { const c = document.getElementById('valChart'); if (c && c.firstChild && RAW && VALC.has(RAW.id)) { valKey = ''; syncVal(); } });
+
 /* ═════════════ toolbar ═════════════ */
 document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); document.getElementById('symInput').blur(); loadSymbol(document.getElementById('symInput').value); });
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b) return; if (b.dataset.night){ UI.night = b.dataset.night === '1'; saveUI(); syncToolbar(); } loadSymbol(b.dataset.s); });
@@ -7540,7 +7742,7 @@ function applyTheme(){
   document.documentElement.dataset.theme = UI.theme;
   CC = themeColors();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = CC.bg;
-  syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips();
+  syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips(); if (typeof syncVal === 'function' && RAW){ valKey = ''; syncVal(); }
 }
 document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && !FUTS[RAW.id]) loadSymbol(RAW.id); };
 // 副圖越多，圖表越高，主圖不會被擠扁
