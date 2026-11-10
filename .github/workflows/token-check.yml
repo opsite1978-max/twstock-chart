@@ -26,23 +26,38 @@ jobs:
               st, b = get('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T)), False)
               try: j = json.loads(b); return j.get('status'), j.get('msg'), j.get('data') or []
               except Exception: return st, b[:200], []
-          for ds, extra in [('TaiwanExchangeRate', {'data_id':'USD'}), ('ExchangeRate', {'data_id':'USD'}), ('TaiwanExchangeRate', {})]:
-              st, msg, d = fm(dict({'dataset':ds, 'start_date':'2026-11-01'}, **extra))
-              print('FM', ds, extra, st, msg, len(d)); [print('  ', json.dumps(x, ensure_ascii=False)) for x in d[:2] + d[-2:]]
-          st, msg, d = fm({'dataset':'TaiwanExchangeRate', 'data_id':'USD', 'start_date':'1990-01-01'}); print('FM full', len(d), d[0]['date'] if d else '')
-          for iv, rg in [('1m','7d'),('5m','60d'),('15m','60d'),('30m','60d'),('60m','730d'),('1h','730d'),('1d','max'),('1wk','max')]:
-              for host in ['query1', 'query2']:
-                  st, b = get(f'https://{host}.finance.yahoo.com/v8/finance/chart/TWD=X?interval={iv}&range={rg}')
-                  try:
-                      r = json.loads(b)['chart']['result'][0]; ts = r.get('timestamp') or []; q = r['indicators']['quote'][0]
-                      print('YH', host, iv, rg, st, len(ts), time.strftime('%Y-%m-%d %H:%M', time.gmtime(ts[0])) if ts else '', time.strftime('%Y-%m-%d %H:%M', time.gmtime(ts[-1])) if ts else '', 'o', q['open'][-1], 'h', q['high'][-1], 'l', q['low'][-1], 'c', q['close'][-1], 'tz', r['meta'].get('exchangeTimezoneName'), r['meta'].get('regularMarketPrice'))
-                      break
-                  except Exception as e: print('YH', host, iv, rg, st, 'FAIL', b[:150].replace('\n', ' '))
-          st, b = get('https://stooq.com/q/d/l/?s=usdtwd&i=d'); print('STOOQ', st, b[:120].replace('\n', ' | '), len(b))
-          st, b = get('https://www.tpefx.com.tw/'); print('TPEFX', st, len(b))
-          st, b = get('https://rate.bot.com.tw/xrt/flcsv/0/day'); print('BOT', st, b[:200].replace('\n', ' | '))
-          st, b = get('https://api.cnyes.com/media/api/v1/charting/history?resolution=5&symbol=FX:USDTWD:FOREX&quote=1'); print('CNYES', st, b[:300])
-          st, b = get('https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=5&symbol=FX:USDTWD:FOREX&quote=1'); print('CNYES2', st, b[:300])
+          import datetime as DT
+          def tw(t): return (DT.datetime.utcfromtimestamp(t) + DT.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
+          def cn(res, frm=None, to=None, sym='FX:USDTWD:FOREX'):
+              u = f'https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution={res}&symbol={sym}&quote=1' + (f'&from={frm}' if frm else '') + (f'&to={to}' if to else '')
+              try:
+                  rq = urllib.request.Request(u, headers=dict(H, Origin='https://opsite1978-max.github.io'))
+                  with urllib.request.urlopen(rq, timeout=60) as r:
+                      hd = {k: v for k, v in r.headers.items() if 'access-control' in k.lower()}
+                      return hd, json.loads(r.read().decode())
+              except Exception as e: return str(e)[:200], None
+          now = int(time.time())
+          for res, back in [('1', 3), ('5', 30), ('15', 60), ('30', 120), ('60', 400), ('D', 4000), ('W', 9000), ('M', 12000)]:
+              hd, j = cn(res, now, now - back * 86400)
+              if not j: print('CN', res, 'FAIL', hd); continue
+              d = j.get('data') or {}; t = d.get('t') or []
+              print('CN', res, back, 'n', len(t), 'range', tw(min(t)) if t else '', '->', tw(max(t)) if t else '', 'keys', list(d.keys())[:12], 'cors', hd)
+              if t:
+                  k = t.index(max(t)); print('   last', {x: (d[x][k] if isinstance(d.get(x), list) and len(d[x]) == len(t) else None) for x in ['o','h','l','c','v']})
+                  if res in ('5', '60'):
+                      hrs = sorted(set(tw(x)[11:13] for x in t)); print('   hours', hrs)
+                      print('   sample', [tw(x) for x in sorted(t)[-30:]])
+              if j.get('data', {}).get('quote'): print('   quote', json.dumps(j['data']['quote'], ensure_ascii=False)[:400])
+          # 不帶 from/to
+          hd, j = cn('D'); print('CN D nofrom', len((j or {}).get('data', {}).get('t') or []), hd)
+          hd, j = cn('5'); print('CN 5 nofrom', len((j or {}).get('data', {}).get('t') or []))
+          # Yahoo 日線 10 年
+          st, b = get('https://query1.finance.yahoo.com/v8/finance/chart/TWD=X?interval=1d&range=10y')
+          try: r = json.loads(b)['chart']['result'][0]; print('YH 1d 10y', len(r['timestamp']), tw(r['timestamp'][0]))
+          except Exception as e: print('YH 1d fail', b[:100])
+          st, b = get('https://query1.finance.yahoo.com/v8/finance/chart/TWD=X?interval=1d&period1=946684800&period2=' + str(now))
+          try: r = json.loads(b)['chart']['result'][0]; print('YH 1d since2000', len(r['timestamp']), tw(r['timestamp'][0]))
+          except Exception as e: print('YH 1d fail', b[:100])
           PY2
           sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
