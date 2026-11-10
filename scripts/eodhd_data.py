@@ -56,7 +56,7 @@ def main():
         frm = (DT.date.fromisoformat(rows[-1][0]) - DT.timedelta(days=7)).isoformat() if rows else '1990-01-01'
         d = api('eod/' + code, **{'from': frm, 'period': 'd'})
         if not isinstance(d, list):
-            S.setdefault(code, {})['err'] = '讀取失敗（免費金鑰沒有這檔，或代號不對）'
+            S.setdefault(code, {})['err'] = '讀取失敗（免費金鑰沒有這檔，或代號不對）'; S[code]['t'] = int(time.time())
             S[code]['n'] = name; continue
         new = {x['date']: [x['date'], x['open'], x['high'], x['low'], x['close'], x.get('volume') or 0, x.get('adjusted_close') or x['close']] for x in d if x.get('close')}
         m = {r[0]: r for r in rows}; m.update(new)
@@ -80,7 +80,7 @@ def main():
                     S[code]['i' + iv] = len(keep)
     for code in list(S):
         if code not in {c for c, _ in items}: del S[code]
-    idx = {'u': int(time.time()), 'demo': TOKEN == 'demo', 'used': used, 's': S, 'order': [c for c, _ in items]}
+    idx = {'u': int(time.time()), 'demo': TOKEN == 'demo', 'used': used, 's': S, 'order': [c for c, _ in items], 'names': {c: n for c, n in items}}
     with open(os.path.join(OUT, 'index.json'), 'w') as fh: json.dump(idx, fh, ensure_ascii=False, separators=(',', ':'))
     print('完成，用了', used, '次額度', '（demo 金鑰）' if TOKEN == 'demo' else '')
 

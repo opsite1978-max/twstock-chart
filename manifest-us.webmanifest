@@ -1,0 +1,19 @@
+{
+  "id": "./zhanshen-us.html",
+  "name": "戰神看盤・美股台股",
+  "short_name": "美股戰神",
+  "description": "戰神看盤・美股台股（台股 FinMind＋美股 EODHD）",
+  "start_url": "./zhanshen-us.html?app=us",
+  "scope": "./zhanshen-us.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c1008",
+  "theme_color": "#0d1016",
+  "lang": "zh-Hant-TW",
+  "icons": [
+    { "src": "icon-me-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-me-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
