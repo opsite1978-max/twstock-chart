@@ -327,7 +327,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 21:00・估值</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 15:30・美元台幣</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -354,6 +354,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <button class="chip" data-s="TX" data-night="0" title="台指期近月，只看日盤（08:45～13:45）"><b>TX</b>台指期近月</button>
       <button class="chip" data-s="TX" data-night="1" title="台指期近月含夜盤：日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒"><b>TX</b>台指期全</button>
       <button class="chip" data-s="TAIEX"><b>TAIEX</b>加權指數</button>
+      <button class="chip" data-s="USDTWD" title="美元兌台幣：台北外匯市場（09:00～16:00）成交價，來源鉅亨網；日、週、月、分 K 都有，盤中每 30 秒更新"><b>USD/TWD</b>美元台幣</button>
     </div>
     <span class="spacer"></span>
     <div class="seg" id="intervalSeg" role="group" aria-label="K 棒週期">
@@ -1787,6 +1788,7 @@ if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD'
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
 UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5, qlw:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
+const FX = { USDTWD:'美元／台幣' };
 const INTRA = {
   '5':  { P:5,   days:[10, 20, 40],    def:20 },
   '15': { P:15,  days:[20, 40, 80],    def:40 },
@@ -2212,7 +2214,7 @@ function intentDaily(C, p){
 function idxLE(ds, s, strict){ let lo = 0, hi = ds.length - 1, r = -1; while (lo <= hi){ const m = (lo + hi) >> 1; if (strict ? ds[m] < s : ds[m] <= s){ r = m; lo = m + 1; } else hi = m - 1; } return r; }
 function calcINTENT(B, p){
   const id = RAW && !RAW.sample ? RAW.id : null;
-  if (!id || FUTS[id] || id === 'TAIEX') return { na:'主力意圖只適用個股' };
+  if (!id || FUTS[id] || FX[id] || id === 'TAIEX') return { na:'主力意圖只適用個股' };
   if (!UI.showIN) return { na:'' };
   if (CHIP.id !== id){ CHIP.id = id; CHIP.data = null; CHIP.err = null;
     const my = CHIP.pend = chipLoad(id).then(d => { if (CHIP.pend === my){ CHIP.data = d; CHIP.pend = null; recomputeSoon(); } })
@@ -2333,7 +2335,7 @@ const CAPS = { id:null, list:null, pend:null };
 function capLoad(id){
   if (CAPS.id === id) return;
   CAPS.id = id; CAPS.list = null;
-  if (!id || FUTS[id] || id === 'TAIEX' || id === 'SAMPLE') return;
+  if (!id || FUTS[id] || FX[id] || id === 'TAIEX' || id === 'SAMPLE') return;
   const my = CAPS.pend = fetch('data/holders/' + id + '.json?v=' + Math.floor(Date.now() / 600000)).then(r => r.ok ? r.json() : null).then(j => {
     if (CAPS.pend !== my) return; CAPS.pend = null;
     if (j && j.w){ CAPS.list = Object.keys(j.w).sort().map(d => [d, j.w[d][1]]); recomputeSoon(); }
@@ -3197,6 +3199,7 @@ function calcTP(B, p){
 const LIVE = { timer:null, busy:false, t:'', err:'', id:'' };
 function liveSession(id){
   const fut = !!FUTS[id], { date, mins:m, dow } = tpNow(), wk = dow >= 1 && dow <= 5;
+  if (FX[id]) return wk && m >= 540 && m <= 962 ? { k:'D', sDate:date, a:540, e:960 } : null;
   if (!fut) return wk && m >= 540 && m <= 812 ? { k:'D', sDate:date, a:540, e:810 } : null;
   if (wk && m >= 525 && m <= 827) return { k:'D', sDate:date, a:525, e:825 };
   if (!UI.night) return null;
@@ -3224,6 +3227,7 @@ setTimeout(() => { try { const cut = shiftDay(tpNow().date, -3); for (const k of
 async function livePoll(){
   if (!UI.live || LIVE.busy || !RAW || RAW.sample || document.hidden) return;
   const id = RAW.id; if (id === 'TAIEX') return;
+  if (FX[id]){ if (!liveSession(id)) return; LIVE.busy = true; try { await fxLive(); } catch (e){ LIVE.err = e.message; schedule(); } finally { LIVE.busy = false; } return; }
   const ses = liveSession(id); if (!ses){ if (LIVE.t){ LIVE.t = ''; schedule(); } return; }
   LIVE.busy = true;
   try {
@@ -4419,6 +4423,7 @@ function futuresRows(data, night){
 }
 
 async function fetchSymbol(id, force, early){
+  if (FX[id]) return fxDaily(id, force, early);
   const isTX = !!FUTS[id];
   const kind = isTX ? (UI.night ? 'TXFN' : 'TXF') : (UI.adj ? 'ADJ' : 'RAW');
   const cached = await readCache(id, kind);
@@ -4487,6 +4492,7 @@ function fillDatalist(){
 function nameOf(id){
   if (FUTS[id]) return FUTS[id];
   if (id === 'TAIEX') return '加權指數';
+  if (FX[id]) return FX[id];
   return NAMES[id] || '';
 }
 
@@ -4680,6 +4686,7 @@ async function intraBgFill(seq){
   }
 }
 async function fetchIntraday(id, iv, isStale){
+  if (FX[id]){ INTRA_BG = null; INTRA_FAILS = 0; return fxIntraday(id, iv); }
   if (id === 'TAIEX') throw new Error('加權指數沒有分 K 資料，請改看台指期 TX 或個股。');
   if (id === 'SAMPLE') throw new Error('範例資料沒有分 K。');
   const fut = !!FUTS[id], c = INTRA[iv], n = curDays(iv);
@@ -4713,6 +4720,117 @@ async function fetchIntraday(id, iv, isStale){
   const rows = intradayBars(list, perDay, sym, c.P, night, INTRA_BG ? list[0] : dates[0]);
   if (!rows.length) throw new Error('查不到 ' + id + ' 的分 K 資料（當天分 K 約在收盤後 15:50–16:30 才會更新）。');
   return rows;
+}
+
+/* ═════════════ 美元／台幣（台北外匯市場，09:00～16:00） ═════════════
+   日／週／月 K：鉅亨網日 K（瀏覽器直接讀，不用 FinMind 額度）。
+   分 K：每天收盤後由 GitHub 存下鉅亨 1 分 K（usdtwd-data 分支），今天的部分盤中直接向鉅亨讀。
+   台北外匯市場分 K 沒有成交量，分 K 的量一律記 1（成交量加權的指標等於每根一樣重）。 */
+const FX_A = 540, FX_E = 960;
+const FX_API = 'https://ws.api.cnyes.com/ws/api/v1/charting/history?symbol=FX:USDTWD:FOREX&quote=1&resolution=';
+const FX_REPO = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/usdtwd-data/';
+function fxTw(t){ const d = new Date(t * 1000 + 8 * 3600e3); return { date:d.toISOString().slice(0, 10), m:d.getUTCHours() * 60 + d.getUTCMinutes() }; }
+async function fxCnyes(res, frm, to){
+  let r;
+  try { r = await fetch(FX_API + res + (frm ? '&from=' + frm + '&to=' + to : ''), { cache:'no-store' }); }
+  catch (e){ throw new Error('連不到鉅亨網的匯率資料，請稍後再按「重新整理」。'); }
+  if (!r.ok) throw new Error('鉅亨網匯率資料讀取失敗（HTTP ' + r.status + '）');
+  const j = await r.json().catch(() => null), d = j && j.data || {}, t = d.t || [], out = [];
+  for (let i = 0; i < t.length; i++){
+    const c = d.c && d.c[i]; if (!(c > 0)) continue;
+    const o = d.o && d.o[i] > 0 ? d.o[i] : c, h = d.h && d.h[i] > 0 ? d.h[i] : Math.max(o, c), l = d.l && d.l[i] > 0 ? d.l[i] : Math.min(o, c);
+    out.push([t[i], o, h, l, c, d.v && d.v[i] > 0 ? d.v[i] : 0]);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
+}
+function fxDayRows(list){
+  const m = new Map(); let lastV = 0;
+  for (const [t, o, h, l, c, v] of list){ const d = fxTw(t).date; if (v > 0) lastV = v; m.set(d, [d, o, h, l, c, v > 0 ? v : lastV || 1]); }
+  return [...m.values()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+async function fxDaily(id, force, early){
+  const cached = await readCache(id, 'FX');
+  if (cached && !force && Date.now() - cached.t < 5 * 60e3) return { rows:cached.rows.filter(r => r[0] >= UI.start), from:'cache' };
+  if (cached && !force && early && cached.rows.length) early(cached.rows.filter(r => r[0] >= UI.start));
+  const now = Math.floor(Date.now() / 1000);
+  let rows;
+  if (cached && !force && cached.rows.length > 1000) rows = mergeRows(cached.rows, fxDayRows(await fxCnyes('D', now, now - 60 * 86400)));
+  else {
+    // 一次最多給 5 年，往回翻到沒有資料為止
+    let all = [], to = now;
+    for (let k = 0; k < 8; k++){
+      setLoading('美元／台幣日 K 載入中… ' + fxTw(to).date.slice(0, 4) + ' 年以前');
+      const part = await fxCnyes('D', to, to - 5 * 365 * 86400);
+      if (!part.length) break;
+      all = part.concat(all); to = part[0][0] - 86400;
+    }
+    rows = fxDayRows(all);
+  }
+  if (!rows.length) throw new Error('讀不到美元／台幣日 K。');
+  writeCache(id, 'FX', { rows, t:Date.now() });
+  return { rows:rows.filter(r => r[0] >= UI.start), from:'api' };
+}
+// 今天的 1 分 K（鉅亨）整理成 [分鐘, 開, 高, 低, 收]
+async function fxToday(){
+  const list = await fxCnyes('1'); if (!list.length) return null;
+  const date = fxTw(list[list.length - 1][0]).date, bars = [];
+  for (const [t, o, h, l, c] of list){ const z = fxTw(t); if (z.date !== date || z.m < FX_A || z.m >= FX_E) continue; bars.push([z.m, o, h, l, c]); }
+  return bars.length ? { date, bars } : null;
+}
+function fxBars(days, P){
+  const out = [];
+  for (const [date, bars] of days){
+    const [yy, mo, dd] = date.split('-').map(Number); let cur = null, curB = null;
+    for (const [m, o, h, l, c] of bars){
+      if (m < FX_A || m >= FX_E) continue;
+      const b = FX_A + Math.floor((m - FX_A) / P) * P;
+      if (b !== curB){ const t = Date.UTC(yy, mo - 1, dd, 0, b), iso = new Date(t).toISOString(); cur = [iso.slice(0, 10) + ' ' + iso.slice(11, 16), o, h, l, c, 1, Date.UTC(yy, mo - 1, dd, 0, Math.min(b + P, FX_E)), t]; out.push(cur); curB = b; }
+      else { cur[2] = Math.max(cur[2], h); cur[3] = Math.min(cur[3], l); cur[4] = c; }
+    }
+  }
+  return out;
+}
+const FXH = { m5:null, m60:null };
+async function fxHist(name){
+  const key = 'fx:' + name, c = FXH[name] || await DSTORE.get(key);
+  if (c && Date.now() - c.t < 30 * 60e3) return (FXH[name] = c);
+  try {
+    const r = await fetch(FX_REPO + name + '.json?t=' + Math.floor(Date.now() / 600e3), { cache:'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json(), v = { t:Date.now(), d:j.d || {} };
+    DSTORE.put(key, v); return (FXH[name] = v);
+  } catch (e){ if (c) return c; return { t:0, d:{} }; }
+}
+let FX_TODAY = null;
+async function fxIntraday(id, iv){
+  const P = INTRA[iv].P, n = curDays(iv), name = P >= 60 ? 'm60' : 'm5';
+  setLoading('美元／台幣分 K 載入中…');
+  const [h, td] = await Promise.all([fxHist(name), fxToday().catch(() => null)]);
+  const days = new Map(Object.entries(h.d).map(([d, v]) => [d, v[1]]));
+  if (td){ FX_TODAY = td; days.set(td.date, td.bars); }
+  const list = [...days.keys()].sort().slice(-n).map(d => [d, days.get(d)]);
+  const rows = fxBars(list, P);
+  if (!rows.length) throw new Error('美元／台幣分 K 還沒有資料（每天 16:30 後存一次），可以先看日 K。');
+  return rows;
+}
+// 盤中：每 30 秒向鉅亨更新一次
+async function fxLive(){
+  const id = RAW.id, tf = RAW.tf;
+  if (tf && tf !== 'D'){
+    const td = await fxToday(); if (!td || !RAW || RAW.id !== id || RAW.tf !== tf) return;
+    FX_TODAY = td;
+    const P = INTRA[tf].P, keep = RAW.base.filter(r => r[0].slice(0, 10) < td.date);
+    RAW.base = keep.concat(fxBars([[td.date, td.bars]], P));
+    const last = td.bars[td.bars.length - 1][0];
+    LIVE.t = String(Math.floor(last / 60)).padStart(2, '0') + ':' + String(last % 60).padStart(2, '0') + ':00';
+  } else {
+    const now = Math.floor(Date.now() / 1000), add = fxDayRows(await fxCnyes('D', now, now - 10 * 86400));
+    if (!add.length || !RAW || RAW.id !== id || (RAW.tf && RAW.tf !== 'D')) return;
+    RAW.base = mergeRows(RAW.base, add);
+    LIVE.t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 19);
+  }
+  LIVE.err = ''; LIVE.id = id;
+  liveApply(false);
 }
 
 /* deterministic sample so the chart is never empty */
@@ -4755,7 +4873,7 @@ function makeBars(rows, iv, sample){
   b.t = new F(n);
   rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; b.t[i] = r.length > 7 ? r[7] : dayMs(r[0].slice(0, 10)); });
   if (n && !sample){
-    const t = tpNow(), last = b.d[n - 1], closeM = 13 * 60 + 45;
+    const t = tpNow(), last = b.d[n - 1], closeM = RAW && FX[RAW.id] ? 16 * 60 : 13 * 60 + 45;
     let open = false;
     if (b.intra) open = rows[n - 1][6] > Date.now() + 8 * 3600e3;
     else if (iv === 'D') open = last === t.date && t.mins < closeM;
@@ -4875,11 +4993,11 @@ function niceStep(range, count){
   return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
 }
 function fmtNum(v, dec){ return isNaN(v) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
-function priceDec(v){ const a = Math.abs(v); return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
+function priceDec(v){ const a = Math.abs(v); if (RAW && FX[RAW.id]) return 3; return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
 function fmtP(v){ return fmtNum(v, priceDec(v)); }
 function fmtPx(v){ // OHLC exact, trims zeros
   if (isNaN(v)) return '—'; const a = Math.abs(v);
-  return v.toLocaleString('en-US', { maximumFractionDigits: a >= 10000 ? 0 : 2 });
+  return v.toLocaleString('en-US', { maximumFractionDigits: RAW && FX[RAW.id] ? 4 : a >= 10000 ? 0 : 2 });
 }
 
 function makeScale(top, h, mn, mx, padT, padB){
@@ -5239,10 +5357,10 @@ function drawMain(p, i0, i1, ci){
   const ivName = IVN[B.iv] + (RAW && FUTS[RAW.id] ? (RAW.night ? '・近全含夜盤' : '・日盤') : '') + (UI.live && LIVE.t && RAW && LIVE.id === RAW.id ? '・即時 ' + LIVE.t.slice(0, 5) : UI.live && LIVE.err && RAW && liveSession(RAW.id) ? '・即時報價失敗：' + LIVE.err : '');
   const chg = ci > 0 ? (B.c[ci] - B.c[ci - 1]) / B.c[ci - 1] * 100 : NaN;
   const cc = chg >= 0 ? CC.up : CC.down;
-  const isF = RAW && FUTS[RAW.id], isIdx = RAW && RAW.id === 'TAIEX';
+  const isF = RAW && FUTS[RAW.id], isIdx = RAW && RAW.id === 'TAIEX', isFX = RAW && FX[RAW.id];
   const unit = isF ? '口' : isIdx ? '' : '張';
   const vol = isF || B.intra ? B.v[ci] : isIdx ? B.v[ci] / 1e8 : B.v[ci] / 1000;
-  const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
+  const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], isFX ? (B.intra ? ['', CC.axis] : ['量 ' + fmtNum(B.v[ci] / 1e8, 1) + ' 億美元', CC.axis]) : ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
   const line2 = ok
     ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), trendOf(ci)], ['上 ' + fmtP(r.u1[ci]), bandOf(ci)], ['下 ' + fmtP(r.l1[ci]), bandOf(ci)]]
     : hpmOn ? null : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
@@ -7123,6 +7241,7 @@ async function resolveSym(raw){
   const t = String(raw || '').trim().replace(/\s+近月$/, '');
   if (!t) return null;
   if (ALIAS[t]) return ALIAS[t];
+  if (/^(USD\s*\/?\s*TWD|USDTWD|USD|美元|美金|台幣|新台幣|匯率)/i.test(t)) return 'USDTWD';
   const up = t.toUpperCase();
   let m = up.match(/^(TX|MTX|TMF|TAIEX)(?![0-9A-Z])/); if (m) return m[1];
   m = up.match(/^\d{4,6}[A-Z]?(?![0-9A-Z])/); if (m) return m[0];
@@ -7165,8 +7284,9 @@ async function loadSymbol(input, force){
     liveApply(true); setTimeout(() => livePoll(), 300);
     if (intra && INTRA_BG) setTimeout(() => intraBgFill(seq), 50);
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
-    if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日' + (INTRA_FAILS ? '（' + INTRA_FAILS + ' 天暫時讀不到已略過，按「重新整理」補抓）' : '') + ' · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
-    else setMsg((FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : ' · 已向 FinMind 更新'), 'ok');
+    if (intra && FX[id]) setMsg('美元／台幣 ' + IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日 · ' + res.rows.length + ' 根 K 棒 · 最新 ' + last + ' · 台北外匯市場 09:00～16:00（中午休市），分 K 沒有成交量', 'ok');
+    else if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日' + (INTRA_FAILS ? '（' + INTRA_FAILS + ' 天暫時讀不到已略過，按「重新整理」補抓）' : '') + ' · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
+    else setMsg((FX[id] ? '台北外匯市場成交價（鉅亨網）' : FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : FX[id] ? ' · 已更新' : ' · 已向 FinMind 更新'), 'ok');
     if (!Object.keys(NAMES).length) loadNames();
   } catch (e){
     if (seq !== loadSeq) return;
@@ -7189,7 +7309,7 @@ async function dailyRawCloses(id){
 }
 function syncWarrants(){
   const sec = document.getElementById('wSec');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
   if (!stock){ sec.hidden = true; return; }
   if (WSTATE.id === id && (WSTATE.data || WSTATE.pend)) { renderWarrants(); return; }
   WSTATE.id = id; WSTATE.data = null; WSTATE.rows = null; WSTATE.ivC = WSTATE.ivP = NaN;
@@ -7449,8 +7569,8 @@ document.getElementById('wSeg').addEventListener('click', e => { const b = e.tar
 let chipCode = null, chipTheme = null;
 function syncChips(){
   const sec = document.getElementById('chipSec'), fr = document.getElementById('chipFrame'), note = document.getElementById('chipNote');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
-  sec.hidden = !id;
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
+  sec.hidden = !id || !!FX[id];
   document.getElementById('togChips').setAttribute('aria-pressed', String(!!UI.showChips));
   if (!id) return;
   if (!stock){ fr.hidden = true; note.hidden = false; note.textContent = '大戶散戶、內部人買賣只有個股才有；台指期的籌碼請看「總覽」或「選擇權」頁。'; document.getElementById('chipLink').href = 'holders.html?v=3'; return; }
@@ -7614,7 +7734,7 @@ function valRender(id, m){
 }
 function syncVal(){
   const sec = document.getElementById('valSec'), box = document.getElementById('valBox');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && id !== 'TAIEX';
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
   sec.hidden = !stock;
   document.getElementById('togVal').setAttribute('aria-pressed', String(UI.showVal !== false));
   if (!stock) return;
@@ -7654,7 +7774,7 @@ function syncToolbar(){
   }
   nightSeg.hidden = !FUTS[UI.symbol];
   for (const b of nightSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String((b.dataset.v === '1') === !!UI.night));
-  document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol];
+  document.getElementById('togAdj').hidden = intra || !!FUTS[UI.symbol] || !!FX[UI.symbol];
   document.getElementById('togAdj').setAttribute('aria-pressed', String(!!UI.adj));
   { let after = document.getElementById('togAdj');
     for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
@@ -7722,7 +7842,7 @@ document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; s
 document.getElementById('togHPM').onclick = () => { P.hpm.on = !P.hpm.on; LS.set(PFX + 'p:hpm', P.hpm); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togQL').onclick = () => { P.ql.on = !P.ql.on; LS.set(PFX + 'p:ql', P.ql); syncToolbar(); recompute(); schedule(); };
-document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
+document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && !FX[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
 document.getElementById('togJGN').onclick = () => { UI.showJGN = !UI.showJGN; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togLive').onclick = () => { UI.live = !UI.live; saveUI(); syncToolbar(); LIVE.t = ''; liveApply(false); if (UI.live) livePoll(); };
 document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
