@@ -8,92 +8,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: EPS 預估方法回測 2
+      - name: 匯率資料來源探查
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
-          python3 - <<'PY' > out/fund.txt 2>&1 || true
-          import os, json, urllib.request, urllib.parse, statistics as S
+          python3 - <<'PY2' > out/fund.txt 2>&1 || true
+          import os, json, urllib.request, urllib.parse, time
           T = os.environ['T']
-          def js(p):
-              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T))
+          H = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
+          def get(u, hdr=True):
               try:
-                  with urllib.request.urlopen(u, timeout=120) as r: return json.loads(r.read().decode()).get('data') or []
-              except Exception as e: print('ERR', p, str(e)[:100]); return []
-          ids = '2330 2317 2454 2308 2382 2881 2882 2891 2303 3711 2412 2886 2884 1216 2885 2357 3231 2892 2345 5880 2880 2603 3008 2395 1303 2002 1301 6505 2912 4938 2379 3034 2327 2301 3045 2207 1101 2408 3037 6669 2376 2890 5871 2883 2887 1326 4904 2360 3661 2474 8046 3443 2449 6415 3017 2059 1513 2609 9910 1504'.split()
-          res = {}
-          def add(k, e):
-              res.setdefault(k, []).append(e)
-          for sid in ids:
-              fs = js({'dataset':'TaiwanStockFinancialStatements','data_id':sid,'start_date':'2020-01-01'})
-              rv = js({'dataset':'TaiwanStockMonthRevenue','data_id':sid,'start_date':'2019-01-01'})
-              eps = {}
-              for x in fs:
-                  if x['type'] == 'EPS': eps[x['date'][:7]] = x['value']
-              mon = {(x['revenue_year'], x['revenue_month']): x['revenue'] for x in rv}
-              qs = sorted(eps)
-              def qkey(s): y, m = int(s[:4]), int(s[5:7]); return y, (m + 2) // 3
-              def qrev(y, q):
-                  ms = [mon.get((y, 3*q-2+i)) for i in range(3)]
-                  return sum(ms) if all(ms) else None
-              Q = [(qkey(s), eps[s]) for s in qs]
-              R = [qrev(*k) for k, _ in Q]
-              for j in range(4, len(Q)):
-                  (y, q), act = Q[j]
-                  if abs(act) < 0.05 or R[j] is None: continue
-                  def kk(idx):
-                      e = sum(Q[i][1] for i in idx); r = [R[i] for i in idx]
-                      return None if any(v is None for v in r) else e / sum(r)
-                  ks = {'k1':kk([j-1]), 'k2':kk([j-1, j-2]), 'k4':kk([j-1, j-2, j-3, j-4])}
-                  # 去年同季利潤率
-                  ly = next((i for i in range(j) if Q[i][0] == (y-1, q)), None)
-                  if ly is not None and R[ly]: ks['kly'] = Q[ly][1] / R[ly]
-                  if ks.get('k2') is not None and ks.get('kly') is not None: ks['k2ly'] = (ks['k2'] + ks['kly']) / 2
-                  fin = sid[:2] in ('28', '58')
-                  tag = '金融' if fin else '一般'
-                  def add2(k, e): add(tag + '_' + k, e); add('全部_' + k, e)
-                  for n, k in ks.items():
-                      if k is None: continue
-                      add2('known_' + n, abs(R[j]*k - act) / abs(act))
-                  def reg(n):
-                      pts = [(R[i], Q[i][1]) for i in range(j-n, j) if i >= 0 and R[i]]
-                      if len(pts) < n - 1: return None
-                      mx = sum(a for a, _ in pts)/len(pts); my = sum(b for _, b in pts)/len(pts)
-                      vx = sum((a-mx)**2 for a, _ in pts)
-                      if vx <= 0: return None
-                      b = sum((a-mx)*(c-my) for a, c in pts)/vx
-                      # 限制斜率：不讓固定成本解釋超過合理範圍
-                      kavg = my/mx if mx else 0
-                      if kavg > 0: b = max(0.5*kavg, min(2.5*kavg, b))
-                      return lambda r: my + b*(r - mx)
-                  for n in (6, 8):
-                      f = reg(n)
-                      if f: add2(f'known_reg{n}', abs(f(R[j]) - act)/abs(act))
-                  f8 = reg(8)
-                  if ks.get('k4') is not None and f8:
-                      add2('known_mix_reg8_k4', abs((f8(R[j]) + R[j]*ks['k4'])/2 - act)/abs(act))
-                      add2('known_mix_k4_naive', abs(0.7*R[j]*ks['k4'] + 0.3*Q[j-1][1] - act)/abs(act))
-                  m0 = 3*q-2
-                  def ym(y, m):
-                      while m <= 0: y -= 1; m += 12
-                      return y, m
-                  last3 = [mon.get(ym(y, m0-1-i)) for i in range(3)]; prev3 = [mon.get(ym(y-1, m0-1-i)) for i in range(3)]
-                  lyr = qrev(y-1, q)
-                  if all(last3) and all(prev3) and lyr and ks.get('k4') is not None:
-                      g = max(-0.6, min(1.5, sum(last3)/sum(prev3) - 1))
-                      rA = lyr*(1+g); rB = sum(last3)
-                      add2('unk_naive_lastQ', abs(Q[j-1][1] - act)/abs(act))
-                      add2('unk_lyg_k4', abs(rA*ks['k4'] - act)/abs(act))
-                      add2('unk_avgR_k4', abs((rA+rB)/2*ks['k4'] - act)/abs(act))
-                      if f8:
-                          add2('unk_avgR_reg8', abs(f8((rA+rB)/2) - act)/abs(act))
-                          add2('unk_avgR_mix', abs((f8((rA+rB)/2) + (rA+rB)/2*ks['k4'])/2 - act)/abs(act))
-                      add2('unk_half_naive', abs(0.5*Q[j-1][1] + 0.5*(rA+rB)/2*ks['k4'] - act)/abs(act))
-          for k, v in sorted(res.items()):
-              v = sorted(v)
-              print(f'{k:20s} n={len(v):4d} 中位誤差 {S.median(v)*100:5.1f}%  平均(截20%尾) {S.mean(v[:int(len(v)*.8)])*100:5.1f}%  誤差<15%比例 {sum(1 for e in v if e<0.15)/len(v)*100:4.0f}%')
-          PY
+                  rq = urllib.request.Request(u, headers=H if hdr else {})
+                  with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
+              except Exception as e: return 0, str(e)[:300]
+          def fm(p):
+              st, b = get('https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(dict(p, token=T)), False)
+              try: j = json.loads(b); return j.get('status'), j.get('msg'), j.get('data') or []
+              except Exception: return st, b[:200], []
+          for ds, extra in [('TaiwanExchangeRate', {'data_id':'USD'}), ('ExchangeRate', {'data_id':'USD'}), ('TaiwanExchangeRate', {})]:
+              st, msg, d = fm(dict({'dataset':ds, 'start_date':'2026-11-01'}, **extra))
+              print('FM', ds, extra, st, msg, len(d)); [print('  ', json.dumps(x, ensure_ascii=False)) for x in d[:2] + d[-2:]]
+          st, msg, d = fm({'dataset':'TaiwanExchangeRate', 'data_id':'USD', 'start_date':'1990-01-01'}); print('FM full', len(d), d[0]['date'] if d else '')
+          for iv, rg in [('1m','7d'),('5m','60d'),('15m','60d'),('30m','60d'),('60m','730d'),('1h','730d'),('1d','max'),('1wk','max')]:
+              for host in ['query1', 'query2']:
+                  st, b = get(f'https://{host}.finance.yahoo.com/v8/finance/chart/TWD=X?interval={iv}&range={rg}')
+                  try:
+                      r = json.loads(b)['chart']['result'][0]; ts = r.get('timestamp') or []; q = r['indicators']['quote'][0]
+                      print('YH', host, iv, rg, st, len(ts), time.strftime('%Y-%m-%d %H:%M', time.gmtime(ts[0])) if ts else '', time.strftime('%Y-%m-%d %H:%M', time.gmtime(ts[-1])) if ts else '', 'o', q['open'][-1], 'h', q['high'][-1], 'l', q['low'][-1], 'c', q['close'][-1], 'tz', r['meta'].get('exchangeTimezoneName'), r['meta'].get('regularMarketPrice'))
+                      break
+                  except Exception as e: print('YH', host, iv, rg, st, 'FAIL', b[:150].replace('\n', ' '))
+          st, b = get('https://stooq.com/q/d/l/?s=usdtwd&i=d'); print('STOOQ', st, b[:120].replace('\n', ' | '), len(b))
+          st, b = get('https://www.tpefx.com.tw/'); print('TPEFX', st, len(b))
+          st, b = get('https://rate.bot.com.tw/xrt/flcsv/0/day'); print('BOT', st, b[:200].replace('\n', ' | '))
+          st, b = get('https://api.cnyes.com/media/api/v1/charting/history?resolution=5&symbol=FX:USDTWD:FOREX&quote=1'); print('CNYES', st, b[:300])
+          st, b = get('https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=5&symbol=FX:USDTWD:FOREX&quote=1'); print('CNYES2', st, b[:300])
+          PY2
           sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
         if: always()
