@@ -125,6 +125,9 @@ def main():
         out = {}
         for d, bars in days.items():
             if d not in dk: continue
+            # 台北外匯市場中午休市（12:00～14:00），Yahoo 這段的境外報價不要
+            bars = [x for x in bars if not (725 <= x[0] < 835 if P == 5 else x[0] == 720)]
+            if not bars: continue
             o, h, l, c = dk[d]
             yh = max(b[2] for b in bars); yl = min(b[3] for b in bars)
             if yh - yl <= 1e-9 or h - l <= 0: continue
