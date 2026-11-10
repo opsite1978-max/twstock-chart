@@ -1,0 +1,20 @@
+# 美股清單：一行一檔「代號 中文名」。免費版每天 20 次，最多放 18 檔（每檔每天用 1 次）。
+# 付費版（每天 10 萬次）可以放幾百檔。改完存檔，下一次自動更新就會抓。
+AAPL.US 蘋果
+MSFT.US 微軟
+NVDA.US 輝達
+GOOGL.US 谷歌
+AMZN.US 亞馬遜
+META.US Meta
+TSLA.US 特斯拉
+AVGO.US 博通
+TSM.US 台積電ADR
+AMD.US 超微
+NFLX.US 網飛
+PLTR.US Palantir
+MU.US 美光
+SPY.US 標普500ETF
+QQQ.US 那斯達克100ETF
+SMH.US 半導體ETF
+SOXL.US 半導體3倍
+TQQQ.US 那指3倍

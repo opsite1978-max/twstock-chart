@@ -1,0 +1,34 @@
+name: 美股日K（EODHD）
+on:
+  schedule:
+    - cron: '17 22 * * 1-5'   # 台灣 06:17（美股收盤後）
+    - cron: '47 1 * * 2-6'    # 台灣 09:47（備援，額度用完會自動跳過）
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['eodhd/list.txt']
+permissions:
+  contents: write
+concurrency:
+  group: eodhd-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 取出 eodhd-data 分支
+        run: git fetch -q origin eodhd-data && git worktree add -q eodhd-out origin/eodhd-data || mkdir -p eodhd-out
+      - name: 抓美股日 K
+        env:
+          EODHD_TOKEN: ${{ secrets.EODHD_TOKEN }}
+          EODHD_BUDGET: ${{ vars.EODHD_BUDGET }}
+          EODHD_INTRADAY: ${{ vars.EODHD_INTRADAY }}
+        run: python3 scripts/eodhd_data.py eodhd-out | tee ed.log; echo "::notice::$(tail -1 ed.log)"
+      - name: 推到 eodhd-data 分支
+        run: |
+          rm -rf pub && mkdir pub && cp -r eodhd-out/index.json eodhd-out/eod pub/ && { [ -d eodhd-out/intra ] && cp -r eodhd-out/intra pub/ || true; }
+          cd pub && git init -q && git checkout -q -b eodhd-data && git add -A
+          git -c user.name=eodhd-bot -c user.email=eodhd-bot@users.noreply.github.com commit -qm "美股日K $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" eodhd-data
