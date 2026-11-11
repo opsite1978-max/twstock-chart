@@ -2,8 +2,9 @@
 // 鐵底風險（Iron Bottom & Risk）— 從「戰神看盤」副圖移植，計算和網頁版一模一樣
 // 成本線＝(2×收+高+低)÷4 的 55 日指數平均；風險線＝45 日平均×1.15；S 線＝成本線×1.3；
 // 底線＝40 日平均×0.85；鐵底線＝88 日平均×0.7；價值線＝成本線和底線的中間。
-// 副圖畫的是「每條線離成本線多遠（%）」：成本線＝0 軸；白線＝收盤 3 日平均的位置；
-// 灰虛線＝趨勢線（55 日平均＋21 日斜率外推）；兩線之間色柱：持倉（灰）／減倉（黃）／主力（紅）。
+// 白線＝收盤 3 日平均離成本線幾 %，再換算成「固定上下界震盪曲線」：100＝上界、50＝中線、0＝下界；
+// 灰虛線＝趨勢線（55 日平均＋21 日斜率外推，同樣換算）；兩線之間色柱：持倉（灰）／減倉（黃）／主力（紅）。
+// 參數在加權指數 2012～2026 試過 30～120 根 × 1～2 倍，60 根 ± 1.5 倍兩段時間最穩定。
 // 動態上中下界（預設平滑通道）＝白線 60 根平均 ± 1.5 倍標準差；也可切回原版「過去 120 根的 90%／50%／10% 百分位」。
 // 平滑通道在加權指數 2012～2026 回測：底的命中率 24%→32%（2012～2018）、42%→48%（2019～2026），頂 35%→36%、14%→29%。
 // 【底】近 10 根白線曾低於下界（或收盤曾跌破底線）、白線連 2 根往上、收盤突破前一根高點。
@@ -14,13 +15,12 @@ indicator("鐵底風險", shorttitle = "鐵底風險", overlay = false, max_bars
 
 // ───── 設定 ─────
 G1 = "線與色帶"
-showLines  = input.bool(true,  "鐵底／底／價值／風險／S 線", group = G1)
-showZones  = input.bool(true,  "區間底色（鐵底～底、風險～S）", group = G1)
+showLines  = input.bool(true,  "成本／鐵底／底／價值／風險／S 線（換算到同一刻度）", group = G1)
 showRibbon = input.bool(true,  "持倉／減倉／主力色柱", group = G1)
 showTrend  = input.bool(true,  "趨勢線（灰虛線）", group = G1)
-nearOnly   = input.bool(true,  "只畫靠近白線的線（遠的線不畫，白線不會被壓扁）", group = G1)
+nearOnly   = input.bool(true,  "參考線只畫在 −40～140 之間（太遠的不畫）", group = G1)
 G1b = "上下界"
-showBand   = input.bool(true,  "顯示動態上中下界", group = G1b)
+showBand   = input.bool(true,  "超出上下界時塗色", group = G1b)
 bandMode   = input.string("平滑通道（建議）", "上下界算法", options = ["平滑通道（建議）", "原版百分位"], group = G1b)
 chLen      = input.int(60,     "平滑通道：平均的根數", minval = 10, maxval = 500, group = G1b)
 chK        = input.float(1.5,  "平滑通道：± 幾倍標準差", minval = 0.5, maxval = 4, step = 0.1, group = G1b)
@@ -51,7 +51,6 @@ cIron   = input.color(#ff1744, "鐵底線", group = G3)
 cHold   = input.color(#90a4ae, "持倉色柱", group = G3)
 cReduce = input.color(#ffd600, "減倉色柱", group = G3)
 cMain   = input.color(#ff1744, "主力色柱", group = G3)
-cBand   = input.color(#7e57c2, "上中下界", group = G3)
 cBot    = input.color(#ff1744, "底", group = G3)
 cTop    = input.color(#00c853, "頂", group = G3)
 
@@ -185,65 +184,65 @@ if bar_index >= 3 and not na(Xp[3])
         if starTop and not na(vMa)
             topStar := (hh10 / ll20 - 1) * 100 > starRise and vx5 > starVol * vMa
 
-// ───── 畫圖 ─────
+// ───── 畫圖：固定上下界震盪曲線 ─────
+// 震盪值＝白線在動態上下界裡的位置：100＝上界、50＝中線、0＝下界（超出時可以大於 100 或小於 0）
+// 訊號條件不變：震盪值低於 0 ＝白線低於下界，高於 100 ＝白線高於上界
+float bMid = na(UB) or na(LB) ? na : (UB + LB) / 2
+float bW = na(UB) or na(LB) ? na : UB - LB
+osc(float x) => na(bW) or bW <= 0 ? na : 50 + 100 * (x - bMid) / bW
+float Z  = osc(Xp)
+float Zw = osc(Wp)
+
 bool isLight = color.r(chart.bg_color) + color.g(chart.bg_color) + color.b(chart.bg_color) > 382
 color cPx = isLight and cPxIn == #e8edf4 ? #2a3140 : cPxIn
+color cAxis = isLight ? #000000 : #ffffff
 
-// 只畫靠近白線的線：範圍＝白線、趨勢線、上下界再往外加一段（至少 3%）
-float span = na(UB) or na(LB) ? 10.0 : math.max(3.0, (UB - LB) * 0.6)
-float vLo = math.min(Xp, nz(Wp, Xp), nz(LB, Xp)) - span
-float vHi = math.max(Xp, nz(Wp, Xp), nz(UB, Xp)) + span
-near(float v) => not nearOnly or (v >= vLo and v <= vHi) ? v : na
-float nS = near(Sp)
-float nR = near(Rp)
-float nV = near(Vp)
-float nB = near(Bp)
-float nI = near(Ip)
+// 換算到同一刻度的參考線：只畫在 −40～140 之間的（太遠的不畫，曲線不會被壓扁）
+nearZ(float v) => not nearOnly or (v >= -40 and v <= 140) ? v : na
+float zS = nearZ(osc(Sp))
+float zR = nearZ(osc(Rp))
+float zV = nearZ(osc(Vp))
+float zC = nearZ(osc(0))
+float zB = nearZ(osc(Bp))
+float zI = nearZ(osc(Ip))
 
-// 區間底色（用隱形的線當邊界）
-pR  = plot(nR, "風險（邊界）", display = display.none)
-pS  = plot(nS, "S（邊界）", display = display.none)
-pB  = plot(nB, "底（邊界）", display = display.none)
-pI  = plot(nI, "鐵底（邊界）", display = display.none)
-pIx = plot(na(nI) ? na : math.min(nI, Xp), "跌破鐵底（邊界）", display = display.none)
-pSx = plot(na(nS) ? na : math.max(nS, Xp), "超過 S（邊界）", display = display.none)
-fill(pR, pS,  showZones ? color.new(cRisk, 91) : na, "風險～S 線")
-fill(pB, pI,  showZones ? color.new(cBotL, 90) : na, "鐵底～底線")
-fill(pI, pIx, showZones ? color.new(cIron, 80) : na, "跌破鐵底線")
-fill(pS, pSx, showZones ? color.new(cS, 80) : na, "超過 S 線")
+// 固定上下界
+plot(100, "上界（固定 100）", color = cAxis, linewidth = 2, editable = true)
+plot(50,  "中線（固定 50）",  color = color.new(cAxis, 50), linewidth = 1, linestyle = plot.linestyle_dashed)
+plot(0,   "下界（固定 0）",   color = cAxis, linewidth = 2)
 
-// 成本線＝0 軸
-hline(0, "成本線", color = color.new(cCost, 20), linestyle = hline.style_solid, linewidth = 1)
+// 超出上下界塗色
+p100 = plot(100, "上界（邊界）", display = display.none)
+p0   = plot(0, "下界（邊界）", display = display.none)
+pZhi = plot(showBand ? math.max(100, nz(Z, 100)) : na, "高於上界（邊界）", display = display.none)
+pZlo = plot(showBand ? math.min(0, nz(Z, 0)) : na, "低於下界（邊界）", display = display.none)
+fill(p100, pZhi, color.new(cTop, 65), "高於上界")
+fill(p0, pZlo, color.new(cBot, 65), "低於下界")
 
-plot(showLines ? nS : na, "S 線", color = color.new(cS, 25), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dashed)
-plot(showLines ? nR : na, "風險線", color = color.new(cRisk, 25), linewidth = 1, style = plot.style_linebr)
-plot(showLines ? nV : na, "價值線", color = color.new(cVal, 25), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted)
-plot(showLines ? nB : na, "底線", color = color.new(cBotL, 25), linewidth = 1, style = plot.style_linebr)
-plot(showLines ? nI : na, "鐵底線", color = color.new(cIron, 25), linewidth = 2, style = plot.style_linebr)
+// 參考線（換算後）
+plot(showLines ? zS : na, "S 線", color = color.new(cS, 30), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(showLines ? zR : na, "風險線", color = color.new(cRisk, 30), linewidth = 1, style = plot.style_linebr)
+plot(showLines ? zC : na, "成本線", color = color.new(cCost, 30), linewidth = 1, style = plot.style_linebr)
+plot(showLines ? zV : na, "價值線", color = color.new(cVal, 30), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted)
+plot(showLines ? zB : na, "底線", color = color.new(cBotL, 30), linewidth = 1, style = plot.style_linebr)
+plot(showLines ? zI : na, "鐵底線", color = color.new(cIron, 30), linewidth = 2, style = plot.style_linebr)
 
-// 動態上中下界
-pUB  = plot(showBand ? UB : na, "上界", color = color.new(cBand, 15), linewidth = 2)
-plot(showBand ? MB : na, "中界", color = color.new(cBand, 45), linestyle = plot.linestyle_dashed)
-pLB  = plot(showBand ? LB : na, "下界", color = color.new(cBand, 15), linewidth = 2)
-pUBx = plot(showBand ? math.max(UB, Xp) : na, "高於上界（邊界）", display = display.none)
-pLBx = plot(showBand ? math.min(LB, Xp) : na, "低於下界（邊界）", display = display.none)
-fill(pUB, pUBx, color.new(cTop, 70), "高於上界")
-fill(pLB, pLBx, color.new(cBot, 70), "低於下界")
+// 持倉／減倉／主力色柱（震盪曲線和趨勢線之間）
+color rc = st == 2 ? color.new(cMain, 45) : st == 1 ? color.new(cReduce, 45) : color.new(cHold, 65)
+plotcandle(showRibbon ? Zw : na, showRibbon ? math.max(Zw, Z) : na, showRibbon ? math.min(Zw, Z) : na, showRibbon ? Z : na, "色柱", color = rc, wickcolor = rc, bordercolor = rc)
+plot(showTrend ? Zw : na, "趨勢線", color = color.new(cTrend, 20), linewidth = 1, linestyle = plot.linestyle_dashed)
 
-// 持倉／減倉／主力色柱（白線和趨勢線之間）
-color rc = st == 2 ? color.new(cMain, 40) : st == 1 ? color.new(cReduce, 40) : color.new(cHold, 62)
-plotcandle(showRibbon ? Wp : na, showRibbon ? math.max(Wp, Xp) : na, showRibbon ? math.min(Wp, Xp) : na, showRibbon ? Xp : na, "色柱", color = rc, wickcolor = rc, bordercolor = rc)
-
-plot(showTrend ? Wp : na, "趨勢線", color = color.new(cTrend, 20), linewidth = 1, linestyle = plot.linestyle_dashed)
-plot(Xp, "收盤位置（%）", color = cPx, linewidth = 2)
+// 震盪曲線：高於上界綠、低於下界紅
+color zc = Z > 100 ? cTop : Z < 0 ? cBot : cPx
+plot(Z, "震盪曲線", color = zc, linewidth = 2)
 
 // 原版訊號
-plotshape(showOrig and sigDY ? Bp : na, "多陰", shape.labelup, location.absolute, color.new(#ffffff, 100), text = "多陰", textcolor = #ffffff, size = size.tiny)
-plotshape(showOrig and sigQF ? Ip : na, "潛伏", shape.labelup, location.absolute, color.new(#ffd600, 100), text = "潛伏", textcolor = #ffd600, size = size.tiny)
+plotshape(showOrig and sigDY ? -12 : na, "多陰", shape.labelup, location.absolute, color.new(#ffffff, 100), text = "多陰", textcolor = isLight ? #444444 : #ffffff, size = size.tiny)
+plotshape(showOrig and sigQF ? -24 : na, "潛伏", shape.labelup, location.absolute, color.new(#ffd600, 100), text = "潛伏", textcolor = #ffb300, size = size.tiny)
 
 // 副圖：底、底★、頂、頂★
-float yBot = math.min(Xp, nz(LB, Xp))
-float yTop = math.max(Xp, nz(UB, Xp))
+float yBot = math.min(nz(Z, 0), 0)
+float yTop = math.max(nz(Z, 100), 100)
 plotshape(showBot and botSig and not botStar ? yBot : na, "底", shape.labelup, location.absolute, cBot, text = "底", textcolor = color.white, size = size.small)
 plotshape(showBot and botSig and botStar ? yBot : na, "底★", shape.labelup, location.absolute, cBot, text = "底★", textcolor = color.white, size = size.small)
 plotshape(showTop and topSig and not topStar ? yTop : na, "頂", shape.labeldown, location.absolute, cTop, text = "頂", textcolor = color.white, size = size.small)
