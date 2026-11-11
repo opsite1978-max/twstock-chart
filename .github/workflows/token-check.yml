@@ -21,24 +21,19 @@ jobs:
               except Exception as e: return 0, '', str(e)[:200].encode()
           import io, zipfile
           B = 'https://www.taifex.com.tw/file/taifex/Dailydownload/vix/'
-          for ym in ['202611', '202610', '202501', '202301', '202001', '201801', '201501', '201201', '200901', '200612']:
-              st, ct, b = get(B + 'log2data/' + ym + 'new.txt')
-              ok = st == 200 and b'<HTML' not in b[:200].upper()
-              print('DAY', ym, st, len(b), ok)
-              if ok and ym in ('202611', '202001', '200901'): print('   ', b[:600].decode('big5', 'replace').replace('\r', '').replace('\n', ' | '))
-          for ym in ['202610', '202501', '202301', '202001', '201801', '201501']:
-              u = B + 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數_新VIX.zip')
-              st, ct, b = get(u)
-              ok = b[:2] == b'PK'
-              print('MIN', ym, st, len(b), ok)
-              if ok:
-                  z = zipfile.ZipFile(io.BytesIO(b)); names = z.namelist(); print('   files', len(names), names[:3])
-                  if ym in ('202610', '201501'):
-                      t = z.read(names[0]).decode('big5', 'replace').replace('\r', '')
-                      ls = t.split('\n'); print('   lines', len(ls)); print('   ', ' | '.join(ls[:6])); print('   ', ' | '.join(ls[-4:]))
-          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew']:
-              st, ct, b = get(u); t = b.decode('utf-8', 'replace')
-              for m in re.findall(r"window.open\('([^']+)'\)", t)[:12]: print('   CUR', m)
+          def ok(b): return b[:2] == b'PK' or (len(b) > 300 and b'<HTML' not in b[:300].upper())
+          for ym in ['202607', '202606', '202601', '202501', '202301', '202001', '201501', '200901']:
+              for name in ['log2data/' + ym + 'new.txt', 'log2data/' + ym + '.txt', 'log2data/' + ym + 'old.txt', 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數.zip'), 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數_新VIX.zip'), 'logdata/' + ym + '.zip']:
+                  st, ct, b = get(B + name)
+                  if ok(b):
+                      print('OK', name, len(b)); 
+                      if name.endswith('.txt'): print('   ', b[:400].decode('big5', 'replace').replace('\r', '').replace('\n', ' | '))
+          for u in ['https://www.taifex.com.tw/cht/7/vixQA', 'https://www.taifex.com.tw/cht/7/vixMinNew']:
+              st, ct, b = get(u); t = re.sub(r'<[^>]+>', ' ', b.decode('utf-8', 'replace')); t = re.sub(r'\s+', ' ', t)
+              for k in [m.start() for m in re.finditer('新VIX|舊|歷史|起', t)][:6]: print('   TXT', t[max(0, k-150):k+250])
+          # FinMind 資料集清單裡有沒有波動率
+          st, ct, b = get('https://api.finmindtrade.com/api/v4/datalist?dataset=TaiwanOptionDaily')
+          st, ct, b = get('https://api.finmindtrade.com/api/v4/translation?dataset=TaiwanOptionDaily'); print('FMT', st, b[:200])
           PY2
       - name: 保存結果
         if: always()
