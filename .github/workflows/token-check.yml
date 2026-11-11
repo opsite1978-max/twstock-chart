@@ -19,17 +19,26 @@ jobs:
                   rq = urllib.request.Request(u, data=data, headers=H)
                   with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.headers.get('content-type'), r.read()
               except Exception as e: return 0, '', str(e)[:200].encode()
-          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew', 'https://www.taifex.com.tw/cht/7/vixDaily3MNew', 'https://www.taifex.com.tw/cht/7/vixMin3MNew']:
+          import io, zipfile
+          B = 'https://www.taifex.com.tw/file/taifex/Dailydownload/vix/'
+          for ym in ['202611', '202610', '202501', '202301', '202001', '201801', '201501', '201201', '200901', '200612']:
+              st, ct, b = get(B + 'log2data/' + ym + 'new.txt')
+              ok = st == 200 and b'<HTML' not in b[:200].upper()
+              print('DAY', ym, st, len(b), ok)
+              if ok and ym in ('202611', '202001', '200901'): print('   ', b[:600].decode('big5', 'replace').replace('\r', '').replace('\n', ' | '))
+          for ym in ['202610', '202501', '202301', '202001', '201801', '201501']:
+              u = B + 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數_新VIX.zip')
+              st, ct, b = get(u)
+              ok = b[:2] == b'PK'
+              print('MIN', ym, st, len(b), ok)
+              if ok:
+                  z = zipfile.ZipFile(io.BytesIO(b)); names = z.namelist(); print('   files', len(names), names[:3])
+                  if ym in ('202610', '201501'):
+                      t = z.read(names[0]).decode('big5', 'replace').replace('\r', '')
+                      ls = t.split('\n'); print('   lines', len(ls)); print('   ', ' | '.join(ls[:6])); print('   ', ' | '.join(ls[-4:]))
+          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew']:
               st, ct, b = get(u); t = b.decode('utf-8', 'replace')
-              print('PAGE', u, st, len(b))
-              k = t.find('<main') if '<main' in t else t.find('id="printhere"')
-              body = re.sub(r'<script[\s\S]*?</script>', '', t)
-              for m in re.findall(r'<(?:form|a|button|input)[^>]*(?:action|onclick|href|download)[^>]*>', body):
-                  if re.search(r'vix|down|txt|csv|zip|Down|file', m, re.I): print('   ', m[:220])
-              for m in re.findall(r'<script[^>]*>([\s\S]*?)</script>', t):
-                  if re.search(r'vix|down|file', m, re.I): print('   SCRIPT', re.sub(r'\s+', ' ', m)[:900])
-              tx = re.sub(r'<[^>]+>', ' ', body); tx = re.sub(r'\s+', ' ', tx)
-              k = tx.find('波動率'); print('   TEXT', tx[k:k+1500])
+              for m in re.findall(r"window.open\('([^']+)'\)", t)[:12]: print('   CUR', m)
           PY2
       - name: 保存結果
         if: always()
