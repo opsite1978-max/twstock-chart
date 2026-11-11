@@ -327,7 +327,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/11 22:30・波動率轉折</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/11 22:00・波動率震盪</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -958,14 +958,13 @@ SCHEMA.km = { tab:'KD+MACD', title:'KD＋MACD 合一（照你提供的通達信�
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
   ]}
 ]};
-SCHEMA.vxt = { tab:'波動率轉折', title:'波動率轉折（臺指選擇權波動率指數＋動態上中下界）：副圖畫臺指波動率（2026/3 起是期交所官方數字、有開高低收；更早是用每天台指選擇權結算價照官方同樣的 Cboe 公式自己算，和官方重疊的 173 天相關係數 0.997、平均只差 0.24）。中線＝波動率 40 根指數平均（虛線），上界／下界＝中線 ± 2 倍 40 根標準差（實線）。上界以上淡紅＝恐慌區，下界以下淡藍＝自滿區。所有股票、期貨都可以開（看的是整個台股的恐慌程度）；日、週、月線用每日資料，分 K 用官方 15 秒資料（2026/3 起，要貼 FinMind 憑證）。【買＝恐慌退潮】最近 5 根內波動率曾在上界以上，今天收回上界以下、而且比前一根低。【回測】2012～2026 年 3,632 個交易日（加權指數），分訓練（2012～2019）和測試（2020 以後）：買訊之後 10 天比平常多賺 0.94%／0.51%，10 天勝率 71%／70%；但 20 天在測試期沒有比平常好，所以它是「波段反彈」訊號，不是長抱訊號。訊號大多出現在真正低點之後 1～2 天（例如 2026/11/6 低點、11/10 出訊號）。進場後 10 天內中位數最大虧損約 −0.7%／−1.2%。【賣】波動率的賣訊（跌破下界後回升、往上穿越上界、指數新高但波動率同漲）測了 4 種、幾十組參數，測試期都沒有效果（台股 2020 年後長多，波動率低不代表會跌），所以預設不標；要看可以在下面打開，但請當作參考。【恐慌區本身】波動率在上界以上的日子，之後 20 天加權指數平均漲 1.33%／3.91%，是平常（0.53%／1.82%）的 2 倍以上，但當天常常還沒到底，恐慌可以持續好幾天。', groups:[
+SCHEMA.vxt = { tab:'波動率轉折', title:'波動率轉折（臺指選擇權波動率指數＋動態上中下界）：副圖畫臺指波動率（2026/3 起是期交所官方數字、有開高低收；更早是用每天台指選擇權結算價照官方同樣的 Cboe 公式自己算，和官方重疊的 173 天相關係數 0.997、平均只差 0.24）。畫成震盪曲線：波動率在動態上下界裡的位置，換算成固定刻度——100＝上界（恐慌線）、50＝中線、0＝下界（自滿線）；動態上下界＝波動率 40 根指數平均 ± 2 倍 40 根標準差。曲線超過 100 塗淡紅＝恐慌區，低於 0 塗淡藍＝自滿區。圖例同時顯示波動率本身和當下的界線數值。所有股票、期貨都可以開（看的是整個台股的恐慌程度）；日、週、月線用每日資料，分 K 用官方 15 秒資料（2026/3 起，要貼 FinMind 憑證）。【買＝恐慌退潮】最近 5 根內震盪曲線曾在 100（恐慌線）以上，今天跌回 100 以下、而且波動率比前一根低。【回測】2012～2026 年 3,632 個交易日（加權指數），分訓練（2012～2019）和測試（2020 以後）：買訊之後 10 天比平常多賺 0.94%／0.51%，10 天勝率 71%／70%；但 20 天在測試期沒有比平常好，所以它是「波段反彈」訊號，不是長抱訊號。訊號大多出現在真正低點之後 1～2 天（例如 2026/11/6 低點、11/10 出訊號）。進場後 10 天內中位數最大虧損約 −0.7%／−1.2%。【賣】波動率的賣訊（跌破下界後回升、往上穿越上界、指數新高但波動率同漲）測了 4 種、幾十組參數，測試期都沒有效果（台股 2020 年後長多，波動率低不代表會跌），所以預設不標；要看可以在下面打開，但請當作參考。【恐慌區本身】波動率在上界以上的日子，之後 20 天加權指數平均漲 1.33%／3.91%，是平常（0.53%／1.82%）的 2 倍以上，但當天常常還沒到底，恐慌可以持續好幾天。', groups:[
   { name:'上中下界', items:[
     {k:'len', l:'中線、標準差的根數', t:'int', d:40, min:5, max:250},
     {k:'k', l:'上下界＝中線 ± 幾倍標準差', t:'float', d:2, min:0.5, max:4, step:0.1},
     {k:'logScale', l:'用對數計算（波動率越高、界線越寬）', t:'bool', d:false},
-    {k:'showBand', l:'顯示上中下界和恐慌／自滿區', t:'bool', d:true},
-    {k:'showMA', l:'中線外另外畫一條淡色均線', t:'bool', d:false}
-  ]},
+    {k:'showBand', l:'恐慌線以上、自滿線以下塗色', t:'bool', d:true},
+      ]},
   { name:'訊號', items:[
     {k:'showSig', l:'副圖標「買」「賣」', t:'bool', d:true},
     {k:'buyRule', l:'買訊（恐慌退潮是回測過的）', t:'select', d:'恐慌退潮', o:['恐慌退潮','高點回落','不標']},
@@ -975,7 +974,7 @@ SCHEMA.vxt = { tab:'波動率轉折', title:'波動率轉折（臺指選擇權�
     {k:'gap', l:'兩個訊號至少隔幾根', t:'int', d:10, min:1, max:60}
   ]},
   { name:'顏色', items:[
-    {k:'cLine', l:'自算波動率的線', t:'color', d:'#ffb300'},
+    {k:'cLine', l:'震盪曲線', t:'color', d:'#ffb300'},
     {k:'cBuy', l:'買、恐慌區', t:'color', d:'#ff1744'},
     {k:'cSell', l:'賣、自滿區', t:'color', d:'#2979ff'}
   ]}
@@ -5703,7 +5702,7 @@ function calcVXT(B, p){
     return { error:VXD.err || '波動率資料載入中…' };
   }
   // 動態上中下界：中線＝波動率的 n 根指數平均；上下界＝中線 ± k 倍 n 根標準差（只用有資料的 K 棒）
-  const M = nanArr(n), U = nanArr(n), D = nanArr(n), a = 2 / (p.len + 1), win = [];
+  const M = nanArr(n), U = nanArr(n), D = nanArr(n), Z = nanArr(n), a = 2 / (p.len + 1), win = [];
   let m = NaN;
   for (let i = 0; i < n; i++){
     const v = p.logScale ? Math.log(C[i]) : C[i];
@@ -5714,6 +5713,7 @@ function calcVXT(B, p){
     const mu = win.reduce((s, x) => s + x, 0) / win.length, sd = Math.sqrt(win.reduce((s, x) => s + (x - mu) ** 2, 0) / win.length);
     const f = p.logScale ? Math.exp : (x => x);
     M[i] = f(m); U[i] = f(m + p.k * sd); D[i] = f(m - p.k * sd);
+    Z[i] = sd > 0 ? 50 + 50 * (v - m) / (p.k * sd) : 50;
   }
   // 轉折訊號
   const buy = new Uint8Array(n), sell = new Uint8Array(n), ev = [], tag = Array.from({ length:n }, () => []);
@@ -5726,51 +5726,40 @@ function calcVXT(B, p){
       let s = false;
       if (p.buyRule === '恐慌退潮') s = look.some(t => C[t] > U[t]) && C[i] < U[i] && C[i] < C[j];
       else { let pk = look.concat([i]).reduce((x, t) => C[t] > C[x] ? t : x, i); s = C[pk] > U[pk] && C[i] <= C[pk] * (1 - p.drop / 100) && C[j] > C[pk] * (1 - p.drop / 100); }
-      if (s && q - lb >= p.gap){ buy[i] = 1; lb = q; tag[i].push(['恐慌退潮・買', p.cBuy]); if (p.showSig) ev.push({ i, y:H[i], shape:'labelDown', text:'買', col:p.cBuy, tcol:'#fff', size:0.9 }); }
+      if (s && q - lb >= p.gap){ buy[i] = 1; lb = q; tag[i].push(['恐慌退潮・買', p.cBuy]); if (p.showSig) ev.push({ i, y:Z[i], shape:'labelDown', text:'買', col:p.cBuy, tcol:'#fff', size:0.9 }); }
     }
     if (p.sellRule !== '不標'){
       let s = false;
       if (p.sellRule === '自滿結束') s = look.some(t => C[t] < D[t]) && C[i] > D[i] && C[i] > C[j];
       else s = C[i] > U[i] && C[j] <= U[j];
-      if (s && q - ls >= p.gap){ sell[i] = 1; ls = q; tag[i].push([p.sellRule + '・賣', p.cSell]); if (p.showSig) ev.push({ i, y:L[i], shape:'labelUp', text:'賣', col:p.cSell, tcol:'#fff', size:0.9 }); }
+      if (s && q - ls >= p.gap){ sell[i] = 1; ls = q; tag[i].push([p.sellRule + '・賣', p.cSell]); if (p.showSig) ev.push({ i, y:Z[i], shape:'labelUp', text:'賣', col:p.cSell, tcol:'#fff', size:0.9 }); }
     }
   }
-  return { O, H, L, C, M, U, D, src, buy, sell, ev, tag };
+  return { O, H, L, C, M, U, D, Z, src, buy, sell, ev, tag };
 }
 function drawVXT(p, i0, i1, ci){
   const r = R.vxt, q = P.vxt;
-  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['波動率轉折  ' + (r ? r.error : ''), r && /載入中/.test(r.error) ? CC.axis : '#ef6a5f']]], p.top); return; }
-  const arrs = [r.C, r.H, r.L]; if (q.showBand) arrs.push(r.U, r.D);
-  const [mn, mx] = extent(arrs, i0, i1, markerExtra(r.ev, i0, i1)), pad = (mx - mn) * 0.08 || 1;
-  S = makeScale(p.top, p.h, ...rng('vxt', mn - pad, mx + pad), 26, 8);
-  gridAndAxis(1);
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['臺指波動率  ' + (r ? r.error : ''), r && /載入中/.test(r.error) ? CC.axis : '#ef6a5f']]], p.top); return; }
+  // 震盪曲線：波動率在動態上下界裡的位置。固定界線：100＝上界（恐慌線）、50＝中線、0＝下界（自滿線）
+  const [mn0, mx0] = extent([r.Z], i0, i1, markerExtra(r.ev, i0, i1));
+  const mn = Math.min(-15, mn0 - 5), mx = Math.max(115, mx0 + 5);
+  S = makeScale(p.top, p.h, ...rng('vxt', mn, mx), 26, 8);
+  gridAndAxis(0);
+  const W = plotW(), hl = (v, al, dash, w) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = rgba(CC.text, al); ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
   if (q.showBand){
-    // 上界以上淡紅、下界以下淡藍：恐慌區／自滿區
-    fillBetween(i => r.U[i], i => Math.max(r.U[i], r.H[i]), () => rgba(q.cBuy, 82), i0, i1);
-    fillBetween(i => Math.min(r.D[i], r.L[i]), i => r.D[i], () => rgba(q.cSell, 82), i0, i1);
-    strokeSeries(i => r.U[i], () => CC.text, i0, i1, 1.3);
-    strokeSeries(i => r.D[i], () => CC.text, i0, i1, 1.3);
-    strokeSeries(i => r.M[i], () => rgba(CC.text, 45), i0, i1, 1, [5, 4]);
+    fillBetween(() => 100, i => Math.max(100, r.Z[i]), () => rgba(q.cBuy, 55), i0, i1);
+    fillBetween(i => Math.min(0, r.Z[i]), () => 0, () => rgba(q.cSell, 55), i0, i1);
   }
-  // 有開高低收（官方）畫 K 棒；自算的只有收盤，畫線
-  const bw = Math.max(1, Math.min(view.barW * 0.62, 9));
-  ctx.lineWidth = 1;
-  for (let i = i0; i <= i1; i++){
-    if (isNaN(r.C[i])) continue;
-    if (r.src[i] === 'C'){ continue; }
-    const up = r.C[i] >= r.O[i], col = up ? CC.up : CC.down, x = X(i);
-    ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, S.y(r.H[i])); ctx.lineTo(Math.round(x) + 0.5, S.y(r.L[i])); ctx.stroke();
-    const y1 = S.y(Math.max(r.O[i], r.C[i])), y2 = S.y(Math.min(r.O[i], r.C[i]));
-    ctx.fillStyle = col; ctx.fillRect(x - bw / 2, y1, bw, Math.max(1, y2 - y1));
-  }
-  strokeSeries(i => r.src[i] === 'C' || (i > 0 && r.src[i - 1] === 'C') ? r.C[i] : NaN, () => q.cLine, i0, i1, 1.4);
-  if (q.showMA){ strokeSeries(i => r.M[i], () => rgba(q.cLine, 70), i0, i1, 1); }
+  hl(100, 0, [], 1.4); hl(0, 0, [], 1.4); hl(50, 50, [5, 4], 1);
+  ctx.font = '11px "Noto Sans TC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillStyle = rgba(CC.text, 45);
+  ctx.fillText('恐慌線', 4, S.y(100) - 2); ctx.textBaseline = 'top'; ctx.fillText('自滿線', 4, S.y(0) + 2);
+  strokeSeries(i => r.Z[i], i => r.Z[i] > 100 ? q.cBuy : r.Z[i] < 0 ? q.cSell : q.cLine, i0, i1, 1.7);
   visibleMarkers(r.ev, i0, i1);
-  let li = B.n - 1; while (li > 0 && isNaN(r.C[li])) li--;
-  if (!isNaN(r.C[li])) axisTag(r.C[li], r.C[li] > r.U[li] ? q.cBuy : r.C[li] < r.D[li] ? q.cSell : CC.text, UI.theme === 'light' ? '#fff' : '#000', v => fmtNum(v, 2));
-  let k = ci; if (isNaN(r.C[k])) { k = ci; while (k > 0 && isNaN(r.C[k])) k--; }
-  const c = r.C[k], zone = c > r.U[k] ? '恐慌區（高於上界）' : c < r.D[k] ? '自滿區（低於下界）' : c >= r.M[k] ? '中線之上' : '中線之下';
-  const parts = [['臺指波動率', CC.axis], [fmtNum(c, 2), CC.text], ['上 ' + fmtNum(r.U[k], 1), CC.axis], ['中 ' + fmtNum(r.M[k], 1), CC.axis], ['下 ' + fmtNum(r.D[k], 1), CC.axis], [zone, c > r.U[k] ? q.cBuy : c < r.D[k] ? q.cSell : CC.axis]];
+  let li = B.n - 1; while (li > 0 && isNaN(r.Z[li])) li--;
+  if (!isNaN(r.Z[li])) axisTag(r.Z[li], r.Z[li] > 100 ? q.cBuy : r.Z[li] < 0 ? q.cSell : q.cLine, '#000', v => fmtNum(v, 0));
+  let k = ci; while (k > 0 && isNaN(r.Z[k])) k--;
+  const z = r.Z[k], zone = z > 100 ? '恐慌區（高於恐慌線）' : z < 0 ? '自滿區（低於自滿線）' : z >= 50 ? '中線之上' : '中線之下';
+  const parts = [['臺指波動率', CC.axis], ['震盪 ' + fmtNum(z, 0), z > 100 ? q.cBuy : z < 0 ? q.cSell : q.cLine], ['波動率 ' + fmtNum(r.C[k], 2), CC.text], ['界線 ' + fmtNum(r.D[k], 1) + '～' + fmtNum(r.U[k], 1), CC.axis], [zone, z > 100 ? q.cBuy : z < 0 ? q.cSell : CC.axis]];
   if (r.src[k] === 'C') parts.push(['自算', CC.axis]); else if (r.src[k] === 'L') parts.push(['盤中', CC.axis]);
   for (const tg of r.tag[k] || []) parts.push(tg);
   legend([parts], p.top);
