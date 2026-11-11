@@ -327,7 +327,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/10 15:30・美元台幣</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/11 22:30・波動率轉折</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -379,6 +379,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togDK" aria-pressed="true" title="多空趨勢（通達信公式＋回測優化的底、頂）">多空趨勢</button>
     <button class="tog" id="togBD" aria-pressed="true" title="神奇波段頂底：短波／長波、動態上下界、優化的底與頂">神奇波段</button>
     <button class="tog" id="togKM" aria-pressed="true" title="KD＋MACD 合一：動態上中下界、雙金叉底、頂★">KD+MACD</button>
+    <button class="tog" id="togVXT" aria-pressed="true" title="波動率轉折：臺指選擇權波動率指數＋動態上中下界，恐慌退潮標「買」（回測過）">波動率轉折</button>
     <button class="tog" id="togKMO" aria-pressed="true" title="KD MACD 原版：照通達信公式畫 K 白／D 黃（往上紅／洋紅）、MACD 紅綠帶、5／10 日線短柱、20／50／80 點線、KD 金叉死叉箭頭">KD MACD 原版</button>
     <button class="tog" id="togYM" aria-pressed="true" title="黃柱 MACD：動能加速的黃柱、動態上中下界、回測優化的底與頂">黃柱MACD</button>
     <button class="tog" id="togSDB" aria-pressed="true" title="發現短底：MACD 紅黃柱、DIF／DEA 強度加粗、DEA ≤ −0.07 的金叉標「底」（洋紅長柱）、動態上中下界、深底">發現短底</button>
@@ -955,6 +956,28 @@ SCHEMA.km = { tab:'KD+MACD', title:'KD＋MACD 合一（照你提供的通達信�
     {k:'cBand', l:'上中下界', t:'color', d:'#40c4ff'},
     {k:'cBot', l:'底', t:'color', d:'#ff1744'},
     {k:'cTop', l:'頂', t:'color', d:'#00c853'}
+  ]}
+]};
+SCHEMA.vxt = { tab:'波動率轉折', title:'波動率轉折（臺指選擇權波動率指數＋動態上中下界）：副圖畫臺指波動率（2026/3 起是期交所官方數字、有開高低收；更早是用每天台指選擇權結算價照官方同樣的 Cboe 公式自己算，和官方重疊的 173 天相關係數 0.997、平均只差 0.24）。中線＝波動率 40 根指數平均（虛線），上界／下界＝中線 ± 2 倍 40 根標準差（實線）。上界以上淡紅＝恐慌區，下界以下淡藍＝自滿區。所有股票、期貨都可以開（看的是整個台股的恐慌程度）；日、週、月線用每日資料，分 K 用官方 15 秒資料（2026/3 起，要貼 FinMind 憑證）。【買＝恐慌退潮】最近 5 根內波動率曾在上界以上，今天收回上界以下、而且比前一根低。【回測】2012～2026 年 3,632 個交易日（加權指數），分訓練（2012～2019）和測試（2020 以後）：買訊之後 10 天比平常多賺 0.94%／0.51%，10 天勝率 71%／70%；但 20 天在測試期沒有比平常好，所以它是「波段反彈」訊號，不是長抱訊號。訊號大多出現在真正低點之後 1～2 天（例如 2026/11/6 低點、11/10 出訊號）。進場後 10 天內中位數最大虧損約 −0.7%／−1.2%。【賣】波動率的賣訊（跌破下界後回升、往上穿越上界、指數新高但波動率同漲）測了 4 種、幾十組參數，測試期都沒有效果（台股 2020 年後長多，波動率低不代表會跌），所以預設不標；要看可以在下面打開，但請當作參考。【恐慌區本身】波動率在上界以上的日子，之後 20 天加權指數平均漲 1.33%／3.91%，是平常（0.53%／1.82%）的 2 倍以上，但當天常常還沒到底，恐慌可以持續好幾天。', groups:[
+  { name:'上中下界', items:[
+    {k:'len', l:'中線、標準差的根數', t:'int', d:40, min:5, max:250},
+    {k:'k', l:'上下界＝中線 ± 幾倍標準差', t:'float', d:2, min:0.5, max:4, step:0.1},
+    {k:'logScale', l:'用對數計算（波動率越高、界線越寬）', t:'bool', d:false},
+    {k:'showBand', l:'顯示上中下界和恐慌／自滿區', t:'bool', d:true},
+    {k:'showMA', l:'中線外另外畫一條淡色均線', t:'bool', d:false}
+  ]},
+  { name:'訊號', items:[
+    {k:'showSig', l:'副圖標「買」「賣」', t:'bool', d:true},
+    {k:'buyRule', l:'買訊（恐慌退潮是回測過的）', t:'select', d:'恐慌退潮', o:['恐慌退潮','高點回落','不標']},
+    {k:'drop', l:'「高點回落」要回落幾 %', t:'float', d:12, min:3, max:40, step:1},
+    {k:'look', l:'最近幾根內曾在上界以上（下界以下）', t:'int', d:5, min:1, max:30},
+    {k:'sellRule', l:'賣訊（回測沒有效果，預設不標）：自滿結束＝跌破下界後收回下界以上；恐慌開始＝往上穿越上界', t:'select', d:'不標', o:['不標','自滿結束','恐慌開始']},
+    {k:'gap', l:'兩個訊號至少隔幾根', t:'int', d:10, min:1, max:60}
+  ]},
+  { name:'顏色', items:[
+    {k:'cLine', l:'自算波動率的線', t:'color', d:'#ffb300'},
+    {k:'cBuy', l:'買、恐慌區', t:'color', d:'#ff1744'},
+    {k:'cSell', l:'賣、自滿區', t:'color', d:'#2979ff'}
   ]}
 ]};
 SCHEMA.kmo = { tab:'KD MACD 原版', title:'KD MACD 原版（照你 11/10 提供的通達信公式逐條移植，畫法和顏色照原公式）：RSV＝9 日隨機值的 3 日指數平均，K＝RSV 的 3 日指數平均（白線，往上的那段加畫紅），D＝K 的 3 日平均（黃線，往上的那段加畫洋紅）；20 洋紅、50 白、80 黃三條點線。MACD（12／26／9）放大後以 50 為零軸，快線在慢線上方塗紅、下方塗綠，快慢線交叉畫圓點。50 線上下的短柱：5 日線在 10 日線上方畫洋紅（45～50）、下方畫青色（50～55）。KD 金叉、死叉箭頭和 MACD 交叉圓點照你的要求預設不畫（太雜），要看可以在下面打開。20／80 是清楚的實線、50 是虛線（白底黑線、黑底白線）。【縮放】原公式的放大倍數是「KD 最大值 ÷ MACD 最大值」再取整數除以 2，股價高的股票、台指期這個倍數會變成 0，MACD 整條貼在 50 看不到，所以預設改成用過去 250 根 MACD 的最大值放大到 5～95；可以在下面切回原版。【和「KD+MACD」副圖的差別】這個照原公式畫，不加訊號；「KD+MACD」副圖是同一組 KD、MACD，另外有動態上中下界和回測過的雙金叉底、頂★。', groups:[
@@ -1778,7 +1801,7 @@ for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.
 if (P.kmo && !LS.get(PFX + 'mig:kmo1', false)){ P.kmo.showKDX = false; P.kmo.showMX = false; if (LS.get(PFX + 'p:kmo', null)) LS.set(PFX + 'p:kmo', P.kmo); LS.set(PFX + 'mig:kmo1', true); }
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showQLW:false, showJGN:true, live:true, subMarks:false, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showVXT:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showQLW:false, showJGN:true, live:true, subMarks:false, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false, showZoom:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
@@ -1786,7 +1809,7 @@ if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settin
 if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5, qlw:1.3 }, UI.weights);
+UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5, qlw:1.3 }, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const FX = { USDTWD:'美元／台幣' };
 const INTRA = {
@@ -4893,7 +4916,7 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM]]){
     // 用到才算：只有開著的副圖／主圖標記會真的計算，關掉的指標不花時間（以前每次都把 39 個指標全部重算）
     const obj = R, bars = B, fix = v => { Object.defineProperty(obj, k, { value:v, writable:true, configurable:true, enumerable:true }); return v; };
     Object.defineProperty(obj, k, { configurable:true, enumerable:true, set:fix,
@@ -5125,7 +5148,7 @@ function axisTag(v, color, txtColor, fmt){
   ctx.fillStyle = txtColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v), W + 6, y + 0.5);
 }
 // 副圖左上角的指標名稱（例如「神奇波段」「尋龍底」）：預設不顯示，只留數值；可在「指標設定 → 資料與顯示」打開
-const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪']);
+const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪', '臺指波動率']);
 function legend(lines, top){
   ctx.font = '11.5px "IBM Plex Mono", "Noto Sans TC", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   // 副圖文字三段：完整（名稱＋數值）／只數值／全部隱藏（只隱藏副圖的，主圖不動）
@@ -5189,6 +5212,7 @@ function draw(){
     else if (p.id === 'bd') drawBD(p, i0, i1, ci);
     else if (p.id === 'km') drawKM(p, i0, i1, ci);
     else if (p.id === 'kmo') drawKMO(p, i0, i1, ci);
+    else if (p.id === 'vxt') drawVXT(p, i0, i1, ci);
     else if (p.id === 'ym') drawYM(p, i0, i1, ci);
     else if (p.id === 'sdb') drawSDB(p, i0, i1, ci);
     else if (p.id === 'cci') drawCCI(p, i0, i1, ci);
@@ -5417,6 +5441,7 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'bd', flag:'showBD', btn:'BD', name:'神奇波段', r:'bd' },
   { id:'km', flag:'showKM', btn:'KM', name:'KD+MACD', r:'km' },
   { id:'kmo', flag:'showKMO', btn:'KMO', name:'KD MACD 原版', r:'kmo' },
+  { id:'vxt', flag:'showVXT', btn:'VXT', name:'波動率轉折', r:'vxt' },
   { id:'ym', flag:'showYM', btn:'YM', name:'黃柱MACD', r:'ym' },
   { id:'sdb', flag:'showSDB', btn:'SDB', name:'發現短底', r:'sdb' },
   { id:'cci', flag:'showCCI', btn:'CCI', name:'龍頭CCI', r:'cci' },
@@ -5602,6 +5627,152 @@ function drawYM(p, i0, i1, ci){
     [r.yc[ci] ? '黃柱第 ' + r.yc[ci] + ' 根' : '無黃柱', r.yc[ci] ? q.cYellow : CC.axis]];
   if (zone) parts.push([zone, q.cBand]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
+  legend([parts], p.top);
+}
+
+/* ═════════════ 波動率轉折（臺指選擇權波動率指數＋動態上中下界） ═════════════
+   日／週／月：vix-data 分支的 vix.json（2026-03 起官方開高低收；更早是用每天 TXO 結算價依 Cboe 方法自算、校正到官方刻度）＋今天盤中向 FinMind 讀官方 15 秒資料。
+   分 K：FinMind 官方 15 秒資料（2026-03 起），依每根 K 棒的時間範圍整理成開高低收。 */
+const VXD = { rows:null, pend:null, err:'', t:0, ticks:new Map(), tpend:new Map(), today:null, tdT:0 };
+const VX_REPO = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/vix-data/vix.json';
+function vxLoad(){
+  if (VXD.pend) return;
+  const fresh = VXD.rows && Date.now() - VXD.t < 30 * 60e3;
+  const { date, mins, dow } = tpNow(), live = dow >= 1 && dow <= 5 && mins >= 525 && mins <= 840;
+  if (fresh && !(live && UI.live && Date.now() - VXD.tdT > 30e3)) return;
+  VXD.pend = (async () => {
+    if (!fresh){
+      let j = null;
+      try { const r = await fetch(VX_REPO + '?t=' + Math.floor(Date.now() / 600e3), { cache:'no-store' }); if (r.ok) j = await r.json(); } catch (e){}
+      if (j && j.rows){ VXD.rows = j.rows; VXD.fit = j.fit; VXD.use = j.use; DSTORE.put('vx:rows', { t:Date.now(), rows:j.rows }); }
+      else { const c = await DSTORE.get('vx:rows'); if (c) VXD.rows = c.rows; else throw new Error('波動率資料讀取失敗'); }
+      VXD.t = Date.now();
+    }
+    // 今天（盤中或剛收盤、GitHub 還沒更新）：FinMind 官方 15 秒資料
+    const last = VXD.rows.length ? VXD.rows[VXD.rows.length - 1][0] : '';
+    if (getToken() && dow >= 1 && dow <= 5 && mins >= 525 && last < date){
+      VXD.tdT = Date.now();
+      const xs = await vxTicks(date, true);
+      if (xs && xs.length){ const v = xs.map(x => x[1]); VXD.today = [date, v[0], Math.max(...v), Math.min(...v), v[v.length - 1], 'L']; }
+    } else VXD.today = null;
+  })().then(() => { VXD.pend = null; VXD.err = ''; recomputeSoon(); }).catch(e => { VXD.pend = null; VXD.err = e.message; recomputeSoon(); });
+}
+// 一天的 15 秒資料：[[台北分鐘（含秒的小數）, 值], ...]
+async function vxTicks(date, force){
+  if (!force && VXD.ticks.has(date)) return VXD.ticks.get(date);
+  const key = 'vx:t:' + date, c = !force && await DSTORE.get(key);
+  if (c && c.done){ VXD.ticks.set(date, c.xs); return c.xs; }
+  const rows = await finmind({ dataset:'TaiwanOptionVix', start_date:date, end_date:date });
+  const xs = rows.filter(r => r.vix > 0).map(r => { const [h, m, s] = String(r.time).split(':').map(Number); return [h * 60 + m + (s || 0) / 60, +r.vix]; }).sort((a, b) => a[0] - b[0]);
+  VXD.ticks.set(date, xs);
+  const done = date < tpNow().date || tpNow().mins > 845;
+  if (xs.length) DSTORE.put(key, { done, xs });
+  return xs;
+}
+function vxIntraLoad(days){
+  const need = days.filter(d => d >= '2026-03-01' && !VXD.ticks.has(d) && !VXD.tpend.has(d));
+  if (!need.length || !getToken()) return;
+  for (const d of need.slice(-12)){
+    VXD.tpend.set(d, vxTicks(d).catch(() => { VXD.ticks.set(d, []); }).finally(() => { VXD.tpend.delete(d); recomputeSoon(); }));
+  }
+}
+function calcVXT(B, p){
+  const n = B.n;
+  if (!(RAW && RAW.sample)) vxLoad();
+  const O = nanArr(n), H = nanArr(n), L = nanArr(n), C = nanArr(n), src = new Array(n).fill('');
+  if (B.intra){
+    const days = [...new Set(B.d.map(d => d.slice(0, 10)))];
+    vxIntraLoad(days);
+    for (let i = 0; i < n; i++){
+      const d = B.d[i].slice(0, 10), xs = VXD.ticks.get(d); if (!xs || !xs.length) continue;
+      const a = (B.t[i] - dayMs(d)) / 60e3, e = i + 1 < n && B.d[i + 1].slice(0, 10) === d ? (B.t[i + 1] - dayMs(d)) / 60e3 : a + (INTRA[B.iv] ? INTRA[B.iv].P : 5);
+      let o = NaN, h = -Infinity, l = Infinity, c = NaN;
+      for (const [m, v] of xs){ if (m < a) continue; if (m >= e) break; if (isNaN(o)) o = v; h = Math.max(h, v); l = Math.min(l, v); c = v; }
+      if (!isNaN(c)){ O[i] = o; H[i] = h; L[i] = l; C[i] = c; src[i] = 'O'; }
+    }
+  } else if (VXD.rows){
+    const key = B.iv === 'W' ? weekKey : B.iv === 'M' ? monthKey : (s => s);
+    const agg = new Map(), all = VXD.today ? VXD.rows.concat([VXD.today]) : VXD.rows;
+    for (const r of all){ const k = key(r[0]), g = agg.get(k);
+      if (!g) agg.set(k, [r[1], r[2], r[3], r[4], r[5]]); else { g[1] = Math.max(g[1], r[2]); g[2] = Math.min(g[2], r[3]); g[3] = r[4]; if (r[5] !== 'C') g[4] = r[5]; } }
+    for (let i = 0; i < n; i++){ const g = agg.get(key(B.d[i].slice(0, 10))); if (g){ O[i] = g[0]; H[i] = g[1]; L[i] = g[2]; C[i] = g[3]; src[i] = g[4]; } }
+  }
+  let have = 0; for (let i = 0; i < n; i++) if (!isNaN(C[i])) have++;
+  if (!have){
+    if (B.intra) return { error:getToken() ? (VXD.tpend.size ? '分 K 波動率載入中…' : '這段時間沒有波動率分時資料（官方 15 秒資料 2026/3 起才有）') : '分 K 波動率要先在上面貼 FinMind 憑證' };
+    return { error:VXD.err || '波動率資料載入中…' };
+  }
+  // 動態上中下界：中線＝波動率的 n 根指數平均；上下界＝中線 ± k 倍 n 根標準差（只用有資料的 K 棒）
+  const M = nanArr(n), U = nanArr(n), D = nanArr(n), a = 2 / (p.len + 1), win = [];
+  let m = NaN;
+  for (let i = 0; i < n; i++){
+    const v = p.logScale ? Math.log(C[i]) : C[i];
+    if (isNaN(v)) continue;
+    m = isNaN(m) ? v : m + a * (v - m);
+    win.push(v); if (win.length > p.len) win.shift();
+    if (win.length < Math.min(p.len, 10)) continue;
+    const mu = win.reduce((s, x) => s + x, 0) / win.length, sd = Math.sqrt(win.reduce((s, x) => s + (x - mu) ** 2, 0) / win.length);
+    const f = p.logScale ? Math.exp : (x => x);
+    M[i] = f(m); U[i] = f(m + p.k * sd); D[i] = f(m - p.k * sd);
+  }
+  // 轉折訊號
+  const buy = new Uint8Array(n), sell = new Uint8Array(n), ev = [], tag = Array.from({ length:n }, () => []);
+  let lb = -99, ls = -99, prev = -1;
+  const idx = []; for (let i = 0; i < n; i++) if (!isNaN(C[i]) && !isNaN(U[i])) idx.push(i);
+  for (let q = 1; q < idx.length; q++){
+    const i = idx[q], j = idx[q - 1];
+    const look = idx.slice(Math.max(0, q - p.look), q);
+    if (p.buyRule !== '不標'){
+      let s = false;
+      if (p.buyRule === '恐慌退潮') s = look.some(t => C[t] > U[t]) && C[i] < U[i] && C[i] < C[j];
+      else { let pk = look.concat([i]).reduce((x, t) => C[t] > C[x] ? t : x, i); s = C[pk] > U[pk] && C[i] <= C[pk] * (1 - p.drop / 100) && C[j] > C[pk] * (1 - p.drop / 100); }
+      if (s && q - lb >= p.gap){ buy[i] = 1; lb = q; tag[i].push(['恐慌退潮・買', p.cBuy]); if (p.showSig) ev.push({ i, y:H[i], shape:'labelDown', text:'買', col:p.cBuy, tcol:'#fff', size:0.9 }); }
+    }
+    if (p.sellRule !== '不標'){
+      let s = false;
+      if (p.sellRule === '自滿結束') s = look.some(t => C[t] < D[t]) && C[i] > D[i] && C[i] > C[j];
+      else s = C[i] > U[i] && C[j] <= U[j];
+      if (s && q - ls >= p.gap){ sell[i] = 1; ls = q; tag[i].push([p.sellRule + '・賣', p.cSell]); if (p.showSig) ev.push({ i, y:L[i], shape:'labelUp', text:'賣', col:p.cSell, tcol:'#fff', size:0.9 }); }
+    }
+  }
+  return { O, H, L, C, M, U, D, src, buy, sell, ev, tag };
+}
+function drawVXT(p, i0, i1, ci){
+  const r = R.vxt, q = P.vxt;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -1, 1, 26, 6); legend([[['波動率轉折  ' + (r ? r.error : ''), r && /載入中/.test(r.error) ? CC.axis : '#ef6a5f']]], p.top); return; }
+  const arrs = [r.C, r.H, r.L]; if (q.showBand) arrs.push(r.U, r.D);
+  const [mn, mx] = extent(arrs, i0, i1, markerExtra(r.ev, i0, i1)), pad = (mx - mn) * 0.08 || 1;
+  S = makeScale(p.top, p.h, ...rng('vxt', mn - pad, mx + pad), 26, 8);
+  gridAndAxis(1);
+  if (q.showBand){
+    // 上界以上淡紅、下界以下淡藍：恐慌區／自滿區
+    fillBetween(i => r.U[i], i => Math.max(r.U[i], r.H[i]), () => rgba(q.cBuy, 82), i0, i1);
+    fillBetween(i => Math.min(r.D[i], r.L[i]), i => r.D[i], () => rgba(q.cSell, 82), i0, i1);
+    strokeSeries(i => r.U[i], () => CC.text, i0, i1, 1.3);
+    strokeSeries(i => r.D[i], () => CC.text, i0, i1, 1.3);
+    strokeSeries(i => r.M[i], () => rgba(CC.text, 45), i0, i1, 1, [5, 4]);
+  }
+  // 有開高低收（官方）畫 K 棒；自算的只有收盤，畫線
+  const bw = Math.max(1, Math.min(view.barW * 0.62, 9));
+  ctx.lineWidth = 1;
+  for (let i = i0; i <= i1; i++){
+    if (isNaN(r.C[i])) continue;
+    if (r.src[i] === 'C'){ continue; }
+    const up = r.C[i] >= r.O[i], col = up ? CC.up : CC.down, x = X(i);
+    ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, S.y(r.H[i])); ctx.lineTo(Math.round(x) + 0.5, S.y(r.L[i])); ctx.stroke();
+    const y1 = S.y(Math.max(r.O[i], r.C[i])), y2 = S.y(Math.min(r.O[i], r.C[i]));
+    ctx.fillStyle = col; ctx.fillRect(x - bw / 2, y1, bw, Math.max(1, y2 - y1));
+  }
+  strokeSeries(i => r.src[i] === 'C' || (i > 0 && r.src[i - 1] === 'C') ? r.C[i] : NaN, () => q.cLine, i0, i1, 1.4);
+  if (q.showMA){ strokeSeries(i => r.M[i], () => rgba(q.cLine, 70), i0, i1, 1); }
+  visibleMarkers(r.ev, i0, i1);
+  let li = B.n - 1; while (li > 0 && isNaN(r.C[li])) li--;
+  if (!isNaN(r.C[li])) axisTag(r.C[li], r.C[li] > r.U[li] ? q.cBuy : r.C[li] < r.D[li] ? q.cSell : CC.text, UI.theme === 'light' ? '#fff' : '#000', v => fmtNum(v, 2));
+  let k = ci; if (isNaN(r.C[k])) { k = ci; while (k > 0 && isNaN(r.C[k])) k--; }
+  const c = r.C[k], zone = c > r.U[k] ? '恐慌區（高於上界）' : c < r.D[k] ? '自滿區（低於下界）' : c >= r.M[k] ? '中線之上' : '中線之下';
+  const parts = [['臺指波動率', CC.axis], [fmtNum(c, 2), CC.text], ['上 ' + fmtNum(r.U[k], 1), CC.axis], ['中 ' + fmtNum(r.M[k], 1), CC.axis], ['下 ' + fmtNum(r.D[k], 1), CC.axis], [zone, c > r.U[k] ? q.cBuy : c < r.D[k] ? q.cSell : CC.axis]];
+  if (r.src[k] === 'C') parts.push(['自算', CC.axis]); else if (r.src[k] === 'L') parts.push(['盤中', CC.axis]);
+  for (const tg of r.tag[k] || []) parts.push(tg);
   legend([parts], p.top);
 }
 
@@ -6874,7 +7045,7 @@ document.getElementById('drawClear').onclick = e => {
 
 /* ═════════════ interaction ═════════════ */
 // 每個圖的價格座標：null＝自動，{mn,mx}＝手動
-const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, kmo:null, ym:null, sdb:null, cci:null, kp:null, jj:null, qj:null, cd:null, smi:null, tp:null, lbb:null, wl:null, sy:null, hm:null, vo:null, bbx:null, camo:null, so:null, dz:null, lx:null, lhb:null, qlw:null, sg:null };
+const yS = { main:null, z:null, d:null, bb:null, vl:null, tg:null, in:null, dx:null, jp:null, cp:null, dk:null, zx:null, ls:null, md:null, bd:null, km:null, kmo:null, vxt:null, ym:null, sdb:null, cci:null, kp:null, jj:null, qj:null, cd:null, smi:null, tp:null, lbb:null, wl:null, sy:null, hm:null, vo:null, bbx:null, camo:null, so:null, dz:null, lx:null, lhb:null, qlw:null, sg:null };
 const rng = (id, a, b) => yS[id] ? [yS[id].mn, yS[id].mx] : [a, b];
 const ptrs = new Map();
 let drag = null, pinch = null, lastTap = { t:0, kind:'' }, pressTimer = 0;
@@ -7893,7 +8064,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
