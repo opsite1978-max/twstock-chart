@@ -1,0 +1,33 @@
+name: 臺指波動率歷史
+on:
+  schedule:
+    - cron: '53 8 * * 1-5'    # 台灣 16:53
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vix-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 175
+    steps:
+      - uses: actions/checkout@v4
+      - name: 取出 vix-data 分支
+        run: git fetch -q origin vix-data && git worktree add -q vix-out origin/vix-data || mkdir -p vix-out
+      - name: 自算歷史＋官方比對（FinMind）
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          REQ_BUDGET: '400'
+          MAX_MIN: '150'
+        run: python3 scripts/vix_build.py vix-out
+      - name: 轉折訊號回測
+        run: python3 scripts/vix_bt.py vix-out | tee vix-out/bt.txt || true
+      - name: 推到 vix-data 分支
+        if: always()
+        run: |
+          rm -rf pub && mkdir pub && cp vix-out/*.json pub/ 2>/dev/null; cp vix-out/bt.txt pub/ 2>/dev/null || true
+          cd pub && git init -q && git checkout -q -b vix-data && git add -A
+          git -c user.name=vix-bot -c user.email=vix-bot@users.noreply.github.com commit -qm "臺指波動率 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" vix-data
