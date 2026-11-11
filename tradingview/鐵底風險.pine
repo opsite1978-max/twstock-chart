@@ -1,0 +1,252 @@
+//@version=6
+// 鐵底風險（Iron Bottom & Risk）— 從「戰神看盤」副圖移植，計算和網頁版一模一樣
+// 成本線＝(2×收+高+低)÷4 的 55 日指數平均；風險線＝45 日平均×1.15；S 線＝成本線×1.3；
+// 底線＝40 日平均×0.85；鐵底線＝88 日平均×0.7；價值線＝成本線和底線的中間。
+// 副圖畫的是「每條線離成本線多遠（%）」：成本線＝0 軸；白線＝收盤 3 日平均的位置；
+// 灰虛線＝趨勢線（55 日平均＋21 日斜率外推）；兩線之間色柱：持倉（灰）／減倉（黃）／主力（紅）。
+// 動態上中下界＝白線過去 120 根的 90%／50%／10% 百分位。
+// 【底】近 10 根白線曾低於下界（或收盤曾跌破底線）、白線連 2 根往上、收盤突破前一根高點。
+// 【底★】近 10 根收盤曾跌破底線（回測守住率最高）。
+// 【頂】近 10 根白線曾高於上界、白線連 2 根往下、收盤跌破前一根低點。
+// 【頂★】頂之外，近 20 根漲超過 15%、近 5 根有一天量大於 20 日均量 2 倍。
+indicator("鐵底風險", shorttitle = "鐵底風險", overlay = false, max_bars_back = 1000, max_labels_count = 500)
+
+// ───── 設定 ─────
+G1 = "線與色帶"
+showLines  = input.bool(true,  "鐵底／底／價值／風險／S 線", group = G1)
+showZones  = input.bool(true,  "區間底色（鐵底～底、風險～S）", group = G1)
+showRibbon = input.bool(true,  "持倉／減倉／主力色柱", group = G1)
+showTrend  = input.bool(true,  "趨勢線（灰虛線）", group = G1)
+showBand   = input.bool(true,  "顯示動態上中下界", group = G1)
+bandLen    = input.int(120,    "比較的根數", minval = 60, maxval = 1000, group = G1)
+bandPct    = input.float(10,   "上下界百分位（上界＝100 − 這個數）", minval = 1, maxval = 30, step = 1, group = G1)
+showTable  = input.bool(true,  "右上角顯示目前位置", group = G1)
+
+G2 = "訊號"
+showBot  = input.bool(true,  "底（低於下界或跌破底線後連 2 根往上＋收過前高）", group = G2)
+showTop  = input.bool(true,  "頂（高於上界後連 2 根往下＋收破前低）", group = G2)
+starTop  = input.bool(true,  "頂★（再加急漲爆量）", group = G2)
+starRise = input.float(15,   "頂★：近 20 根漲幅超過（%）", minval = 5, maxval = 60, step = 1, group = G2)
+starVol  = input.float(2,    "頂★：近 5 根量大於 20 日均量幾倍", minval = 1, maxval = 5, step = 0.1, group = G2)
+showOrig = input.bool(false, "原版「多陰」「潛伏」（回測和隨便挑一天差不多）", group = G2)
+mainBot  = input.bool(true,  "主圖標底", group = G2)
+mainTop  = input.bool(false, "主圖標頂", group = G2)
+mainStar = input.bool(true,  "主圖標頂★", group = G2)
+
+G3 = "顏色"
+cPxIn   = input.color(#e8edf4, "收盤位置（白線；淺色背景自動改深色）", group = G3)
+cTrend  = input.color(#8892a3, "趨勢線", group = G3)
+cS      = input.color(#e040fb, "S 線", group = G3)
+cRisk   = input.color(#ff9100, "風險線", group = G3)
+cCost   = input.color(#00e676, "成本線", group = G3)
+cVal    = input.color(#ffd600, "價值線", group = G3)
+cBotL   = input.color(#26c6da, "底線", group = G3)
+cIron   = input.color(#ff1744, "鐵底線", group = G3)
+cHold   = input.color(#90a4ae, "持倉色柱", group = G3)
+cReduce = input.color(#ffd600, "減倉色柱", group = G3)
+cMain   = input.color(#ff1744, "主力色柱", group = G3)
+cBand   = input.color(#b388ff, "上中下界", group = G3)
+cBot    = input.color(#ff1744, "底", group = G3)
+cTop    = input.color(#00c853, "頂", group = G3)
+
+// ───── 通達信函數（第一根用當根值起算，和網頁版相同） ─────
+tdxEma(float src, int len) =>
+    var float y = na
+    k = 2.0 / (len + 1)
+    y := na(src) ? y : na(y) ? src : y + k * (src - y)
+    y
+
+tdxSma(float src, int n, int m) =>
+    var float y = na
+    y := na(src) ? y : na(y) ? src : (m * src + (n - m) * y) / n
+    y
+
+hhvAll(float src, int len) => ta.highest(src, math.max(1, math.min(len, bar_index + 1)))
+llvAll(float src, int len) => ta.lowest(src, math.max(1, math.min(len, bar_index + 1)))
+
+// ───── 主要計算 ─────
+float C = close
+float H = high
+float L = low
+float O = open
+float V = nz(volume, 1)
+
+// 趨勢線：收盤＋21 日線性回歸斜率×20，再取 55 日指數平均
+float lr0 = ta.linreg(C, 21, 0)
+float lr1 = ta.linreg(C, 21, 1)
+float slope = bar_index >= 20 ? lr0 - lr1 : 0.0
+float W2 = tdxEma(C + nz(slope) * 20, 55)
+float W3 = tdxEma(C, 3)
+float W4 = (2 * C + L + H) / 4
+float COST = tdxEma(W4, 55)
+float RISK = tdxEma(W4, 45) * 1.15
+float SLN  = COST * 1.3
+float BOTL = tdxEma(W4, 40) * 0.85
+float IRON = tdxEma(W4, 88) * 0.7
+float VAL  = (COST + BOTL) / 2
+
+pc(float a) => (a / COST - 1) * 100
+float Xp = pc(W3)
+float Wp = pc(W2)
+float Rp = pc(RISK)
+float Sp = pc(SLN)
+float Bp = pc(BOTL)
+float Ip = pc(IRON)
+float Vp = pc(VAL)
+
+// 持倉 0／減倉 1／主力 2
+float hh55 = hhvAll(H, 55)
+float ll55 = llvAll(L, 55)
+float w1 = hh55 > ll55 ? 100 - 100 * (hh55 - C) / (hh55 - ll55) : na
+int st = W2 - W3 >= 0 ? 0 : (not na(w1) and w1 >= 50) ? 2 : 1
+
+// 動態上中下界：白線過去 bandLen 根的百分位（樣本至少八成才算）
+float q = math.min(30, math.max(1, bandPct)) / 100
+float LB = na
+float MB = na
+float UB = na
+if bar_index >= bandLen - 1
+    arr = array.new_float()
+    for k = 0 to bandLen - 1
+        v = Xp[k]
+        if not na(v)
+            array.push(arr, v)
+    m = array.size(arr)
+    if m >= bandLen * 0.8
+        array.sort(arr, order.ascending)
+        LB := array.get(arr, math.min(m - 1, int(math.floor(m * q))))
+        MB := array.get(arr, math.min(m - 1, int(math.floor(m * 0.5))))
+        UB := array.get(arr, math.min(m - 1, int(math.floor(m * (1 - q)))))
+
+// ───── 原版「多陰」「潛伏」 ─────
+float L1 = tdxEma(C, 13) - tdxEma(C, 55)
+float L1m = bar_index >= 1 ? 0.618 * L1[1] + 0.382 * L1 : na
+float L2 = tdxEma(L1m, 3)
+float AMT = V * (H + L + C) / 3
+float R2 = (3 * H + L + O + 2 * C) / 7
+var float s10 = 0.0
+s10 := s10 + AMT - (bar_index >= 10 ? AMT[10] : 0.0)
+float aa = s10 > 0 ? AMT / s10 : 0.1
+aa := math.min(1, math.max(0.01, na(aa) ? 0.1 : aa))
+var float yd = na
+yd := na(yd) ? R2 : aa * R2 + (1 - aa) * yd
+float YH = (C - yd) / yd * 100
+float dlt = bar_index >= 1 ? C - C[1] : 0.0
+float su = tdxSma(math.max(dlt, 0), 4, 1)
+float sa = tdxSma(math.abs(dlt), 4, 1)
+float DIR = sa > 0 ? su / sa * 100 : na
+bool INn = L1 > L2
+bool yel = st != 0 and W3 > COST and W3 < RISK and COST > COST[1]
+bool sigDY = bar_index >= 1 and YH[1] < 0 and YH > 0 and INn and yel
+bool sigQF = bar_index >= 1 and ((DIR[1] < 80 and DIR > 80) or (DIR == 80 and INn))
+
+// ───── 底、頂 ─────
+var int lb = -99
+var int lt = -99
+var int lxl = -99
+var int lbt = -99
+var int lxh = -99
+if C < BOTL
+    lbt := bar_index
+if not na(LB) and Xp < LB
+    lxl := bar_index
+if not na(UB) and Xp > UB
+    lxh := bar_index
+
+float vMa = ta.sma(volume, 20)
+float vx5 = ta.highest(nz(volume), 5)
+float hh10 = hhvAll(H, 10)
+float ll20 = llvAll(L, 20)
+bool botSig = false
+bool botStar = false
+bool topSig = false
+bool topStar = false
+if bar_index >= 3 and not na(Xp[3])
+    bool u2 = Xp > Xp[1] and Xp[1] > Xp[2] and Xp[2] <= Xp[3]
+    bool d2 = Xp < Xp[1] and Xp[1] < Xp[2] and Xp[2] >= Xp[3]
+    if u2 and C > H[1] and (bar_index - lxl < 10 or bar_index - lbt < 10) and bar_index - lb > 10
+        lb := bar_index
+        botSig := true
+        botStar := bar_index - lbt < 10
+    if d2 and C < L[1] and bar_index - lxh < 10 and bar_index - lt > 10
+        lt := bar_index
+        topSig := true
+        if starTop and not na(vMa)
+            topStar := (hh10 / ll20 - 1) * 100 > starRise and vx5 > starVol * vMa
+
+// ───── 畫圖 ─────
+bool isLight = color.r(chart.bg_color) + color.g(chart.bg_color) + color.b(chart.bg_color) > 382
+color cPx = isLight and cPxIn == #e8edf4 ? #2a3140 : cPxIn
+
+// 區間底色（用隱形的線當邊界）
+pR  = plot(Rp, "風險（邊界）", display = display.none)
+pS  = plot(Sp, "S（邊界）", display = display.none)
+pB  = plot(Bp, "底（邊界）", display = display.none)
+pI  = plot(Ip, "鐵底（邊界）", display = display.none)
+pIx = plot(math.min(Ip, Xp), "跌破鐵底（邊界）", display = display.none)
+pSx = plot(math.max(Sp, Xp), "超過 S（邊界）", display = display.none)
+fill(pR, pS,  showZones ? color.new(cRisk, 91) : na, "風險～S 線")
+fill(pB, pI,  showZones ? color.new(cBotL, 90) : na, "鐵底～底線")
+fill(pI, pIx, showZones ? color.new(cIron, 80) : na, "跌破鐵底線")
+fill(pS, pSx, showZones ? color.new(cS, 80) : na, "超過 S 線")
+
+// 成本線＝0 軸
+hline(0, "成本線", color = color.new(cCost, 20), linestyle = hline.style_solid, linewidth = 1)
+
+plot(showLines ? Sp : na, "S 線", color = color.new(cS, 25), linewidth = 1, linestyle = plot.linestyle_dashed)
+plot(showLines ? Rp : na, "風險線", color = color.new(cRisk, 25), linewidth = 1)
+plot(showLines ? Vp : na, "價值線", color = color.new(cVal, 25), linewidth = 1, linestyle = plot.linestyle_dotted)
+plot(showLines ? Bp : na, "底線", color = color.new(cBotL, 25), linewidth = 1)
+plot(showLines ? Ip : na, "鐵底線", color = color.new(cIron, 25), linewidth = 2)
+
+// 動態上中下界
+pUB  = plot(showBand ? UB : na, "上界", color = color.new(cBand, 40), linestyle = plot.linestyle_dashed)
+plot(showBand ? MB : na, "中界", color = color.new(cBand, 60), linestyle = plot.linestyle_dotted)
+pLB  = plot(showBand ? LB : na, "下界", color = color.new(cBand, 40), linestyle = plot.linestyle_dashed)
+pUBx = plot(showBand ? math.max(UB, Xp) : na, "高於上界（邊界）", display = display.none)
+pLBx = plot(showBand ? math.min(LB, Xp) : na, "低於下界（邊界）", display = display.none)
+fill(pUB, pUBx, color.new(cBand, 72), "高於上界")
+fill(pLB, pLBx, color.new(cBand, 72), "低於下界")
+
+// 持倉／減倉／主力色柱（白線和趨勢線之間）
+color rc = st == 2 ? color.new(cMain, 40) : st == 1 ? color.new(cReduce, 40) : color.new(cHold, 62)
+plotcandle(showRibbon ? Wp : na, showRibbon ? math.max(Wp, Xp) : na, showRibbon ? math.min(Wp, Xp) : na, showRibbon ? Xp : na, "色柱", color = rc, wickcolor = rc, bordercolor = rc)
+
+plot(showTrend ? Wp : na, "趨勢線", color = color.new(cTrend, 20), linewidth = 1, linestyle = plot.linestyle_dashed)
+plot(Xp, "收盤位置（%）", color = cPx, linewidth = 2)
+
+// 原版訊號
+plotshape(showOrig and sigDY ? Bp : na, "多陰", shape.labelup, location.absolute, color.new(#ffffff, 100), text = "多陰", textcolor = #ffffff, size = size.tiny)
+plotshape(showOrig and sigQF ? Ip : na, "潛伏", shape.labelup, location.absolute, color.new(#ffd600, 100), text = "潛伏", textcolor = #ffd600, size = size.tiny)
+
+// 副圖：底、底★、頂、頂★
+float yBot = math.min(Xp, nz(LB, Xp))
+float yTop = math.max(Xp, nz(UB, Xp))
+plotshape(showBot and botSig and not botStar ? yBot : na, "底", shape.labelup, location.absolute, cBot, text = "底", textcolor = color.white, size = size.small)
+plotshape(showBot and botSig and botStar ? yBot : na, "底★", shape.labelup, location.absolute, cBot, text = "底★", textcolor = color.white, size = size.small)
+plotshape(showTop and topSig and not topStar ? yTop : na, "頂", shape.labeldown, location.absolute, cTop, text = "頂", textcolor = color.white, size = size.small)
+plotshape(showTop and topSig and topStar ? yTop : na, "頂★", shape.labeldown, location.absolute, cTop, text = "頂★", textcolor = color.white, size = size.small)
+
+// 主圖標記
+plotshape(mainBot and botSig and not botStar, "主圖：鐵底底", shape.labelup, location.belowbar, cBot, text = "鐵底底", textcolor = color.white, size = size.tiny, force_overlay = true)
+plotshape(mainBot and botSig and botStar, "主圖：鐵底底★", shape.labelup, location.belowbar, cBot, text = "鐵底底★", textcolor = color.white, size = size.tiny, force_overlay = true)
+plotshape(mainTop and topSig and not topStar, "主圖：風險頂", shape.labeldown, location.abovebar, cTop, text = "風險頂", textcolor = color.white, size = size.tiny, force_overlay = true)
+plotshape((mainStar or mainTop) and topSig and topStar, "主圖：風險頂★", shape.labeldown, location.abovebar, cTop, text = "風險頂★", textcolor = color.white, size = size.tiny, force_overlay = true)
+
+// 警示（在 TradingView 的「建立警示」裡選）
+alertcondition(botSig, "鐵底風險：底", "鐵底風險出現「底」")
+alertcondition(botSig and botStar, "鐵底風險：底★", "鐵底風險出現「底★」")
+alertcondition(topSig, "鐵底風險：頂", "鐵底風險出現「頂」")
+alertcondition(topSig and topStar, "鐵底風險：頂★", "鐵底風險出現「頂★」")
+
+// 右上角：目前位置
+var table tb = table.new(position.top_right, 1, 2, bgcolor = color.new(color.black, 100))
+if showTable and barstate.islast
+    float x = (C / COST - 1) * 100
+    string zone = C < IRON ? "跌破鐵底線" : C < BOTL ? "鐵底～底線" : C < VAL ? "底線～價值" : C < COST ? "價值～成本" : C < RISK ? "成本～風險" : C < SLN ? "風險～S 線" : "超過 S 線"
+    string stt = st == 2 ? "主力" : st == 1 ? "減倉" : "持倉"
+    string bd = not na(UB) and Xp > UB ? "　高於上界" : not na(LB) and Xp < LB ? "　低於下界" : ""
+    string l1 = "收盤" + (x >= 0 ? "在成本線上 +" : "在成本線下 ") + str.tostring(x, "#.0") + "%　" + zone + "　" + stt + bd
+    string l2 = "成本 " + str.tostring(COST, format.mintick) + "　鐵底 " + str.tostring(IRON, format.mintick) + "　底 " + str.tostring(BOTL, format.mintick) + "　風險 " + str.tostring(RISK, format.mintick) + "　S " + str.tostring(SLN, format.mintick)
+    table.cell(tb, 0, 0, l1, text_color = x >= 0 ? #ff5252 : #00c853, text_size = size.small, text_halign = text.align_right)
+    table.cell(tb, 0, 1, l2, text_color = color.gray, text_size = size.small, text_halign = text.align_right)
