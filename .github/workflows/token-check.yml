@@ -8,25 +8,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: EODHD 探查
+      - name: 台指波動率資料探查
         run: |
           mkdir -p out
           python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import json, urllib.request
-          def go(u, method='GET'):
-              rq = urllib.request.Request(u, method=method, headers={'Origin': 'https://opsite1978-max.github.io', 'Access-Control-Request-Method': 'GET', 'User-Agent': 'Mozilla/5.0'})
+          import json, re, urllib.request, urllib.parse, time
+          H = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
+          def get(u, data=None):
               try:
-                  with urllib.request.urlopen(rq, timeout=60) as r:
-                      hd = {k: v for k, v in r.headers.items() if 'access-control' in k.lower() or k.lower() == 'content-type'}
-                      return r.status, hd, r.read().decode('utf-8', 'replace')
-              except urllib.error.HTTPError as e:
-                  return e.code, {k: v for k, v in e.headers.items() if 'access-control' in k.lower()}, e.read().decode('utf-8', 'replace')[:200]
-              except Exception as e: return 0, {}, str(e)[:200]
-          B = 'https://eodhd.com/api/'
-          for path in ['eod/AAPL.US?api_token=demo&fmt=json&from=2026-10-25', 'intraday/AAPL.US?api_token=demo&fmt=json&interval=5m', 'real-time/AAPL.US?api_token=demo&fmt=json', 'eod/2330.TW?api_token=demo&fmt=json&from=2026-10-25', 'exchange-symbol-list/TW?api_token=demo&fmt=json', 'search/TSMC?api_token=demo']:
-              st, hd, b = go(B + path)
-              print(path.split('?')[0], st, hd, b[:300].replace('\n', ' '))
-          st, hd, b = go(B + 'eod/AAPL.US?api_token=demo&fmt=json', 'OPTIONS'); print('OPTIONS', st, hd)
+                  rq = urllib.request.Request(u, data=data, headers=H)
+                  with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.headers.get('content-type'), r.read()
+              except Exception as e: return 0, '', str(e)[:200].encode()
+          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew', 'https://www.taifex.com.tw/cht/7/vixDaily', 'https://www.taifex.com.tw/cht/7/vixQAnew', 'https://www.taifex.com.tw/cht/7/vix']:
+              st, ct, b = get(u); t = b.decode('utf-8', 'replace')
+              print('PAGE', u, st, ct, len(b))
+              for m in sorted(set(re.findall(r'(?:href|src|value)=["\']([^"\']*(?:vix|VIX|txt|zip|csv)[^"\']*)', t)))[:40]: print('   ', m)
+          for u in ['https://www.taifex.com.tw/file/taifex/Dailydownload/vix/log2data/20261110new.txt', 'https://www.taifex.com.tw/file/taifex/Dailydownload/vix/log2data/20261110.txt', 'https://www.taifex.com.tw/file/taifex/Dailydownload/vixMinNew/20261110new.txt']:
+              st, ct, b = get(u); print('FILE', u, st, ct, len(b)); print('   ', b[:300].decode('big5', 'replace').replace('\n', ' | '))
+          for q in ['VIX', '波動率', '臺指選擇權波動率指數']:
+              st, ct, b = get('https://ess.api.cnyes.com/ess/api/v1/siteSearch/main?q=' + urllib.parse.quote(q) + '&limit=20&category=TW,FUND,FX,INDEX')
+              print('CNSEARCH', q, st, b[:600].decode('utf-8', 'replace'))
+          for sym in ['TWS:VIXTWN:INDEX', 'TWF:VIXTWN:INDEX', 'TWS:TWVIX:INDEX', 'TWF:VIX:INDEX', 'GI:VIXTWN:INDEX', 'TWS:VIX:INDEX']:
+              st, ct, b = get('https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=' + sym + '&quote=1')
+              print('CN', sym, st, b[:200].decode('utf-8', 'replace'))
+          for s in ['^VIXTWN', 'VIXTWN.TW', '^TWVIX']:
+              st, ct, b = get('https://query1.finance.yahoo.com/v8/finance/chart/' + urllib.parse.quote(s) + '?interval=1d&range=1mo')
+              print('YH', s, st, b[:200].decode('utf-8', 'replace'))
           PY2
       - name: 保存結果
         if: always()
