@@ -19,21 +19,17 @@ jobs:
                   rq = urllib.request.Request(u, data=data, headers=H)
                   with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.headers.get('content-type'), r.read()
               except Exception as e: return 0, '', str(e)[:200].encode()
-          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew', 'https://www.taifex.com.tw/cht/7/vixDaily', 'https://www.taifex.com.tw/cht/7/vixQAnew', 'https://www.taifex.com.tw/cht/7/vix']:
+          for u in ['https://www.taifex.com.tw/cht/7/vixMinNew', 'https://www.taifex.com.tw/cht/7/vixDaily3MNew', 'https://www.taifex.com.tw/cht/7/vixMin3MNew']:
               st, ct, b = get(u); t = b.decode('utf-8', 'replace')
-              print('PAGE', u, st, ct, len(b))
-              for m in sorted(set(re.findall(r'(?:href|src|value)=["\']([^"\']*(?:vix|VIX|txt|zip|csv)[^"\']*)', t)))[:40]: print('   ', m)
-          for u in ['https://www.taifex.com.tw/file/taifex/Dailydownload/vix/log2data/20261110new.txt', 'https://www.taifex.com.tw/file/taifex/Dailydownload/vix/log2data/20261110.txt', 'https://www.taifex.com.tw/file/taifex/Dailydownload/vixMinNew/20261110new.txt']:
-              st, ct, b = get(u); print('FILE', u, st, ct, len(b)); print('   ', b[:300].decode('big5', 'replace').replace('\n', ' | '))
-          for q in ['VIX', '波動率', '臺指選擇權波動率指數']:
-              st, ct, b = get('https://ess.api.cnyes.com/ess/api/v1/siteSearch/main?q=' + urllib.parse.quote(q) + '&limit=20&category=TW,FUND,FX,INDEX')
-              print('CNSEARCH', q, st, b[:600].decode('utf-8', 'replace'))
-          for sym in ['TWS:VIXTWN:INDEX', 'TWF:VIXTWN:INDEX', 'TWS:TWVIX:INDEX', 'TWF:VIX:INDEX', 'GI:VIXTWN:INDEX', 'TWS:VIX:INDEX']:
-              st, ct, b = get('https://ws.api.cnyes.com/ws/api/v1/charting/history?resolution=D&symbol=' + sym + '&quote=1')
-              print('CN', sym, st, b[:200].decode('utf-8', 'replace'))
-          for s in ['^VIXTWN', 'VIXTWN.TW', '^TWVIX']:
-              st, ct, b = get('https://query1.finance.yahoo.com/v8/finance/chart/' + urllib.parse.quote(s) + '?interval=1d&range=1mo')
-              print('YH', s, st, b[:200].decode('utf-8', 'replace'))
+              print('PAGE', u, st, len(b))
+              k = t.find('<main') if '<main' in t else t.find('id="printhere"')
+              body = re.sub(r'<script[\s\S]*?</script>', '', t)
+              for m in re.findall(r'<(?:form|a|button|input)[^>]*(?:action|onclick|href|download)[^>]*>', body):
+                  if re.search(r'vix|down|txt|csv|zip|Down|file', m, re.I): print('   ', m[:220])
+              for m in re.findall(r'<script[^>]*>([\s\S]*?)</script>', t):
+                  if re.search(r'vix|down|file', m, re.I): print('   SCRIPT', re.sub(r'\s+', ' ', m)[:900])
+              tx = re.sub(r'<[^>]+>', ' ', body); tx = re.sub(r'\s+', ' ', tx)
+              k = tx.find('波動率'); print('   TEXT', tx[k:k+1500])
           PY2
       - name: 保存結果
         if: always()
