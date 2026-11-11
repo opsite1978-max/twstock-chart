@@ -8,33 +8,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 台指波動率資料探查
+      - name: FinMind 波動率資料
+        env:
+          T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
           python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import json, re, urllib.request, urllib.parse, time
-          H = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
-          def get(u, data=None):
+          import os, json, urllib.request, urllib.parse
+          T = os.environ['T']
+          def fm(p):
+              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(p)
               try:
-                  rq = urllib.request.Request(u, data=data, headers=H)
-                  with urllib.request.urlopen(rq, timeout=60) as r: return r.status, r.headers.get('content-type'), r.read()
-              except Exception as e: return 0, '', str(e)[:200].encode()
-          import io, zipfile
-          B = 'https://www.taifex.com.tw/file/taifex/Dailydownload/vix/'
-          def ok(b): return b[:2] == b'PK' or (len(b) > 300 and b'<HTML' not in b[:300].upper())
-          for ym in ['202607', '202606', '202601', '202501', '202301', '202001', '201501', '200901']:
-              for name in ['log2data/' + ym + 'new.txt', 'log2data/' + ym + '.txt', 'log2data/' + ym + 'old.txt', 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數.zip'), 'logdata/' + urllib.parse.quote(ym + '歷史紀錄波動率指數_新VIX.zip'), 'logdata/' + ym + '.zip']:
-                  st, ct, b = get(B + name)
-                  if ok(b):
-                      print('OK', name, len(b)); 
-                      if name.endswith('.txt'): print('   ', b[:400].decode('big5', 'replace').replace('\r', '').replace('\n', ' | '))
-          for u in ['https://www.taifex.com.tw/cht/7/vixQA', 'https://www.taifex.com.tw/cht/7/vixMinNew']:
-              st, ct, b = get(u); t = re.sub(r'<[^>]+>', ' ', b.decode('utf-8', 'replace')); t = re.sub(r'\s+', ' ', t)
-              for k in [m.start() for m in re.finditer('新VIX|舊|歷史|起', t)][:6]: print('   TXT', t[max(0, k-150):k+250])
-          # FinMind 資料集清單裡有沒有波動率
-          st, ct, b = get('https://api.finmindtrade.com/api/v4/datalist?dataset=TaiwanOptionDaily')
-          st, ct, b = get('https://api.finmindtrade.com/api/v4/translation?dataset=TaiwanOptionDaily'); print('FMT', st, b[:200])
+                  with urllib.request.urlopen(urllib.request.Request(u, headers={'Authorization': 'Bearer ' + T}), timeout=300) as r: j = json.loads(r.read().decode())
+                  return j.get('status'), j.get('msg'), j.get('data') or []
+              except Exception as e: return 0, str(e)[:150], []
+          for d in ['2008-10-06', '2012-01-02', '2015-08-24', '2018-02-06', '2020-03-16', '2022-01-03', '2024-08-05', '2025-04-07', '2026-02-02', '2026-03-02', '2026-11-11']:
+              st, msg, rows = fm({'dataset': 'TaiwanOptionVix', 'start_date': d, 'end_date': d})
+              print('VIX', d, st, msg, len(rows), rows[:2], rows[-1:] if rows else '')
+          st, msg, rows = fm({'dataset': 'TaiwanOptionVix', 'start_date': '2026-10-01', 'end_date': '2026-10-31'})
+          print('VIX month', st, msg, len(rows), sorted({r['date'] for r in rows})[:3])
           PY2
+          sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
         if: always()
         run: |
