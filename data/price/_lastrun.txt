@@ -1,8 +1,8 @@
-11-11 00:37:31 2026-11-10 stocks 1953
-11-11 00:37:38 fetched days 1
-11-11 00:37:42 vwb 1953 stocks 166 need more history 605 days
-11-11 00:37:55 bbot 1953 stocks 1953 with long history
-11-11 00:37:59 jgn 134 stocks with signal in last 20 days
-11-11 00:38:27 lx 1847 stocks; long none/close/ohlc [63, 0, 1784]
-11-11 00:38:29 qz 72 stocks with 起漲 in last 30 days; breadth ['2026-11-10', 16]
-11-11 00:38:35 build 1921 stocks 335 days backtest {'quietMa20': 685, 'bullNew': 2643, 'break60': 6332, 'bottom': 218, 'pullback': 14983, 'firstVol': 230}
+11-12 00:37:25 2026-11-11 stocks 1956
+11-12 00:37:30 fetched days 1
+11-12 00:37:33 vwb 1956 stocks 168 need more history 605 days
+11-12 00:37:44 bbot 1956 stocks 1956 with long history
+11-12 00:37:47 jgn 124 stocks with signal in last 20 days
+11-12 00:38:09 lx 1852 stocks; long none/close/ohlc [64, 0, 1788]
+11-12 00:38:11 qz 70 stocks with 起漲 in last 30 days; breadth ['2026-11-11', 18]
+11-12 00:38:15 build 1926 stocks 335 days backtest {'quietMa20': 695, 'bullNew': 2636, 'break60': 6319, 'bottom': 217, 'pullback': 15010, 'firstVol': 232}
