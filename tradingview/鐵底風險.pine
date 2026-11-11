@@ -4,7 +4,8 @@
 // 底線＝40 日平均×0.85；鐵底線＝88 日平均×0.7；價值線＝成本線和底線的中間。
 // 副圖畫的是「每條線離成本線多遠（%）」：成本線＝0 軸；白線＝收盤 3 日平均的位置；
 // 灰虛線＝趨勢線（55 日平均＋21 日斜率外推）；兩線之間色柱：持倉（灰）／減倉（黃）／主力（紅）。
-// 動態上中下界＝白線過去 120 根的 90%／50%／10% 百分位。
+// 動態上中下界（預設平滑通道）＝白線 60 根平均 ± 1.5 倍標準差；也可切回原版「過去 120 根的 90%／50%／10% 百分位」。
+// 平滑通道在加權指數 2012～2026 回測：底的命中率 24%→32%（2012～2018）、42%→48%（2019～2026），頂 35%→36%、14%→29%。
 // 【底】近 10 根白線曾低於下界（或收盤曾跌破底線）、白線連 2 根往上、收盤突破前一根高點。
 // 【底★】近 10 根收盤曾跌破底線（回測守住率最高）。
 // 【頂】近 10 根白線曾高於上界、白線連 2 根往下、收盤跌破前一根低點。
@@ -17,9 +18,14 @@ showLines  = input.bool(true,  "鐵底／底／價值／風險／S 線", group =
 showZones  = input.bool(true,  "區間底色（鐵底～底、風險～S）", group = G1)
 showRibbon = input.bool(true,  "持倉／減倉／主力色柱", group = G1)
 showTrend  = input.bool(true,  "趨勢線（灰虛線）", group = G1)
-showBand   = input.bool(true,  "顯示動態上中下界", group = G1)
-bandLen    = input.int(120,    "比較的根數", minval = 60, maxval = 1000, group = G1)
-bandPct    = input.float(10,   "上下界百分位（上界＝100 − 這個數）", minval = 1, maxval = 30, step = 1, group = G1)
+nearOnly   = input.bool(true,  "只畫靠近白線的線（遠的線不畫，白線不會被壓扁）", group = G1)
+G1b = "上下界"
+showBand   = input.bool(true,  "顯示動態上中下界", group = G1b)
+bandMode   = input.string("平滑通道（建議）", "上下界算法", options = ["平滑通道（建議）", "原版百分位"], group = G1b)
+chLen      = input.int(60,     "平滑通道：平均的根數", minval = 10, maxval = 500, group = G1b)
+chK        = input.float(1.5,  "平滑通道：± 幾倍標準差", minval = 0.5, maxval = 4, step = 0.1, group = G1b)
+bandLen    = input.int(120,    "原版百分位：比較的根數", minval = 60, maxval = 1000, group = G1b)
+bandPct    = input.float(10,   "原版百分位：上下界百分位（上界＝100 − 這個數）", minval = 1, maxval = 30, step = 1, group = G1b)
 showTable  = input.bool(true,  "右上角顯示目前位置", group = G1)
 
 G2 = "訊號"
@@ -45,7 +51,7 @@ cIron   = input.color(#ff1744, "鐵底線", group = G3)
 cHold   = input.color(#90a4ae, "持倉色柱", group = G3)
 cReduce = input.color(#ffd600, "減倉色柱", group = G3)
 cMain   = input.color(#ff1744, "主力色柱", group = G3)
-cBand   = input.color(#b388ff, "上中下界", group = G3)
+cBand   = input.color(#7e57c2, "上中下界", group = G3)
 cBot    = input.color(#ff1744, "底", group = G3)
 cTop    = input.color(#00c853, "頂", group = G3)
 
@@ -100,12 +106,17 @@ float ll55 = llvAll(L, 55)
 float w1 = hh55 > ll55 ? 100 - 100 * (hh55 - C) / (hh55 - ll55) : na
 int st = W2 - W3 >= 0 ? 0 : (not na(w1) and w1 >= 50) ? 2 : 1
 
-// 動態上中下界：白線過去 bandLen 根的百分位（樣本至少八成才算）
+// 動態上中下界
+// 平滑通道：白線 chLen 根平均 ± chK 倍標準差（線條平順，不會階梯狀跳動）
+// 原版百分位：白線過去 bandLen 根的百分位（樣本至少八成才算）
 float q = math.min(30, math.max(1, bandPct)) / 100
-float LB = na
-float MB = na
-float UB = na
-if bar_index >= bandLen - 1
+float chM = ta.sma(Xp, chLen)
+float chS = ta.stdev(Xp, chLen)
+bool smoothBand = bandMode == "平滑通道（建議）"
+float LB = smoothBand ? chM - chK * chS : na
+float MB = smoothBand ? chM : na
+float UB = smoothBand ? chM + chK * chS : na
+if not smoothBand and bar_index >= bandLen - 1
     arr = array.new_float()
     for k = 0 to bandLen - 1
         v = Xp[k]
@@ -178,13 +189,24 @@ if bar_index >= 3 and not na(Xp[3])
 bool isLight = color.r(chart.bg_color) + color.g(chart.bg_color) + color.b(chart.bg_color) > 382
 color cPx = isLight and cPxIn == #e8edf4 ? #2a3140 : cPxIn
 
+// 只畫靠近白線的線：範圍＝白線、趨勢線、上下界再往外加一段（至少 3%）
+float span = na(UB) or na(LB) ? 10.0 : math.max(3.0, (UB - LB) * 0.6)
+float vLo = math.min(Xp, nz(Wp, Xp), nz(LB, Xp)) - span
+float vHi = math.max(Xp, nz(Wp, Xp), nz(UB, Xp)) + span
+near(float v) => not nearOnly or (v >= vLo and v <= vHi) ? v : na
+float nS = near(Sp)
+float nR = near(Rp)
+float nV = near(Vp)
+float nB = near(Bp)
+float nI = near(Ip)
+
 // 區間底色（用隱形的線當邊界）
-pR  = plot(Rp, "風險（邊界）", display = display.none)
-pS  = plot(Sp, "S（邊界）", display = display.none)
-pB  = plot(Bp, "底（邊界）", display = display.none)
-pI  = plot(Ip, "鐵底（邊界）", display = display.none)
-pIx = plot(math.min(Ip, Xp), "跌破鐵底（邊界）", display = display.none)
-pSx = plot(math.max(Sp, Xp), "超過 S（邊界）", display = display.none)
+pR  = plot(nR, "風險（邊界）", display = display.none)
+pS  = plot(nS, "S（邊界）", display = display.none)
+pB  = plot(nB, "底（邊界）", display = display.none)
+pI  = plot(nI, "鐵底（邊界）", display = display.none)
+pIx = plot(na(nI) ? na : math.min(nI, Xp), "跌破鐵底（邊界）", display = display.none)
+pSx = plot(na(nS) ? na : math.max(nS, Xp), "超過 S（邊界）", display = display.none)
 fill(pR, pS,  showZones ? color.new(cRisk, 91) : na, "風險～S 線")
 fill(pB, pI,  showZones ? color.new(cBotL, 90) : na, "鐵底～底線")
 fill(pI, pIx, showZones ? color.new(cIron, 80) : na, "跌破鐵底線")
@@ -193,20 +215,20 @@ fill(pS, pSx, showZones ? color.new(cS, 80) : na, "超過 S 線")
 // 成本線＝0 軸
 hline(0, "成本線", color = color.new(cCost, 20), linestyle = hline.style_solid, linewidth = 1)
 
-plot(showLines ? Sp : na, "S 線", color = color.new(cS, 25), linewidth = 1, linestyle = plot.linestyle_dashed)
-plot(showLines ? Rp : na, "風險線", color = color.new(cRisk, 25), linewidth = 1)
-plot(showLines ? Vp : na, "價值線", color = color.new(cVal, 25), linewidth = 1, linestyle = plot.linestyle_dotted)
-plot(showLines ? Bp : na, "底線", color = color.new(cBotL, 25), linewidth = 1)
-plot(showLines ? Ip : na, "鐵底線", color = color.new(cIron, 25), linewidth = 2)
+plot(showLines ? nS : na, "S 線", color = color.new(cS, 25), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(showLines ? nR : na, "風險線", color = color.new(cRisk, 25), linewidth = 1, style = plot.style_linebr)
+plot(showLines ? nV : na, "價值線", color = color.new(cVal, 25), linewidth = 1, style = plot.style_linebr, linestyle = plot.linestyle_dotted)
+plot(showLines ? nB : na, "底線", color = color.new(cBotL, 25), linewidth = 1, style = plot.style_linebr)
+plot(showLines ? nI : na, "鐵底線", color = color.new(cIron, 25), linewidth = 2, style = plot.style_linebr)
 
 // 動態上中下界
-pUB  = plot(showBand ? UB : na, "上界", color = color.new(cBand, 40), linestyle = plot.linestyle_dashed)
-plot(showBand ? MB : na, "中界", color = color.new(cBand, 60), linestyle = plot.linestyle_dotted)
-pLB  = plot(showBand ? LB : na, "下界", color = color.new(cBand, 40), linestyle = plot.linestyle_dashed)
+pUB  = plot(showBand ? UB : na, "上界", color = color.new(cBand, 15), linewidth = 2)
+plot(showBand ? MB : na, "中界", color = color.new(cBand, 45), linestyle = plot.linestyle_dashed)
+pLB  = plot(showBand ? LB : na, "下界", color = color.new(cBand, 15), linewidth = 2)
 pUBx = plot(showBand ? math.max(UB, Xp) : na, "高於上界（邊界）", display = display.none)
 pLBx = plot(showBand ? math.min(LB, Xp) : na, "低於下界（邊界）", display = display.none)
-fill(pUB, pUBx, color.new(cBand, 72), "高於上界")
-fill(pLB, pLBx, color.new(cBand, 72), "低於下界")
+fill(pUB, pUBx, color.new(cTop, 70), "高於上界")
+fill(pLB, pLBx, color.new(cBot, 70), "低於下界")
 
 // 持倉／減倉／主力色柱（白線和趨勢線之間）
 color rc = st == 2 ? color.new(cMain, 40) : st == 1 ? color.new(cReduce, 40) : color.new(cHold, 62)
