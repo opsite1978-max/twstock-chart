@@ -1,4 +1,4 @@
-11-12 00:32:47 trading days 277 have 292 todo 2
-11-12 00:32:49 no data 2026-11-12
-11-12 00:32:49 chunk 2026-11-06 2026-11-12 rows 27232 done 1
-11-12 00:32:51 finished, computed 1 left 0
+11-13 01:02:17 trading days 277 have 293 todo 2
+11-13 01:02:19 no data 2026-11-13
+11-13 01:02:19 chunk 2026-11-07 2026-11-13 rows 27146 done 1
+11-13 01:02:21 finished, computed 1 left 0
