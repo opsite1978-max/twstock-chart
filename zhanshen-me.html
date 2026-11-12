@@ -327,7 +327,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/11 22:00・波動率震盪</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/12 16:30・美股</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -354,6 +354,10 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <button class="chip" data-s="TX" data-night="0" title="台指期近月，只看日盤（08:45～13:45）"><b>TX</b>台指期近月</button>
       <button class="chip" data-s="TX" data-night="1" title="台指期近月含夜盤：日 K 以上把前一晚的夜盤（15:00 到隔天 05:00）併進當天的 K 棒；分 K 加上夜盤的 K 棒"><b>TX</b>台指期全</button>
       <button class="chip" data-s="TAIEX"><b>TAIEX</b>加權指數</button>
+      <button class="chip" data-s="^GSPC.US" title="美股：標普 500 指數（FinMind，美東時間；任何美股代號都能直接輸入，例如 AAPL、NVDA、BRK.B）"><b>標普500</b>美股</button>
+      <button class="chip" data-s="^SOX.US" title="美股：費城半導體指數"><b>費半</b>美股</button>
+      <button class="chip" data-s="NVDA.US" title="美股：輝達"><b>NVDA</b>輝達</button>
+      <button class="chip" data-s="TSM.US" title="美股：台積電 ADR"><b>TSM</b>台積電ADR</button>
       <button class="chip" data-s="USDTWD" title="美元兌台幣：台北外匯市場（09:00～16:00）成交價，來源鉅亨網；日、週、月、分 K 都有，盤中每 30 秒更新"><b>USD/TWD</b>美元台幣</button>
     </div>
     <span class="spacer"></span>
@@ -2236,7 +2240,7 @@ function intentDaily(C, p){
 function idxLE(ds, s, strict){ let lo = 0, hi = ds.length - 1, r = -1; while (lo <= hi){ const m = (lo + hi) >> 1; if (strict ? ds[m] < s : ds[m] <= s){ r = m; lo = m + 1; } else hi = m - 1; } return r; }
 function calcINTENT(B, p){
   const id = RAW && !RAW.sample ? RAW.id : null;
-  if (!id || FUTS[id] || FX[id] || id === 'TAIEX') return { na:'主力意圖只適用個股' };
+  if (!id || FUTS[id] || FX[id] || isUS(id) || id === 'TAIEX') return { na:'主力意圖只適用個股' };
   if (!UI.showIN) return { na:'' };
   if (CHIP.id !== id){ CHIP.id = id; CHIP.data = null; CHIP.err = null;
     const my = CHIP.pend = chipLoad(id).then(d => { if (CHIP.pend === my){ CHIP.data = d; CHIP.pend = null; recomputeSoon(); } })
@@ -2357,7 +2361,7 @@ const CAPS = { id:null, list:null, pend:null };
 function capLoad(id){
   if (CAPS.id === id) return;
   CAPS.id = id; CAPS.list = null;
-  if (!id || FUTS[id] || FX[id] || id === 'TAIEX' || id === 'SAMPLE') return;
+  if (!id || FUTS[id] || FX[id] || isUS(id) || id === 'TAIEX' || id === 'SAMPLE') return;
   const my = CAPS.pend = fetch('data/holders/' + id + '.json?v=' + Math.floor(Date.now() / 600000)).then(r => r.ok ? r.json() : null).then(j => {
     if (CAPS.pend !== my) return; CAPS.pend = null;
     if (j && j.w){ CAPS.list = Object.keys(j.w).sort().map(d => [d, j.w[d][1]]); recomputeSoon(); }
@@ -3221,6 +3225,7 @@ function calcTP(B, p){
 const LIVE = { timer:null, busy:false, t:'', err:'', id:'' };
 function liveSession(id){
   const fut = !!FUTS[id], { date, mins:m, dow } = tpNow(), wk = dow >= 1 && dow <= 5;
+  if (isUS(id)) return usInSession() ? { k:'D', sDate:usNow().date, a:US_A, e:US_E } : null;
   if (FX[id]) return wk && m >= 540 && m <= 962 ? { k:'D', sDate:date, a:540, e:960 } : null;
   if (!fut) return wk && m >= 540 && m <= 812 ? { k:'D', sDate:date, a:540, e:810 } : null;
   if (wk && m >= 525 && m <= 827) return { k:'D', sDate:date, a:525, e:825 };
@@ -3249,6 +3254,7 @@ setTimeout(() => { try { const cut = shiftDay(tpNow().date, -3); for (const k of
 async function livePoll(){
   if (!UI.live || LIVE.busy || !RAW || RAW.sample || document.hidden) return;
   const id = RAW.id; if (id === 'TAIEX') return;
+  if (isUS(id)){ if (!usInSession() || Date.now() - US_POLL < 55e3) return; US_POLL = Date.now(); LIVE.busy = true; try { await usLive(); } catch (e){ LIVE.err = e.message; schedule(); } finally { LIVE.busy = false; } return; }
   if (FX[id]){ if (!liveSession(id)) return; LIVE.busy = true; try { await fxLive(); } catch (e){ LIVE.err = e.message; schedule(); } finally { LIVE.busy = false; } return; }
   const ses = liveSession(id); if (!ses){ if (LIVE.t){ LIVE.t = ''; schedule(); } return; }
   LIVE.busy = true;
@@ -4446,6 +4452,7 @@ function futuresRows(data, night){
 
 async function fetchSymbol(id, force, early){
   if (FX[id]) return fxDaily(id, force, early);
+  if (isUS(id)) return usDaily(id, force, early);
   const isTX = !!FUTS[id];
   const kind = isTX ? (UI.night ? 'TXFN' : 'TXF') : (UI.adj ? 'ADJ' : 'RAW');
   const cached = await readCache(id, kind);
@@ -4515,6 +4522,7 @@ function nameOf(id){
   if (FUTS[id]) return FUTS[id];
   if (id === 'TAIEX') return '加權指數';
   if (FX[id]) return FX[id];
+  if (isUS(id)){ const t = usTk(id); return US_CN[t] || US_NAME[t] || t; }
   return NAMES[id] || '';
 }
 
@@ -4709,6 +4717,7 @@ async function intraBgFill(seq){
 }
 async function fetchIntraday(id, iv, isStale){
   if (FX[id]){ INTRA_BG = null; INTRA_FAILS = 0; return fxIntraday(id, iv); }
+  if (isUS(id)){ INTRA_BG = null; INTRA_FAILS = 0; return usIntraday(id, iv); }
   if (id === 'TAIEX') throw new Error('加權指數沒有分 K 資料，請改看台指期 TX 或個股。');
   if (id === 'SAMPLE') throw new Error('範例資料沒有分 K。');
   const fut = !!FUTS[id], c = INTRA[iv], n = curDays(iv);
@@ -4855,6 +4864,135 @@ async function fxLive(){
   liveApply(false);
 }
 
+/* ═════════════ 美股（FinMind：日 K 從上市到今天、1 分 K 一次一天；時間一律換成美東時間） ═════════════
+   代號：AAPL.US、BRK-B.US、^GSPC.US（指數）。盤中（美東 9:30～16:00）每 60 秒更新今天的分 K。 */
+const isUS = id => /\.US$/.test(String(id || ''));
+const usTk = id => String(id).slice(0, -3);
+const US_CN = { AAPL:'蘋果', MSFT:'微軟', NVDA:'輝達', GOOGL:'谷歌', GOOG:'谷歌', AMZN:'亞馬遜', META:'Meta', TSLA:'特斯拉', AVGO:'博通', TSM:'台積電ADR', AMD:'超微', NFLX:'網飛', PLTR:'Palantir', MU:'美光', INTC:'英特爾', QCOM:'高通', ORCL:'甲骨文', ARM:'安謀', SMCI:'美超微', ASML:'艾司摩爾', 'BRK-B':'波克夏', JPM:'摩根大通', COST:'好市多', KO:'可口可樂', DIS:'迪士尼', UMC:'聯電ADR', ASX:'日月光ADR', SPY:'標普500ETF', QQQ:'那斯達克100ETF', DIA:'道瓊ETF', SMH:'半導體ETF', SOXX:'費半ETF', SOXL:'半導體3倍', TQQQ:'那指3倍', TLT:'美債20年ETF', GLD:'黃金ETF', '^GSPC':'標普500', '^IXIC':'那斯達克', '^DJI':'道瓊', '^SOX':'費城半導體', '^VIX':'美股VIX', '^NDX':'那斯達克100' };
+const US_ALIAS = { '標普':'^GSPC', '標普500':'^GSPC', 'S&P500':'^GSPC', 'SP500':'^GSPC', '那斯達克':'^IXIC', '那指':'^IXIC', 'NASDAQ':'^IXIC', '道瓊':'^DJI', '費半':'^SOX', '費城半導體':'^SOX', '美股VIX':'^VIX', '恐慌指數':'^VIX', '台積電ADR':'TSM', '台積ADR':'TSM' };
+for (const [k, v] of Object.entries(US_CN)) if (!US_ALIAS[v]) US_ALIAS[v] = k;
+const US_NAME = {};
+let US_INFO_P = null;
+function usInfo(){   // 英文名稱（第一次看美股時讀一次，存 7 天）
+  if (US_INFO_P) return US_INFO_P;
+  US_INFO_P = (async () => {
+    const c = await DSTORE.get('us:info');
+    if (c && Date.now() - c.t < 7 * 864e5){ Object.assign(US_NAME, c.m); return; }
+    const rows = await finmind({ dataset:'USStockInfo' }), m = {}, md = {};
+    for (const r of rows) if (r.stock_id && r.stock_name && (!m[r.stock_id] || r.date > md[r.stock_id])){ md[r.stock_id] = r.date; m[r.stock_id] = String(r.stock_name).replace(/\s+(Common Stock|Class [A-C] Common Stock|Ordinary Shares|American Depositary Shares.*|Common Shares)\s*$/i, '').trim(); }
+    Object.assign(US_NAME, m); DSTORE.put('us:info', { t:Date.now(), m });
+  })().catch(() => { US_INFO_P = null; });
+  return US_INFO_P;
+}
+// 美東時間：某個 UTC 毫秒是美東的幾月幾日幾分（自動處理夏令時間）
+const US_FMT = new Intl.DateTimeFormat('en-US', { timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23' });
+const US_OFF = new Map();
+function usOffset(utcMs){   // 美東比 UTC 慢幾分鐘（同一天快取）
+  const k = Math.floor(utcMs / 36e5);
+  let o = US_OFF.get(k); if (o != null) return o;
+  const p = Object.fromEntries(US_FMT.formatToParts(new Date(utcMs)).map(x => [x.type, x.value]));
+  o = Math.round((utcMs - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute)) / 60e3);
+  US_OFF.set(k, o); return o;
+}
+function usNow(){ const t = Date.now(), d = new Date(t - usOffset(t) * 60e3); return { date:d.toISOString().slice(0, 10), mins:d.getUTCHours() * 60 + d.getUTCMinutes(), dow:d.getUTCDay() }; }
+const US_A = 570, US_E = 960;   // 9:30～16:00
+function usInSession(){ const n = usNow(); return n.dow >= 1 && n.dow <= 5 && n.mins >= US_A - 5 && n.mins <= US_E + 5; }
+async function usDaily(id, force, early){
+  const tk = usTk(id); usInfo();
+  const cached = await readCache(id, 'US');
+  if (cached && !force && Date.now() - cached.t < 20 * 60e3 && cached.start <= UI.start) return { rows:usAdj(cached.rows), from:'cache' };
+  if (cached && !force && early && cached.rows.length) early(usAdj(cached.rows));
+  let rows;
+  if (cached && !force && cached.start <= UI.start && cached.rows.length > 30){
+    const last = cached.rows[cached.rows.length - 1][0];
+    const add = await finmind({ dataset:'USStockPrice', data_id:tk, start_date:isoDay(Date.parse(last) - 10 * 864e5) });
+    rows = mergeRows(cached.rows, add.map(usRow));
+  } else {
+    setLoading(tk + ' 美股日 K 載入中…');
+    rows = (await finmind({ dataset:'USStockPrice', data_id:tk, start_date:UI.start })).map(usRow);
+  }
+  rows = rows.filter(r => r[4] > 0);
+  if (!rows.length) throw new Error('FinMind 沒有「' + tk + '」的美股資料。代號要用美國的寫法，例如 AAPL、NVDA、BRK-B（點換成減號）、指數 ^GSPC、^IXIC、^SOX。');
+  writeCache(id, 'US', { rows, t:Date.now(), start:UI.start });
+  return { rows:usAdj(rows), from:'api' };
+}
+const usRow = r => [r.date, +r.Open, +r.High, +r.Low, +r.Close, +r.Volume || 0, +r.Adj_Close || +r.Close];
+function usAdj(rows){   // 還原權息：用 Adj_Close／Close 比例調整開高低
+  const adj = !!UI.adj, out = [];
+  for (const r of rows){
+    if (r[0] < UI.start) continue;
+    if (!adj || !(r[6] > 0) || !(r[4] > 0) || Math.abs(r[6] - r[4]) < 1e-9){ out.push(r.slice(0, 6)); continue; }
+    const f = r[6] / r[4]; out.push([r[0], r[1] * f, r[2] * f, r[3] * f, r[6], r[5]]);
+  }
+  return out;
+}
+// 一天的 1 分 K：[[美東分鐘, 開, 高, 低, 收, 量], ...]
+const USM = new Map();
+async function usMinDay(tk, date, force){
+  const key = 'us:m:' + tk + ':' + date;
+  if (!force && USM.has(key)) return USM.get(key);
+  const c = !force && await DSTORE.get(key);
+  if (c && c.done){ USM.set(key, c.b); return c.b; }
+  const rows = await finmind({ dataset:'USStockPriceMinute', data_id:tk, start_date:date });
+  const b = [];
+  for (const r of rows){
+    const u = Date.parse(String(r.date).replace(' ', 'T') + 'Z'); if (!isFinite(u)) continue;
+    const l = new Date(u - usOffset(u) * 60e3);
+    if (l.toISOString().slice(0, 10) !== date) continue;
+    const m = l.getUTCHours() * 60 + l.getUTCMinutes(); if (m < US_A || m >= US_E) continue;
+    b.push([m, +r.open, +r.high, +r.low, +r.close, +r.volume || 0]);
+  }
+  b.sort((x, y) => x[0] - y[0]);
+  const n = usNow(), done = date < n.date || n.mins > US_E + 10;
+  USM.set(key, b); if (b.length) DSTORE.put(key, { done, b });
+  return b;
+}
+function usBars(days, P){
+  const out = [];
+  for (const [date, bars] of days){
+    const [yy, mo, dd] = date.split('-').map(Number); let cur = null, curB = null;
+    for (const [m, o, h, l, c, v] of bars){
+      const b = US_A + Math.floor((m - US_A) / P) * P;
+      if (b !== curB){ const t = Date.UTC(yy, mo - 1, dd, 0, b), iso = new Date(t).toISOString(); cur = [iso.slice(0, 10) + ' ' + iso.slice(11, 16), o, h, l, c, v, Date.UTC(yy, mo - 1, dd, 0, Math.min(b + P, US_E)), t]; out.push(cur); curB = b; }
+      else { cur[2] = Math.max(cur[2], h); cur[3] = Math.min(cur[3], l); cur[4] = c; cur[5] += v; }
+    }
+  }
+  return out;
+}
+async function usIntraday(id, iv){
+  const tk = usTk(id), P = INTRA[iv].P, n = Math.min(curDays(iv), P >= 60 ? 60 : 40);   // 分 K 一次只能讀一天，最多 40／60 天（看過的存在裝置）
+  // 交易日：用日 K 的日期（已有暫存就不再讀）；今天盤中另外加上
+  const d = await usDaily(id, false, null);
+  let dates = d.rows.map(r => r[0]);
+  const now = usNow();
+  if (now.dow >= 1 && now.dow <= 5 && now.mins >= US_A && dates[dates.length - 1] < now.date) dates.push(now.date);
+  dates = dates.slice(-n);
+  const got = new Map(); let k = 0, fail = 0;
+  const work = async () => { while (k < dates.length){ const dt = dates[k++];
+    try { got.set(dt, await usMinDay(tk, dt, dt === now.date)); } catch (e){ fail++; if (/402|403|額度|level|權限/i.test(e.message)) throw e; }
+    setLoading(tk + ' 美股分 K 載入中… ' + got.size + '／' + dates.length + ' 天'); } };
+  await Promise.all([work(), work(), work(), work()]);
+  const rows = usBars(dates.filter(x => got.get(x) && got.get(x).length).map(x => [x, got.get(x)]), P);
+  if (!rows.length) throw new Error(tk + ' 讀不到分 K' + (fail ? '（' + fail + ' 天讀取失敗）' : '') + '。');
+  return rows;
+}
+// 盤中更新：分 K 重讀今天；日 K 用今天的分 K 組出今天這根
+async function usLive(){
+  const id = RAW.id, tf = RAW.tf, tk = usTk(id), n = usNow();
+  const b = await usMinDay(tk, n.date, true);
+  if (!b.length || !RAW || RAW.id !== id || RAW.tf !== tf) return;
+  if (tf && tf !== 'D'){
+    const P = INTRA[tf].P, keep = RAW.base.filter(r => r[0].slice(0, 10) < n.date);
+    RAW.base = keep.concat(usBars([[n.date, b]], P));
+  } else {
+    let h = -Infinity, l = Infinity, v = 0; for (const x of b){ h = Math.max(h, x[2]); l = Math.min(l, x[3]); v += x[5]; }
+    RAW.base = mergeRows(RAW.base, [[n.date, b[0][1], h, l, b[b.length - 1][4], v]]);
+  }
+  const m = b[b.length - 1][0]; LIVE.t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0') + ' 美東';
+  LIVE.err = ''; LIVE.id = id; liveApply(false);
+}
+let US_POLL = 0;
+
 /* deterministic sample so the chart is never empty */
 function sampleRows(){
   let a = 20261025;
@@ -4895,9 +5033,9 @@ function makeBars(rows, iv, sample){
   b.t = new F(n);
   rows.forEach((r, i) => { b.d[i] = r[0]; b.o[i] = r[1]; b.h[i] = r[2]; b.l[i] = r[3]; b.c[i] = r[4]; b.vraw[i] = r[5]; b.v[i] = r[5] || 0; b.t[i] = r.length > 7 ? r[7] : dayMs(r[0].slice(0, 10)); });
   if (n && !sample){
-    const t = tpNow(), last = b.d[n - 1], closeM = RAW && FX[RAW.id] ? 16 * 60 : 13 * 60 + 45;
+    const us = RAW && isUS(RAW.id), t = us ? usNow() : tpNow(), last = b.d[n - 1], closeM = us ? US_E : RAW && FX[RAW.id] ? 16 * 60 : 13 * 60 + 45;
     let open = false;
-    if (b.intra) open = rows[n - 1][6] > Date.now() + 8 * 3600e3;
+    if (b.intra) open = rows[n - 1][6] > (us ? Date.now() - usOffset(Date.now()) * 60e3 : Date.now() + 8 * 3600e3);
     else if (iv === 'D') open = last === t.date && t.mins < closeM;
     else if (iv === 'W') open = weekKey(last) === weekKey(t.date) && t.dow >= 1 && t.dow <= 5 && !(t.dow === 5 && t.mins >= closeM);
     else open = monthKey(last) === monthKey(t.date);
@@ -5015,7 +5153,7 @@ function niceStep(range, count){
   return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
 }
 function fmtNum(v, dec){ return isNaN(v) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
-function priceDec(v){ const a = Math.abs(v); if (RAW && FX[RAW.id]) return 3; return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
+function priceDec(v){ const a = Math.abs(v); if (RAW && FX[RAW.id]) return 3; if (RAW && isUS(RAW.id)) return a >= 10000 ? 0 : 2; return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
 function fmtP(v){ return fmtNum(v, priceDec(v)); }
 function fmtPx(v){ // OHLC exact, trims zeros
   if (isNaN(v)) return '—'; const a = Math.abs(v);
@@ -5381,8 +5519,8 @@ function drawMain(p, i0, i1, ci){
   const chg = ci > 0 ? (B.c[ci] - B.c[ci - 1]) / B.c[ci - 1] * 100 : NaN;
   const cc = chg >= 0 ? CC.up : CC.down;
   const isF = RAW && FUTS[RAW.id], isIdx = RAW && RAW.id === 'TAIEX', isFX = RAW && FX[RAW.id];
-  const unit = isF ? '口' : isIdx ? '' : '張';
-  const vol = isF || B.intra ? B.v[ci] : isIdx ? B.v[ci] / 1e8 : B.v[ci] / 1000;
+  const isUSs = RAW && isUS(RAW.id), unit = isF ? '口' : isIdx ? '' : isUSs ? '萬股' : '張';
+  const vol = isF ? B.v[ci] : isUSs ? B.v[ci] / 1e4 : B.intra ? B.v[ci] : isIdx ? B.v[ci] / 1e8 : B.v[ci] / 1000;
   const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], isFX ? (B.intra ? ['', CC.axis] : ['量 ' + fmtNum(B.v[ci] / 1e8, 1) + ' 億美元', CC.axis]) : ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
   const line2 = ok
     ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), trendOf(ci)], ['上 ' + fmtP(r.u1[ci]), bandOf(ci)], ['下 ' + fmtP(r.l1[ci]), bandOf(ci)]]
@@ -5679,6 +5817,7 @@ function calcVXT(B, p){
   const n = B.n;
   if (!(RAW && RAW.sample)) vxLoad();
   const O = nanArr(n), H = nanArr(n), L = nanArr(n), C = nanArr(n), src = new Array(n).fill('');
+  if (B.intra && RAW && (isUS(RAW.id) || FX[RAW.id])) return { error:'分 K 只對應台股時段（美股、匯率請看日線）' };
   if (B.intra){
     const days = [...new Set(B.d.map(d => d.slice(0, 10)))];
     vxIntraLoad(days);
@@ -7401,7 +7540,12 @@ async function resolveSym(raw){
   const t = String(raw || '').trim().replace(/\s+近月$/, '');
   if (!t) return null;
   if (ALIAS[t]) return ALIAS[t];
-  if (/^(USD\s*\/?\s*TWD|USDTWD|USD|美元|美金|台幣|新台幣|匯率)/i.test(t)) return 'USDTWD';
+  if (/^(USD\s*\/?\s*TWD|USDTWD|美元|美金|台幣|新台幣|匯率)$/i.test(t)) return 'USDTWD';
+  // 美股：中文名、指數別名、或美國代號（AAPL、BRK.B→BRK-B、^GSPC）
+  if (US_ALIAS[t]) return US_ALIAS[t] + '.US';
+  { const u = t.toUpperCase().replace(/\s+/g, ''); if (/\.US$/.test(u)) return u;
+    if (US_ALIAS[u]) return US_ALIAS[u] + '.US';
+    if (/^\^?[A-Z][A-Z0-9.\-]{0,9}$/.test(u) && !/^(TX|MTX|TMF|TAIEX|USDTWD)$/.test(u) && !FUTS[u]) return u.replace(/\./g, '-') + '.US'; }
   const up = t.toUpperCase();
   let m = up.match(/^(TX|MTX|TMF|TAIEX)(?![0-9A-Z])/); if (m) return m[1];
   m = up.match(/^\d{4,6}[A-Z]?(?![0-9A-Z])/); if (m) return m[0];
@@ -7444,9 +7588,10 @@ async function loadSymbol(input, force){
     liveApply(true); setTimeout(() => livePoll(), 300);
     if (intra && INTRA_BG) setTimeout(() => intraBgFill(seq), 50);
     const last = res.rows[res.rows.length - 1][0].replace(/-/g, '/');
-    if (intra && FX[id]) setMsg('美元／台幣 ' + IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日 · ' + res.rows.length + ' 根 K 棒 · 最新 ' + last + ' · 台北外匯市場 09:00～16:00（中午休市），分 K 沒有成交量', 'ok');
+    if (intra && isUS(id)) setMsg(usTk(id) + ' ' + IVN[iv] + ' · 最近 ' + Math.min(curDays(iv), INTRA[iv].P >= 60 ? 60 : 40) + ' 個交易日 · ' + res.rows.length + ' 根 K 棒 · 最新 ' + last + '（美東時間）· 看過的日子存在這台裝置，下次很快', 'ok');
+    else if (intra && FX[id]) setMsg('美元／台幣 ' + IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日 · ' + res.rows.length + ' 根 K 棒 · 最新 ' + last + ' · 台北外匯市場 09:00～16:00（中午休市），分 K 沒有成交量', 'ok');
     else if (intra) setMsg(IVN[iv] + ' · 最近 ' + curDays(iv) + ' 個交易日' + (INTRA_FAILS ? '（' + INTRA_FAILS + ' 天暫時讀不到已略過，按「重新整理」補抓）' : '') + ' · ' + res.rows.length + ' 根 K 棒' + (FUTS[id] ? (night ? ' · 含夜盤' : ' · 日盤') : '') + ' · 最新 ' + last + ' · 看過的日子存在這台裝置，下次不再用額度', 'ok');
-    else setMsg((FX[id] ? '台北外匯市場成交價（鉅亨網）' : FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : FX[id] ? ' · 已更新' : ' · 已向 FinMind 更新'), 'ok');
+    else setMsg((FX[id] ? '台北外匯市場成交價（鉅亨網）' : isUS(id) ? '美股（FinMind，美東時間）・' + (UI.adj ? '還原權息價格' : '未還原價格') : FUTS[id] ? nameOf(id) + (night ? '・近全（含夜盤）' : '・日盤') + '連續（每日取成交量最大合約）' : (UI.adj ? '還原權息價格' : '未還原價格')) + ' · 共 ' + res.rows.length + ' 個交易日 · 最新 ' + last + (res.from === 'cache' ? ' · 使用 30 分鐘內的暫存資料' : FX[id] ? ' · 已更新' : ' · 已向 FinMind 更新'), 'ok');
     if (!Object.keys(NAMES).length) loadNames();
   } catch (e){
     if (seq !== loadSeq) return;
@@ -7469,7 +7614,7 @@ async function dailyRawCloses(id){
 }
 function syncWarrants(){
   const sec = document.getElementById('wSec');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && !isUS(id) && id !== 'TAIEX';
   if (!stock){ sec.hidden = true; return; }
   if (WSTATE.id === id && (WSTATE.data || WSTATE.pend)) { renderWarrants(); return; }
   WSTATE.id = id; WSTATE.data = null; WSTATE.rows = null; WSTATE.ivC = WSTATE.ivP = NaN;
@@ -7729,8 +7874,8 @@ document.getElementById('wSeg').addEventListener('click', e => { const b = e.tar
 let chipCode = null, chipTheme = null;
 function syncChips(){
   const sec = document.getElementById('chipSec'), fr = document.getElementById('chipFrame'), note = document.getElementById('chipNote');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
-  sec.hidden = !id || !!FX[id];
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && !isUS(id) && id !== 'TAIEX';
+  sec.hidden = !id || !!FX[id] || isUS(id);
   document.getElementById('togChips').setAttribute('aria-pressed', String(!!UI.showChips));
   if (!id) return;
   if (!stock){ fr.hidden = true; note.hidden = false; note.textContent = '大戶散戶、內部人買賣只有個股才有；台指期的籌碼請看「總覽」或「選擇權」頁。'; document.getElementById('chipLink').href = 'holders.html?v=3'; return; }
@@ -7894,7 +8039,7 @@ function valRender(id, m){
 }
 function syncVal(){
   const sec = document.getElementById('valSec'), box = document.getElementById('valBox');
-  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && id !== 'TAIEX';
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && !FUTS[id] && !FX[id] && !isUS(id) && id !== 'TAIEX';
   sec.hidden = !stock;
   document.getElementById('togVal').setAttribute('aria-pressed', String(UI.showVal !== false));
   if (!stock) return;
@@ -8002,7 +8147,7 @@ document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; s
 document.getElementById('togHPM').onclick = () => { P.hpm.on = !P.hpm.on; LS.set(PFX + 'p:hpm', P.hpm); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togQL').onclick = () => { P.ql.on = !P.ql.on; LS.set(PFX + 'p:ql', P.ql); syncToolbar(); recompute(); schedule(); };
-document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && !FX[id] && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
+document.getElementById('calcLink')?.addEventListener('click', e => { const id = RAW && !RAW.sample ? RAW.id : UI.symbol; if (id && !FUTS[id] && !FX[id] && !isUS(id) && id !== 'TAIEX') e.currentTarget.href = '/twstock-chart/calc.html?s=' + encodeURIComponent(id); });
 document.getElementById('togJGN').onclick = () => { UI.showJGN = !UI.showJGN; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togLive').onclick = () => { UI.live = !UI.live; saveUI(); syncToolbar(); LIVE.t = ''; liveApply(false); if (UI.live) livePoll(); };
 document.getElementById('togFZ').onclick = () => { P.fz.on = !P.fz.on; LS.set(PFX + 'p:fz', P.fz); syncToolbar(); recompute(); schedule(); };
