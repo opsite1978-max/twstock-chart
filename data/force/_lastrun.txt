@@ -1,6 +1,7 @@
-11-12 11:55:40 本小時 FinMind 已用 0 ／上限 600
-11-12 11:55:42 targets 240 todo 2 this run max 60
-11-12 11:56:34 fail 2026-11-11 request failed TaiwanOptionTick 2026-11-11: HTTP 400 {"msg":"Your level is register. Please update your user level. Detail information:https://finmindtrade.com/analysis/#/Sponsor/sponsor","status":400,"to
-11-12 11:57:26 fail 2026-11-12 request failed TaiwanOptionTick 2026-11-12: HTTP 400 {"msg":"Your level is register. Please update your user level. Detail information:https://finmindtrade.com/analysis/#/Sponsor/sponsor","status":400,"to
-11-12 11:57:29 strikes: no option daily yet 2026-11-12
-11-12 11:57:31 strikes written 2026-11-11
+11-13 03:48:44 本小時 FinMind 已用 477 ／上限 6000
+11-13 03:48:46 targets 241 todo 3 this run max 60
+11-13 03:49:10 file 2026-11-11 bars 1142 dup 1.997 cls 0.995 fb 0.0 last 23:59:59 complete True 24s req 7
+11-13 03:49:22 file 2026-11-12 bars 602 dup 1.987 cls 0.992 fb 0.0 last 13:44:59 complete False 12s req 11
+11-13 03:49:22 no ticks 2026-11-13
+11-13 03:49:24 strikes: no option daily yet 2026-11-13
+11-13 03:49:26 strikes written 2026-11-12
