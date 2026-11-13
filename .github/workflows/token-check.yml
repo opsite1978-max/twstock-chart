@@ -8,32 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 權證資料 2
+      - name: 權證分點
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out; A=https://api.finmindtrade.com/api/v4/data
-          curl -s "https://openapi.twse.com.tw/v1/opendata/t187ap37_L" -o w1.json; python3 -c "import json;d=json.load(open('w1.json'));print(len(d));print(d[:2])" > out/w37L.txt 2>&1
-          curl -s "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap37_O" -o w2.json; python3 -c "import json;d=json.load(open('w2.json'));print(len(d));print(d[:2])" > out/w37O.txt 2>&1
-          curl -s "https://www.tpex.org.tw/openapi/v1/tpex_warrant_issue" -o w3.json; python3 -c "import json;d=json.load(open('w3.json'));print(len(d));print(d[:2])" > out/wissue.txt 2>&1
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockPrice&start_date=2026-11-13&end_date=2026-11-13" -o px.json
-          python3 - > out/px2.txt <<'PY'
-          import json,collections
-          d=json.load(open('px.json'))['data']
-          w=[r for r in d if len(r['stock_id'])==6 and not r['stock_id'].startswith('00')]
-          print(collections.Counter(r['stock_id'][:2]+('P' if r['stock_id'][-1]=='P' else '') for r in w).most_common(30))
-          w=[r for r in w if r['Trading_money']>0]; w.sort(key=lambda r:-r['Trading_money']); print('traded',len(w)); print([(r['stock_id'],r['Trading_money']) for r in w[:5]])
-          for th in (2e5,5e5,1e6,2e6,3e6,5e6,1e7): print(th, sum(1 for r in w if r['Trading_money']>=th), round(sum(r['Trading_money'] for r in w if r['Trading_money']>=th)/1e8,1),'億')
-          print('total', round(sum(r['Trading_money'] for r in w)/1e8,1))
-          open('wcode.txt','w').write(w[0]['stock_id'])
-          PY
-          W=$(cat wcode.txt)
+          for W in 066186 066073 03xxxx; do
           curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&data_id=$W&start_date=2026-11-13" | python3 -c "
-          import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('warrant',len(d),j.get('msg','')[:100])
+          import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('$W rows',len(d),j.get('msg','')[:100])
           br={}
           for r in d:
-            b=br.setdefault(r['securities_trader'],[0,0]);b[0]+=r['buy'];b[1]+=r['sell']
-          print(sorted(br.items(),key=lambda kv:-(kv[1][0]+kv[1][1]))[:12])" > out/wbr2.txt
+            b=br.setdefault(r['securities_trader_id']+' '+r['securities_trader'],[0,0,0]);b[0]+=r['buy'];b[1]+=r['sell'];b[2]+=1
+          print(len(br),sorted(br.items(),key=lambda kv:-(kv[1][0]+kv[1][1]))[:15])" >> out/wbr3.txt
+          done
           sed -i "s/$T/***/g" out/*.txt
       - name: 保存結果
         if: always()
