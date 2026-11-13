@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>血糖藥動態調整建議</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* 版面想法：左邊是「處方箋」式輸入（病人→用藥），右邊是即時判讀；窄螢幕由上而下堆疊 */
+:root{
+  --paper:#eef1ee; --surface:#fbfcfa; --ink:#14232b; --muted:#5a6a70; --line:#cfd8d4;
+  --accent:#0a5c66; --accent-soft:#d9ebea; --on-accent:#f4fbfa;
+  --ok:#2f6b3c; --ok-bg:#e0efe2; --warn:#8a5a00; --warn-bg:#f7ebcf; --crit:#a3261e; --crit-bg:#f8dedb;
+  --display:"Noto Serif TC","Songti TC",serif; --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1719; --surface:#172226; --ink:#e4ecea; --muted:#94a5a6; --line:#2c3c40;
+    --accent:#58b9c2; --accent-soft:#16363b; --on-accent:#06191c;
+    --ok:#7fc48c; --ok-bg:#16301c; --warn:#e2b458; --warn-bg:#3a2c0c; --crit:#f08a80; --crit-bg:#3d1714;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1719; --surface:#172226; --ink:#e4ecea; --muted:#94a5a6; --line:#2c3c40;
+  --accent:#58b9c2; --accent-soft:#16363b; --on-accent:#06191c;
+  --ok:#7fc48c; --ok-bg:#16301c; --warn:#e2b458; --warn-bg:#3a2c0c; --crit:#f08a80; --crit-bg:#3d1714;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.65}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:3px double var(--ink);padding-bottom:12px;margin-bottom:18px}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(24px,3.4vw,34px);margin:0;letter-spacing:.04em;text-wrap:balance}
+header.top p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{border:1px solid var(--ink);background:transparent;padding:6px 14px;border-radius:2px;font-size:13px}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.solid:hover{filter:brightness(1.1);background:var(--accent);color:var(--on-accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:980px){.grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+section.card{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--ink);padding:14px 16px 16px}
+h2{font-family:var(--display);font-weight:600;font-size:18px;margin:0 0 10px;display:flex;align-items:baseline;gap:8px}
+h2 small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+.notice{background:var(--warn-bg);color:var(--warn);border-left:4px solid var(--warn);padding:8px 12px;font-size:13px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px 12px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+label.f input,label.f select{font:600 17px var(--mono);color:var(--ink);background:transparent;border:0;border-bottom:1.5px solid var(--ink);padding:3px 2px;width:100%;border-radius:0;font-variant-numeric:tabular-nums}
+label.f select{font-family:var(--body);font-size:15px}
+label.f .hint{font-size:11px}
+.flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;line-height:1.5}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
+.cls{border-top:1px dashed var(--line);padding:9px 0 7px}
+.cls:first-of-type{border-top:0;padding-top:0}
+.cls h3{font-size:13px;font-weight:700;margin:0 0 6px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.cls h3 span{font-weight:400;color:var(--muted);font-size:12px}
+.drugs{display:flex;flex-direction:column;gap:6px}
+.drug{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.drug .chip b{font-weight:500}
+.drug .chip i{font-style:normal;font-size:11px;opacity:.75;margin-left:4px}
+.doses{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.dose{font:500 12.5px var(--mono);border:1px solid var(--line);background:transparent;padding:2px 7px;border-radius:2px}
+.dose[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.dose.over{text-decoration:line-through;color:var(--crit);border-color:var(--crit)}
+.dose.over[aria-pressed="true"]{background:var(--crit);color:var(--surface)}
+.cap{font-size:11.5px;color:var(--muted)}
+.unit-in{font:600 14px var(--mono);width:64px;border:0;border-bottom:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:2px}
+/* 判讀 */
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center}
+.big{font:600 46px/1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big small{font-size:15px;font-family:var(--body);font-weight:400;color:var(--muted);margin-left:4px}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font-size:13px;font-weight:700}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.crit{background:var(--crit-bg);color:var(--crit)}
+.verdict p{margin:4px 0 0;font-size:13.5px}
+.scale{grid-column:1/-1;position:relative;height:30px;margin-top:6px}
+.scale .bar{position:absolute;left:0;right:0;top:8px;height:8px;background:linear-gradient(90deg,var(--ok-bg) 0 var(--t),var(--warn-bg) var(--t) 70%,var(--crit-bg) 70%);border:1px solid var(--line)}
+.scale .mk{position:absolute;top:2px;width:3px;height:20px;background:var(--ink);transform:translateX(-50%)}
+.scale .tg{position:absolute;top:0;height:24px;border-left:2px dashed var(--accent)}
+.scale .lb{position:absolute;top:19px;font:500 10.5px var(--mono);color:var(--muted);transform:translateX(-50%)}
+ul.alerts,ul.plain{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ul.alerts li{padding:7px 10px 7px 12px;border-left:4px solid;font-size:13.5px}
+li.crit{border-color:var(--crit);background:var(--crit-bg)} li.warn{border-color:var(--warn);background:var(--warn-bg)} li.ok{border-color:var(--ok);background:var(--ok-bg)} li.info{border-color:var(--line);background:transparent}
+li .tag{font-weight:700;margin-right:6px}
+li.crit .tag{color:var(--crit)} li.warn .tag{color:var(--warn)} li.ok .tag{color:var(--ok)} li.info .tag{color:var(--muted)}
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:12px}
+ol.steps>li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:4px 10px}
+ol.steps>li::before{content:counter(s);font:900 26px/1 var(--display);color:var(--accent)}
+ol.steps h3{margin:0;font-size:15px}
+ol.steps .body{grid-column:2;font-size:13.5px}
+ol.steps .body p{margin:2px 0 6px}
+.rx{display:flex;flex-direction:column;gap:5px;margin:4px 0 0;padding:0;list-style:none}
+.rx li{border:1px solid var(--line);padding:6px 10px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
+.rx li.first{border-color:var(--accent);background:var(--accent-soft)}
+.rx .nm{font-weight:700}
+.rx .chg{font:600 13px var(--mono);white-space:nowrap}
+.rx .why{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.rx .nhi{font-size:11.5px;font-weight:700;border-radius:2px;padding:0 6px;white-space:nowrap}
+.nhi.y{background:var(--ok-bg);color:var(--ok)} .nhi.n{background:var(--crit-bg);color:var(--crit)} .nhi.q{background:var(--warn-bg);color:var(--warn)}
+textarea#note{width:100%;min-height:150px;font:13px/1.6 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);padding:10px;resize:vertical}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+#copied{font-size:12.5px;color:var(--ok)}
+footer{margin-top:22px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;max-width:75ch}
+@media (prefers-reduced-motion:no-preference){.chip,.dose,.btn{transition:background .12s,color .12s,border-color .12s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>血糖藥動態調整建議</h1>
+      <p>第二型糖尿病 · 輸入檢驗與目前用藥，右側即時更新調藥步驟與健保檢核</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnExample" type="button">載入範例</button>
+      <button class="btn" id="btnClear" type="button">清空重填</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <div class="notice" id="exNote" hidden>目前是範例病人：檢驗值取自您先前的報告，年齡、身高體重、腎絲球過濾率與 metformin 總量是假設值，請改成實際數字。</div>
+
+      <section class="card">
+        <h2>一、病人資料</h2>
+        <div class="fields">
+          <label class="f" for="age">年齡（歲）<input id="age" type="number" inputmode="numeric" min="18" max="110"></label>
+          <label class="f" for="ht">身高（公分）<input id="ht" type="number" inputmode="decimal"></label>
+          <label class="f" for="wt">體重（公斤）<input id="wt" type="number" inputmode="decimal"><span class="hint" id="bmiHint"></span></label>
+          <label class="f" for="a1c">糖化血色素 HbA1c（%）<input id="a1c" type="number" step="0.1" inputmode="decimal"></label>
+          <label class="f" for="a1cPrev">前次糖化血色素（%）<input id="a1cPrev" type="number" step="0.1" inputmode="decimal"></label>
+          <label class="f" for="fpg">飯前血糖（mg/dL）<input id="fpg" type="number" inputmode="numeric"></label>
+          <label class="f" for="egfr">腎絲球過濾率 eGFR<input id="egfr" type="number" inputmode="numeric"><span class="hint">mL/min/1.73m²</span></label>
+          <label class="f" for="uacr">尿液白蛋白/肌酸酐比值<input id="uacr" type="number" inputmode="numeric"><span class="hint">mg/g</span></label>
+          <label class="f" for="target">糖化血色素目標
+            <select id="target">
+              <option value="6.5">低於 6.5%（年輕、無低血糖風險）</option>
+              <option value="7">低於 7.0%（一般成人）</option>
+              <option value="7.5">低於 7.5%（高齡、健康尚可）</option>
+              <option value="8">低於 8.0%（衰弱、多重共病）</option>
+            </select>
+          </label>
+        </div>
+        <div class="flags" id="flags"></div>
+      </section>
+
+      <section class="card">
+        <h2>二、目前用藥 <small>點藥名選取，再點每日總劑量；Qtern、Glyxambi 可直接點，其他複方請拆成兩個成分</small></h2>
+        <div id="meds"></div>
+      </section>
+    </div>
+
+    <div class="col" id="out" aria-live="polite"></div>
+  </div>
+
+  <footer>
+    本頁是給醫師用的決策輔助，依一般治療指引與健保藥品給付規定第 5.1 節（民國 114 年 6 月 1 日修訂版）整理，不能取代臨床判斷。開立前請核對最新仿單與健保署公告。資料只留在這個瀏覽器畫面，不會上傳。
+  </footer>
+</div>
+
+<script>
+/* ---------- 藥物資料 ---------- */
+const CLS={
+  MET:{zh:'雙胍類',en:'metformin',drop:'1.0–1.5'},
+  SU:{zh:'磺醯尿素類（促胰島素分泌）',en:'sulfonylurea',drop:'1.0–1.5'},
+  GLN:{zh:'短效促胰島素分泌劑',en:'glinide',drop:'0.5–1.0'},
+  AGI:{zh:'α-葡萄糖苷酶抑制劑（延緩醣類吸收）',en:'alpha-glucosidase inhibitor',drop:'0.5–0.8'},
+  TZD:{zh:'胰島素增敏劑',en:'pioglitazone',drop:'0.8–1.2'},
+  DPP4:{zh:'二肽基肽酶-4 抑制劑（DPP-4 抑制劑）',en:'DPP-4 inhibitor',drop:'0.5–0.8'},
+  SGLT2:{zh:'鈉-葡萄糖共同轉運蛋白-2 抑制劑（SGLT-2 抑制劑，排糖藥）',en:'SGLT-2 inhibitor',drop:'0.5–1.0'},
+  COMBO:{zh:'排糖藥＋DPP-4 抑制劑複方（單一錠劑）',en:'SGLT-2/DPP-4 fixed-dose combination',drop:'1.0–1.5'},
+  GLP1:{zh:'腸泌素針劑（GLP-1 受體促效劑）',en:'GLP-1 receptor agonist',drop:'1.0–1.8'},
+  INS:{zh:'基礎胰島素',en:'basal insulin',drop:'依劑量，通常 1.5 以上'}
+};
+const D=[
+ {id:'met',c:'MET',n:'Metformin',b:'Glucophage 庫魯化',u:'mg/日',d:[500,850,1000,1500,1700,2000,2550],goal:2000,
+  lim:e=>e<30?{stop:'腎絲球過濾率低於 30 禁用'}:e<45?{max:1000,why:'腎絲球過濾率 30–44：每日上限 1000 mg'}:{max:2550}},
+ {id:'glim',c:'SU',n:'Glimepiride',b:'Amaryl 瑪爾胰',u:'mg/日',d:[1,2,3,4,6,8],goal:4,gnote:'超過 4 mg 額外降幅有限',
+  lim:e=>e<30?{max:2,why:'腎絲球過濾率低於 30：低血糖風險高，建議 1–2 mg 或改用其他類'}:{max:8}},
+ {id:'glic',c:'SU',n:'Gliclazide 持續釋放錠',b:'Diamicron MR 岱蜜克龍',u:'mg/日',d:[30,60,90,120],goal:120,
+  lim:e=>e<30?{max:60,why:'腎絲球過濾率低於 30：小心低血糖，建議低劑量'}:{max:120}},
+ {id:'glip',c:'SU',n:'Glipizide',b:'Minidiab',u:'mg/日',d:[2.5,5,10,15,20],goal:10,gnote:'超過 10 mg 額外降幅有限',lim:e=>({max:20})},
+ {id:'repa',c:'GLN',n:'Repaglinide',b:'NovoNorm 諾和隆',u:'mg/日',d:[1.5,3,6,12],goal:6,lim:e=>({max:16})},
+ {id:'acar',c:'AGI',n:'Acarbose',b:'Glucobay 醣祿',u:'mg/日',d:[150,300],goal:300,
+  lim:e=>e<30?{stop:'腎絲球過濾率低於 30 不建議使用'}:{max:300}},
+ {id:'pio',c:'TZD',n:'Pioglitazone',b:'Actos 愛妥糖',u:'mg/日',d:[15,30,45],goal:30,lim:e=>({max:45})},
+ {id:'sita',c:'DPP4',n:'Sitagliptin',b:'Januvia 佳糖維',u:'mg/日',d:[25,50,100],goal:100,
+  lim:e=>e<30?{max:25,why:'腎絲球過濾率低於 30：上限 25 mg'}:e<45?{max:50,why:'腎絲球過濾率 30–44：上限 50 mg'}:{max:100}},
+ {id:'vild',c:'DPP4',n:'Vildagliptin',b:'Galvus 高糖優適',u:'mg/日',d:[50,100],goal:100,
+  lim:e=>e<50?{max:50,why:'腎絲球過濾率低於 50：上限 50 mg 每日一次'}:{max:100}},
+ {id:'saxa',c:'DPP4',n:'Saxagliptin',b:'Onglyza 昂格莎',u:'mg/日',d:[2.5,5],goal:5,
+  lim:e=>e<45?{max:2.5,why:'腎絲球過濾率低於 45：上限 2.5 mg'}:{max:5}},
+ {id:'lina',c:'DPP4',n:'Linagliptin',b:'Trajenta 糖漸平',u:'mg/日',d:[5],goal:5,lim:e=>({max:5})},
+ {id:'alo',c:'DPP4',n:'Alogliptin',b:'Nesina 耐釋糖',u:'mg/日',d:[6.25,12.5,25],goal:25,
+  lim:e=>e<30?{max:6.25,why:'腎絲球過濾率低於 30：上限 6.25 mg'}:e<60?{max:12.5,why:'腎絲球過濾率 30–59：上限 12.5 mg'}:{max:25}},
+ {id:'dapa',c:'SGLT2',n:'Dapagliflozin',b:'Forxiga 福適佳',u:'mg/日',d:[5,10],goal:10,lim:e=>({max:10})},
+ {id:'empa',c:'SGLT2',n:'Empagliflozin',b:'Jardiance 恩排糖',u:'mg/日',d:[10,25],goal:25,gnote:'10 加到 25 mg 額外降幅小',lim:e=>({max:25})},
+ {id:'cana',c:'SGLT2',n:'Canagliflozin',b:'Canaglu 可拿糖',u:'mg/日',d:[100],goal:100,lim:e=>({max:100})},
+ {id:'ertu',c:'SGLT2',n:'Ertugliflozin',b:'Steglatro 穩噻糖',u:'mg/日',d:[5,15],goal:15,lim:e=>({max:15})},
+ {id:'qtern',c:'COMBO',n:'Qtern',b:'控糖穩　dapagliflozin 10 + saxagliptin 5',u:'毫克，每日 1 粒',d:['10/5'],
+  parts:x=>[['dapa',10],['saxa',5]],lim:e=>e<45?{stop:'腎絲球過濾率低於 45 不建議：saxagliptin 需減為 2.5 mg，複方無法減量'}:{max:1}},
+ {id:'glyx',c:'COMBO',n:'Glyxambi',b:'糖順平　empagliflozin 10 或 25 + linagliptin 5',u:'毫克，每日 1 粒',d:['10/5','25/5'],
+  parts:x=>[['empa',+String(x).split('/')[0]],['lina',5]],lim:e=>({max:1})},
+ {id:'lira',c:'GLP1',n:'Liraglutide',b:'Victoza 胰妥善',u:'mg/日',d:[0.6,1.2,1.8],goal:1.8,lim:e=>({max:1.8})},
+ {id:'dula',c:'GLP1',n:'Dulaglutide',b:'Trulicity 易週糖',u:'mg/週',d:[0.75,1.5],goal:1.5,lim:e=>({max:1.5})},
+ {id:'sema',c:'GLP1',n:'Semaglutide 皮下注射',b:'Ozempic 胰妥讚',u:'mg/週',d:[0.25,0.5,1],goal:1,lim:e=>({max:1})},
+ {id:'basal',c:'INS',n:'基礎胰島素',b:'glargine、detemir、degludec',u:'單位/日',free:true,lim:e=>({max:999})}
+];
+const byId=Object.fromEntries(D.map(d=>[d.id,d]));
+const FLAGS=[
+ ['ascvd','動脈硬化心血管疾病（心肌梗塞、血管再通術、缺血性中風）'],
+ ['hf','心衰竭'],
+ ['hypo','曾有低血糖'],
+ ['frail','高齡衰弱或進食不規律'],
+ ['metIntol','metformin 不耐受或禁忌'],
+ ['noInject','病人拒絕針劑'],
+ ['six','目前組合已用滿 6 個月']
+];
+const EXAMPLE={age:60,ht:165,wt:70,a1c:7.7,a1cPrev:7.4,fpg:200,egfr:75,uacr:40,target:'7',
+ flags:{},meds:{glim:2,met:1000,vild:50,dapa:10},example:true};
+const EMPTY={age:'',ht:'',wt:'',a1c:'',a1cPrev:'',fpg:'',egfr:'',uacr:'',target:'7',flags:{},meds:{},example:false};
+let S;
+const $=id=>document.getElementById(id);
+const num=v=>(v===''||v==null||isNaN(+v))?null:+v;
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FIELDS=['age','ht','wt','a1c','a1cPrev','fpg','egfr','uacr','target'];
+
+/* ---------- 輸入區 ---------- */
+function renderInputs(){
+  FIELDS.forEach(k=>{$(k).value=S[k]??''});
+  $('exNote').hidden=!S.example;
+  $('flags').innerHTML=FLAGS.map(([k,t])=>`<button type="button" class="chip" data-flag="${k}" aria-pressed="${!!S.flags[k]}">${t}</button>`).join('');
+  renderMeds();
+}
+function renderMeds(){
+  const e=num(S.egfr)??999;let h='';
+  Object.keys(CLS).forEach(c=>{
+    h+=`<div class="cls"><h3>${CLS[c].zh}<span>糖化血色素約降 ${CLS[c].drop}%</span></h3><div class="drugs">`;
+    D.filter(d=>d.c===c).forEach(d=>{
+      const on=d.id in S.meds,L=d.lim(e);
+      h+=`<div class="drug"><button type="button" class="chip" data-med="${d.id}" aria-pressed="${on}"><b>${d.n}</b><i>${d.b}</i></button>`;
+      if(on){
+        if(d.free){h+=`<span class="doses"><input class="unit-in" id="dose-${d.id}" type="number" min="0" inputmode="numeric" data-free="${d.id}" value="${S.meds[d.id]||''}" aria-label="每日單位數"><span class="cap">${d.u}</span></span>`}
+        else{
+          h+='<span class="doses">'+d.d.map(x=>{
+            const over=L.stop||(!d.parts&&x>L.max);
+            return `<button type="button" class="dose${over?' over':''}" data-dose="${d.id}:${x}" aria-pressed="${String(S.meds[d.id])===String(x)}">${x}</button>`}).join('')
+            +`<span class="cap">${d.u}　${L.stop?esc(L.stop):d.parts?'健保每日限 1 粒':'此腎功能上限 '+L.max}</span></span>`;
+        }
+      }
+      h+='</div>';
+    });
+    h+='</div></div>';
+  });
+  $('meds').innerHTML=h;
+}
+
+/* ---------- 判讀引擎 ---------- */
+function analyze(){
+  const a1c=num(S.a1c),prev=num(S.a1cPrev),fpg=num(S.fpg),eRaw=num(S.egfr),e=eRaw??999,uacr=num(S.uacr),
+        age=num(S.age),wt=num(S.wt),ht=num(S.ht),target=+S.target,F=S.flags;
+  const bmi=(wt&&ht)?wt/((ht/100)**2):null;
+  const meds=[],combos=[],rx=[];
+  Object.keys(S.meds).forEach(id=>{const def=byId[id],dose=S.meds[id];rx.push({def,dose});
+    if(def.parts){combos.push({def,dose});def.parts(dose).forEach(([p,pd])=>meds.push({def:byId[p],dose:pd,combo:def}))}
+    else meds.push({def,dose});});
+  const has=c=>meds.some(m=>m.def.c===c), inCls=c=>meds.filter(m=>m.def.c===c);
+  const oral=meds.filter(m=>m.def.c!=='GLP1'&&m.def.c!=='INS');
+  const alerts=[],nhi=[],opt=[],cands=[];
+  const hypoRisk=F.hypo||F.frail||(age!=null&&age>=75);
+  const ckd=(uacr!=null&&uacr>=30)||(eRaw!=null&&eRaw<60);
+  const gap=a1c!=null?+(a1c-target).toFixed(1):null;
+  const eag=a1c!=null?28.7*a1c-46.7:null;
+  let pattern=null;
+  if(fpg!=null&&eag!=null&&gap>0){ if(fpg>=eag+15)pattern='fast'; else if(fpg<=130)pattern='post'; }
+
+  /* 安全警示 */
+  if(eRaw==null) alerts.push(['warn','缺資料','未輸入腎絲球過濾率，劑量上限暫以腎功能正常計算。']);
+  meds.forEach(m=>{
+    const L=m.def.lim(e);
+    if(L.stop) alerts.push(['crit','停用',`${m.def.n}：${L.stop}。`]);
+    else if(!m.def.free&&m.dose>L.max) alerts.push(['crit','減量',`${m.def.n} 目前 ${m.dose} ${m.def.u}，${L.why||'超過上限'}。${m.combo?m.combo.n+' 是固定劑量複方，無法單獨減量，請改開單方。':''}`]);
+  });
+  if(has('SGLT2')&&eRaw!=null&&eRaw<45) alerts.push(['warn','效果','腎絲球過濾率低於 45 時排糖藥的降血糖效果明顯減弱，續用的理由是心腎保護；腎絲球過濾率低於 25 不建議新開始。']);
+  Object.keys(CLS).forEach(c=>{if(c!=='MET'&&inCls(c).length>1)alerts.push(['warn','重複',`同時使用兩種${CLS[c].zh.split('（')[0]}，請保留一種。`])});
+  if(has('GLP1')&&has('DPP4')) alerts.push(['crit','重疊','腸泌素針劑與 DPP-4 抑制劑機轉重疊，併用沒有額外效果，請停用 DPP-4 抑制劑。']);
+  if(has('SU')&&has('GLN')) alerts.push(['warn','重疊','磺醯尿素類與短效促胰島素分泌劑作用相同，不建議併用。']);
+  if(has('TZD')&&F.hf) alerts.push(['crit','禁忌','心衰竭病人不應使用 pioglitazone。']);
+  if(meds.some(m=>m.def.id==='saxa')&&F.hf) alerts.push(['warn','注意','Saxagliptin 會增加心衰竭住院風險，建議換成其他 DPP-4 抑制劑。']);
+  if(has('TZD')&&has('INS')) alerts.push(['warn','注意','Pioglitazone 併用胰島素容易水腫，留意體重與心衰竭症狀。']);
+  if(has('SU')&&hypoRisk) alerts.push(['warn','低血糖','此病人低血糖風險較高，磺醯尿素類不要加量，可考慮減量或換藥。']);
+  if((a1c!=null&&a1c>=10)||(fpg!=null&&fpg>=300)) alerts.push(['crit','高血糖','糖化血色素 10% 以上或飯前血糖 300 以上：若有多尿、口渴、體重減輕，應先用胰島素把血糖降下來，再回頭簡化用藥。']);
+  if(uacr!=null&&uacr>=30) alerts.push(['warn','腎臟',`尿液白蛋白/肌酸酐比值 ${uacr} mg/g（30 以上異常）：3–6 個月內複驗確認；合併高血壓時加上血管張力素轉化酶抑制劑或血管張力素受體阻斷劑。`]);
+
+  /* 第一步：現有藥物用足 */
+  meds.forEach(m=>{
+    const d=m.def,L=d.lim(e); if(L.stop||d.c==='INS')return;
+    if(d.c==='SU'&&hypoRisk)return;
+    if(d.c==='SGLT2'&&eRaw!=null&&eRaw<45)return;
+    if(m.combo){
+      if(m.combo.id==='glyx'&&d.id==='empa'&&m.dose<25) opt.push({zh:'Glyxambi 10/5 → 25/5 毫克，每日 1 粒',name:'Glyxambi',chg:'10/5 → 25/5',unit:'毫克',why:'empagliflozin 10 加到 25 mg 額外降幅小',en:'increase Glyxambi to 25/5 mg once daily'});
+      return;
+    }
+    const tgt=Math.min(d.goal,L.max); if(m.dose>=tgt)return;
+    opt.push({zh:`${d.n} ${m.dose} → ${tgt} ${d.u}`,name:d.n,chg:`${m.dose} → ${tgt}`,unit:d.u,
+      why:[d.c==='MET'?'分次隨餐、每 1–2 週加 500 mg 可減少腸胃不適':'',d.gnote||'',L.why||''].filter(Boolean).join('；'),
+      en:`increase ${d.n.split(' ')[0].toLowerCase()} to ${tgt} ${d.u.replace('日','day').replace('週','week')}`});
+  });
+  if(has('INS')){const u=S.meds.basal||0;
+    if(wt&&u>0.5*wt) alerts.push(['warn','胰島素',`基礎胰島素已超過每公斤 0.5 單位（${Math.round(0.5*wt)} 單位），再加量效益有限，應加上餐前胰島素或腸泌素針劑。`]);
+    else if(fpg!=null&&fpg>130) opt.push({zh:'基礎胰島素每 3 天加 2 單位，直到飯前血糖 80–130',name:'基礎胰島素',chg:'每 3 天 +2 單位',unit:'',why:'目標飯前血糖 80–130 mg/dL；出現低血糖就退回前一劑量',en:'titrate basal insulin by 2 units every 3 days to fasting glucose 80–130 mg/dL'});
+  }
+
+  /* 第二步：加藥候選 */
+  const add=(c,score,why,tag,tagText,en)=>cands.push({c,score,why,tag,tagText,en});
+  const metOK=has('MET')||F.metIntol;
+  if(!has('MET')&&!F.metIntol&&e>=45) add('MET',100,'健保與指引的第一線用藥，價格低、不增加體重。','y','健保第一線','start metformin');
+  if(!has('SGLT2')&&e>=25){
+    let sc=45,w=[];
+    if(F.hf){sc+=35;w.push('心衰竭')} if(ckd){sc+=30;w.push('腎臟病變')} if(F.ascvd){sc+=20;w.push('心血管疾病')}
+    if(bmi&&bmi>=27){sc+=5}
+    if(eRaw!=null&&eRaw<45&&!F.hf&&!ckd)sc-=30;
+    add('SGLT2',sc,(w.length?`有${w.join('、')}，這類藥有器官保護效果。`:'低血糖風險低、可減重降壓。')+'留意泌尿生殖道感染與脫水；每日限 1 粒。',
+      !metOK?'q':has('DPP4')?'q':'y',!metOK?'需先用足 metformin':has('DPP4')?'與 DPP-4 抑制劑宜二擇一':'符合給付','add an SGLT-2 inhibitor');
+  }
+  if(!has('GLP1')&&!F.noInject){
+    let sc=40; if(F.ascvd)sc+=25; if(bmi&&bmi>=27)sc+=20; if(gap>=1.5)sc+=10;
+    const condA=a1c>8.5&&F.six&&(has('MET')||has('SU'))&&(has('SGLT2')||has('DPP4')||has('INS'));
+    const condB=F.ascvd&&metOK;
+    const ok=condA||condB;
+    add('GLP1',sc,'降糖幅度大、可減重'+(F.ascvd?'，並有心血管保護證據':'')+'。開始後要停用 DPP-4 抑制劑；健保給付下也不得併用排糖藥。',
+      ok?'y':'n',ok?'符合給付':'未符合給付（需自費）','start a GLP-1 receptor agonist (stop DPP-4 inhibitor)');
+  }
+  if(!has('INS')&&!F.noInject){
+    let sc=42; if(a1c>=9)sc+=30; if(pattern==='fast')sc+=20; if(oral.length>=3)sc+=12;
+    const lo=wt?Math.max(10,Math.round(0.1*wt)):10, hi=wt?Math.round(0.2*wt):null;
+    add('INS',sc,`睡前 ${lo}${hi&&hi>lo?'–'+hi:''} 單位開始，每 3 天加 2 單位到飯前血糖 80–130。之後磺醯尿素類減量或停用。`+(pattern==='fast'?'最對應目前飯前血糖偏高的型態。':''),
+      'y','符合給付',`start basal insulin ${lo} units at bedtime, titrate to fasting glucose 80–130 mg/dL`);
+  }
+  if(!has('TZD')&&!F.hf){
+    add('TZD',38+(F.noInject?12:0)+(bmi&&bmi>=27?3:0),'口服、低血糖風險低，對胰島素阻抗明顯者效果好。需無水腫、膀胱癌病史，留意骨折風險；15 mg 起始。',
+      metOK?'y':'q',metOK?'符合給付':'需先用足 metformin','add pioglitazone 15 mg daily');
+  }
+  if(!has('DPP4')&&!has('GLP1')){
+    add('DPP4',33+(hypoRisk?15:0)+(pattern==='post'?10:0),'低血糖風險低、耐受性好，適合高齡或腎功能差的病人（linagliptin 不需依腎功能調整）。',
+      !metOK?'q':has('SGLT2')?'q':'y',!metOK?'需先用足 metformin':has('SGLT2')?'與排糖藥宜二擇一':'符合給付','add a DPP-4 inhibitor');
+  }
+  if(!combos.length&&has('MET')&&has('SGLT2')!==has('DPP4')&&e>=45&&!has('GLP1')){
+    const ids=meds.map(m=>m.def.id);
+    const pick=(ids.includes('dapa')||ids.includes('saxa'))&&!F.hf?'Qtern':(ids.includes('empa')||ids.includes('lina'))?'Glyxambi':null;
+    if(pick){const ok=a1c>7.5&&F.six;
+      cands.push({c:'COMBO',name:`改成複方 ${pick}`,score:50+(ok?12:0),why:`把目前的${has('SGLT2')?'排糖藥':' DPP-4 抑制劑'}換成 ${pick}，等於加上另一個成分而不增加顆數。每日限 1 粒。`,
+        tag:ok?'y':'q',tagText:ok?'符合給付':'需單方用滿 6 個月且糖化血色素高於 7.5%',en:`switch to ${pick} once daily`});}
+  }
+  if(!has('SU')&&!has('GLN')&&!hypoRisk) add('SU',30+(gap>=1?10:0),'降糖力強、價格低；會增加體重並有低血糖風險，從低劑量開始。','y','符合給付','add a sulfonylurea at low dose');
+  if(!has('AGI')&&e>=30) add('AGI',18+(pattern==='post'?27:0),'主要降飯後血糖，不會低血糖；常見脹氣、排氣，隨第一口飯服用。','y','符合給付','add acarbose with meals');
+  cands.sort((x,y)=>y.score-x.score);
+
+  /* 健保檢核 */
+  nhi.push(['info','成分數',`目前口服降血糖成分 ${oral.length} 種。「最多四種成分」的上限已於民國 114 年 6 月 1 日刪除，現行條文沒有成分數限制。`]);
+  if(oral.length>=3&&gap>0&&!has('INS')) nhi.push(['warn','胰島素','條文：使用三種口服藥仍無法理想控制者，宜考慮胰島素治療。若不使用，病歷建議記錄原因（例如病人拒絕）。']);
+  if((has('TZD')||has('DPP4')||has('SGLT2'))){
+    if(!has('MET')&&!F.metIntol) nhi.push(['crit','metformin','Pioglitazone、DPP-4 抑制劑、排糖藥限用於已接受最大耐受劑量 metformin 仍控制不佳者。目前未使用 metformin，請補上，或在病歷註明不耐受或禁忌。']);
+    else if(has('MET')){const m=S.meds.met,L=byId.met.lim(e);
+      if(!L.stop&&m<Math.min(1500,L.max)) nhi.push(['warn','metformin',`Metformin 目前 ${m} mg/日，尚未到最大耐受劑量。建議加量，或在病歷註明無法加量的原因。`]);
+      else nhi.push(['ok','metformin','已使用 metformin，符合第二線藥物的前提。']);}
+    else nhi.push(['ok','metformin','已註明 metformin 不耐受或禁忌。']);
+  }
+  if(combos.length) nhi.push(['warn','複方',`${combos.map(c=>c.def.n).join('、')} 給付條件：已用最大耐受劑量 metformin，且併用其中一個成分（排糖藥或 DPP-4 抑制劑）至少 6 個月，糖化血色素仍高於 7.5%。每日限 1 粒。請確認病歷有起始當時的紀錄。`]);
+  else if(has('SGLT2')&&has('DPP4')) nhi.push(['warn','併用','排糖藥與 DPP-4 抑制劑條文為「宜二種擇一種使用」。併用時請在病歷寫明理由；兩者的複方則須先用其中一種滿 6 個月且糖化血色素仍高於 7.5%。']);
+  if(has('GLP1')){
+    if(has('DPP4')||has('SGLT2')) nhi.push(['crit','腸泌素針劑','健保給付的腸泌素針劑不得與 DPP-4 抑制劑、排糖藥併用。']);
+    nhi.push(['info','腸泌素針劑','給付條件：metformin 及／或磺醯尿素類用到最大耐受劑量，並併用排糖藥、DPP-4 抑制劑或胰島素滿 6 個月，糖化血色素仍高於 8.5%；或曾有心肌梗塞、血管再通術、缺血性中風且 metformin 後仍未達標。']);
+  }
+  if(has('SGLT2')) nhi.push(['info','排糖藥','每日限處方 1 粒。']);
+
+  return {a1c,prev,fpg,eRaw,uacr,target,gap,eag,pattern,bmi,rx,meds,oral,alerts,nhi,opt,cands,F,hypoRisk,has};
+}
+
+/* ---------- 輸出 ---------- */
+function renderOut(){
+  const R=analyze();let h='';
+  $('bmiHint').textContent=R.bmi?`身體質量指數 ${R.bmi.toFixed(1)}`:'';
+  if(R.a1c==null){
+    $('out').innerHTML='<section class="card"><h2>判讀</h2><p>請先輸入糖化血色素。可以按右上角「載入範例」看完整輸出。</p></section>';return;
+  }
+  const cls=R.gap<=0?'ok':R.gap<1.5?'warn':'crit';
+  const label=R.gap<=0?'已達標':R.gap<1.5?'未達標':'明顯偏高';
+  const pos=v=>Math.max(0,Math.min(100,(v-5)/7*100));
+  let trend='';
+  if(R.prev!=null){const d=+(R.a1c-R.prev).toFixed(1);trend=d>0?`較前次上升 ${d}%。`:d<0?`較前次下降 ${Math.abs(d)}%。`:'與前次持平。'}
+  let pat='';
+  if(R.pattern==='fast')pat=`飯前血糖 ${R.fpg} 高於糖化血色素對應的平均血糖（約 ${Math.round(R.eag)}），問題以夜間到清晨的基礎血糖為主。`;
+  if(R.pattern==='post')pat=`飯前血糖 ${R.fpg} 不高但糖化血色素超標，問題以飯後血糖為主。`;
+  h+=`<section class="card"><h2>判讀</h2><div class="verdict">
+    <div class="big">${R.a1c.toFixed(1)}<small>%</small></div>
+    <div><span class="pill ${cls}">${label}</span>
+      <p>目標低於 ${R.target.toFixed(1)}%${R.gap>0?`，還差 ${R.gap.toFixed(1)}%`:''}。${trend}${pat}</p></div>
+    <div class="scale" style="--t:${pos(R.target)}%"><div class="bar"></div>
+      <div class="tg" style="left:${pos(R.target)}%"></div><div class="mk" style="left:${pos(R.a1c)}%"></div>
+      <span class="lb" style="left:${pos(6)}%">6</span><span class="lb" style="left:${pos(8)}%">8</span><span class="lb" style="left:${pos(10)}%">10</span></div>
+  </div></section>`;
+
+  if(R.alerts.length) h+=`<section class="card"><h2>先處理 <small>安全與劑量</small></h2><ul class="alerts">${R.alerts.map(a=>`<li class="${a[0]}"><span class="tag">${a[1]}</span>${esc(a[2])}</li>`).join('')}</ul></section>`;
+
+  /* 步驟 */
+  const steps=[],planZh=[],planEn=[];
+  if(R.gap<=0){
+    let t='維持目前用藥，3–6 個月後複查。';
+    if(R.a1c<6.5&&(R.has('SU')||R.has('INS'))&&R.hypoRisk) t='糖化血色素低於 6.5% 且低血糖風險高：建議把磺醯尿素類或胰島素減量。';
+    else if(R.prev!=null&&R.a1c-R.prev>=0.5) t='仍在目標內，但比前次上升 0.5% 以上：先確認服藥與飲食，3 個月後提早複查。';
+    steps.push(`<li><h3>維持治療</h3><div class="body"><p>${t}</p></div></li>`);planZh.push(t);planEn.push('continue current regimen; recheck HbA1c in 3–6 months');
+  }else{
+    steps.push(`<li><h3>排除可逆原因</h3><div class="body"><p>確認有無漏藥、抽血前是否空腹、近期感染、使用類固醇，以及飲食或體重的變化。</p></div></li>`);
+    if(R.opt.length){
+      steps.push(`<li><h3>把現有藥物用足</h3><div class="body"><ul class="rx">${R.opt.map(o=>`<li><span class="nm">${esc(o.name)}</span><span class="chg">${esc(o.chg)} ${esc(o.unit)}</span>${o.why?`<span class="why">${esc(o.why)}</span>`:''}</li>`).join('')}</ul></div></li>`);
+      R.opt.forEach(o=>{planZh.push(o.zh);planEn.push(o.en)});
+    }
+    const now=R.gap>=1.5||!R.opt.length;
+    const top=R.cands.slice(0,4);
+    if(top.length){
+      steps.push(`<li><h3>${now?'現在加上一種藥':'3 個月後仍未達標，再加一種藥'}</h3><div class="body"><p>${now?(R.opt.length?'差距 1.5% 以上，單靠加量通常不夠。':'現有藥物已用到建議劑量。'):'差距不大，先看加量的效果。'}依這位病人的條件排序：</p>
+        <ul class="rx">${top.map((c,i)=>`<li class="${i?'':'first'}"><span class="nm">${c.name||CLS[c.c].zh}</span><span class="nhi ${c.tag}">${c.tagText}</span><span class="why">${esc(c.why)}　預期糖化血色素降 ${CLS[c.c].drop}%。</span></li>`).join('')}</ul>
+        ${R.F.noInject?'<p>已排除針劑選項。糖化血色素持續偏高時，建議下次回診再討論一次。</p>':''}</div></li>`);
+      planZh.push(`${now?'加上':'若 3 個月後仍未達標，加上'}${top[0].name||CLS[top[0].c].zh.split('（')[0]}`);
+      planEn.push(`${now?'':'if HbA1c remains above target in 3 months, '}${top[0].en}`);
+    }
+    steps.push(`<li><h3>追蹤</h3><div class="body"><p>3 個月後複查糖化血色素與飯前血糖。${R.has('SU')||R.has('INS')?'使用磺醯尿素類或胰島素者，調藥後請病人在家量血糖並認識低血糖症狀。':''}${R.eRaw==null||R.uacr==null?'補驗腎絲球過濾率與尿液白蛋白/肌酸酐比值。':'腎絲球過濾率與尿液白蛋白/肌酸酐比值至少每年一次，異常時 3–6 個月複驗。'}</p></div></li>`);
+    planZh.push('3 個月後複查糖化血色素');planEn.push('recheck HbA1c in 3 months');
+  }
+  h+=`<section class="card"><h2>調藥步驟</h2><ol class="steps">${steps.join('')}</ol></section>`;
+  h+=`<section class="card"><h2>健保檢核 <small>藥品給付規定第 5.1 節</small></h2><ul class="alerts">${R.nhi.map(a=>`<li class="${a[0]}"><span class="tag">${a[1]}</span>${esc(a[2])}</li>`).join('')}</ul></section>`;
+
+  /* 病歷摘要 */
+  const mz=R.rx.map(m=>`${m.def.n} ${m.dose||'?'} ${m.def.u}`).join('、')||'無';
+  const me=R.rx.map(m=>m.def.parts?`${m.def.n} ${m.dose} mg once daily`:`${m.def.id==='basal'?'basal insulin':m.def.n.split(' ')[0].toLowerCase()} ${m.dose||'?'} ${m.def.u.replace('單位','units').replace('日','day').replace('週','week')}`).join(', ')||'none';
+  const note=`糖化血色素 ${R.a1c.toFixed(1)}%${R.prev!=null?`（前次 ${R.prev.toFixed(1)}%）`:''}${R.fpg!=null?`，飯前血糖 ${R.fpg} mg/dL`:''}，目標低於 ${R.target.toFixed(1)}%。${R.eRaw!=null?`腎絲球過濾率 ${R.eRaw}。`:''}${R.uacr!=null?`尿液白蛋白/肌酸酐比值 ${R.uacr} mg/g。`:''}
+目前用藥：${mz}。
+計畫：${planZh.map((p,i)=>`${i+1}. ${p}`).join('；')}。
+
+HbA1c ${R.a1c.toFixed(1)}%${R.prev!=null?` (previous ${R.prev.toFixed(1)}%)`:''}${R.fpg!=null?`, fasting glucose ${R.fpg} mg/dL`:''}, target below ${R.target.toFixed(1)}%.${R.eRaw!=null?` eGFR ${R.eRaw} mL/min/1.73m².`:''}${R.uacr!=null?` Urine albumin-to-creatinine ratio ${R.uacr} mg/g.`:''}
+Current: ${me}.
+Plan: ${planEn.map((p,i)=>`${i+1}) ${p}`).join('; ')}.`;
+  h+=`<section class="card"><h2>病歷摘要 <small>中英對照，可再修改</small></h2><textarea id="note" spellcheck="false">${esc(note)}</textarea>
+    <div class="row"><button class="btn solid" id="btnCopy" type="button">複製摘要</button><span id="copied" role="status"></span></div></section>`;
+  $('out').innerHTML=h;
+}
+
+/* ---------- 事件 ---------- */
+function update(){renderOut()}
+FIELDS.forEach(k=>$(k).addEventListener('input',ev=>{S[k]=ev.target.value;S.example=false;$('exNote').hidden=true;if(k==='egfr')renderMeds();update()}));
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('button');if(!t)return;
+  if(t.dataset.flag){S.flags[t.dataset.flag]=!S.flags[t.dataset.flag];t.setAttribute('aria-pressed',!!S.flags[t.dataset.flag]);update();}
+  else if(t.dataset.med){const id=t.dataset.med;if(id in S.meds)delete S.meds[id];else S.meds[id]=byId[id].free?10:byId[id].d[0];renderMeds();update();}
+  else if(t.dataset.dose){const [id,v]=t.dataset.dose.split(':');S.meds[id]=byId[id].parts?v:+v;renderMeds();update();}
+  else if(t.id==='btnExample'){S=JSON.parse(JSON.stringify(EXAMPLE));renderInputs();update();}
+  else if(t.id==='btnClear'){S=JSON.parse(JSON.stringify(EMPTY));renderInputs();update();}
+  else if(t.id==='btnCopy'){const ta=$('note'),done=()=>{$('copied').textContent='已複製'};
+    try{navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ta.select();$('copied').textContent='已全選，請按 Ctrl+C 複製'})}
+    catch(_){ta.select();$('copied').textContent='已全選，請按 Ctrl+C 複製'}}
+});
+document.addEventListener('input',ev=>{const id=ev.target.dataset&&ev.target.dataset.free;if(id){S.meds[id]=+ev.target.value||0;update()}});
+
+function start(saved){
+  S=(saved&&saved.meds)?saved:JSON.parse(JSON.stringify(EXAMPLE));
+  renderInputs();update();
+}
+window.claude?.hot?.snapshot?.(()=>S);
+window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data??{});
+</script>
+</body>
+</html>
