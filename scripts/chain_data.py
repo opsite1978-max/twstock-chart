@@ -75,12 +75,12 @@ def parse_industry(code, name, h):
     for blk in re.split(r'<div class="chain">', panel)[1:]:
         t = re.search(r'chain-title-panel">([^<]*)<', blk)
         title = txt(t.group(1)) if t else ''
-        segs = [{'id': m.group(1), 'n': txt(m.group(2))} for m in re.finditer(r'id="ic_link_(\w+)"[^>]*>(.*?)</div>', blk, re.S)]
+        segs = [{'id': m.group(1) or '', 'n': txt(m.group(2))} for m in re.finditer(r'(?:id="ic_link_(\w+)"[^>]*|class="company-chain-panel-blank"[^>]*)>(.*?)</div>', blk, re.S)]
         if segs: cols.append({'t': title, 'segs': segs})
     # 每個環節的公司清單（有子環節的另外拆）
     for col in cols:
         for sg in col['segs']:
-            a = h.find('id="companyList_' + sg['id'] + '"')
+            a = h.find('id="companyList_' + sg['id'] + '"') if sg['id'] else -1
             if a < 0: sg['s'] = []; continue
             b = h.find('id="companyList_', a + 20)
             block = h[a:b if b > 0 else len(h)]
@@ -239,6 +239,7 @@ def main():
         o = {'c': P[-1][0], 'r1': P[-1][1], 'r5': ret(5), 'r20': ret(20), 'm': P[-1][3]}
         ms = [data[d]['p'][c][3] for d in D[-20:] if c in data[d]['p']]
         o['m20'] = round(sum(ms) / len(ms), 3) if ms else None
+        m5 = ms[-5:]; o['m5'] = round(sum(m5) / len(m5), 3) if m5 else None
         for k in (1, 5, 20):
             o['f%d' % k] = ssum(lambda d: sum(data[d].get('f', {}).get(c, [0, 0, 0])) if c in data[d]['p'] else None, k)[0]
             o['fF%d' % k] = ssum(lambda d: data[d].get('f', {}).get(c, [0, 0, 0])[0] if c in data[d]['p'] else None, k)[0]
@@ -246,7 +247,7 @@ def main():
             zq, nz = ssum(lambda d: data[d].get('z', {}).get(c, [None])[0] if c in data[d].get('z', {}) else None, k)
             za, _ = ssum(lambda d: data[d].get('z', {}).get(c, [0, None])[1] if c in data[d].get('z', {}) else None, k)
             vol, _ = ssum(lambda d: data[d]['p'][c][2] if c in data[d]['p'] and c in data[d].get('z', {}) else None, k)
-            o['z%d' % k] = zq; o['za%d' % k] = za; o['zn%d' % k] = nz
+            o['z%d' % k] = zq; o['za%d' % k] = za; o['zn%d' % k] = nz; o['v%d' % k] = vol
             o['k%d' % k] = round(zq / vol * 100, 1) if zq is not None and vol else None
         out[c] = o
     meta = jload('meta.json', {})
