@@ -8,41 +8,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: FinMind 美股
+      - name: 產業鏈與資金流探查
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
           python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import os, json, urllib.request, urllib.parse
+          import os, re, json, urllib.request, urllib.parse
           T = os.environ['T']
-          def fm(p):
-              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(p)
-              rq = urllib.request.Request(u, headers={'Authorization': 'Bearer ' + T, 'Origin': 'https://opsite1978-max.github.io'})
+          UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
+          def get(u):
               try:
-                  with urllib.request.urlopen(rq, timeout=300) as r:
-                      cors = r.headers.get('access-control-allow-origin'); j = json.loads(r.read().decode())
-                  return j.get('status'), j.get('msg'), j.get('data') or [], cors
-              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200], [], None
-              except Exception as e: return 0, str(e)[:150], [], None
-          for p in [{'dataset': 'USStockInfo'},
-                    {'dataset': 'USStockPrice', 'data_id': 'AAPL', 'start_date': '1980-01-01'},
-                    {'dataset': 'USStockPrice', 'data_id': 'NVDA', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPrice', 'data_id': 'TSM', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPrice', 'data_id': 'SPY', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPrice', 'data_id': '^GSPC', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPrice', 'data_id': 'BRK.B', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPrice', 'data_id': 'BRK-B', 'start_date': '2026-11-01'},
-                    {'dataset': 'USStockPriceMinute', 'data_id': 'AAPL', 'start_date': '2026-11-10', 'end_date': '2026-11-10'},
-                    {'dataset': 'USStockPriceMinute', 'data_id': 'AAPL', 'start_date': '2026-10-01', 'end_date': '2026-11-11'},
-                    {'dataset': 'USStockPriceMinute', 'data_id': 'AAPL', 'start_date': '2025-01-06', 'end_date': '2025-01-06'}]:
-              st, msg, d, cors = fm(p)
-              print(json.dumps(p), st, msg, len(d), 'cors', cors)
+                  with urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
+              except Exception as e: return 0, str(e)[:200]
+          for u in ['https://ic.tpex.org.tw/', 'https://ic.tpex.org.tw/index.php', 'https://ic.tpex.org.tw/introduce.php?ic=D000', 'https://ic.tpex.org.tw/introduce.php?ic=D000&stk_code=2330']:
+              st, b = get(u); print('IC', u, st, len(b))
+              links = sorted(set(re.findall(r'(?:href|src)=["\']([^"\']+)', b)))
+              print('   links', [l for l in links if 'ic=' in l or '.php' in l or 'json' in l or 'api' in l.lower()][:60])
+              t = re.sub(r'<script[\s\S]*?</script>', ' ', b); t = re.sub(r'<[^>]+>', ' ', t); t = re.sub(r'\s+', ' ', t)
+              print('   text', t[:1500])
+              for m in re.findall(r'<script[^>]*>([\s\S]*?)</script>', b):
+                  if re.search(r'ajax|fetch|\.php|json', m): print('   SCRIPT', re.sub(r'\s+', ' ', m)[:800])
+          def fm(p, path='data'):
+              u = 'https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(p)
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(u, headers={'Authorization': 'Bearer ' + T}), timeout=300) as r: j = json.loads(r.read().decode())
+                  return j.get('status'), j.get('msg'), j.get('data') or []
+              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200], []
+              except Exception as e: return 0, str(e)[:150], []
+          D = '2026-11-12'
+          for p, path in [({'dataset': 'TaiwanStockPrice', 'start_date': D}, 'data'),
+                          ({'dataset': 'TaiwanStockInstitutionalInvestorsBuySell', 'start_date': D}, 'data'),
+                          ({'dataset': 'TaiwanStockMarketValue', 'start_date': D}, 'data'),
+                          ({'dataset': 'TaiwanStockMarketValue', 'data_id': '2330', 'start_date': '2026-11-01'}, 'data'),
+                          ({'dataset': 'TaiwanStockInfo'}, 'data'),
+                          ({'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': D}, 'data'),
+                          ({'dataset': 'TaiwanStockTradingDailyReport', 'start_date': D}, 'data'),
+                          ({'data_id': '2330', 'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report'),
+                          ({'data_id': '2330', 'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report_secid_agg'),
+                          ({'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report_secid_agg'),
+                          ({'dataset': 'TaiwanStockIndustryChain'}, 'data'),
+                          ({'dataset': 'TaiwanStockHoldingSharesPer', 'data_id': '2330', 'start_date': '2026-11-01'}, 'data')]:
+              st, msg, d = fm(p, path)
+              print('FM', path, json.dumps(p), st, msg, len(d))
               if d:
-                  print('   first', json.dumps(d[0], ensure_ascii=False)); print('   last ', json.dumps(d[-1], ensure_ascii=False))
-                  if p['dataset'] == 'USStockInfo':
-                      print('   sample', [ (x.get('stock_id'), x.get('stock_name')) for x in d[:8]], 'n', len(d))
-                      print('   has', [x for x in d if x.get('stock_id') in ('TSM', 'SPY', 'QQQ', '^GSPC', 'SOXX')][:6])
+                  print('   ', json.dumps(d[0], ensure_ascii=False)[:400])
+                  if p.get('dataset') == 'TaiwanStockInfo':
+                      import collections
+                      c = collections.Counter(x.get('industry_category') for x in d); print('   industries', len(c), c.most_common(60))
           PY2
           sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
