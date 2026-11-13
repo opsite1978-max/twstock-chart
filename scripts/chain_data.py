@@ -254,6 +254,8 @@ def main():
             if n % 100 == 0: jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點', n, '／', len(need), '查詢', T.NREQ[0])
         jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點完成', n, '查詢累計', T.NREQ[0])
         if stop: break
+    if stop and T.NREQ[0] > 100:      # 還沒補完：讓 workflow 一小時後自己再跑一輪
+        open('chain_more', 'w').write('1')
     # 刪掉太舊的
     dd = os.path.join(OUT, 'd')
     for fn in os.listdir(dd) if os.path.isdir(dd) else []:

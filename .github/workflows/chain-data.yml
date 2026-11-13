@@ -7,14 +7,17 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: chain-data
   cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 170
+    timeout-minutes: 230
     steps:
+      - id: t0
+        run: echo "t=$(date +%s)" >> $GITHUB_OUTPUT
       - uses: actions/checkout@v4
       - name: 取出 chain-data 分支
         run: git fetch -q origin chain-data && git worktree add -q chain-out origin/chain-data || mkdir -p chain-out
@@ -31,3 +34,10 @@ jobs:
           cd pub && git init -q && git checkout -q -b chain-data && git add -A
           git -c user.name=chain-bot -c user.email=chain-bot@users.noreply.github.com commit -qm "產業鏈與資金流 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" chain-data
+      - name: 分點還沒補完就一小時後再跑一輪
+        if: success() && hashFiles('chain_more') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          w=$(( ${{ steps.t0.outputs.t }} + 3720 - $(date +%s) )); [ $w -gt 0 ] && sleep $w
+          gh workflow run chain-data.yml --ref main -R ${{ github.repository }}
