@@ -94,10 +94,17 @@ def main():
                 if r.get('target_close'): tc[tg] = r['target_close']
             day = {'m': m, 'tc': tc, 'b': {}, 'done': []}
             jsave(fp, day); T.log(d, '權證', len(m), '檔，標的', len(tc), '檔')
+        if 'v' not in day:
+            try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
+            except T.RateLimited as e: T.log('停止', e); break
+            day['v'] = {r['stock_id']: [r['close'], round((r.get('Trading_Volume') or 0) / 1000), round((r.get('Trading_money') or 0) / 1e8, 3)] for r in px if r.get('date') == d and re.fullmatch(r'\d{4}', r['stock_id']) and r.get('close')}
+            jsave(fp, day)
         m = day['m']; done = set(day['done'])
         newest = di < 3
         todo = [t for t in traders if t not in done and (newest or act.get(t, [0, 0])[0] < 3 or act[t][1] > 0)]
-        if not todo: continue
+        if not todo:
+            if not day.get('full'): day['full'] = 1; jsave(fp, day)
+            continue
         T.log(d, '要查的分點', len(todo))
         for t in todo:
             if time.time() > DEADLINE or T.NREQ[0] >= T.REQ_BUDGET - 3: stop = True; break
@@ -119,6 +126,7 @@ def main():
             done.add(t); got += 1
             st = act.setdefault(t, [0, 0]); st[0] += 1; st[1] += 1 if rows else 0
             if got % 150 == 0: day['done'] = sorted(done); jsave(fp, day); jsave('meta.json', meta); T.log(d, '已查', len(done), '查詢', T.NREQ[0])
+        if not stop: day['full'] = 1
         day['done'] = sorted(done); jsave(fp, day); jsave('meta.json', meta)
         T.log(d, '完成', len(done), '／', len(traders), '有權證進出的分點', len(day['b']))
         if stop: break
