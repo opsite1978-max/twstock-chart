@@ -143,11 +143,12 @@ footer{margin-top:22px;font-size:12px;color:var(--muted);border-top:1px solid va
           <label class="f" for="uacr">尿液白蛋白/肌酸酐比值<input id="uacr" type="number" inputmode="numeric"><span class="hint">mg/g</span></label>
           <label class="f" for="target">糖化血色素目標
             <select id="target">
+              <option value="auto">自動判定（依年齡、腎功能、病史）</option>
               <option value="6.5">低於 6.5%（年輕、無低血糖風險）</option>
               <option value="7">低於 7.0%（一般成人）</option>
               <option value="7.5">低於 7.5%（高齡、健康尚可）</option>
               <option value="8">低於 8.0%（衰弱、多重共病）</option>
-            </select>
+            </select><span class="hint" id="tgtHint"></span>
           </label>
         </div>
         <div class="flags" id="flags"></div>
@@ -225,9 +226,9 @@ const FLAGS=[
  ['noInject','病人拒絕針劑'],
  ['six','目前組合已用滿 6 個月']
 ];
-const EXAMPLE={age:60,ht:165,wt:70,a1c:7.7,a1cPrev:7.4,fpg:200,egfr:75,uacr:40,target:'7',
+const EXAMPLE={age:60,ht:165,wt:70,a1c:7.7,a1cPrev:7.4,fpg:200,egfr:75,uacr:40,target:'auto',
  flags:{},meds:{glim:2,met:1000,vild:50,dapa:10},example:true};
-const EMPTY={age:'',ht:'',wt:'',a1c:'',a1cPrev:'',fpg:'',egfr:'',uacr:'',target:'7',flags:{},meds:{},example:false};
+const EMPTY={age:'',ht:'',wt:'',a1c:'',a1cPrev:'',fpg:'',egfr:'',uacr:'',target:'auto',flags:{},meds:{},example:false};
 let S;
 const $=id=>document.getElementById(id);
 const num=v=>(v===''||v==null||isNaN(+v))?null:+v;
@@ -264,10 +265,29 @@ function renderMeds(){
   $('meds').innerHTML=h;
 }
 
+/* ---------- 糖化血色素目標自動判定 ---------- */
+const LV=[{v:6.5,r:'低於 6.5%'},{v:7,r:'低於 7.0%'},{v:7.5,r:'7.0–7.5%',lo:7},{v:8,r:'7.5–8.0%',lo:7.5}];
+function autoTarget(age,eRaw,F,hypoDrug){
+  let lv=1;const why=[];
+  const up=(n,t)=>{if(n>lv)lv=n;why.push(t)};
+  if(age==null){why.push('未輸入年齡，先以一般成人計')}
+  else if(age<50){lv=0;why.push('未滿 50 歲')}
+  else if(age<65){lv=1;why.push('50–64 歲')}
+  else if(age<80){lv=2;why.push('65–79 歲')}
+  else{lv=3;why.push('80 歲以上')}
+  if(F.ascvd)up(1,'已有動脈硬化心血管疾病，不宜過度嚴格');
+  if(F.hf)up(2,'心衰竭');
+  if(F.hypo)up(age!=null&&age>=65?3:2,'曾有低血糖');
+  if(F.frail)up(3,'衰弱或進食不規律');
+  if(eRaw!=null){ if(eRaw<30)up(3,'腎絲球過濾率低於 30'); else if(eRaw<45)up(2,'腎絲球過濾率 30–44'); else if(eRaw<60)up(1,'腎絲球過濾率 45–59'); }
+  if(lv===0&&hypoDrug)up(1,'使用磺醯尿素類或胰島素，有低血糖風險');
+  return {...LV[lv],lv,why};
+}
+
 /* ---------- 判讀引擎 ---------- */
 function analyze(){
   const a1c=num(S.a1c),prev=num(S.a1cPrev),fpg=num(S.fpg),eRaw=num(S.egfr),e=eRaw??999,uacr=num(S.uacr),
-        age=num(S.age),wt=num(S.wt),ht=num(S.ht),target=+S.target,F=S.flags;
+        age=num(S.age),wt=num(S.wt),ht=num(S.ht),F=S.flags;
   const bmi=(wt&&ht)?wt/((ht/100)**2):null;
   const meds=[],combos=[],rx=[];
   Object.keys(S.meds).forEach(id=>{const def=byId[id],dose=S.meds[id];rx.push({def,dose});
@@ -278,6 +298,9 @@ function analyze(){
   const alerts=[],nhi=[],opt=[],cands=[];
   const hypoRisk=F.hypo||F.frail||(age!=null&&age>=75);
   const ckd=(uacr!=null&&uacr>=30)||(eRaw!=null&&eRaw<60);
+  const auto=autoTarget(age,eRaw,F,has('SU')||has('INS')),isAuto=S.target==='auto';
+  const target=isAuto?auto.v:+S.target;
+  const lo=isAuto?auto.lo:(LV.find(l=>l.v===target)||{}).lo;
   const gap=a1c!=null?+(a1c-target).toFixed(1):null;
   const eag=a1c!=null?28.7*a1c-46.7:null;
   let pattern=null;
@@ -383,13 +406,14 @@ function analyze(){
   }
   if(has('SGLT2')) nhi.push(['info','排糖藥','每日限處方 1 粒。']);
 
-  return {a1c,prev,fpg,eRaw,uacr,target,gap,eag,pattern,bmi,rx,meds,oral,alerts,nhi,opt,cands,F,hypoRisk,has};
+  return {auto,isAuto,lo,a1c,prev,fpg,eRaw,uacr,target,gap,eag,pattern,bmi,rx,meds,oral,alerts,nhi,opt,cands,F,hypoRisk,has};
 }
 
 /* ---------- 輸出 ---------- */
 function renderOut(){
   const R=analyze();let h='';
   $('bmiHint').textContent=R.bmi?`身體質量指數 ${R.bmi.toFixed(1)}`:'';
+  $('tgtHint').textContent=R.isAuto?`判定範圍 ${R.auto.r}`:(R.auto.v!==R.target?`自動判定會是 ${R.auto.r}`:'與自動判定相同');
   if(R.a1c==null){
     $('out').innerHTML='<section class="card"><h2>判讀</h2><p>請先輸入糖化血色素。可以按右上角「載入範例」看完整輸出。</p></section>';return;
   }
@@ -404,7 +428,8 @@ function renderOut(){
   h+=`<section class="card"><h2>判讀</h2><div class="verdict">
     <div class="big">${R.a1c.toFixed(1)}<small>%</small></div>
     <div><span class="pill ${cls}">${label}</span>
-      <p>目標低於 ${R.target.toFixed(1)}%${R.gap>0?`，還差 ${R.gap.toFixed(1)}%`:''}。${trend}${pat}</p></div>
+      <p>目標低於 ${R.target.toFixed(1)}%${R.gap>0?`，還差 ${R.gap.toFixed(1)}%`:''}。${trend}${pat}</p>
+      <p><b>${R.isAuto?'自動判定':'自動判定參考'}：建議控制在 ${R.auto.r}。</b>依據：${R.auto.why.map(esc).join('；')}。${!R.isAuto&&R.auto.v!==R.target?'目前採用您手動選的目標。':''}</p></div>
     <div class="scale" style="--t:${pos(R.target)}%"><div class="bar"></div>
       <div class="tg" style="left:${pos(R.target)}%"></div><div class="mk" style="left:${pos(R.a1c)}%"></div>
       <span class="lb" style="left:${pos(6)}%">6</span><span class="lb" style="left:${pos(8)}%">8</span><span class="lb" style="left:${pos(10)}%">10</span></div>
@@ -416,7 +441,8 @@ function renderOut(){
   const steps=[],planZh=[],planEn=[];
   if(R.gap<=0){
     let t='維持目前用藥，3–6 個月後複查。';
-    if(R.a1c<6.5&&(R.has('SU')||R.has('INS'))&&R.hypoRisk) t='糖化血色素低於 6.5% 且低血糖風險高：建議把磺醯尿素類或胰島素減量。';
+    if(R.lo&&R.a1c<R.lo&&(R.has('SU')||R.has('INS'))) t=`糖化血色素低於建議範圍下限 ${R.lo.toFixed(1)}%，且正在使用磺醯尿素類或胰島素：有過度治療與低血糖的疑慮，建議減量。`;
+    else if(R.a1c<6.5&&(R.has('SU')||R.has('INS'))&&R.hypoRisk) t='糖化血色素低於 6.5% 且低血糖風險高：建議把磺醯尿素類或胰島素減量。';
     else if(R.prev!=null&&R.a1c-R.prev>=0.5) t='仍在目標內，但比前次上升 0.5% 以上：先確認服藥與飲食，3 個月後提早複查。';
     steps.push(`<li><h3>維持治療</h3><div class="body"><p>${t}</p></div></li>`);planZh.push(t);planEn.push('continue current regimen; recheck HbA1c in 3–6 months');
   }else{
