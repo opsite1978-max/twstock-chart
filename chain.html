@@ -170,7 +170,7 @@ function agg(codes){
   let cap = 0, rw = 0, m = 0, m20 = 0, mk = 0, f = 0, za = 0, zq = 0, vol = 0, nz = 0, n = 0, zfull = 0;
   for (const c of new Set(codes)){
     const o = S(c); if (!o) continue; n++;
-    const r = rOf(o); if (r != null && o.cap){ cap += o.cap; rw += o.cap * r; }
+    const wgt = o.cap || (o.m20 || 0) * 50, r = rOf(o); if (r != null && wgt){ cap += wgt; rw += wgt * r; }   // 市值加權（沒有市值時用成交金額代替）
     m += o.m || 0; m20 += o.m20 || 0; mk += (K() === 1 ? o.m : K() === 5 ? (o.m5 != null ? o.m5 : o.m) : o.m20) || 0;
     if (fOf(o) != null) f += fOf(o);
     if (zaOf(o) != null){ za += zaOf(o); zq += zqOf(o) || 0; nz++; if (o['zn' + K()] >= Math.min(K(), (SK.zdays || []).length)) zfull++; }
@@ -240,7 +240,8 @@ function chip(c, leadSet){
   return '<span class="chip' + (lead ? ' lead' : '') + (o ? '' : ' nodata') + '" data-c="' + c + '" style="' + chipBg(v) + '" title="' + esc(nameOf(c) + ' ' + c) + '">' +
     (lead ? '<span class="bd">👑</span>' : '') + (g ? '<span class="bd">★</span>' : '') + esc(nameOf(c)) + '<span class="cd">' + c + '</span>' + (v != null ? '<span class="vv ' + cls(v) + '">' + chipTxt(v) + '</span>' : '') + '</span>';
 }
-const byCap = (a, b) => ((S(b) || {}).cap || 0) - ((S(a) || {}).cap || 0);
+const capOf = c => { const o = S(c) || {}; return o.cap || (o.m20 || 0) * 50; };
+const byCap = (a, b) => capOf(b) - capOf(a);
 const OPEN = new Set(), SHOW = 12;
 function chips(list, leadSet, key){   // 先列市值前 12 大，其他按「＋」展開
   const all = OPEN.has(key);
