@@ -1,0 +1,18 @@
+{
+  "name": "血糖藥動態調整建議",
+  "short_name": "血糖藥調整",
+  "description": "第二型糖尿病：依檢驗與目前用藥即時給調藥步驟、糖化血色素目標與健保檢核",
+  "lang": "zh-Hant",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef1ee",
+  "theme_color": "#0a5c66",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
