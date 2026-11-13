@@ -1,5 +1,5 @@
 // 讓看盤頁可以「安裝成 App」：外殼檔案離線可開，股價資料一律即時向 FinMind 取得
-const CACHE = 'twchart-v237';
+const CACHE = 'twchart-v238';
 const SHELL = ['./', './index.html', './mobile.html', './holders.html', './insider.html', './txo.html', './strategy.html', './futstock.html', './futscreen.html', './ctrl.html', './force.html', './flowchart.html', './force-lab.html', './optsim.html', './optkelly.html', './iv.html', './overview.html', './optlive.html', './optk.html', './optgo.html', './optmap.html', './clear.html', './bbview.html', './margin.html', './zhanshen.html', './zhanshen-me.html', './pro/', './manifest-pro.webmanifest', './manifest-me.webmanifest', './manifest-zs.webmanifest', './icon-180.png', './calc.html', './vwscreen.html', './bbscreen.html', './lxscreen.html', './xdscreen.html', './qzscreen.html', './bdscreen.html', './jgscreen.html', './fxpos.html', './autoreload.js', './manifest.webmanifest', './manifest-m.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
