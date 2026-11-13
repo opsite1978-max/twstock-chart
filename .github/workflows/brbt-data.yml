@@ -1,0 +1,38 @@
+name: 起漲點回測資料（分點歷史）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: brbt-data
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - id: t0
+        run: echo "t=$(date +%s)" >> $GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+      - name: 取出 brbt-data 分支
+        run: git fetch -q origin brbt-data && git worktree add -q brbt-out origin/brbt-data || mkdir -p brbt-out
+      - name: 讀歷史分點
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          MAX_MIN: '100'
+        run: python3 scripts/branch_bt_fetch.py brbt-out
+      - name: 推到 brbt-data 分支
+        if: always()
+        run: |
+          rm -rf pub && mkdir pub && cp brbt-out/*.json pub/ 2>/dev/null; for x in bt px; do [ -d brbt-out/$x ] && cp -r brbt-out/$x pub/; done; true
+          cd pub && git init -q && git checkout -q -b brbt-data && git add -A
+          git -c user.name=brbt-bot -c user.email=brbt-bot@users.noreply.github.com commit -qm "分點歷史 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" brbt-data
+      - name: 還沒補完就一小時後再跑一輪
+        if: success() && hashFiles('brbt_more') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          w=$(( ${{ steps.t0.outputs.t }} + 3720 - $(date +%s) )); [ $w -gt 0 ] && sleep $w
+          gh workflow run brbt-data.yml --ref main -R ${{ github.repository }}
