@@ -56,7 +56,7 @@ def one(code, date):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    left = quota_left(); T.REQ_BUDGET = max(0, min(4800, left - 1200))
+    left = quota_left(); T.REQ_BUDGET = max(0, min(4800, left - int(os.environ.get('RESERVE', '1200'))))
     T.log('FinMind 這小時剩', left, '次，本輪用', T.REQ_BUDGET)
     if T.REQ_BUDGET < 200: open('brbt_more', 'w').write('1'); return
     meta = jload('meta.json', None)
