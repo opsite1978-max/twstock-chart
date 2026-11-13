@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>產業鏈地圖</title>
-<meta name="description" content="台股產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">
+<meta name="description" content="台股產業上中下游、龍頭績優股、各產業資金流向、主力買賣超與異常分點">
 <style>
 :root{
   --bg:#f6f7f9;--panel:#fff;--panel2:#f0f2f5;--line:#e3e6eb;--line2:#cfd4dc;--fg:#1b1f27;--muted:#5d6675;--dim:#8a93a2;
@@ -106,6 +106,36 @@ header .sp{flex:1}
 .srch .res{position:absolute;z-index:15;top:100%;left:0;right:0;min-width:260px;background:var(--panel);border:1px solid var(--line2);border-radius:8px;max-height:300px;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .srch .res div{padding:6px 10px;cursor:pointer;font-size:13px}
 .srch .res div:hover{background:var(--panel2)}
+/* 異常分點 */
+.tp{display:inline-block;font:600 11px/1.5 var(--sans);padding:0 6px;border-radius:9px;margin:1px 3px 1px 0;white-space:nowrap;color:#fff}
+.tp.buy{background:#d8322c}.tp.sell{background:#12935a}.tp.hd{background:#d9822b}.tp.dt{background:#7b8494}.tp.new{background:#7a4fd0}.tp.ct{background:transparent;color:var(--fg);border:1px solid var(--line2)}.tp.grp{background:#2f6fd6}
+.flt{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.flt button{font:600 12px var(--sans);border:1px solid var(--line2);background:var(--panel);color:var(--fg);border-radius:14px;padding:3px 10px;cursor:pointer}
+.flt button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.flt button small{font:11px var(--mono);opacity:.75;margin-left:3px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin:10px 0}
+.grpw{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin:6px 0 12px}
+.grpw .card{padding:9px 11px}
+.grpw .card h4{margin:0 0 4px;font-size:13px}
+.grpw .card .note{margin:0 0 5px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:0}
+.dot.buy{background:#d8322c}.dot.sell{background:#12935a}.dot.hd{background:#d9822b}.dot.dt{background:#7b8494}.dot.new{background:#7a4fd0}.dot.ct{border:1.5px solid var(--muted)}
+.lk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.tbl td.wrap{white-space:normal;font-family:var(--sans);text-align:left}
+.tbl td .sm{display:block;font:11px var(--sans);color:var(--dim);font-weight:400}
+.rk{width:100%;border-collapse:collapse;font-size:12.5px}
+.rk td{padding:4px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.rk td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
+.rk td.s{color:var(--muted);font-size:11.5px}
+.mini{width:100%;border-collapse:collapse;font-size:12.5px;margin:4px 0 8px}
+.mini th{color:var(--muted);font-weight:600;text-align:right;padding:3px 4px;border-bottom:1px solid var(--line2);font-size:11.5px}
+.mini td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mini th:first-child,.mini td:first-child{text-align:left;font-family:var(--sans)}
+.mini tr[data-b],.mini tr[data-c]{cursor:pointer}
+.mini tr[data-b]:hover td,.mini tr[data-c]:hover td{background:var(--panel2)}
+.sheet h4{margin:12px 0 2px;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip .zz{font-size:10px}
+.back{cursor:pointer;border:0;background:none;color:var(--accent);font:600 12.5px var(--sans);padding:0;margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -118,13 +148,14 @@ header .sp{flex:1}
     <a class="btn" href="zhanshen-me.html">戰神看盤</a>
     <button class="btn" id="themeBtn" title="切換深色／淺色">◐</button>
   </header>
-  <div class="bar">
+  <div class="bar" id="topBar">
     <label>期間 <span class="seg" id="perSeg"><button data-v="1">1 日</button><button data-v="5">5 日</button><button data-v="20">20 日</button></span></label>
     <label>公司上色 <span class="seg" id="colSeg"><button data-v="z">主力</button><button data-v="f">法人</button><button data-v="r">漲跌</button></span></label>
   </div>
-  <div class="tabs" role="tablist"><button role="tab" id="tabFlow" aria-selected="true">產業資金流向</button><button role="tab" id="tabChain" aria-selected="false">產業鏈圖</button></div>
+  <div class="tabs" role="tablist"><button role="tab" id="tabFlow" aria-selected="true">產業資金流向</button><button role="tab" id="tabChain" aria-selected="false">產業鏈圖</button><button role="tab" id="tabBrk" aria-selected="false">異常分點</button></div>
   <section id="viewFlow"></section>
   <section id="viewChain" hidden></section>
+  <section id="viewBrk" hidden></section>
   <p class="note" id="foot"></p>
 </div>
 <div class="sheet" id="sheet" aria-live="polite"></div>
@@ -132,8 +163,8 @@ header .sp{flex:1}
 'use strict';
 const BASE = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/chain-data/';
 const LS = { get(k, d){ try { const v = localStorage.getItem('chain:' + k); return v == null ? d : JSON.parse(v); } catch (e){ return d; } }, set(k, v){ try { localStorage.setItem('chain:' + k, JSON.stringify(v)); } catch (e){} } };
-const ST = { per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
-let CH = null, SK = null, IND = new Map(), MEM = new Map();
+const ST = { gmore:false, bday:-1, btype:'all', bind:'', bsort:'v', bmore:false, per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
+let CH = null, SK = null, BRK = null, IND = new Map(), MEM = new Map(), ANOM = new Map();
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const num = (x, d = 1) => x == null || !isFinite(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -145,9 +176,11 @@ $('themeBtn').onclick = () => { const dark = ST.theme ? ST.theme === 'dark' : ma
 
 async function load(){
   const t = Math.floor(Date.now() / 600e3);
-  const [a, b] = await Promise.all([fetch(BASE + 'chain.json?t=' + t, { cache:'no-store' }), fetch(BASE + 'stocks.json?t=' + t, { cache:'no-store' })]);
+  const [a, b, k] = await Promise.all([fetch(BASE + 'chain.json?t=' + t, { cache:'no-store' }), fetch(BASE + 'stocks.json?t=' + t, { cache:'no-store' }), fetch(BASE + 'brk.json?t=' + t, { cache:'no-store' }).catch(() => null)]);
   if (!a.ok) throw new Error('產業鏈資料還沒準備好（HTTP ' + a.status + '），第一次建立約需 1～2 小時，請稍後再開。');
   CH = await a.json(); SK = b.ok ? await b.json() : { s:{}, days:[], zdays:[] };
+  try { BRK = k && k.ok ? await k.json() : null; } catch (e){ BRK = null; }
+  if (BRK){ const last = BRK.days.length - 1; for (const r of BRK.a) if (r[0] === last && !(r[3].length === 1 && r[3][0] === '當沖大戶')){ if (!ANOM.has(r[1])) ANOM.set(r[1], []); ANOM.get(r[1]).push(r); } }
   for (const ind of CH.inds){
     IND.set(ind.code, ind);
     for (const col of ind.cols) for (const sg of col.segs) for (const c of sg.s || []){ if (!MEM.has(c)) MEM.set(c, []); MEM.get(c).push({ ind:ind.code, iname:ind.name, pos:col.t, seg:sg.n }); }
@@ -238,8 +271,9 @@ function chipTxt(v){ return v == null ? '' : ST.col === 'z' ? sgn(v, 1) + '%' : 
 function chip(c, leadSet){
   const o = S(c), v = chipVal(o), lead = leadSet.has(c), g = good(o);
   return '<span class="chip' + (lead ? ' lead' : '') + (o ? '' : ' nodata') + '" data-c="' + c + '" style="' + chipBg(v) + '" title="' + esc(nameOf(c) + ' ' + c) + '">' +
-    (lead ? '<span class="bd">👑</span>' : '') + (g ? '<span class="bd">★</span>' : '') + esc(nameOf(c)) + '<span class="cd">' + c + '</span>' + (v != null ? '<span class="vv ' + cls(v) + '">' + chipTxt(v) + '</span>' : '') + '</span>';
+    (lead ? '<span class="bd">👑</span>' : '') + (g ? '<span class="bd">★</span>' : '') + (ANOM.has(c) ? '<span class="zz" title="' + esc(anomTitle(c)) + '">⚡</span>' : '') + esc(nameOf(c)) + '<span class="cd">' + c + '</span>' + (v != null ? '<span class="vv ' + cls(v) + '">' + chipTxt(v) + '</span>' : '') + '</span>';
 }
+function anomTitle(c){ return '今天異常分點：' + [...new Set((ANOM.get(c) || []).flatMap(r => r[3]))].join('、'); }
 const capOf = c => { const o = S(c) || {}; return o.cap || (o.m20 || 0) * 50; };
 const byCap = (a, b) => capOf(b) - capOf(a);
 const OPEN = new Set(), SHOW = 12;
@@ -268,7 +302,7 @@ function renderChain(){
   const codes = indCodes(ind), a = agg(codes);
   let h = '<div class="chainhead"><h2>' + esc(ind.name) + '</h2><select id="indSel">' + CH.inds.map(x => '<option value="' + x.code + '"' + (x.code === ind.code ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select>' +
     '<div class="sumline"><span>' + a.n + ' 檔</span><span>漲跌 <b class="' + cls(a.r) + '">' + sgn(a.r, 2) + '%</b></span><span>法人 <b class="' + cls(a.f) + '">' + sgn(a.f, 1) + ' 億</b></span><span>主力 <b class="' + cls(a.za) + '">' + (a.nz ? sgn(a.za, 1) + ' 億' : '—') + '</b></span><span>集中度 <b class="' + cls(a.k) + '">' + (a.k != null ? sgn(a.k, 1) + '% ' + zlWord(a.k) : '—') + '</b></span><span>（' + K() + ' 日）</span></div></div>';
-  h += '<div class="legend"><span>👑 龍頭＝這個環節市值最大</span><span>★ 績優＝有獲利（本益比 0～40 倍）、最新月營收年增、市值 50 億以上</span><span><i class="sw" style="background:linear-gradient(90deg,rgba(15,154,95,.55),transparent,rgba(229,50,45,.55))"></i>' + (ST.col === 'z' ? '主力集中度' : ST.col === 'f' ? '法人買賣超（億）' : '漲跌') + '：綠＝賣／跌、紅＝買／漲</span><span>環節左邊紅條＝法人＋主力淨流入，綠條＝淨流出</span></div>';
+  h += '<div class="legend"><span>👑 龍頭＝這個環節市值最大</span><span>★ 績優＝有獲利（本益比 0～40 倍）、最新月營收年增、市值 50 億以上</span><span><i class="sw" style="background:linear-gradient(90deg,rgba(15,154,95,.55),transparent,rgba(229,50,45,.55))"></i>' + (ST.col === 'z' ? '主力集中度' : ST.col === 'f' ? '法人買賣超（億）' : '漲跌') + '：綠＝賣／跌、紅＝買／漲</span><span>環節左邊紅條＝法人＋主力淨流入，綠條＝淨流出</span>' + (BRK ? '<span>⚡＝今天有異常分點（看「異常分點」分頁）</span>' : '') + '</div>';
   h += '<div class="flow" style="--cols:' + ind.cols.length + '">';
   for (const col of ind.cols) h += '<div class="col"><h3>' + esc(col.t) + '</h3>' + col.segs.map(segCard).join('') + '</div>';
   h += '</div>';
@@ -294,10 +328,152 @@ function openStock(c){
     ].map(per).join('') + '</div>';
     if (o.zn20 != null && o.zn20 < 20) h += '<p class="note" style="margin:0">主力目前累積 ' + (o.zn20 || 0) + ' 天資料（每天晚上更新，會慢慢補滿 20 天）。</p>';
   } else h += '<p class="note">今天沒有這檔的價格資料（可能停牌或沒成交）。</p>';
+  if (BRK){
+    const an = BRK.a.filter(r => r[1] === c && BRK.show.includes(r[0]));
+    if (an.length) h += '<h4>異常分點（最近 ' + BRK.show.length + ' 天）</h4><table class="mini"><tr><th>日期</th><th style="text-align:left">分點</th><th style="text-align:left">類型</th><th>張</th><th>佔量</th></tr>' + an.map(r => '<tr data-b="' + esc(r[2]) + '"><td>' + mmdd(BRK.days[r[0]]) + '</td><td style="text-align:left;font-family:var(--sans)">' + esc(bName(r[2])) + '</td><td style="text-align:left">' + r[3].map(tpTag).join('') + '</td><td class="' + cls(r[4]) + '">' + sgn(r[4], 0) + '</td><td class="' + cls(r[5]) + '">' + sgn(r[5], 1) + '%</td></tr>').join('') + '</table>';
+    h += '<div id="brSec"><p class="note">主要分點讀取中…</p></div>';
+  }
   h += '<div class="mem">所屬產業鏈：' + mem.map(m => '<a data-ind="' + m.ind + '">' + esc(m.iname) + '・' + esc(m.pos) + '・' + esc(m.seg) + '</a>').join('、') + '</div>';
   h += '<a class="btn" href="zhanshen-me.html?s=' + c + '" target="_blank" rel="noopener">開戰神看盤 ›</a>';
   $('sheet').innerHTML = h; $('sheet').classList.add('on');
   for (const a of $('sheet').querySelectorAll('[data-ind]')) a.onclick = () => { $('sheet').classList.remove('on'); openInd(a.dataset.ind); };
+  bindB($('sheet'), c);
+  if (BRK) stockBranches(c);
+}
+// ───── 異常分點 ─────
+const BT = () => { const t = (BRK && BRK.th) || {}; return [
+  ['獨買', 'buy', '單一分點一天買超 ≥ 成交量 ' + t.solo + '%（≥ ' + wan(t.solo_v) + '）'],
+  ['獨賣', 'sell', '單一分點一天賣超 ≥ 成交量 ' + t.solo + '%（≥ ' + wan(t.solo_v) + '）'],
+  ['新面孔', 'new', '前 ' + t.new_look + ' 天在這檔沒出現過的分點，突然買超 ≥ 成交量 ' + t.new + '%（≥ ' + wan(t.new_v) + '）'],
+  ['連續買', 'buy', '最近 ' + t.run_days + ' 天有 ' + t.run_hit + ' 天以上買超，合計 ≥ 這幾天成交量 ' + t.run + '%（≥ ' + wan(t.run_v) + '），今天還在買'],
+  ['連續賣', 'sell', '最近 ' + t.run_days + ' 天有 ' + t.run_hit + ' 天以上賣超，合計 ≥ 這幾天成交量 ' + t.run + '%（≥ ' + wan(t.run_v) + '），今天還在賣'],
+  ['隔日沖進場', 'hd', '「今天大買、隔天就賣掉一半以上」比例 ≥ ' + t.hd_rate + '% 的分點（隔日沖常客），今天又買超 ≥ 成交量 ' + t.hd_buy + '% → 明天留意賣壓'],
+  ['當沖大戶', 'dt', '同一分點當天買、賣都 ≥ 成交量 ' + t.dt + '%，淨額很小（當天進出）'],
+  ['逆勢吃貨', 'ct', '股價跌 ' + t.contra + '% 以上，這個分點卻大買（附加在上面幾種）'],
+  ['逆勢出貨', 'ct', '股價漲 ' + t.contra + '% 以上，這個分點卻大賣（附加在上面幾種）']
+]; };
+function wan(v){ return v >= 1 ? num(v, 1) + ' 億' : num(v * 1e4, 0) + ' 萬'; }
+const TPC = { '獨買':'buy', '連續買':'buy', '獨賣':'sell', '連續賣':'sell', '新面孔':'new', '隔日沖進場':'hd', '當沖大戶':'dt', '逆勢吃貨':'ct', '逆勢出貨':'ct' };
+const tpTag = t => '<span class="tp ' + (TPC[t] || 'ct') + '">' + esc(t) + '</span>';
+const bName = b => (BRK && BRK.n[b]) || b;
+const mmdd = d => d ? d.slice(5).replace('-', '/') : '';
+const safeB = b => String(b).replace(/[^0-9A-Za-z]/g, '_');
+function hdInfo(b, h, full){ h = h || (BRK && BRK.hd[b]); if (!h || !h[0]) return ''; const tag = BRK && BRK.hdTag.includes(b); if (!tag && !full) return ''; return '<span class="tp ' + (tag ? 'hd' : 'ct') + '" title="過去 ' + h[0] + ' 次大買，隔天賣掉一半以上 ' + h[1] + ' 次">' + (tag ? '隔日沖常客 ' : '隔日沖 ') + Math.round(h[1] / h[0] * 100) + '%</span>'; }
+function bindB(root, from){
+  for (const el of root.querySelectorAll('[data-b]')) el.onclick = e => { e.stopPropagation(); openBranch(el.dataset.b, from); };
+  for (const el of root.querySelectorAll('[data-c]:not(.chip)')) if (!el.closest('.srch')) el.onclick = e => { e.stopPropagation(); openStock(el.dataset.c); };
+}
+function renderBrk(){
+  const v = $('viewBrk');
+  if (!BRK){ v.innerHTML = '<div class="load">異常分點資料還在建立（第一次要讀完每檔的券商分點，大約需要半天），請稍後再開。</div>'; return; }
+  const nb = BRK.days.length, show = BRK.show;
+  if (!show.includes(ST.bday)) ST.bday = nb - 1;
+  const day = ST.bday;
+  const indOk = c => !ST.bind || (MEM.get(c) || []).some(m => m.ind === ST.bind);
+  const base = BRK.a.filter(r => r[0] === day && indOk(r[1]));
+  const cnt = {}; for (const r of base) for (const t of r[3]) cnt[t] = (cnt[t] || 0) + 1;
+  let rows = ST.btype === 'all' ? base : base.filter(r => r[3].includes(ST.btype));
+  rows.sort(ST.bsort === 'sh' ? (a, b) => Math.abs(b[5]) - Math.abs(a[5]) : (a, b) => Math.abs(b[6]) - Math.abs(a[6]));
+  let h = '<div class="bar" style="margin-top:0"><label>日期 <span class="seg" id="bdSeg">' + show.map(i => '<button data-v="' + i + '" aria-pressed="' + (i === day) + '">' + mmdd(BRK.days[i]) + '</button>').join('') + '</span></label>' +
+    '<label>產業 <select id="bindSel"><option value="">全部產業</option>' + CH.inds.map(x => '<option value="' + x.code + '"' + (x.code === ST.bind ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label></div>';
+  h += '<div class="flt" id="btFlt"><button data-v="all" aria-pressed="' + (ST.btype === 'all') + '">全部<small>' + base.length + '</small></button>' + BT().map(t => '<button data-v="' + t[0] + '" aria-pressed="' + (ST.btype === t[0]) + '"><i class="dot ' + t[1] + '"></i>' + t[0] + '<small>' + (cnt[t[0]] || 0) + '</small></button>').join('') + '</div>';
+  // 族群同步
+  const G = BRK.g.filter(g => g[0] === day && (!ST.bind || g[5].some(indOk)));
+  if (G.length && (ST.btype === 'all')){
+    h += '<h3 style="margin:6px 0 2px;font-size:14px"><span class="tp grp">族群同步</span>同一個分點同一天在同一個環節買超 ' + BRK.th.grp_n + ' 檔以上<small style="font-weight:400;color:var(--muted)">（' + G.length + ' 組）</small></h3><div class="grpw">' + G.sort((a, b) => b[6] - a[6]).slice(0, ST.gmore ? 200 : 8).map(g =>
+      '<div class="card"><h4><span class="lk" data-b="' + esc(g[1]) + '">' + esc(bName(g[1])) + '</span> ' + hdInfo(g[1]) + '</h4><div class="note">' + esc(g[2]) + '・' + esc(g[3]) + '・' + esc(g[4]) + '　買進 ' + g[5].length + ' 檔，合計 <b class="u">' + sgn(g[6], 2) + ' 億</b></div><div class="seg-b" style="padding:0">' + g[5].map(c => '<span class="chip" data-c="' + c + '">' + esc(nameOf(c)) + '<span class="cd">' + c + '</span></span>').join('') + '</div></div>').join('') + '</div>' + (G.length > 8 ? '<p style="text-align:center;margin:-4px 0 12px"><button class="btn" id="gMore">' + (ST.gmore ? '收起' : '顯示全部 ' + G.length + ' 組') + '</button></p>' : '');
+  }
+  // 清單
+  const lim = ST.bmore ? rows.length : 150;
+  h += '<div class="tblwrap"><table class="tbl" id="brTbl"><thead><tr><th>股票</th><th style="text-align:left">分點</th><th style="text-align:left">類型</th><th>買賣超（張）</th><th data-s="sh" class="' + (ST.bsort === 'sh' ? 'on' : '') + '">佔成交量' + (ST.bsort === 'sh' ? ' ▼' : '') + '</th><th data-s="v" class="' + (ST.bsort === 'v' ? 'on' : '') + '">金額（億）' + (ST.bsort === 'v' ? ' ▼' : '') + '</th><th class="hide-m">均價／收盤</th></tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td colspan="7" style="text-align:center;color:var(--dim);font-family:var(--sans)">這一天沒有符合的異常</td></tr>';
+  for (const r of rows.slice(0, lim)){
+    const [, c, b, tp, net, sh, val, px, close, chg] = r;
+    h += '<tr data-c="' + c + '"><td>' + esc(nameOf(c)) + '<small>' + c + '</small><span class="sm ' + cls(chg) + '" style="font-family:var(--mono)">' + sgn(chg, 2) + '%</span></td>' +
+      '<td class="wrap"><span class="lk" data-b="' + esc(b) + '">' + esc(bName(b)) + '</span><span class="sm">' + hdInfo(b) + '</span></td>' +
+      '<td class="wrap">' + tp.map(tpTag).join('') + '</td>' +
+      '<td class="' + cls(net) + '">' + sgn(net, 0) + '<span class="sm">買 ' + num(r[10], 0) + '／賣 ' + num(r[11], 0) + '</span></td>' +
+      '<td class="' + cls(sh) + '">' + sgn(sh, 1) + '%</td><td class="' + cls(val) + '">' + sgn(val, 2) + '</td>' +
+      '<td class="hide-m">' + num(px, 2) + '<span class="sm">收 ' + num(close, 2) + '</span></td></tr>';
+  }
+  h += '</tbody></table></div>';
+  if (rows.length > lim) h += '<p style="text-align:center"><button class="btn" id="bMore">顯示其他 ' + (rows.length - lim) + ' 筆</button></p>';
+  // 排行
+  const rk = BRK.rk.find(x => x[0] === day);
+  if (rk){
+    const tb = (list, title, dir) => '<div class="card"><h3 style="margin:0 0 6px;font-size:13.5px">' + title + '</h3><table class="rk">' + list.slice(0, 15).map((x, i) => '<tr><td style="color:var(--dim);width:18px">' + (i + 1) + '</td><td><span class="lk" data-b="' + esc(x[0]) + '">' + esc(bName(x[0])) + '</span> ' + hdInfo(x[0]) + '<div class="s">' + x[3].map(c => esc(nameOf(c))).join('、') + '</div></td><td class="n ' + cls(x[1]) + '">' + sgn(x[1], 2) + ' 億<div class="s">' + x[2] + ' 檔</div></td></tr>').join('') + '</table></div>';
+    h += '<div class="grid2">' + tb(rk[1], '分點買超金額排行（' + mmdd(BRK.days[day]) + '）', 1) + tb(rk[2], '分點賣超金額排行（' + mmdd(BRK.days[day]) + '）', -1) + '</div>';
+  }
+  h += '<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px;font-size:13.5px">怎麼看</h3><div class="note">' + BT().map(t => '<div>' + tpTag(t[0]) + esc(t[2]) + '</div>').join('') +
+    '<div><span class="tp grp">族群同步</span>同一個分點同一天在同一個產業鏈環節買超 ' + BRK.th.grp_n + ' 檔以上（每檔 ≥ 成交量 ' + BRK.th.grp + '%、≥ ' + wan(BRK.th.grp_v) + '）</div>' +
+    '<div style="margin-top:6px"><b>隔日沖 %</b>：這個分點過去 ' + nb + ' 天裡每次「單一股票買超 ≥ 成交量 ' + BRK.th.hd_buy + '%」之後，隔天就賣掉一半以上的比例；次數 ≥ ' + BRK.th.hd_min_ev + ' 次、比例 ≥ ' + BRK.th.hd_rate + '% 才標「常客」。</div>' +
+    '<div><b>資料範圍</b>：產業鏈裡當天成交金額 3,000 萬以上的股票；每檔每天存買超前 15、賣超前 15、買賣都大的前 5 個分點。分點明細目前 ' + nb + ' 天（每天晚上更新，最多 20 天）。點分點名稱看它在各股票的進出，點股票看這檔的主要分點。</div></div></div>';
+  v.innerHTML = h;
+  $('bdSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.bday = +b.dataset.v; ST.bmore = false; ST.gmore = false; renderBrk(); };
+  $('bindSel').onchange = e => { ST.bind = e.target.value; ST.bmore = false; renderBrk(); };
+  $('btFlt').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.btype = b.dataset.v; ST.bmore = false; renderBrk(); };
+  for (const th of v.querySelectorAll('th[data-s]')) th.onclick = () => { ST.bsort = th.dataset.s; renderBrk(); };
+  if ($('bMore')) $('bMore').onclick = () => { ST.bmore = true; renderBrk(); };
+  if ($('gMore')) $('gMore').onclick = () => { ST.gmore = !ST.gmore; renderBrk(); };
+  for (const el of v.querySelectorAll('.chip[data-c]')) el.onclick = () => openStock(el.dataset.c);
+  bindB(v);
+}
+const JC = new Map();
+async function getJ(path){
+  if (JC.has(path)) return JC.get(path);
+  const p = fetch(BASE + path + '?t=' + Math.floor(Date.now() / 600e3), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  JC.set(path, p); return p;
+}
+function perSegHtml(id){ return '<span class="seg" id="' + id + '" style="font-size:12px">' + [1, 5, 20].map(k => '<button data-v="' + k + '" aria-pressed="' + (k === ST.per) + '" style="padding:2px 8px">' + k + ' 日</button>').join('') + '</span>'; }
+async function stockBranches(c){
+  const j = await getJ('br/' + c + '.json'), box = $('brSec');
+  if (!box) return;
+  if (!j){ box.innerHTML = '<p class="note">這檔沒有分點明細（成交金額太小，或還沒讀到）。</p>'; return; }
+  const nb = j.d.length, K = Math.min(ST.per, nb), t0 = nb - K;
+  let vol = 0; for (let t = t0; t < nb; t++) vol += j.v[t] || 0;
+  const agg = [];
+  for (const [b, list] of Object.entries(j.r)){
+    let bq = 0, sq = 0, bv = 0, sv = 0, n = 0;
+    for (const e of list) if (e[0] >= t0){ bq += e[1]; sq += e[2]; bv += e[1] * e[3]; sv += e[2] * e[4]; n++; }
+    if (!n) continue;
+    agg.push({ b, net:bq - sq, val:(bv - sv) * 1000 / 1e8, bp:bq ? bv / bq : 0, sp:sq ? sv / sq : 0, sh:vol ? (bq - sq) / vol * 100 : 0, n });
+  }
+  const buy = agg.filter(x => x.net > 0).sort((a, b) => b.net - a.net).slice(0, 6), sell = agg.filter(x => x.net < 0).sort((a, b) => a.net - b.net).slice(0, 6);
+  const tr = x => '<tr data-b="' + esc(x.b) + '"><td>' + esc(j.n[x.b] || x.b) + ' ' + hdInfo(x.b, j.hd[x.b]) + '</td><td class="' + cls(x.net) + '">' + sgn(x.net, 0) + '</td><td class="' + cls(x.sh) + '">' + sgn(x.sh, 1) + '%</td><td>' + num(x.net > 0 ? x.bp : x.sp, 2) + '</td>' + (K > 1 ? '<td>' + x.n + '</td>' : '') + '</tr>';
+  const head = '<tr><th>分點</th><th>張</th><th>佔量</th><th>均價</th>' + (K > 1 ? '<th>天</th>' : '') + '</tr>';
+  box.innerHTML = '<h4>主要分點 ' + perSegHtml('brPer') + '<span class="note" style="font-weight:400">' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nb - 1]) + (ST.per > nb ? '（目前只有 ' + nb + ' 天）' : '') + '</span></h4>' +
+    '<table class="mini">' + head + '<tr><td colspan="5" style="color:var(--up);font-weight:700">買超</td></tr>' + buy.map(tr).join('') + '<tr><td colspan="5" style="color:var(--down);font-weight:700">賣超</td></tr>' + sell.map(tr).join('') + '</table>' +
+    '<p class="note" style="margin:0">只計入每天買賣超前 15 大的分點；均價是買超方的買進均價、賣超方的賣出均價。</p>';
+  $('brPer').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); stockBranches(c); };
+  bindB(box, c);
+}
+async function openBranch(b, from){
+  const sh = $('sheet');
+  sh.innerHTML = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + (from ? '<button class="back" id="bkBack">‹ 回 ' + esc(nameOf(from)) + '</button>' : '') + '<h3>' + esc(bName(b)) + '</h3><p class="note">讀取中…</p>';
+  sh.classList.add('on'); sh.scrollTop = 0;
+  if ($('bkBack')) $('bkBack').onclick = () => openStock(from);
+  const j = await getJ('bk/' + safeB(b) + '.json');
+  if (!j){ sh.querySelector('.note').textContent = '找不到這個分點的資料。'; return; }
+  const nb = j.d.length, K = Math.min(ST.per, nb), t0 = nb - K;
+  const by = {};
+  for (const e of j.r){ if (e[0] < t0) continue; const o = by[e[1]] = by[e[1]] || { bq:0, sq:0, bv:0, sv:0, n:0 }; o.bq += e[2]; o.sq += e[3]; o.bv += e[2] * e[4]; o.sv += e[3] * e[5]; o.n++; }
+  const L = Object.entries(by).map(([c, o]) => { let vol = 0; for (let t = t0; t < nb; t++) vol += (j.vol[c] || [])[t] || 0; return { c, net:o.bq - o.sq, val:(o.bv - o.sv) * 1000 / 1e8, sh:vol ? (o.bq - o.sq) / vol * 100 : 0, n:o.n, px:o.bq - o.sq > 0 ? (o.bq ? o.bv / o.bq : 0) : (o.sq ? o.sv / o.sq : 0) }; });
+  const tot = L.reduce((s, x) => s + x.val, 0), gb = L.filter(x => x.val > 0).reduce((s, x) => s + x.val, 0), gs = L.filter(x => x.val < 0).reduce((s, x) => s + x.val, 0);
+  const buy = L.filter(x => x.val > 0).sort((a, b) => b.val - a.val).slice(0, 10), sell = L.filter(x => x.val < 0).sort((a, b) => a.val - b.val).slice(0, 10);
+  const tr = x => '<tr data-c="' + x.c + '"><td>' + esc(nameOf(x.c)) + ' <span style="font:10.5px var(--mono);color:var(--dim)">' + x.c + '</span>' + (ANOM.has(x.c) ? ' ⚡' : '') + '</td><td class="' + cls(x.net) + '">' + sgn(x.net, 0) + '</td><td class="' + cls(x.val) + '">' + sgn(x.val, 2) + '</td><td class="' + cls(x.sh) + '">' + sgn(x.sh, 1) + '%</td><td>' + num(x.px, 2) + '</td></tr>';
+  const head = '<tr><th>股票</th><th>張</th><th>億</th><th>佔量</th><th>均價</th></tr>';
+  const h0 = j.hd;
+  let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + (from ? '<button class="back" id="bkBack">‹ 回 ' + esc(nameOf(from)) + '</button>' : '') +
+    '<h3>' + esc(j.n) + ' <span style="font:13px var(--mono);color:var(--dim)">' + esc(j.id) + '</span></h3>';
+  h += '<div class="kv"><div><small>淨買賣（' + K + ' 日）</small><b class="' + cls(tot) + '">' + sgn(tot, 2) + ' 億</b></div><div><small>買超合計</small><b class="u">' + sgn(gb, 2) + ' 億</b></div><div><small>賣超合計</small><b class="d">' + sgn(gs, 2) + ' 億</b></div></div>';
+  h += '<p class="note" style="margin:0 0 6px">' + (h0 && h0[0] ? '隔日沖傾向：過去 ' + nb + ' 天大買 ' + h0[0] + ' 次，隔天就賣掉一半以上 ' + h0[1] + ' 次（' + Math.round(h0[1] / h0[0] * 100) + '%）' + (j.tag ? '，<b style="color:#d9822b">隔日沖常客</b>——它大買的股票隔天常有賣壓。' : '。') : '隔日沖傾向：大買次數還太少，無法判斷。') + '</p>';
+  h += '<h4>' + perSegHtml('bkPer') + '<span class="note" style="font-weight:400">' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nb - 1]) + '</span></h4>';
+  h += '<table class="mini">' + head + '<tr><td colspan="5" style="color:var(--up);font-weight:700">買超最多</td></tr>' + buy.map(tr).join('') + '<tr><td colspan="5" style="color:var(--down);font-weight:700">賣超最多</td></tr>' + sell.map(tr).join('') + '</table>';
+  h += '<p class="note" style="margin:0">只含產業鏈裡成交金額 3,000 萬以上、而且這個分點擠進當天前 15 大的股票。</p>';
+  sh.innerHTML = h;
+  if ($('bkBack')) $('bkBack').onclick = () => openStock(from);
+  $('bkPer').onclick = e => { const bt = e.target.closest('button'); if (!bt) return; ST.per = +bt.dataset.v; LS.set('per', ST.per); syncSeg(); render(); openBranch(b, from); };
+  bindB(sh, from);
 }
 // ───── 搜尋 ─────
 $('q').oninput = () => {
@@ -310,16 +486,16 @@ $('q').oninput = () => {
 };
 document.addEventListener('click', e => { if (!e.target.closest('.srch')) $('qres').hidden = true; });
 // ───── 切換 ─────
-function setTab(t){ ST.tab = t; LS.set('tab', t); $('tabFlow').setAttribute('aria-selected', String(t === 'flow')); $('tabChain').setAttribute('aria-selected', String(t === 'chain')); $('viewFlow').hidden = t !== 'flow'; $('viewChain').hidden = t !== 'chain'; render(); }
-$('tabFlow').onclick = () => setTab('flow'); $('tabChain').onclick = () => setTab('chain');
+function setTab(t){ ST.tab = t; LS.set('tab', t); for (const [id, k] of [['Flow', 'flow'], ['Chain', 'chain'], ['Brk', 'brk']]){ $('tab' + id).setAttribute('aria-selected', String(t === k)); $('view' + id).hidden = t !== k; } $('colSeg').parentElement.style.display = t === 'brk' ? 'none' : ''; render(); }
+$('tabFlow').onclick = () => setTab('flow'); $('tabChain').onclick = () => setTab('chain'); $('tabBrk').onclick = () => setTab('brk');
 function syncSeg(){ for (const b of $('perSeg').children) b.setAttribute('aria-pressed', String(+b.dataset.v === ST.per)); for (const b of $('colSeg').children) b.setAttribute('aria-pressed', String(b.dataset.v === ST.col)); }
 $('perSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); };
 $('colSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.col = b.dataset.v; LS.set('col', ST.col); syncSeg(); render(); };
-function render(){ if (!CH) return; if (ST.tab === 'chain') renderChain(); else renderFlow(); }
+function render(){ if (!CH) return; if (ST.tab === 'chain') renderChain(); else if (ST.tab === 'brk') renderBrk(); else renderFlow(); }
 syncSeg();
 load().then(() => {
   $('foot').innerHTML = '產業上中下游與公司名單：' + esc(CH.src || '櫃買中心產業價值鏈資訊平台') + '（只列上市、上櫃公司；一家公司可能出現在好幾個環節）。價格、法人、主力分點、市值、本益比、月營收：FinMind，每天晚上 9 點多更新。僅供研究參考，不是投資建議。';
-  setTab(ST.tab === 'chain' ? 'chain' : 'flow');
+  setTab(['chain', 'brk'].includes(ST.tab) ? ST.tab : 'flow');
 }).catch(e => { $('viewFlow').innerHTML = '<div class="load">' + esc(e.message) + '</div>'; });
 </script>
 </body>
