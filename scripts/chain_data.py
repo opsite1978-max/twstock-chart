@@ -186,31 +186,9 @@ def main():
         f = {c: [round(x, 3) for x in v] for c, v in f.items()}
         day = day or {}; day.update({'p': p, 'f': f}); day.setdefault('z', {})
         jsave(fp, day); T.log(d, '價格', len(p), '法人', len(f))
-    # 主力：新的日子先算，再往回補
-    stop = False
-    for d in reversed(days):
-        fp = 'd/' + d + '.json'; day = jload(fp, None)
-        if not day or not day.get('p'): continue
-        need = [c for c in chain_codes if c in day['p'] and day['p'][c][3] >= ZL_MIN_MONEY and c not in day.get('z', {})]
-        if not need: continue
-        T.log(d, '主力要算', len(need), '檔')
-        n = 0
-        for c in sorted(need, key=lambda c: -day['p'][c][3]):
-            if time.time() > DEADLINE or T.NREQ[0] >= T.REQ_BUDGET - 5: stop = True; break
-            try: z = zl_one(c, d)
-            except T.RateLimited as e: T.log('停止', e); stop = True; break
-            except Exception as e: T.log(c, d, '失敗', str(e)[:80]); continue
-            day['z'][c] = z or [0, 0, 0]; n += 1
-            if n % 100 == 0: jsave(fp, day); T.log(d, '主力', n, '／', len(need), '查詢', T.NREQ[0])
-        jsave(fp, day); T.log(d, '主力完成', n, '查詢累計', T.NREQ[0])
-        if stop: break
-    # 刪掉太舊的
-    dd = os.path.join(OUT, 'd')
-    for fn in os.listdir(dd) if os.path.isdir(dd) else []:
-        if fn[:10] < days[0]: os.remove(os.path.join(dd, fn))
     # 市值、本益比、月營收
     meta = jload('meta.json', {})
-    if meta.get('date') != days[-1] and not stop:
+    if meta.get('date') != days[-1]:
         try:
             mv = T.api({'dataset': 'TaiwanStockMarketValue', 'start_date': days[-1], 'end_date': days[-1]})
             pe = T.api({'dataset': 'TaiwanStockPER', 'start_date': days[-1], 'end_date': days[-1]})
@@ -233,6 +211,28 @@ def main():
             jsave('meta.json', meta)
         except Exception as e:
             T.log('市值／本益比／營收失敗', e)
+    # 主力：新的日子先算，再往回補
+    stop = False
+    for d in reversed(days):
+        fp = 'd/' + d + '.json'; day = jload(fp, None)
+        if not day or not day.get('p'): continue
+        need = [c for c in chain_codes if c in day['p'] and day['p'][c][3] >= ZL_MIN_MONEY and c not in day.get('z', {})]
+        if not need: continue
+        T.log(d, '主力要算', len(need), '檔')
+        n = 0
+        for c in sorted(need, key=lambda c: -day['p'][c][3]):
+            if time.time() > DEADLINE or T.NREQ[0] >= T.REQ_BUDGET - 5: stop = True; break
+            try: z = zl_one(c, d)
+            except T.RateLimited as e: T.log('停止', e); stop = True; break
+            except Exception as e: T.log(c, d, '失敗', str(e)[:80]); continue
+            day['z'][c] = z or [0, 0, 0]; n += 1
+            if n % 100 == 0: jsave(fp, day); T.log(d, '主力', n, '／', len(need), '查詢', T.NREQ[0])
+        jsave(fp, day); T.log(d, '主力完成', n, '查詢累計', T.NREQ[0])
+        if stop: break
+    # 刪掉太舊的
+    dd = os.path.join(OUT, 'd')
+    for fn in os.listdir(dd) if os.path.isdir(dd) else []:
+        if fn[:10] < days[0]: os.remove(os.path.join(dd, fn))
     # 整理成 stocks.json
     D = [d for d in days if jload('d/' + d + '.json', None)]
     data = {d: jload('d/' + d + '.json', {}) for d in D}
