@@ -1,3 +1,3 @@
-11-13 14:26:28 本小時 FinMind 已用 133 ／上限 6000
-11-13 14:26:31 retail targets 242 todo 2
-11-13 14:27:05 retail 2026-11-12 bars 1142 complete True 34s req 7
+11-14 04:26:47 本小時 FinMind 已用 441 ／上限 6000
+11-14 04:26:49 retail targets 243 todo 2
+11-14 04:27:16 retail 2026-11-13 bars 602 complete False 27s req 7
