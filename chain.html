@@ -135,6 +135,16 @@ header .sp{flex:1}
 .mini tr[data-b]:hover td,.mini tr[data-c]:hover td{background:var(--panel2)}
 .sheet h4{margin:12px 0 2px;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chip .zz{font-size:10px}
+.sheet.wide{max-height:85vh}
+@media (min-width:900px){.sheet.wide{width:min(760px,calc(100vw - 32px))}}
+.wchart{width:100%;display:block;margin:6px 0 2px}
+.wchart text{font:10.5px var(--mono);fill:var(--muted)}
+.wleg{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:var(--muted);margin:2px 0 6px}
+.wleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.pill{display:inline-block;font:600 11px/1.5 var(--sans);padding:0 6px;border-radius:9px;margin:1px 3px 1px 0;white-space:nowrap;border:1px solid var(--line2);color:var(--fg)}
+.pill.r{background:#d8322c;color:#fff;border-color:#d8322c}.pill.o{background:#d9822b;color:#fff;border-color:#d9822b}.pill.p{background:#7a4fd0;color:#fff;border-color:#7a4fd0}.pill.g{background:#7b8494;color:#fff;border-color:#7b8494}.pill.b{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
+.secth{margin:16px 0 6px;font-size:15px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.secth small{font-weight:400;color:var(--muted);font-size:12px}
 .back{cursor:pointer;border:0;background:none;color:var(--accent);font:600 12.5px var(--sans);padding:0;margin-bottom:4px}
 </style>
 </head>
@@ -152,10 +162,11 @@ header .sp{flex:1}
     <label>期間 <span class="seg" id="perSeg"><button data-v="1">1 日</button><button data-v="5">5 日</button><button data-v="20">20 日</button></span></label>
     <label>公司上色 <span class="seg" id="colSeg"><button data-v="z">主力</button><button data-v="f">法人</button><button data-v="r">漲跌</button></span></label>
   </div>
-  <div class="tabs" role="tablist"><button role="tab" id="tabFlow" aria-selected="true">產業資金流向</button><button role="tab" id="tabChain" aria-selected="false">產業鏈圖</button><button role="tab" id="tabBrk" aria-selected="false">異常分點</button></div>
+  <div class="tabs" role="tablist"><button role="tab" id="tabFlow" aria-selected="true">產業資金流向</button><button role="tab" id="tabChain" aria-selected="false">產業鏈圖</button><button role="tab" id="tabBrk" aria-selected="false">異常分點</button><button role="tab" id="tabWt" aria-selected="false">權證佈局</button></div>
   <section id="viewFlow"></section>
   <section id="viewChain" hidden></section>
   <section id="viewBrk" hidden></section>
+  <section id="viewWt" hidden></section>
   <p class="note" id="foot"></p>
 </div>
 <div class="sheet" id="sheet" aria-live="polite"></div>
@@ -163,7 +174,7 @@ header .sp{flex:1}
 'use strict';
 const BASE = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/chain-data/';
 const LS = { get(k, d){ try { const v = localStorage.getItem('chain:' + k); return v == null ? d : JSON.parse(v); } catch (e){ return d; } }, set(k, v){ try { localStorage.setItem('chain:' + k, JSON.stringify(v)); } catch (e){} } };
-const ST = { bkind:LS.get('bkind', 'b'), gmore:false, bday:-1, btype:'all', bind:'', bsort:'v', bmore:false, per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
+const ST = { wdir:1, wmore:false, amore:false, bkind:LS.get('bkind', 'b'), gmore:false, bday:-1, btype:'all', bind:'', bsort:'v', bmore:false, per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
 let CH = null, SK = null, BRK = null, IND = new Map(), MEM = new Map(), ANOM = new Map();
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -313,6 +324,7 @@ function renderChain(){
 }
 function openInd(code){ ST.ind = code; LS.set('ind', code); setTab('chain'); scrollTo({ top:0, behavior:'smooth' }); }
 function openStock(c){
+  $('sheet').classList.remove('wide');
   const o = S(c), mem = MEM.get(c) || [];
   let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button><h3>' + esc(nameOf(c)) + ' <span style="font:13px var(--mono);color:var(--dim)">' + c + '</span>' + (good(o) ? ' <span class="tag" style="color:var(--accent)">★ 績優</span>' : '') + '</h3>';
   if (o){
@@ -334,10 +346,11 @@ function openStock(c){
     h += '<div id="brSec"><p class="note">主要分點讀取中…</p></div>';
   }
   h += '<div class="mem">所屬產業鏈：' + mem.map(m => '<a data-ind="' + m.ind + '">' + esc(m.iname) + '・' + esc(m.pos) + '・' + esc(m.seg) + '</a>').join('、') + '</div>';
-  h += '<a class="btn" href="zhanshen-me.html?s=' + c + '" target="_blank" rel="noopener">開戰神看盤 ›</a>';
+  h += '<a class="btn" href="zhanshen-me.html?s=' + c + '" target="_blank" rel="noopener">開戰神看盤 ›</a> <button class="btn" id="toWt">權證佈局 ›</button>';
   $('sheet').innerHTML = h; $('sheet').classList.add('on');
   for (const a of $('sheet').querySelectorAll('[data-ind]')) a.onclick = () => { $('sheet').classList.remove('on'); openInd(a.dataset.ind); };
   bindB($('sheet'), c);
+  $('toWt').onclick = () => openWStock(c);
   if (BRK) stockBranches(c);
 }
 // ───── 異常分點 ─────
@@ -421,11 +434,151 @@ function renderBrk(){
   for (const el of v.querySelectorAll('.chip[data-c]')) el.onclick = () => openStock(el.dataset.c);
   bindB(v);
 }
+// ───── 權證佈局 ─────
+const WBASE = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/wt-data/';
+let WT = null, WTP = null;
+const wtGet = path => getJ(path, WBASE);
+const fmtM = (v, sg = true) => { if (v == null || !isFinite(v)) return '—'; const a = Math.abs(v); const s = a >= 1e8 ? num(v / 1e8, 2) + ' 億' : num(v / 1e4, 0) + ' 萬'; return sg && v > 0 ? '+' + s : s; };
+const wName = b => (WT && WT.n[b]) || b;
+const WTAG = { '大額':'r', '約當佔量高':'r', '新進場':'p', '集中押注':'b', '連續買':'r', '連續賣':'g', '隔日沖型':'o' };
+function wkOf(tg){ const u = WT.u[tg]; return u && u.k[String(ST.per)] || null; }
+async function renderWt(){
+  const v = $('viewWt');
+  if (!WT){
+    v.innerHTML = '<div class="load">讀取權證資料…</div>';
+    if (!WTP) WTP = wtGet('wt.json').then(j => { WT = j; return j; });
+    await WTP;
+    if (!WT){ v.innerHTML = '<div class="load">權證分點資料還在建立：每天要查 900 多個券商分點，第一次會從最近一天往回補 60 個交易日，大約需要一兩天。補好的部分會先出現。</div>'; return; }
+  }
+  const K = ST.per, dir = ST.wdir || 1, nd = WT.days.length;
+  let rows = Object.entries(WT.u).map(([tg, u]) => ({ tg, u, k:u.k[String(K)] })).filter(r => r.k && dir * r.k[0] > 0);
+  rows.sort((a, b) => dir * (b.k[0] - a.k[0]));
+  const lim = ST.wmore ? 300 : 40;
+  let h = '<div class="bar" style="margin-top:0"><label>方向 <span class="seg" id="wdSeg"><button data-v="1" aria-pressed="' + (dir === 1) + '">看多（認購淨買）</button><button data-v="-1" aria-pressed="' + (dir === -1) + '">看空（認售淨買）</button></span></label><span class="note">資料 ' + mmdd(WT.days[0]) + '～' + mmdd(WT.days[nd - 1]) + '，共 ' + nd + ' 天' + (K > nd ? '（' + K + ' 日不足，用全部 ' + nd + ' 天）' : '') + '</span></div>';
+  h += '<h3 class="secth">近 ' + K + ' 日被佈局最多的股票<small>只算一般分點；看多＝認購淨買 − 認售淨買</small></h3>';
+  h += '<div class="tblwrap"><table class="tbl" id="wtTbl"><thead><tr><th>股票</th><th>' + (dir > 0 ? '看多' : '看空') + '淨額</th><th class="hide-m">認購淨買</th><th class="hide-m">認售淨買</th><th>約當張數</th><th>佔成交量</th><th class="hide-m">買／賣分點</th><th style="text-align:left">主要佈局分點</th><th class="hide-m">外資＋總公司</th></tr></thead><tbody>';
+  for (const r of rows.slice(0, lim)){
+    const k = r.k, top = dir > 0 ? k[7] : k[8];
+    h += '<tr data-w="' + r.tg + '"><td>' + esc(nameOf(r.tg)) + '<small>' + r.tg + '</small><span class="sm ' + cls(r.u.r5) + '" style="font-family:var(--mono)">5 日 ' + sgn(r.u.r5, 1) + '%</span></td>' +
+      '<td class="' + cls(k[0]) + '">' + fmtM(k[0]) + '</td><td class="hide-m ' + cls(k[1]) + '">' + fmtM(k[1]) + '</td><td class="hide-m ' + cls(-k[2]) + '">' + fmtM(k[2]) + '</td>' +
+      '<td class="' + cls(k[3]) + '">' + sgn(k[3] / 1000, 0) + '</td><td class="' + cls(k[4]) + '">' + (k[4] != null ? sgn(k[4], 2) + '%' : '—') + '</td>' +
+      '<td class="hide-m">' + k[5] + '／' + k[6] + '</td><td class="wrap">' + top.map(x => '<span class="lk" data-wb="' + esc(x[0]) + '">' + esc(wName(x[0])) + '</span> <span style="font:11px var(--mono);color:var(--dim)">' + fmtM(x[1]) + '</span>').join('<br>') + '</td>' +
+      '<td class="hide-m ' + cls(k[9]) + '">' + fmtM(k[9]) + '</td></tr>';
+  }
+  if (!rows.length) h += '<tr><td colspan="9" style="text-align:center;color:var(--dim)">沒有資料</td></tr>';
+  h += '</tbody></table></div>';
+  if (rows.length > lim) h += '<p style="text-align:center"><button class="btn" id="wMore">顯示其他 ' + (rows.length - lim) + ' 檔</button></p>';
+  // 疑似知情佈局
+  const AL = WT.al.filter(r => dir * r[2] > 0);
+  h += '<h3 class="secth">疑似知情佈局（最近 5 天）<small>單一分點在一檔股票的權證' + (dir > 0 ? '看多' : '看空') + '金額很大，或換算成股票佔成交量很高，再加上新進場、集中押注、連續買其中一項</small></h3>';
+  h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>股票</th><th>5 日淨額</th><th>約當張數</th><th>佔成交量</th><th style="text-align:left">標籤</th><th class="hide-m">開始</th><th>過去勝率</th></tr></thead><tbody>' +
+    (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="8" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
+  if (AL.length > 30 && !ST.amore) h += '<p style="text-align:center"><button class="btn" id="aMore">顯示其他 ' + (AL.length - 30) + ' 筆</button></p>';
+  // 高勝率
+  const P = WT.persist;
+  h += '<h3 class="secth">高勝率波段權證分點<small>每次佈局（單日看多或看空 ≥ ' + fmtM(WT.th.ep, false) + '）之後 ' + WT.th.hor + ' 個交易日，標的先往佈局方向走 ' + WT.th.up + '% 算贏、先反向 ' + WT.th.dn + '% 算輸；至少 ' + WT.th.min_n + ' 次才列入</small></h3>';
+  h += '<p class="note" style="margin:0 0 6px">全部分點的佈局共 ' + (WT.nep || 0) + ' 次，平均勝率 <b>' + (WT.base ?? '—') + '%</b>（' + WT.th.hor + ' 日平均報酬 ' + sgn(WT.baseR, 2) + '%）。' +
+    (P ? '<b>勝率會不會延續</b>：把資料切成前後兩半，前半段勝率最高的 ' + P.ntop + ' 個分點，後半段勝率 <b class="' + (P.top > P.rest + 3 ? 'u' : '') + '">' + P.top + '%</b>，其他分點 ' + P.rest + '%' + (P.top > P.rest + 3 ? '——高勝率分點有延續性，值得跟。' : '——差距不大，目前看不出高勝率會延續，排行只能當參考。') : '資料天數還不夠（要 30 天以上）檢查勝率會不會延續，排行先當參考。') + '</p>';
+  h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>佈局次數</th><th>勝率</th><th>平均 ' + WT.th.hor + ' 日報酬</th><th style="text-align:left">最近 5 天在佈局</th></tr></thead><tbody>' +
+    (WT.good.length ? WT.good.map(g => '<tr><td class="wrap"><span class="lk" data-wb="' + esc(g[0]) + '">' + esc(wName(g[0])) + '</span></td><td>' + g[1] + '</td><td class="' + (g[3] >= 60 ? 'u' : '') + '">' + g[3] + '%<small>' + g[2] + ' 勝</small></td><td class="' + cls(g[4]) + '">' + sgn(g[4], 2) + '%</td><td class="wrap">' + (g[7].length ? g[7].map(x => '<span class="lk" data-w="' + x[0] + '">' + esc(nameOf(x[0])) + '</span> <span class="' + cls(x[1]) + '" style="font:11px var(--mono)">' + fmtM(x[1]) + '</span>').join('、') : '<span style="color:var(--dim)">—</span>') + '</td></tr>').join('') : '<tr><td colspan="5" style="text-align:center;color:var(--dim)">還要再累積幾天資料（每次佈局要等 ' + WT.th.hor + ' 個交易日才知道結果）</td></tr>') + '</tbody></table></div>';
+  h += '<div class="card" style="margin-top:12px"><div class="note"><b>怎麼看</b>：權證槓桿高、時間價值會一直流失，敢在權證上大量押注的人通常對短期走勢很有把握，所以「單一分點突然大買某檔的權證」值得注意，但也可能只是大戶短線投機、或發行商、避險的進出。<br>' +
+    '<b>約當張數</b>＝買進的權證單位 × 行使比例，換算成相當於多少張標的股票；<b>佔成交量</b>＝約當股數 ÷ 同期間標的成交量。<br>' +
+    '<span class="pill r">大額</span>5 日淨額 ≥ ' + fmtM(WT.th.big, false) + '　<span class="pill r">約當佔量高</span>≥ 成交量 ' + WT.th.eqp + '%　<span class="pill p">新進場</span>前 ' + WT.th.new_look + ' 天沒碰過這檔的權證　<span class="pill b">集中押注</span>這檔佔它 5 日權證進出 ' + WT.th.focus + '% 以上　<span class="pill o">隔日沖型</span>這個分點大買權證後隔天常賣掉 6 成以上（排序往後）。<br>' +
+    '外資券商與券商總公司（多半是自營、造市、避險）不列入，只在「外資＋總公司」欄顯示合計。資料：FinMind 權證分點、權證對照表，每天晚上 10 點左右更新。僅供研究參考。</div></div>';
+  v.innerHTML = h;
+  $('wdSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.wdir = +b.dataset.v; ST.wmore = false; renderWt(); };
+  if ($('wMore')) $('wMore').onclick = () => { ST.wmore = true; renderWt(); };
+  if ($('aMore')) $('aMore').onclick = () => { ST.amore = true; renderWt(); };
+  bindW(v);
+}
+function bindW(root, from){
+  for (const el of root.querySelectorAll('[data-wb]')) el.onclick = e => { e.stopPropagation(); openWBranch(el.dataset.wb, from); };
+  for (const el of root.querySelectorAll('[data-w]')) el.onclick = e => { e.stopPropagation(); openWStock(el.dataset.w); };
+}
+const WCOL = ['#e5322d', '#f08c00', '#7a4fd0', '#2f6fd6', '#c2185b', '#0aa1a8'];
+function wChart(j, focus, W){
+  W = W || 720;
+  const nd = j.d.length, H = W < 500 ? 250 : 300, L = W < 500 ? 44 : 54, R = W < 500 ? 40 : 50, T = 14, B = 26, pw = W - L - R, ph = H - T - B;
+  // 依整段期間看多金額（絕對值）挑前 6 個分點上色
+  const tot = Object.entries(j.r).map(([b, l]) => [b, l.reduce((s, e) => s + Math.abs(e[1]), 0)]).sort((a, b) => b[1] - a[1]);
+  const tops = tot.slice(0, 6).map(x => x[0]);
+  if (focus && !tops.includes(focus) && j.r[focus]) tops[5] = focus;
+  const pos = Array.from({ length:nd }, () => []), neg = Array.from({ length:nd }, () => []), oth = Array.from({ length:nd }, () => [0, 0]);
+  for (const [b, l] of Object.entries(j.r)) for (const e of l){ const k = tops.indexOf(b); if (k >= 0) (e[1] >= 0 ? pos : neg)[e[0]].push([k, e[1]]); else oth[e[0]][e[1] >= 0 ? 0 : 1] += e[1]; }
+  let mx = 1, mn = -1;
+  for (let t = 0; t < nd; t++){ const p = pos[t].reduce((s, x) => s + x[1], 0) + oth[t][0], n = neg[t].reduce((s, x) => s + x[1], 0) + oth[t][1]; mx = Math.max(mx, p); mn = Math.min(mn, n); }
+  const y = v => T + (mx - v) / (mx - mn) * ph, bw = Math.max(2, pw / nd * 0.7), x = t => L + (t + 0.5) * pw / nd;
+  const cs = j.c.filter(v => v), cmax = Math.max(...cs), cmin = Math.min(...cs), yc = v => T + (cmax - v) / ((cmax - cmin) || 1) * ph;
+  let s = '<svg class="wchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="權證佈局時間與買賣金額">';
+  for (const f of [0, 0.25, 0.5, 0.75, 1]){ const v = mx - (mx - mn) * f, yy = T + ph * f; s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 4) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + (Math.abs(v) >= 1e8 ? num(v / 1e8, 1) + '億' : num(v / 1e4, 0)) + '</text>'; const cv = cmax - (cmax - cmin) * f; s += '<text x="' + (L + pw + 4) + '" y="' + (yy + 3.5) + '">' + num(cv, cv >= 100 ? 0 : 1) + '</text>'; }
+  s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line2)" stroke-width="1.2"/>';
+  for (let t = 0; t < nd; t++){
+    let up = 0, dn = 0;
+    const seg = (v, col) => { if (!v) return; let y0, y1; if (v > 0){ y0 = y(up + v); y1 = y(up); up += v; } else { y0 = y(dn); y1 = y(dn + v); dn += v; } s += '<rect x="' + (x(t) - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(0.5, y1 - y0) + '" fill="' + col + '"><title>' + j.d[t] + '</title></rect>'; };
+    for (const [k, v] of pos[t].sort((a, b) => a[0] - b[0])) seg(v, WCOL[k]);
+    seg(oth[t][0], 'var(--dim)');
+    for (const [k, v] of neg[t].sort((a, b) => a[0] - b[0])) seg(v, WCOL[k]);
+    seg(oth[t][1], 'var(--dim)');
+  }
+  let path = ''; j.c.forEach((v, t) => { if (v) path += (path ? 'L' : 'M') + x(t).toFixed(1) + ' ' + yc(v).toFixed(1); });
+  s += '<path d="' + path + '" fill="none" stroke="var(--fg)" stroke-width="1.6"/>';
+  const step = Math.ceil(nd / (W < 500 ? 4 : 7));
+  for (let t = 0; t < nd; t += step) s += '<text x="' + x(t) + '" y="' + (H - 8) + '" text-anchor="middle">' + mmdd(j.d[t]) + '</text>';
+  s += '<text x="' + (L - 4) + '" y="10" text-anchor="end">萬元</text><text x="' + (L + pw + 4) + '" y="10">股價</text></svg>';
+  s += '<div class="wleg">' + tops.map((b, k) => '<span class="lk" data-wb="' + esc(b) + '"><i style="background:' + WCOL[k] + '"></i>' + esc(j.n[b] || b) + '</span>').join('') + '<span><i style="background:var(--dim)"></i>其他分點</span><span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>收盤價</span></div>';
+  return s;
+}
+async function openWStock(c, focus){
+  const sh = $('sheet'); sh.classList.add('wide', 'on'); sh.scrollTop = 0;
+  sh.innerHTML = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button><h3>' + esc(nameOf(c)) + ' 的權證佈局</h3><p class="note">讀取中…</p>';
+  if (!WT){ if (!WTP) WTP = wtGet('wt.json').then(x => { WT = x; return x; }); await WTP; }
+  const j = await wtGet('wu/' + c + '.json');
+  if (!j){ sh.querySelector('.note').textContent = '最近沒有一般分點在這檔的權證有明顯進出。'; return; }
+  const nd = j.d.length, K = Math.min(ST.per, nd), t0 = nd - K;
+  const agg = Object.entries(j.r).map(([b, l]) => { let v = 0, eq = 0, cn = 0, pn = 0, n = 0, all = 0; for (const e of l){ all += e[1]; if (e[0] >= t0){ v += e[1]; cn += e[2]; pn += e[3]; eq += e[4]; n++; } } return { b, v, eq, cn, pn, n, all }; }).filter(x => x.n);
+  const vol = j.v.slice(t0).reduce((s, x) => s + x, 0) * 1000;
+  const buy = agg.filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8), sell = agg.filter(x => x.v < 0).sort((a, b) => a.v - b.v).slice(0, 5);
+  const sum = agg.reduce((s, x) => s + x.v, 0), seq = agg.reduce((s, x) => s + x.eq, 0), fsum = j.f.slice(t0).reduce((s, x) => s + x, 0);
+  const tr = x => { const st = j.st[x.b]; return '<tr data-wb="' + esc(x.b) + '"><td>' + esc(j.n[x.b] || x.b) + (j.flip.includes(x.b) ? ' <span class="pill o">隔日沖型</span>' : '') + '</td><td class="' + cls(x.v) + '">' + fmtM(x.v) + '</td><td class="hide-m ' + cls(x.cn) + '">' + fmtM(x.cn) + '</td><td class="hide-m ' + cls(-x.pn) + '">' + fmtM(x.pn) + '</td><td class="' + cls(x.eq) + '">' + sgn(x.eq / 1000, 0) + '</td><td>' + (vol ? num(Math.abs(x.eq) / vol * 100, 2) + '%' : '—') + '</td><td>' + (st && st[0] >= 3 ? st[2] + '%<small>' + st[0] + ' 次</small>' : '<small>—</small>') + '</td></tr>'; };
+  const head = '<tr><th>分點</th><th>看多淨額</th><th class="hide-m">認購淨</th><th class="hide-m">認售淨</th><th>約當張</th><th>佔量</th><th>過去勝率</th></tr>';
+  let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button><h3>' + esc(nameOf(c)) + ' <span style="font:13px var(--mono);color:var(--dim)">' + c + '</span> 的權證佈局</h3>';
+  h += '<div class="kv"><div><small>一般分點看多淨額（' + K + ' 日）</small><b class="' + cls(sum) + '">' + fmtM(sum) + '</b></div><div><small>約當張數／佔成交量</small><b class="' + cls(seq) + '">' + sgn(seq / 1000, 0) + ' 張' + (vol ? '／' + num(Math.abs(seq) / vol * 100, 2) + '%' : '') + '</b></div><div><small>外資＋總公司</small><b class="' + cls(fsum) + '">' + fmtM(fsum) + '</b></div></div>';
+  h += '<h4>每天權證看多（正）／看空（負）淨額，依分點分色 ' + perSegHtml('wPer') + '</h4>' + wChart(j, focus, Math.round(Math.min(720, Math.max(330, sh.clientWidth - 34))));
+  h += '<table class="mini">' + head + '<tr><td colspan="7" style="color:var(--up);font-weight:700">看多佈局（' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nd - 1]) + '）</td></tr>' + buy.map(tr).join('') + (sell.length ? '<tr><td colspan="7" style="color:var(--down);font-weight:700">看空／賣出</td></tr>' + sell.map(tr).join('') : '') + '</table>';
+  h += '<p class="note" style="margin:0">圖上每根柱子是一天，往上是買認購（或賣認售），往下是買認售（或賣認購）；黑線是股價。看柱子集中出現在股價起漲前幾天，就是「有人提前佈局」的樣子。</p>';
+  sh.innerHTML = h;
+  $('wPer').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); openWStock(c, focus); };
+  bindW(sh, c);
+}
+async function openWBranch(b, from){
+  const sh = $('sheet'); sh.classList.add('wide', 'on'); sh.scrollTop = 0;
+  const back = from ? '<button class="back" id="wbBack">‹ 回 ' + esc(nameOf(from)) + '</button>' : '';
+  sh.innerHTML = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + back + '<h3>' + esc(wName(b)) + '</h3><p class="note">讀取中…</p>';
+  if ($('wbBack')) $('wbBack').onclick = () => openWStock(from, b);
+  const j = await wtGet('wb/' + safeB(b) + '.json');
+  if (!j){ sh.querySelector('.note').textContent = '找不到這個分點的權證資料。'; return; }
+  const nd = j.d.length, K = Math.min(ST.per, nd), t0 = nd - K, st = j.st;
+  const by = {}; for (const e of j.r){ if (e[0] < t0) continue; const o = by[e[1]] = by[e[1]] || [0, 0, 0, 0, 0]; o[0] += e[2]; o[1] += e[3]; o[2] += e[4]; o[3] += e[5]; o[4]++; }
+  const L = Object.entries(by).sort((a, b2) => Math.abs(b2[1][0]) - Math.abs(a[1][0])).slice(0, 15);
+  let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + back + '<h3>' + esc(j.n) + ' <span style="font:13px var(--mono);color:var(--dim)">' + esc(j.id) + '</span>' + (j.flip ? ' <span class="pill o">隔日沖型</span>' : '') + '</h3>';
+  h += '<div class="kv"><div><small>權證佈局次數（已有結果）</small><b>' + (st ? st[0] : 0) + '</b></div><div><small>勝率</small><b class="' + (st && st[2] >= 60 ? 'u' : '') + '">' + (st ? st[2] + '%' : '—') + '</b></div><div><small>平均 ' + (WT ? WT.th.hor : 10) + ' 日報酬</small><b class="' + cls(st && st[3]) + '">' + (st ? sgn(st[3], 2) + '%' : '—') + '</b></div></div>';
+  if (WT && WT.base != null) h += '<p class="note" style="margin:0 0 6px">全部分點平均勝率 ' + WT.base + '%。' + (j.fl ? '大買權證 ' + j.fl[0] + ' 次，隔天就賣掉 6 成以上 ' + j.fl[1] + ' 次。' : '') + '</p>';
+  h += '<h4>它在佈局哪些股票 ' + perSegHtml('wbPer') + '</h4><table class="mini"><tr><th>股票</th><th>看多淨額</th><th class="hide-m">認購淨</th><th class="hide-m">認售淨</th><th>約當張</th><th>天</th></tr>' +
+    (L.length ? L.map(([tg, o]) => '<tr data-w="' + tg + '"><td>' + esc(nameOf(tg)) + ' <span style="font:10.5px var(--mono);color:var(--dim)">' + tg + '</span></td><td class="' + cls(o[0]) + '">' + fmtM(o[0]) + '</td><td class="hide-m ' + cls(o[1]) + '">' + fmtM(o[1]) + '</td><td class="hide-m ' + cls(-o[2]) + '">' + fmtM(o[2]) + '</td><td class="' + cls(o[3]) + '">' + sgn(o[3] / 1000, 0) + '</td><td>' + o[4] + '</td></tr>').join('') : '<tr><td colspan="6" style="color:var(--dim)">這段期間沒有明顯進出</td></tr>') + '</table>';
+  const ep = j.ep.slice().reverse().slice(0, 40);
+  h += '<h4>過去的佈局與結果</h4><table class="mini"><tr><th>日期</th><th>股票</th><th>方向</th><th>金額</th><th>結果</th><th>報酬</th></tr>' +
+    (ep.length ? ep.map(e => '<tr data-w="' + e[1] + '"><td>' + mmdd(j.d[e[0]]) + '</td><td>' + esc(nameOf(e[1])) + '</td><td class="' + (e[2] > 0 ? 'u' : 'd') + '">' + (e[2] > 0 ? '看多' : '看空') + '</td><td>' + fmtM(e[3], false) + '</td><td>' + (e[5] == null ? '<small>等待中</small>' : e[5] ? '<b class="u">✓ 贏</b>' : '<b class="d">✗ 輸</b>') + '</td><td class="' + cls(e[6]) + '">' + (e[6] != null ? sgn(e[6], 1) + '%<small>' + e[7] + ' 天</small>' : '') + '</td></tr>').join('') : '<tr><td colspan="6" style="color:var(--dim)">還沒有單日 ≥ 50 萬的佈局</td></tr>') + '</table>';
+  h += '<p class="note" style="margin:0">報酬是標的股票（不是權證）往佈局方向走了多少；贏＝' + (WT ? WT.th.hor : 10) + ' 天內先往佈局方向走 5%。</p>';
+  sh.innerHTML = h;
+  if ($('wbBack')) $('wbBack').onclick = () => openWStock(from, b);
+  $('wbPer').onclick = e => { const bt = e.target.closest('button'); if (!bt) return; ST.per = +bt.dataset.v; LS.set('per', ST.per); syncSeg(); render(); openWBranch(b, from); };
+  bindW(sh);
+}
 const JC = new Map();
-async function getJ(path){
-  if (JC.has(path)) return JC.get(path);
-  const p = fetch(BASE + path + '?t=' + Math.floor(Date.now() / 600e3), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
-  JC.set(path, p); return p;
+async function getJ(path, base = BASE){
+  if (JC.has(base + path)) return JC.get(base + path);
+  const p = fetch(base + path + '?t=' + Math.floor(Date.now() / 600e3), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  JC.set(base + path, p); return p;
 }
 function perSegHtml(id){ return '<span class="seg" id="' + id + '" style="font-size:12px">' + [1, 5, 20].map(k => '<button data-v="' + k + '" aria-pressed="' + (k === ST.per) + '" style="padding:2px 8px">' + k + ' 日</button>').join('') + '</span>'; }
 async function stockBranches(c){
@@ -451,7 +604,7 @@ async function stockBranches(c){
   bindB(box, c);
 }
 async function openBranch(b, from){
-  const sh = $('sheet');
+  const sh = $('sheet'); sh.classList.remove('wide');
   sh.innerHTML = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + (from ? '<button class="back" id="bkBack">‹ 回 ' + esc(nameOf(from)) + '</button>' : '') + '<h3>' + esc(bName(b)) + '</h3><p class="note">讀取中…</p>';
   sh.classList.add('on'); sh.scrollTop = 0;
   if ($('bkBack')) $('bkBack').onclick = () => openStock(from);
@@ -489,16 +642,16 @@ $('q').oninput = () => {
 };
 document.addEventListener('click', e => { if (!e.target.closest('.srch')) $('qres').hidden = true; });
 // ───── 切換 ─────
-function setTab(t){ ST.tab = t; LS.set('tab', t); for (const [id, k] of [['Flow', 'flow'], ['Chain', 'chain'], ['Brk', 'brk']]){ $('tab' + id).setAttribute('aria-selected', String(t === k)); $('view' + id).hidden = t !== k; } $('colSeg').parentElement.style.display = t === 'brk' ? 'none' : ''; render(); }
-$('tabFlow').onclick = () => setTab('flow'); $('tabChain').onclick = () => setTab('chain'); $('tabBrk').onclick = () => setTab('brk');
+function setTab(t){ ST.tab = t; LS.set('tab', t); for (const [id, k] of [['Flow', 'flow'], ['Chain', 'chain'], ['Brk', 'brk'], ['Wt', 'wt']]){ $('tab' + id).setAttribute('aria-selected', String(t === k)); $('view' + id).hidden = t !== k; } $('colSeg').parentElement.style.display = t === 'brk' || t === 'wt' ? 'none' : ''; render(); }
+$('tabFlow').onclick = () => setTab('flow'); $('tabChain').onclick = () => setTab('chain'); $('tabBrk').onclick = () => setTab('brk'); $('tabWt').onclick = () => setTab('wt');
 function syncSeg(){ for (const b of $('perSeg').children) b.setAttribute('aria-pressed', String(+b.dataset.v === ST.per)); for (const b of $('colSeg').children) b.setAttribute('aria-pressed', String(b.dataset.v === ST.col)); }
 $('perSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); };
 $('colSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.col = b.dataset.v; LS.set('col', ST.col); syncSeg(); render(); };
-function render(){ if (!CH) return; if (ST.tab === 'chain') renderChain(); else if (ST.tab === 'brk') renderBrk(); else renderFlow(); }
+function render(){ if (!CH) return; if (ST.tab === 'chain') renderChain(); else if (ST.tab === 'brk') renderBrk(); else if (ST.tab === 'wt') renderWt(); else renderFlow(); }
 syncSeg();
 load().then(() => {
   $('foot').innerHTML = '產業上中下游與公司名單：' + esc(CH.src || '櫃買中心產業價值鏈資訊平台') + '（只列上市、上櫃公司；一家公司可能出現在好幾個環節）。價格、法人、主力分點、市值、本益比、月營收：FinMind，每天晚上 9 點多更新。僅供研究參考，不是投資建議。';
-  setTab(['chain', 'brk'].includes(ST.tab) ? ST.tab : 'flow');
+  setTab(['chain', 'brk', 'wt'].includes(ST.tab) ? ST.tab : 'flow');
 }).catch(e => { $('viewFlow').innerHTML = '<div class="load">' + esc(e.message) + '</div>'; });
 </script>
 </body>

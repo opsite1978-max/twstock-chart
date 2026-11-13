@@ -121,7 +121,7 @@ def build(OUT, days, meta, log):
             top = r1[:max(3, len(r1) // 4)]; rest = r1[len(top):]
             wr = lambda bs: round(sum(sum(a2[b]) for b in bs) / sum(len(a2[b]) for b in bs) * 100, 1)
             persist = {'n': len(both), 'top': wr(top), 'rest': wr(rest), 'ntop': len(top)}
-    good = sorted([b for b, s in stats.items() if s[0] >= TH['min_n'] and s[3] > 0 and b not in flipper], key=lambda b: (-stats[b][4], -stats[b][3]))[:40]
+    good = sorted([b for b, s in stats.items() if s[0] >= TH['min_n'] and s[3] > 0 and b not in flipper and s[4] >= (base or 50) + 5], key=lambda b: (-stats[b][4], -stats[b][3]))[:40]
 
     # ── 各標的 1／5／20 日 ──
     summ = {}
