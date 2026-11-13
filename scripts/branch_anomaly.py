@@ -31,6 +31,15 @@ SHOW_DAYS = 5
 def safe(bid): return re.sub(r'[^0-9A-Za-z]', '_', bid)
 
 
+FOREIGN = ('麥格理', '美林', '摩根', '高盛', '野村', '花旗', '瑞銀', '大和', '法銀', '匯豐', '瑞士', '德意志', '星展', '里昂', '法興', '巴克萊', '渣打', '港商', '美商', '新加坡', '日商', '英商')
+
+
+def kind(bid, name):
+    """f＝外資券商、h＝券商總公司（自營、法人、大額帳戶多在這裡）、b＝一般分點"""
+    if any(k in (name or '') for k in FOREIGN): return 'f'
+    return 'h' if bid.endswith('0') else 'b'
+
+
 def build(OUT, D, data, ch, stocks, brokers, log):
     bdays = [d for d in D if len(data[d].get('b', {})) > 50]
     if not bdays: log('異常分點：還沒有分點明細'); return
@@ -129,7 +138,7 @@ def build(OUT, D, data, ch, stocks, brokers, log):
     used = {r[2] for r in rows} | {g[1] for g in G} | {x[0] for rk in RK for side in rk[1:] for x in side}
     first = max(0, nb - SHOW_DAYS)
     out = {'date': bdays[-1], 'days': bdays, 'show': list(range(first, nb)), 'th': TH,
-           'n': {b: brokers.get(b, b) for b in used},
+           'n': {b: brokers.get(b, b) for b in used}, 'kd': {b: kind(b, brokers.get(b, b)) for b in used},
            'hd': {b: hd[b] for b in used if b in hd}, 'hdTag': sorted(hd_tag),
            'a': rows, 'g': G, 'rk': RK}
     with open(os.path.join(OUT, 'brk.json'), 'w') as f: json.dump(out, f, ensure_ascii=False, separators=(',', ':'))

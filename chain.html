@@ -163,7 +163,7 @@ header .sp{flex:1}
 'use strict';
 const BASE = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/chain-data/';
 const LS = { get(k, d){ try { const v = localStorage.getItem('chain:' + k); return v == null ? d : JSON.parse(v); } catch (e){ return d; } }, set(k, v){ try { localStorage.setItem('chain:' + k, JSON.stringify(v)); } catch (e){} } };
-const ST = { gmore:false, bday:-1, btype:'all', bind:'', bsort:'v', bmore:false, per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
+const ST = { bkind:LS.get('bkind', 'b'), gmore:false, bday:-1, btype:'all', bind:'', bsort:'v', bmore:false, per:LS.get('per', 5), col:LS.get('col', 'z'), ind:LS.get('ind', 'D000'), tab:LS.get('tab', 'flow'), sort:LS.get('sort', 'zl'), sortDir:LS.get('sortDir', -1), theme:LS.get('theme', '') };
 let CH = null, SK = null, BRK = null, IND = new Map(), MEM = new Map(), ANOM = new Map();
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -370,15 +370,16 @@ function renderBrk(){
   if (!show.includes(ST.bday)) ST.bday = nb - 1;
   const day = ST.bday;
   const indOk = c => !ST.bind || (MEM.get(c) || []).some(m => m.ind === ST.bind);
-  const base = BRK.a.filter(r => r[0] === day && indOk(r[1]));
+  const kOk = b => ST.bkind === 'all' || ((BRK.kd || {})[b] || 'b') === 'b';
+  const base = BRK.a.filter(r => r[0] === day && indOk(r[1]) && kOk(r[2]));
   const cnt = {}; for (const r of base) for (const t of r[3]) cnt[t] = (cnt[t] || 0) + 1;
   let rows = ST.btype === 'all' ? base : base.filter(r => r[3].includes(ST.btype));
   rows.sort(ST.bsort === 'sh' ? (a, b) => Math.abs(b[5]) - Math.abs(a[5]) : (a, b) => Math.abs(b[6]) - Math.abs(a[6]));
   let h = '<div class="bar" style="margin-top:0"><label>日期 <span class="seg" id="bdSeg">' + show.map(i => '<button data-v="' + i + '" aria-pressed="' + (i === day) + '">' + mmdd(BRK.days[i]) + '</button>').join('') + '</span></label>' +
-    '<label>產業 <select id="bindSel"><option value="">全部產業</option>' + CH.inds.map(x => '<option value="' + x.code + '"' + (x.code === ST.bind ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label></div>';
+    '<label>產業 <select id="bindSel"><option value="">全部產業</option>' + CH.inds.map(x => '<option value="' + x.code + '"' + (x.code === ST.bind ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label><label>分點 <span class="seg" id="bkSeg"><button data-v="b" aria-pressed="' + (ST.bkind === 'b') + '">一般分點</button><button data-v="all" aria-pressed="' + (ST.bkind === 'all') + '">含外資、券商總公司</button></span></label></div>';
   h += '<div class="flt" id="btFlt"><button data-v="all" aria-pressed="' + (ST.btype === 'all') + '">全部<small>' + base.length + '</small></button>' + BT().map(t => '<button data-v="' + t[0] + '" aria-pressed="' + (ST.btype === t[0]) + '"><i class="dot ' + t[1] + '"></i>' + t[0] + '<small>' + (cnt[t[0]] || 0) + '</small></button>').join('') + '</div>';
   // 族群同步
-  const G = BRK.g.filter(g => g[0] === day && (!ST.bind || g[5].some(indOk)));
+  const G = BRK.g.filter(g => g[0] === day && kOk(g[1]) && (!ST.bind || g[5].some(indOk)));
   if (G.length && (ST.btype === 'all')){
     h += '<h3 style="margin:6px 0 2px;font-size:14px"><span class="tp grp">族群同步</span>同一個分點同一天在同一個環節買超 ' + BRK.th.grp_n + ' 檔以上<small style="font-weight:400;color:var(--muted)">（' + G.length + ' 組）</small></h3><div class="grpw">' + G.sort((a, b) => b[6] - a[6]).slice(0, ST.gmore ? 200 : 8).map(g =>
       '<div class="card"><h4><span class="lk" data-b="' + esc(g[1]) + '">' + esc(bName(g[1])) + '</span> ' + hdInfo(g[1]) + '</h4><div class="note">' + esc(g[2]) + '・' + esc(g[3]) + '・' + esc(g[4]) + '　買進 ' + g[5].length + ' 檔，合計 <b class="u">' + sgn(g[6], 2) + ' 億</b></div><div class="seg-b" style="padding:0">' + g[5].map(c => '<span class="chip" data-c="' + c + '">' + esc(nameOf(c)) + '<span class="cd">' + c + '</span></span>').join('') + '</div></div>').join('') + '</div>' + (G.length > 8 ? '<p style="text-align:center;margin:-4px 0 12px"><button class="btn" id="gMore">' + (ST.gmore ? '收起' : '顯示全部 ' + G.length + ' 組') + '</button></p>' : '');
@@ -402,14 +403,16 @@ function renderBrk(){
   const rk = BRK.rk.find(x => x[0] === day);
   if (rk){
     const tb = (list, title, dir) => '<div class="card"><h3 style="margin:0 0 6px;font-size:13.5px">' + title + '</h3><table class="rk">' + list.slice(0, 15).map((x, i) => '<tr><td style="color:var(--dim);width:18px">' + (i + 1) + '</td><td><span class="lk" data-b="' + esc(x[0]) + '">' + esc(bName(x[0])) + '</span> ' + hdInfo(x[0]) + '<div class="s">' + x[3].map(c => esc(nameOf(c))).join('、') + '</div></td><td class="n ' + cls(x[1]) + '">' + sgn(x[1], 2) + ' 億<div class="s">' + x[2] + ' 檔</div></td></tr>').join('') + '</table></div>';
-    h += '<div class="grid2">' + tb(rk[1], '分點買超金額排行（' + mmdd(BRK.days[day]) + '）', 1) + tb(rk[2], '分點賣超金額排行（' + mmdd(BRK.days[day]) + '）', -1) + '</div>';
+    const rf = l => l.filter(x => kOk(x[0]));
+    h += '<div class="grid2">' + tb(rf(rk[1]), '分點買超金額排行（' + mmdd(BRK.days[day]) + '）', 1) + tb(rf(rk[2]), '分點賣超金額排行（' + mmdd(BRK.days[day]) + '）', -1) + '</div>';
   }
   h += '<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px;font-size:13.5px">怎麼看</h3><div class="note">' + BT().map(t => '<div>' + tpTag(t[0]) + esc(t[2]) + '</div>').join('') +
     '<div><span class="tp grp">族群同步</span>同一個分點同一天在同一個產業鏈環節買超 ' + BRK.th.grp_n + ' 檔以上（每檔 ≥ 成交量 ' + BRK.th.grp + '%、≥ ' + wan(BRK.th.grp_v) + '）</div>' +
     '<div style="margin-top:6px"><b>隔日沖 %</b>：這個分點過去 ' + nb + ' 天裡每次「單一股票買超 ≥ 成交量 ' + BRK.th.hd_buy + '%」之後，隔天就賣掉一半以上的比例；次數 ≥ ' + BRK.th.hd_min_ev + ' 次、比例 ≥ ' + BRK.th.hd_rate + '% 才標「常客」。</div>' +
-    '<div><b>資料範圍</b>：產業鏈裡當天成交金額 3,000 萬以上的股票；每檔每天存買超前 15、賣超前 15、買賣都大的前 5 個分點。分點明細目前 ' + nb + ' 天（每天晚上更新，最多 20 天）。點分點名稱看它在各股票的進出，點股票看這檔的主要分點。</div></div></div>';
+    '<div><b>分點類型</b>：預設只看「一般分點」（像凱基台北、元大土城永寧這種營業據點）。外資券商（高盛、摩根、麥格理…）和券商總公司（多半是自營部、法人或大額帳戶）的大買大賣是法人資金，不算「異常」，切到「含外資、券商總公司」才會列出。</div><div><b>資料範圍</b>：產業鏈裡當天成交金額 3,000 萬以上的股票；每檔每天存買超前 15、賣超前 15、買賣都大的前 5 個分點。分點明細目前 ' + nb + ' 天（每天晚上更新，最多 20 天）。點分點名稱看它在各股票的進出，點股票看這檔的主要分點。</div></div></div>';
   v.innerHTML = h;
   $('bdSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.bday = +b.dataset.v; ST.bmore = false; ST.gmore = false; renderBrk(); };
+  $('bkSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.bkind = b.dataset.v; LS.set('bkind', ST.bkind); ST.bmore = false; renderBrk(); };
   $('bindSel').onchange = e => { ST.bind = e.target.value; ST.bmore = false; renderBrk(); };
   $('btFlt').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.btype = b.dataset.v; ST.bmore = false; renderBrk(); };
   for (const th of v.querySelectorAll('th[data-s]')) th.onclick = () => { ST.bsort = th.dataset.s; renderBrk(); };
