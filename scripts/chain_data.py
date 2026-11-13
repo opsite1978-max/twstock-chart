@@ -188,12 +188,23 @@ def main():
         jsave(fp, day); T.log(d, '價格', len(p), '法人', len(f))
     # 市值、本益比、月營收
     meta = jload('meta.json', {})
-    if meta.get('date') != days[-1]:
+    if meta.get('date') != days[-1] or meta.get('mv') != 2 or not meta.get('cap') or not meta.get('yoy'):
         try:
-            mv = T.api({'dataset': 'TaiwanStockMarketValue', 'start_date': days[-1], 'end_date': days[-1]})
+            # 全市場查詢一次只給一天：今天的市值還沒出來就往前找
+            mv = []
+            for d in reversed(days[-4:]):
+                mv = T.api({'dataset': 'TaiwanStockMarketValue', 'start_date': d, 'end_date': d})
+                if len(mv) > 500: break
             pe = T.api({'dataset': 'TaiwanStockPER', 'start_date': days[-1], 'end_date': days[-1]})
-            y0 = datetime.date.today().year
-            rv = T.api({'dataset': 'TaiwanStockMonthRevenue', 'start_date': '%d-%02d-01' % (y0 - 1, max(1, datetime.date.today().month - 2))})
+            # 月營收：資料日期是公布月份的 1 號；本月還沒公布夠多就用上個月，再抓去年同月
+            td = datetime.date.today(); rv = []
+            for back in (0, 1):
+                y, m = td.year, td.month - back
+                if m <= 0: y, m = y - 1, m + 12
+                cur = T.api({'dataset': 'TaiwanStockMonthRevenue', 'start_date': '%d-%02d-01' % (y, m), 'end_date': '%d-%02d-01' % (y, m)})
+                if len(cur) > 800:
+                    old = T.api({'dataset': 'TaiwanStockMonthRevenue', 'start_date': '%d-%02d-01' % (y - 1, m), 'end_date': '%d-%02d-01' % (y - 1, m)})
+                    rv = cur + old; break
             info = T.api({'dataset': 'TaiwanStockInfo'})
             cap = {r['stock_id']: round(r['market_value'] / 1e8) for r in mv if is_stock(r['stock_id'])}
             per = {r['stock_id']: [r.get('PER') or 0, r.get('PBR') or 0, r.get('dividend_yield') or 0] for r in pe if is_stock(r['stock_id'])}
@@ -207,7 +218,7 @@ def main():
             names = {}; ind = {}
             for r in info:
                 if is_stock(r['stock_id']): names[r['stock_id']] = r['stock_name']; ind[r['stock_id']] = r.get('industry_category', '')
-            meta = {'date': days[-1], 'cap': cap, 'pe': per, 'yoy': yoy, 'name': names, 'ind': ind}
+            meta = {'date': days[-1], 'mv': 2, 'cap': cap, 'pe': per, 'yoy': yoy, 'name': names, 'ind': ind}
             jsave('meta.json', meta)
         except Exception as e:
             T.log('市值／本益比／營收失敗', e)
