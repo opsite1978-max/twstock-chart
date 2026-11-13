@@ -8,54 +8,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 產業鏈與資金流探查
+      - name: 產業鏈頁面結構
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out
+          curl -s -A "Mozilla/5.0" "https://ic.tpex.org.tw/introduce.php?ic=D000" -o out/d000.html
+          curl -s -A "Mozilla/5.0" "https://ic.tpex.org.tw/introduce.php?ic=L000" -o out/l000.html
           python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import os, re, json, urllib.request, urllib.parse
+          import os, json, urllib.request, urllib.parse
           T = os.environ['T']
-          UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
-          def get(u):
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=60) as r: return r.status, r.read().decode('utf-8', 'replace')
-              except Exception as e: return 0, str(e)[:200]
-          for u in ['https://ic.tpex.org.tw/', 'https://ic.tpex.org.tw/index.php', 'https://ic.tpex.org.tw/introduce.php?ic=D000', 'https://ic.tpex.org.tw/introduce.php?ic=D000&stk_code=2330']:
-              st, b = get(u); print('IC', u, st, len(b))
-              links = sorted(set(re.findall(r'(?:href|src)=["\']([^"\']+)', b)))
-              print('   links', [l for l in links if 'ic=' in l or '.php' in l or 'json' in l or 'api' in l.lower()][:60])
-              t = re.sub(r'<script[\s\S]*?</script>', ' ', b); t = re.sub(r'<[^>]+>', ' ', t); t = re.sub(r'\s+', ' ', t)
-              print('   text', t[:1500])
-              for m in re.findall(r'<script[^>]*>([\s\S]*?)</script>', b):
-                  if re.search(r'ajax|fetch|\.php|json', m): print('   SCRIPT', re.sub(r'\s+', ' ', m)[:800])
-          def fm(p, path='data'):
-              u = 'https://api.finmindtrade.com/api/v4/' + path + '?' + urllib.parse.urlencode(p)
+          def fm(p):
+              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(p)
               try:
                   with urllib.request.urlopen(urllib.request.Request(u, headers={'Authorization': 'Bearer ' + T}), timeout=300) as r: j = json.loads(r.read().decode())
                   return j.get('status'), j.get('msg'), j.get('data') or []
               except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200], []
               except Exception as e: return 0, str(e)[:150], []
-          D = '2026-11-12'
-          for p, path in [({'dataset': 'TaiwanStockPrice', 'start_date': D}, 'data'),
-                          ({'dataset': 'TaiwanStockInstitutionalInvestorsBuySell', 'start_date': D}, 'data'),
-                          ({'dataset': 'TaiwanStockMarketValue', 'start_date': D}, 'data'),
-                          ({'dataset': 'TaiwanStockMarketValue', 'data_id': '2330', 'start_date': '2026-11-01'}, 'data'),
-                          ({'dataset': 'TaiwanStockInfo'}, 'data'),
-                          ({'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': D}, 'data'),
-                          ({'dataset': 'TaiwanStockTradingDailyReport', 'start_date': D}, 'data'),
-                          ({'data_id': '2330', 'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report'),
-                          ({'data_id': '2330', 'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report_secid_agg'),
-                          ({'start_date': D, 'end_date': D}, 'taiwan_stock_trading_daily_report_secid_agg'),
-                          ({'dataset': 'TaiwanStockIndustryChain'}, 'data'),
-                          ({'dataset': 'TaiwanStockHoldingSharesPer', 'data_id': '2330', 'start_date': '2026-11-01'}, 'data')]:
-              st, msg, d = fm(p, path)
-              print('FM', path, json.dumps(p), st, msg, len(d))
-              if d:
-                  print('   ', json.dumps(d[0], ensure_ascii=False)[:400])
-                  if p.get('dataset') == 'TaiwanStockInfo':
-                      import collections
-                      c = collections.Counter(x.get('industry_category') for x in d); print('   industries', len(c), c.most_common(60))
+          for p in [{'dataset': 'TaiwanStockMonthRevenue', 'start_date': '2026-11-01'},
+                    {'dataset': 'TaiwanStockPER', 'start_date': '2026-11-12'},
+                    {'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': '2026-11-13'},
+                    {'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': '2026-11-11', 'end_date': '2026-11-12'},
+                    {'dataset': 'TaiwanStockInstitutionalInvestorsBuySell', 'start_date': '2026-11-13'},
+                    {'dataset': 'TaiwanStockPrice', 'start_date': '2026-11-13'},
+                    {'dataset': 'TaiwanStockIndustryChain', 'data_id': '2330'}]:
+              st, msg, d = fm(p)
+              print('FM', json.dumps(p), st, msg, len(d), sorted({x.get('date') for x in d})[:4])
+              if d: print('   ', json.dumps(d[0], ensure_ascii=False)[:300])
           PY2
           sed -i "s/$T/***/g" out/fund.txt
       - name: 保存結果
