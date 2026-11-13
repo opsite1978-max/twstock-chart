@@ -8,19 +8,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 權證分點
+      - name: 特殊端點
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
-          mkdir -p out; A=https://api.finmindtrade.com/api/v4/data
-          for W in 066186 066073 03xxxx; do
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&data_id=$W&start_date=2026-11-13" | python3 -c "
-          import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('$W rows',len(d),j.get('msg','')[:100])
-          br={}
-          for r in d:
-            b=br.setdefault(r['securities_trader_id']+' '+r['securities_trader'],[0,0,0]);b[0]+=r['buy'];b[1]+=r['sell'];b[2]+=1
-          print(len(br),sorted(br.items(),key=lambda kv:-(kv[1][0]+kv[1][1]))[:15])" >> out/wbr3.txt
-          done
+          mkdir -p out; B=https://api.finmindtrade.com/api/v4
+          q(){ echo "== $1" >> out/sp.txt; curl -s -m 120 -H "Authorization: Bearer $T" "$B/$1" -o r.bin -w "http %{http_code} size %{size_download} type %{content_type}\n" >> out/sp.txt; head -c 700 r.bin | tr -d '\000' >> out/sp.txt; echo >> out/sp.txt; }
+          q "taiwan_stock_trading_daily_report_secid_agg?data_id=2330&start_date=2026-10-01&end_date=2026-11-13"
+          q "taiwan_stock_trading_daily_report_secid_agg?data_id=2330&securities_trader_id=9268&start_date=2026-06-01&end_date=2026-11-13"
+          q "taiwan_stock_trading_daily_report_secid_agg?securities_trader_id=9268&start_date=2026-11-13&end_date=2026-11-13"
+          q "taiwan_stock_warrant_trading_daily_report?data_id=066186&date=2026-11-13"
+          q "taiwan_stock_warrant_trading_daily_report?securities_trader_id=9268&date=2026-11-13"
+          q "taiwan_stock_warrant_trading_daily_report?date=2026-11-13"
+          q "taiwan_stock_trading_daily_report?securities_trader_id=9268&date=2026-11-13"
+          q "storage_objects?dataset=TaiwanStockWarrantTradingDailyReport&date=2026-11-13"
+          q "storage_objects?dataset=TaiwanStockTradingDailyReportSecIdAgg&date=2026-11-13"
+          q "data?dataset=TaiwanStockInfoWithWarrantSummary&data_id=066186&start_date=2026-11-13"
+          q "data?dataset=TaiwanStockInfoWithWarrantSummary&start_date=2026-11-13"
           sed -i "s/$T/***/g" out/*.txt
       - name: 保存結果
         if: always()
