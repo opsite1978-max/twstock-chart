@@ -8,35 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 產業鏈頁面結構
-        env:
-          T: ${{ secrets.FINMIND_TOKEN }}
+      - name: 產業鏈頁面結構（缺的產業）
         run: |
           mkdir -p out
-          curl -s -A "Mozilla/5.0" "https://ic.tpex.org.tw/introduce.php?ic=D000" -o out/d000.html
-          curl -s -A "Mozilla/5.0" "https://ic.tpex.org.tw/introduce.php?ic=L000" -o out/l000.html
-          python3 - <<'PY2' > out/fund.txt 2>&1 || true
-          import os, json, urllib.request, urllib.parse
-          T = os.environ['T']
-          def fm(p):
-              u = 'https://api.finmindtrade.com/api/v4/data?' + urllib.parse.urlencode(p)
-              try:
-                  with urllib.request.urlopen(urllib.request.Request(u, headers={'Authorization': 'Bearer ' + T}), timeout=300) as r: j = json.loads(r.read().decode())
-                  return j.get('status'), j.get('msg'), j.get('data') or []
-              except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200], []
-              except Exception as e: return 0, str(e)[:150], []
-          for p in [{'dataset': 'TaiwanStockMonthRevenue', 'start_date': '2026-11-01'},
-                    {'dataset': 'TaiwanStockPER', 'start_date': '2026-11-12'},
-                    {'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': '2026-11-13'},
-                    {'dataset': 'TaiwanStockTradingDailyReport', 'data_id': '2330', 'start_date': '2026-11-11', 'end_date': '2026-11-12'},
-                    {'dataset': 'TaiwanStockInstitutionalInvestorsBuySell', 'start_date': '2026-11-13'},
-                    {'dataset': 'TaiwanStockPrice', 'start_date': '2026-11-13'},
-                    {'dataset': 'TaiwanStockIndustryChain', 'data_id': '2330'}]:
-              st, msg, d = fm(p)
-              print('FM', json.dumps(p), st, msg, len(d), sorted({x.get('date') for x in d})[:4])
-              if d: print('   ', json.dumps(d[0], ensure_ascii=False)[:300])
-          PY2
-          sed -i "s/$T/***/g" out/fund.txt
+          for c in 5300 U000 T000 AB10 R000 O000; do curl -s -A "Mozilla/5.0" "https://ic.tpex.org.tw/introduce.php?ic=$c" -o out/$c.html; done
+          echo ok > out/fund.txt
       - name: 保存結果
         if: always()
         run: |
