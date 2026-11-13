@@ -72,11 +72,22 @@ def parse_industry(code, name, h):
     j = h.find('id="companyList_', i)
     panel = h[i:j if j > 0 else len(h)]
     cols = []
-    for blk in re.split(r'<div class="chain">', panel)[1:]:
-        t = re.search(r'chain-title-panel">([^<]*)<', blk)
-        title = txt(t.group(1)) if t else ''
-        segs = [{'id': m.group(1) or '', 'n': txt(m.group(2))} for m in re.finditer(r'(?:id="ic_link_(\w+)"[^>]*|class="company-chain-panel-blank"[^>]*)>(.*?)</div>', blk, re.S)]
+    seg_re = r'(?:id="ic_link_(\w+)"[^>]*|class="company-chain-panel-blank"[^>]*)>(.*?)</div>'
+    for blk in re.split(r'<div class="chain(?: chain\d+)?">', panel)[1:]:
+        t = re.search(r'chain-title-panel">(.*?)<div class="chain-space"', blk, re.S)
+        if t: parts = [txt(x) for x in re.split(r'<[^>]+>', t.group(1)) if txt(x)]
+        else: parts = []
+        title = '・'.join(dict.fromkeys(parts))
+        segs = [{'id': m.group(1) or '', 'n': txt(m.group(2))} for m in re.finditer(seg_re, blk, re.S)]
         if segs: cols.append({'t': title, 'segs': segs})
+    if not cols:   # 沒有上中下游的產業（金融、航運…）：全部環節放成一欄
+        segs = [{'id': m.group(1) or '', 'n': txt(m.group(2))} for m in re.finditer(seg_re, panel, re.S)]
+        if segs: cols = [{'t': '產業組成', 'segs': segs}]
+    # 欄名空白時：三欄依序叫上游／中游／下游，其他叫第幾層
+    if any(not c['t'] for c in cols):
+        names = ['上游', '中游', '下游'] if len(cols) == 3 else ['上游', '下游'] if len(cols) == 2 else ['第%d層' % (k + 1) for k in range(len(cols))]
+        for k, c in enumerate(cols):
+            if not c['t']: c['t'] = names[k] if k < len(names) else '第%d層' % (k + 1)
     # 每個環節的公司清單（有子環節的另外拆）
     for col in cols:
         for sg in col['segs']:
@@ -103,7 +114,7 @@ def parse_industry(code, name, h):
 
 def build_chain():
     old = jload('chain.json', None)
-    if old and time.time() - old.get('u', 0) < 6.5 * 86400 and os.environ.get('CHAIN_FORCE') != '1':
+    if old and old.get('pv') == 2 and time.time() - old.get('u', 0) < 6.5 * 86400 and os.environ.get('CHAIN_FORCE') != '1':
         return old
     h = fetch('https://ic.tpex.org.tw/introduce.php?ic=D000')
     opts = re.findall(r"<option value='(\w+)'[^>]*>([^<]+)</option>", h)
@@ -117,7 +128,8 @@ def build_chain():
             inds.append(ind)
         time.sleep(0.6)
     if len(inds) < 30 and old: T.log('產業鏈抓到的太少，沿用舊的'); return old
-    ch = {'u': int(time.time()), 'src': '櫃買中心產業價值鏈資訊平台', 'inds': inds}
+    T.log('產業鏈共', len(inds), '個產業')
+    ch = {'u': int(time.time()), 'pv': 2, 'src': '櫃買中心產業價值鏈資訊平台', 'inds': inds}
     jsave('chain.json', ch)
     return ch
 
