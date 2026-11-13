@@ -22,6 +22,7 @@ T.REQ_BUDGET = int(os.environ.get('REQ_BUDGET', '2600'))
 DEADLINE = time.time() + float(os.environ.get('MAX_MIN', '150')) * 60
 KEEP_DAYS = 30
 ZL_MIN_MONEY = 0.3      # 億元：成交金額門檻，低於這個不讀分點
+BR_DAYS = 20            # 分點明細保留幾天
 UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'}
 
 
@@ -136,20 +137,31 @@ def build_chain():
 
 # ───────── 二、每日資金與主力 ─────────
 def zl_one(code, date):
+    """一檔一天的券商分點。回傳 (主力摘要, 分點明細, 分點名稱)
+    主力摘要 [主力買賣超張, 主力買賣超億, 有交易的分點數]
+    分點明細：買超前 15、賣超前 15、買賣都很大（當沖）前 5 個分點，每個 [分點代號, 買張, 賣張, 買均價, 賣均價]"""
     rows = T.api({'dataset': 'TaiwanStockTradingDailyReport', 'data_id': code, 'start_date': date})
-    br = {}
+    br = {}; names = {}
     for r in rows:
         if r.get('date') != date: continue
         k = r.get('securities_trader_id') or r.get('securities_trader')
-        b = br.setdefault(k, [0, 0.0])
-        q = (r.get('buy') or 0) - (r.get('sell') or 0)
-        b[0] += q; b[1] += q * (r.get('price') or 0)
-    if not br: return None
-    nets = sorted(br.values(), key=lambda x: x[0])
-    sell = [x for x in nets[:15] if x[0] < 0]; buy = [x for x in nets[::-1][:15] if x[0] > 0]
-    zq = sum(x[0] for x in buy) + sum(x[0] for x in sell)
-    za = sum(x[1] for x in buy) + sum(x[1] for x in sell)
-    return [round(zq / 1000), round(za / 1e8, 3), len(br)]
+        names[k] = r.get('securities_trader') or k
+        b = br.setdefault(k, [0, 0, 0.0, 0.0])     # 買股數, 賣股數, 買金額, 賣金額
+        px = r.get('price') or 0; bq = r.get('buy') or 0; sq = r.get('sell') or 0
+        b[0] += bq; b[1] += sq; b[2] += bq * px; b[3] += sq * px
+    if not br: return None, [], {}
+    net = lambda k: br[k][0] - br[k][1]
+    ks = sorted(br, key=net)
+    sell = [k for k in ks[:15] if net(k) < 0]; buy = [k for k in ks[::-1][:15] if net(k) > 0]
+    zq = sum(net(k) for k in buy + sell)
+    za = sum(br[k][2] - br[k][3] for k in buy + sell)
+    pick = list(dict.fromkeys(buy + sell + sorted(br, key=lambda k: -min(br[k][0], br[k][1]))[:5]))
+    det = []
+    for k in pick:
+        b = br[k]
+        if b[0] + b[1] < 1000: continue
+        det.append([k, round(b[0] / 1000), round(b[1] / 1000), round(b[2] / b[0], 2) if b[0] else 0, round(b[3] / b[1], 2) if b[1] else 0])
+    return [round(zq / 1000), round(za / 1e8, 3), len(br)], det, {k: names[k] for k in pick}
 
 
 def main():
@@ -222,23 +234,25 @@ def main():
             jsave('meta.json', meta)
         except Exception as e:
             T.log('市值／本益比／營收失敗', e)
-    # 主力：新的日子先算，再往回補
+    # 主力與分點明細：新的日子先算，再往回補（只補最近 BR_DAYS 天）
+    brokers = jload('brokers.json', {})
     stop = False
-    for d in reversed(days):
+    for d in reversed(days[-BR_DAYS:]):
         fp = 'd/' + d + '.json'; day = jload(fp, None)
         if not day or not day.get('p'): continue
-        need = [c for c in chain_codes if c in day['p'] and day['p'][c][3] >= ZL_MIN_MONEY and c not in day.get('z', {})]
+        day.setdefault('z', {}); day.setdefault('b', {})
+        need = [c for c in chain_codes if c in day['p'] and day['p'][c][3] >= ZL_MIN_MONEY and c not in day['b']]
         if not need: continue
-        T.log(d, '主力要算', len(need), '檔')
+        T.log(d, '分點要讀', len(need), '檔')
         n = 0
         for c in sorted(need, key=lambda c: -day['p'][c][3]):
             if time.time() > DEADLINE or T.NREQ[0] >= T.REQ_BUDGET - 5: stop = True; break
-            try: z = zl_one(c, d)
+            try: z, det, nm = zl_one(c, d)
             except T.RateLimited as e: T.log('停止', e); stop = True; break
             except Exception as e: T.log(c, d, '失敗', str(e)[:80]); continue
-            day['z'][c] = z or [0, 0, 0]; n += 1
-            if n % 100 == 0: jsave(fp, day); T.log(d, '主力', n, '／', len(need), '查詢', T.NREQ[0])
-        jsave(fp, day); T.log(d, '主力完成', n, '查詢累計', T.NREQ[0])
+            day['z'][c] = z or [0, 0, 0]; day['b'][c] = det; brokers.update(nm); n += 1
+            if n % 100 == 0: jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點', n, '／', len(need), '查詢', T.NREQ[0])
+        jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點完成', n, '查詢累計', T.NREQ[0])
         if stop: break
     # 刪掉太舊的
     dd = os.path.join(OUT, 'd')
@@ -282,6 +296,11 @@ def main():
     zdays = [d for d in D if len(data[d].get('z', {})) > 50]
     jsave('stocks.json', {'u': int(time.time()), 'date': D[-1] if D else '', 'days': D, 'zdays': zdays, 's': out})
     T.log('完成：', len(out), '檔，交易日', len(D), '，主力有算的日子', len(zdays), '，查詢', T.NREQ[0])
+    try:
+        import branch_anomaly
+        branch_anomaly.build(OUT, D, data, ch, out, jload('brokers.json', {}), T.log)
+    except Exception as e:
+        import traceback; T.log('異常分點整理失敗', e); traceback.print_exc()
 
 
 main()

@@ -27,7 +27,7 @@ jobs:
       - name: 推到 chain-data 分支
         if: always()
         run: |
-          rm -rf pub && mkdir pub && cp -r chain-out/*.json pub/ 2>/dev/null; [ -d chain-out/d ] && cp -r chain-out/d pub/ || true
+          rm -rf pub && mkdir pub && cp -r chain-out/*.json pub/ 2>/dev/null; for x in d br bk; do [ -d chain-out/$x ] && cp -r chain-out/$x pub/; done; true
           cd pub && git init -q && git checkout -q -b chain-data && git add -A
           git -c user.name=chain-bot -c user.email=chain-bot@users.noreply.github.com commit -qm "產業鏈與資金流 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" chain-data
