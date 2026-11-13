@@ -164,8 +164,18 @@ def zl_one(code, date):
     return [round(zq / 1000), round(za / 1e8, 3), len(br)], det, {k: names[k] for k in pick}
 
 
+def quota_left():
+    try:
+        req = urllib.request.Request('https://api.web.finmindtrade.com/v2/user_info', headers={'Authorization': 'Bearer ' + T.TOKEN})
+        with urllib.request.urlopen(req, timeout=30) as r: j = json.loads(r.read().decode())
+        return int(j.get('api_request_limit_hour') or 6000) - int(j.get('user_count') or 0)
+    except Exception: return 6000
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    left = quota_left(); T.REQ_BUDGET = max(60, min(T.REQ_BUDGET, left - 500))
+    T.log('FinMind 這小時剩', left, '次，本輪最多用', T.REQ_BUDGET)
     ch = build_chain()
     chain_codes = sorted({c for ind in ch['inds'] for col in ind['cols'] for sg in col['segs'] for c in sg.get('s', [])})
     T.log('產業鏈公司', len(chain_codes))
@@ -254,7 +264,7 @@ def main():
             if n % 100 == 0: jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點', n, '／', len(need), '查詢', T.NREQ[0])
         jsave(fp, day); jsave('brokers.json', brokers); T.log(d, '分點完成', n, '查詢累計', T.NREQ[0])
         if stop: break
-    if stop and T.NREQ[0] > 100:      # 還沒補完：讓 workflow 一小時後自己再跑一輪
+    if stop:      # 還沒補完：讓 workflow 一小時後自己再跑一輪
         open('chain_more', 'w').write('1')
     # 刪掉太舊的
     dd = os.path.join(OUT, 'd')

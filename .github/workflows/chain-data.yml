@@ -32,7 +32,7 @@ jobs:
         run: |
           rm -rf pub && mkdir pub && cp -r chain-out/*.json pub/ 2>/dev/null; for x in d br bk; do [ -d chain-out/$x ] && cp -r chain-out/$x pub/; done; true
           cd pub && git init -q && git checkout -q -b chain-data && git add -A
-          git -c user.name=chain-bot -c user.email=chain-bot@users.noreply.github.com commit -qm "產業鏈與資金流 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git -c user.name=chain-bot -c user.email=chain-bot@users.noreply.github.com commit -qm "產業鏈與資金流 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')" || exit 0
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" chain-data
       - name: 分點還沒補完就一小時後再跑一輪
         if: success() && hashFiles('chain_more') != ''
