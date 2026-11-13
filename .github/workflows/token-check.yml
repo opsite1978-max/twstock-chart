@@ -8,20 +8,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 分點資料能查多久以前、一次能不能查多天、每小時上限
+      - name: 權證資料
         env:
           T: ${{ secrets.FINMIND_TOKEN }}
         run: |
           mkdir -p out; A=https://api.finmindtrade.com/api/v4/data
-          curl -s -H "Authorization: Bearer $T" "https://api.web.finmindtrade.com/v2/user_info" | python3 -c "import json,sys;j=json.load(sys.stdin);print({k:j.get(k) for k in ('user_count','api_request_limit','api_request_limit_hour','level','level_title')})" > out/user.txt 2>&1
-          for d in 2021-06-01 2022-06-01 2023-06-01 2024-06-03 2025-06-03; do
-            n=$(curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&data_id=2330&start_date=$d" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print(len(d),sorted({r['date'] for r in d})[:3],j.get('msg','')[:80])")
-            echo "$d $n" >> out/hist.txt
-          done
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&data_id=2330&start_date=2026-11-02&end_date=2026-11-06" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('range',len(d),sorted({r['date'] for r in d}),j.get('msg','')[:120])" > out/range.txt
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReportSecIdAgg&data_id=2330&securities_trader_id=1020&start_date=2026-10-01&end_date=2026-11-13" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('agg',len(d),d[:2],j.get('msg','')[:120])" > out/agg.txt
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReportSecIdAgg&securities_trader_id=1020&start_date=2026-11-13&end_date=2026-11-13" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('agg-all',len(d),d[:2],j.get('msg','')[:120])" >> out/agg.txt
-          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&start_date=2026-11-13" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('noid',len(d),j.get('msg','')[:120])" >> out/range.txt
+          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockPrice&start_date=2026-11-13&end_date=2026-11-13" -o px.json
+          python3 - > out/px.txt <<'PY'
+          import json,re,collections
+          d=json.load(open('px.json'))['data']
+          print('rows',len(d))
+          cnt=collections.Counter(('len%d'%len(r['stock_id']))+('P' if r['stock_id'].endswith('P') else '') for r in d); print(cnt)
+          w=[r for r in d if len(r['stock_id'])==6 and r['stock_id'][:1] in '037']
+          w.sort(key=lambda r:-r['Trading_money']); print('warrant-like',len(w)); print(w[:3])
+          for th in (1e6,2e6,3e6,5e6,1e7): print(th, sum(1 for r in w if r['Trading_money']>=th), round(sum(r['Trading_money'] for r in w if r['Trading_money']>=th)/1e8,1),'億')
+          print('total', round(sum(r['Trading_money'] for r in w)/1e8,1))
+          open('wcode.txt','w').write(w[0]['stock_id'] if w else '')
+          PY
+          W=$(cat wcode.txt)
+          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockTradingDailyReport&data_id=$W&start_date=2026-11-13" | python3 -c "import json,sys;j=json.load(sys.stdin);d=j.get('data') or [];print('warrant',len(d),d[:3],j.get('msg','')[:100])" > out/wbr.txt
+          curl -s -H "Authorization: Bearer $T" "$A?dataset=TaiwanStockInfo" | python3 -c "import json,sys,collections;d=json.load(sys.stdin)['data'];print(len(d));print(collections.Counter(r.get('industry_category') for r in d).most_common(60));print([r for r in d if len(r['stock_id'])==6][:5])" > out/info.txt
+          curl -s "https://openapi.twse.com.tw/v1/swagger.json" -o tw.json; python3 -c "import json;j=json.load(open('tw.json'));[print(p,list(v.values())[0].get('summary')) for p,v in j['paths'].items() if '權證' in json.dumps(v,ensure_ascii=False)]" > out/twse_api.txt 2>&1
+          curl -s "https://www.tpex.org.tw/openapi/swagger.json" -o tp.json; python3 -c "import json;j=json.load(open('tp.json'));[print(p,list(v.values())[0].get('summary')) for p,v in j['paths'].items() if '權證' in json.dumps(v,ensure_ascii=False)]" > out/tpex_api.txt 2>&1
+          curl -s "https://isin.twse.com.tw/isin/C_public.jsp?strMode=2" -o isin2.html; python3 -c "
+          import re;h=open('isin2.html','rb').read().decode('big5','replace');rows=re.findall(r'<tr>(.*?)</tr>',h,re.S);print(len(rows));w=[r for r in rows if '購' in r or '售' in r];print(len(w));print([re.sub(r'<[^>]+>','|',x)[:300] for x in w[:4]])" > out/isin.txt 2>&1
           sed -i "s/$T/***/g" out/*.txt
       - name: 保存結果
         if: always()
