@@ -560,6 +560,65 @@ function tradeTable(rows, days, showBranch, names){
       '<td>' + num(r[9], 0) + ' 張<small>@ ' + pxx(r[10]) + '・' + fmtM(r[8], false) + '</small></td><td>' + (r[11] ? num(r[11], 0) + ' 張<small>@ ' + pxx(r[12]) + '</small>' : '—') + '</td>' +
       '<td class="' + cls(r[13]) + '">' + fmtM(r[13]) + '<small>' + sgn(r[14], 1) + '%</small></td><td>' + tStatus(r, days) + '</td></tr>').join('') + '</table></div>';
 }
+// ── 波段開噴要多久、波段權證分點的手法 ──
+const qTxt = (q, unit, d = 0) => q ? '<b>' + num(q[0], d) + '</b>' + unit + '（多半 ' + num(q[1], d) + '～' + num(q[2], d) + unit + '）' : '—';
+const qCell = (q, unit, d = 0) => q ? num(q[0], d) + unit + '<small>' + num(q[1], d) + '～' + num(q[2], d) + '</small>' : '—';
+function swProf(P){
+  const pts = P.prof.filter(x => x[1] != null); if (pts.length < 5) return '';
+  const W = 640, H = 150, L = 34, R = 8, T = 10, B = 22, pw = W - L - R, ph = H - T - B;
+  const mx = Math.max(1, ...pts.map(x => Math.abs(x[1]))), y0 = T + ph / 2, sc = v => v / mx * ph / 2, x = k => L + (k + 10.5) / 16 * pw, bw = pw / 16 * 0.62;
+  let s = '<svg class="wchart" style="max-width:720px" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="起漲點前後權證買盤">';
+  s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + y0 + '" y2="' + y0 + '" stroke="var(--line2)"/><line x1="' + x(0) + '" x2="' + x(0) + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--muted)" stroke-dasharray="3 3"/>';
+  for (const [k, v] of pts) s += '<rect x="' + (x(k) - bw / 2) + '" y="' + (v >= 0 ? y0 - sc(v) : y0) + '" width="' + bw + '" height="' + Math.max(0.5, Math.abs(sc(v))) + '" fill="' + (v >= 0 ? 'var(--up)' : 'var(--down)') + '" rx="1"/>';
+  for (const k of [-10, -5, 0, 5]) s += '<text x="' + x(k) + '" y="' + (H - 6) + '" text-anchor="middle">' + (k === 0 ? '起漲日' : (k > 0 ? '+' : '') + k + ' 天') + '</text>';
+  s += '<text x="' + (L - 4) + '" y="' + (T + 8) + '" text-anchor="end">' + num(mx, 1) + '倍</text></svg>';
+  return s;
+}
+function renderSw(){
+  const S = WT.sw; if (!S) return '';
+  let h = '<h3 class="secth">波段開噴要多久？波段權證分點的手法<small>用這段期間的實際資料統計，資料越久越準</small></h3>';
+  const P = S.pre;
+  // A. 從股票看
+  h += '<h4>從股票看：起漲前，權證買盤什麼時候出現</h4>';
+  if (!P || !P.n){ h += '<p class="note">資料累積中（要有起漲點、而且前後都有權證資料）。</p>'; }
+  else {
+    const withLead = P.n - P.nolead, sg = P.sig || {};
+    h += '<div class="card wplan" style="margin-top:0">找到 <b>' + P.n + '</b> 個波段起漲點（收盤是前後的低點、之後 20 天內漲 ≥ 15%）。其中 <b>' + Math.round(withLead / P.n * 100) + '%</b> 在起漲前 10 天內，一般分點的認購權證買盤曾經放大到平常的 2 倍以上' + (P.lead ? '，最早出現在起漲前 ' + qTxt(P.lead, ' 天') : '') + '。' +
+      '<br>反過來看「權證買盤放大」能不能當選股訊號：隨便挑一天，之後 20 天內漲 15% 的機率是 <b>' + (P.base ?? '—') + '%</b>；出現訊號那天之後 20 天內漲 15% 的比例：' +
+      [['2x', '買盤 ≥ 平常 2 倍'], ['2x2', '連 2 天 ≥ 2 倍'], ['3x', '≥ 平常 3 倍']].filter(([k]) => sg[k] && sg[k][0]).map(([k, t]) => t + ' <b class="' + (sg[k][1] > (P.base || 0) * 1.3 ? 'u' : '') + '">' + sg[k][1] + '%</b>（' + sg[k][0] + ' 次）').join('；') + '。<small>比基準高越多，訊號越有用。</small></div>';
+    h += swProf(P) + '<p class="note" style="margin:0 0 8px">柱子是起漲點前後每天的一般分點認購權證淨買，除以這檔平常的量（平均倍數）。</p>';
+  }
+  // B. 從分點看
+  const Wn = S.win, Ls = S.lose;
+  h += '<h4>從分點看：賺到波段的佈局長什麼樣子</h4>';
+  if (!Wn || Wn.n < 5){ h += '<p class="note">資料累積中：佈局要滿 20 個交易日或已經出場才算（目前有結果的 ' + (S.n || 0) + ' 次）。</p>'; }
+  else {
+    const ib = Wn.igb || [], tot = Wn.n;
+    h += '<div class="card wplan" style="margin-top:0"><b>' + S.n + '</b> 次有結果的佈局（同一分點同一檔同方向、買進日相隔 5 天內的算一次），賺 ≥ 30% 的波段有 <b>' + S.nwin + '</b> 次。這些成功的佈局：' +
+      '<br>・<b>佈局到開噴</b>（股票往押的方向走 5%）：' + qTxt(Wn.ig, ' 天') + '；1～2 天內就噴 ' + Math.round((ib[0] || 0) / tot * 100) + '%、3～5 天 ' + Math.round((ib[1] || 0) / tot * 100) + '%、6～10 天 ' + Math.round((ib[2] || 0) / tot * 100) + '%、11～20 天 ' + Math.round((ib[3] || 0) / tot * 100) + '%' + (Wn.noig ? '、沒有明顯開噴 ' + Math.round(Wn.noig / tot * 100) + '%' : '') + '。' +
+      '<br>・<b>開噴後到高點</b>：' + qTxt(Wn.pk, ' 天') + '，股票最多走了 ' + qTxt(Wn.best, '%', 1) + '。' +
+      '<br>・<b>怎麼買</b>：開噴前分 ' + qTxt(Wn.nd, ' 天') + '買，用 ' + qTxt(Wn.nw, ' 檔') + '權證，金額 ' + qTxt(Wn.bm, ' 萬') + '。' +
+      '<br>・<b>什麼時候買</b>：' + Wn.weak + '% 是在股票前 5 天走弱時買（逢低佈局）；進場時股價在 20 日區間的 ' + qTxt(Wn.pos, '%') + '位置（0＝最低）。' +
+      '<br>・<b>挑什麼權證</b>：價外 ' + qTxt(Wn.otm, '%') + '，剩 ' + qTxt(Wn.dl, ' 天') + '到期' + (Wn.ivhv ? '，隱含波動率是平常波動的 ' + qTxt(Wn.ivhv, ' 倍', 2) : '') + '。' +
+      (Wn.ex ? '<br>・<b>怎麼出場</b>：佈局後第 ' + qTxt(Wn.ex, ' 天') + '出場' + (Wn.expk ? '，比股票高點' + (Wn.expk[0] < 0 ? '早 ' + num(-Wn.expk[0], 0) + ' 天（多半在高點前就跑）' : '晚 ' + num(Wn.expk[0], 0) + ' 天') : '') + '。' : '') + '</div>';
+    const rows = [['佈局到開噴（天）', 'ig', ' 天'], ['開噴前買幾天', 'nd', ' 天'], ['用幾檔權證', 'nw', ' 檔'], ['金額（萬）', 'bm', ''], ['進場前 5 天股票', 'pre5', '%', 1], ['20 日區間位置', 'pos', '%'], ['價外', 'otm', '%'], ['剩餘天數', 'dl', ' 天'], ['隱含／平常波動', 'ivhv', ' 倍', 2], ['股票最多走', 'best', '%', 1], ['權證報酬', 'ret', '%']];
+    h += '<div class="tblwrap"><table class="mini"><tr><th>中位數（多半範圍）</th><th>成功（賺 ≥30%）</th>' + (S.elite ? '<th>波段權證分點</th>' : '') + '<th>失敗（虧錢）</th></tr>' +
+      rows.map(([t, k, u, d]) => '<tr><td>' + t + '</td><td>' + qCell(Wn[k], u, d || 0) + '</td>' + (S.elite ? '<td>' + qCell(S.elite[k], u, d || 0) + '</td>' : '') + '<td>' + qCell(Ls && Ls[k], u, d || 0) + '</td></tr>').join('') + '</table></div>';
+    h += '<p class="note" style="margin:0 0 8px">成功和失敗差最多的那幾行，就是手法的關鍵。</p>';
+  }
+  // C. 波段權證分點與進行中的佈局
+  if (S.br && S.br.length){
+    h += '<h4>波段權證分點（成功的波段佈局 ≥ 2 次、成功率 ≥ 50%）</h4><div class="tblwrap"><table class="mini"><tr><th>分點</th><th>佈局次數</th><th>成功</th><th>成功率</th></tr>' +
+      S.br.map(([b, n, tn, w]) => '<tr data-wb="' + esc(b) + '"><td>' + star(b) + esc(n) + '</td><td>' + tn + '</td><td>' + w + '</td><td>' + Math.round(w / tn * 100) + '%</td></tr>').join('') + '</table></div>';
+    h += '<h4>他們進行中的佈局</h4>' + (S.live && S.live.length ? '<div class="tblwrap"><table class="mini"><tr><th>開始</th><th>分點</th><th>股票</th><th>方向</th><th>金額</th><th>權證</th><th>買了幾天</th><th>目前</th></tr>' +
+      S.live.map(r => '<tr data-w="' + r[1] + '"><td>' + mmdd(WT.days[r[3]]) + '</td><td>' + esc(wName(r[0])) + '</td><td>' + esc(nameOf(r[1])) + '</td><td class="' + (r[2] > 0 ? 'u' : 'd') + '">' + (r[2] > 0 ? '認購' : '認售') + '</td><td>' + fmtM(r[4], false) + '</td><td>' + r[5] + ' 檔<small>價外 ' + (r[10] != null ? num(r[10], 0) + '%' : '—') + '・剩 ' + (r[11] ?? '—') + ' 天</small></td><td>' + r[6] + '</td><td class="' + cls(r[7]) + '">' + sgn(r[7], 1) + '%<small>' + (r[8] != null ? '已開噴（第 ' + r[8] + ' 天）' : '還沒開噴') + '</small></td></tr>').join('') + '</table></div>' : '<p class="note">目前沒有。</p>');
+  }
+  if (S.ex && S.ex.length){
+    h += '<h4>成功案例（賺最多的）</h4><div class="tblwrap"><table class="mini"><tr><th>開始</th><th>分點</th><th>股票</th><th>買進</th><th>買幾天</th><th>到開噴</th><th>股票最多</th><th>權證</th><th>損益</th></tr>' +
+      S.ex.slice(0, 20).map(r => '<tr data-w="' + r[1] + '"><td>' + mmdd(WT.days[r[3]]) + '</td><td>' + esc(wName(r[0])) + '</td><td>' + esc(nameOf(r[1])) + ' <span class="' + (r[2] > 0 ? 'u' : 'd') + '" style="font-size:11px">' + (r[2] > 0 ? '購' : '售') + '</span></td><td>' + fmtM(r[4], false) + '<small>' + r[5] + ' 檔</small></td><td>' + r[6] + ' 天</td><td>' + (r[8] != null ? r[8] + ' 天' : '—') + '</td><td>' + sgn(r[10], 1) + '%</td><td>價外 ' + (r[13] != null ? num(r[13], 0) : '—') + '%<small>剩 ' + (r[14] ?? '—') + ' 天</small></td><td class="' + cls(r[17]) + '">' + fmtM(r[17]) + '<small>' + sgn(r[16], 0) + '%</small></td></tr>').join('') + '</table></div>';
+  }
+  return h;
+}
 async function renderWt(){
   const v = $('viewWt');
   if (!WT){
@@ -594,6 +653,7 @@ async function renderWt(){
     (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td>' + wNeedCell(r[12], r[13]) + '<td>' + (r[10] != null ? r[10] + '<small>天</small>' : '—') + '</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="10" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
   if (AL.length > 30 && !ST.amore) h += '<p style="text-align:center"><button class="btn" id="aMore">顯示其他 ' + (AL.length - 30) + ' 筆</button></p>';
   h += renderDp();
+  h += renderSw();
   h += renderPmap(dir);
   // 高勝率
   const P = WT.persist;

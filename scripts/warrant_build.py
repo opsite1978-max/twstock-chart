@@ -504,6 +504,124 @@ def build(OUT, days, meta, log):
         return [b, x['wc'], m[0], m[1], m[3], m[4], x['t0'], x['t1'], round(x['bm']), round(x['bu'] / 1000), round(x['bm'] / x['bu'], 3) if x['bu'] else None,
                 round(x['su'] / 1000), round(x['sm'] / x['su'], 3) if x['su'] else None, round(x['pnl'] + x['unr']), round(x['ret'], 1),
                 round(x['otm'], 1) if x['otm'] is not None else None, x['dl'], x['iv'], round(x['lp'], 3) if x['lp'] else None, round(x['pos'] / 1000)]
+    # ── 波段佈局手法：同一分點、同一檔股票、同方向，買進日相隔 ≤ 5 天的權證交易合成一次「佈局」──
+    # 開噴＝佈局開始後，股票往押的方向第一次比開始那天走了 ≥ 5%；高點＝之後 30 個交易日內最有利的收盤
+    def campaigns():
+        out = []
+        for b, L in TR.items():
+            if b in pro: continue
+            grp = {}
+            for x in L:
+                if x['t1'] == x['t0']: continue
+                m = WM[x['wc']]; grp.setdefault((m[0], 1 if m[1] == 'C' else -1), []).append(x)
+            for (tg, sg), xs in grp.items():
+                xs.sort(key=lambda x: x['t0']); cur = []
+                for x in xs + [None]:
+                    if x is not None and (not cur or x['t0'] - max(y['t0'] for y in cur) <= 5): cur.append(x); continue
+                    if cur: out.append((b, tg, sg, cur))
+                    cur = [x] if x is not None else []
+        return out
+    CP = []
+    for b, tg, sg, xs in campaigns():
+        bm = sum(x['bm'] for x in xs)
+        if bm < TH['tr_min']: continue
+        ts = xs[0]['t0']; c0 = close(tg, ts)
+        if not c0: continue
+        # 這次佈局每天的買進（同一檔、同方向的所有權證）
+        bdays = []; te = ts
+        for t in F:
+            if t < ts or t > ts + 30: continue
+            mny = sum(r[3] for r in DATA[D[t]]['w'].get(b, []) if WM.get(r[0]) and WM[r[0]][0] == tg and (WM[r[0]][1] == 'C') == (sg > 0) and r[1])
+            if mny >= 50000: bdays.append(t)
+        ig = pk = None; best = 0.0; seen = 0
+        for k in range(ts + 1, min(nd, ts + 31)):
+            c = close(tg, k)
+            if not c: continue
+            seen = k - ts; mv = sg * (c / c0 - 1) * 100
+            if ig is None and mv >= 5: ig = k - ts
+            if mv > best: best = mv; pk = k - ts
+        pre = [x for x in bdays if ig is None or x - ts < ig]
+        te = max(pre) if pre else ts
+        lo = [close(tg, k) for k in range(max(0, ts - 20), ts + 1) if close(tg, k)]
+        posr = round((c0 - min(lo)) / (max(lo) - min(lo)) * 100) if lo and max(lo) > min(lo) else None
+        if sg < 0 and posr is not None: posr = 100 - posr
+        cb = close(tg, ts - 5) if ts >= 5 else None
+        pre5 = round(sg * (c0 / cb - 1) * 100, 1) if cb else None
+        wv = lambda f: (sum(f(x) * x['bm'] for x in xs if f(x) is not None) / sum(x['bm'] for x in xs if f(x) is not None)) if any(f(x) is not None for x in xs) else None
+        pnl = sum(x['pnl'] + x['unr'] for x in xs); ret = pnl / bm * 100
+        exits = [x['t1'] for x in xs if x['t1'] is not None]
+        ex = (sorted(exits)[len(exits) // 2] - ts) if exits and len(exits) * 2 >= len(xs) else None
+        hvv = hv(tg, D[ts]); ivw = wv(lambda x: x['iv'])
+        done_ = seen >= 20 or all(x['t1'] is not None for x in xs)
+        CP.append({'b': b, 'tg': tg, 'sg': sg, 't': ts, 'bm': round(bm), 'nw': len(xs), 'nd': len(pre) or 1, 'span': te - ts, 'ig': ig, 'pk': pk, 'best': round(best, 1),
+                   'pre5': pre5, 'pos': posr, 'otm': wv(lambda x: x['otm']), 'dl': wv(lambda x: x['dl']), 'ivhv': round(ivw / 100 / hvv, 2) if ivw and hvv else None,
+                   'ret': round(ret, 1), 'pnl': round(pnl), 'ex': ex, 'done': done_, 'w': [x['wc'] for x in xs][:6]})
+    def qs(v):
+        v = sorted(x for x in v if x is not None)
+        if len(v) < 3: return None
+        q = lambda p: v[min(len(v) - 1, int(len(v) * p))]
+        return [round(ST.median(v), 1), round(q(.25), 1), round(q(.75), 1), len(v)]
+    def prof(z):
+        if not z: return None
+        bk = lambda v, edges: [sum(1 for x in v if x is not None and lo_ <= x < hi_) for lo_, hi_ in zip(edges, edges[1:])]
+        igs = [c['ig'] for c in z]
+        return {'n': len(z), 'ig': qs(igs), 'igb': bk(igs, [1, 3, 6, 11, 21, 99]), 'noig': sum(1 for x in igs if x is None),
+                'span': qs([c['span'] for c in z]), 'nd': qs([c['nd'] for c in z]), 'nw': qs([c['nw'] for c in z]), 'bm': qs([c['bm'] / 1e4 for c in z]),
+                'pk': qs([c['pk'] for c in z]), 'best': qs([c['best'] for c in z]), 'pre5': qs([c['pre5'] for c in z]),
+                'weak': round(sum(1 for c in z if c['pre5'] is not None and c['pre5'] <= 0) / max(1, sum(1 for c in z if c['pre5'] is not None)) * 100),
+                'pos': qs([c['pos'] for c in z]), 'otm': qs([c['otm'] for c in z]), 'dl': qs([c['dl'] for c in z]), 'ivhv': qs([c['ivhv'] for c in z]),
+                'ex': qs([c['ex'] for c in z]), 'expk': qs([c['ex'] - c['pk'] for c in z if c['ex'] is not None and c['pk'] is not None]),
+                'ret': qs([c['ret'] for c in z])}
+    fin = [c for c in CP if c['done']]
+    win_ = [c for c in fin if c['ret'] >= TH['hit'] and (c['ex'] is None or c['ex'] >= 2)]
+    lose_ = [c for c in fin if c['ret'] < 0]
+    # 波段權證分點：成功的波段佈局 ≥ 2 次、而且佈局成功率 ≥ 50%
+    bc = {}
+    for c in fin: x = bc.setdefault(c['b'], [0, 0]); x[0] += 1; x[1] += c in win_
+    swb = sorted([b for b, (n, w) in bc.items() if w >= 2 and w / n >= 0.5], key=lambda b: (-bc[b][1], -bc[b][1] / bc[b][0]))
+    # ── 從股票這邊看：波段起漲點前後，一般分點的權證買盤長什麼樣子 ──
+    # 起漲點 L：收盤是前 10 天到後 5 天的最低，之後 20 個交易日內最高收盤 ≥ +15%（認售看跌就反過來）
+    PRE = {'n': 0}
+    prof_ = {k: [] for k in range(-10, 6)}; leads = []; nolead = 0
+    sig = {'2x': [0, 0], '3x': [0, 0], '2x2': [0, 0]}; basecnt = [0, 0]
+    for tg, Su in U.items():
+        cs = [close(tg, t) for t in range(nd)]
+        tot = {t: sum(a[0] for b_, a in Su.get(t, {}).items() if b_ not in pro) for t in F}
+        bl = [abs(v) for v in tot.values()]
+        if len(bl) < 15: continue
+        base_ = ST.mean(bl) or 1
+        R_ = {t: v / base_ for t, v in tot.items()}
+        last_ = -99
+        for t in range(10, nd - 1):
+            c = cs[t]
+            if not c: continue
+            fut = [x for x in cs[t + 1:t + 21] if x]
+            if t + 20 < nd and fut:
+                fu = max(fut) >= c * 1.15; basecnt[0] += 1; basecnt[1] += fu
+                if t in R_:
+                    if R_[t] >= 2: sig['2x'][0] += 1; sig['2x'][1] += fu
+                    if R_[t] >= 3: sig['3x'][0] += 1; sig['3x'][1] += fu
+                    if R_[t] >= 2 and R_.get(t - 1, 0) >= 2: sig['2x2'][0] += 1; sig['2x2'][1] += fu
+            win__ = [x for x in cs[max(0, t - 10):t + 6] if x]
+            if not fut or max(fut) < c * 1.15 or c > min(win__) or t - last_ < 15: continue
+            last_ = t; PRE['n'] += 1
+            for k in range(-10, 6):
+                if t + k in R_: prof_[k].append(R_[t + k])
+            ld = next((-k for k in range(-10, 1) if R_.get(t + k, 0) >= 2), None)
+            if ld is None: nolead += 1
+            else: leads.append(ld)
+    PRE['prof'] = [[k, round(ST.mean(max(-10, min(10, x)) for x in v), 2) if len(v) >= 3 else None, len(v)] for k, v in prof_.items()]   # 平均（每檔先除以自己平常的量，±10 倍截斷）
+    PRE['lead'] = qs(leads); PRE['nolead'] = nolead
+    PRE['leadb'] = [sum(1 for x in leads if lo_ <= x <= hi_) for lo_, hi_ in ((0, 0), (1, 2), (3, 5), (6, 10))]
+    PRE['base'] = round(basecnt[1] / basecnt[0] * 100, 1) if basecnt[0] else None
+    PRE['sig'] = {k: [n, round(w / n * 100, 1) if n else None] for k, (n, w) in sig.items()}
+    SW = {'pre': PRE, 'n': len(fin), 'nwin': len(win_), 'win': prof(win_), 'lose': prof(lose_),
+          'elite': prof([c for c in win_ if c['b'] in set(swb)]), 'br': [[b, names.get(b, b)] + bc[b] for b in swb[:40]],
+          'ex': [[c['b'], c['tg'], c['sg'], c['t'], c['bm'], c['nw'], c['nd'], c['span'], c['ig'], c['pk'], c['best'], c['pre5'], c['pos'],
+                  round(c['otm'], 1) if c['otm'] is not None else None, round(c['dl']) if c['dl'] is not None else None, c['ivhv'], c['ret'], c['pnl'], c['ex'], c['w']]
+                 for c in sorted(win_, key=lambda c: -c['pnl'])[:40]],
+          'live': [[c['b'], c['tg'], c['sg'], c['t'], c['bm'], c['nw'], c['nd'], c['ret'], c['ig'], c['best'], round(c['otm'], 1) if c['otm'] is not None else None, round(c['dl']) if c['dl'] is not None else None]
+                   for c in sorted([c for c in CP if not c['done'] and c['b'] in set(swb)], key=lambda c: -c['t'])[:40]]}
     # 最近 5 個交易日新進場的權證（≥ 30 萬），附上這個分點過去深價外交易的成績
     NW = []
     for b, L in TR.items():
@@ -628,7 +746,7 @@ def build(OUT, days, meta, log):
             for tg, a in S.get(t, {}).items(): agg[tg] = agg.get(tg, 0) + a[0]
         hold[b] = [[tg, round(v)] for tg, v in sorted(agg.items(), key=lambda kv: -abs(kv[1])) if abs(v) >= 100000][:5]
 
-    used = set(good) | {r[0] for r in AL} | set(dp_rank) | {r[0] for r in NW[:400]} | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
+    used = set(good) | {r[0] for r in AL} | set(dp_rank) | {r[0] for r in NW[:400]} | {r[0] for r in SW['ex']} | {r[0] for r in SW['live']} | set(swb[:40]) | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
     # ── 獲利地圖：股票要漲多少、幾天，權證分點才賺得到錢 ──
     W20 = F[-20:]
     bk = lambda cp: {k: theo([cp + '|' + k], 'b', W20) for k in [o + d_ for o in 'ABC' for d_ in '123'] + ['all']}
@@ -665,7 +783,7 @@ def build(OUT, days, meta, log):
            'th': TH, 'base': base, 'baseR': base_r, 'nep': len(done), 'persist': persist,
            'n': {b: names.get(b, b) for b in used}, 'u': summ, 'al': AL[:300],
            'good': [[b] + stats[b] + [hold.get(b, [])] for b in good], 'flip': sorted(b for b in flipper if b in used), 'pmap': PMAP,
-           'dp': [[b, names.get(b, b), DP[b]['d'], DP[b]['a']] for b in dp_rank], 'dpBase': dp_base, 'nw': NW[:400],
+           'sw': SW, 'dp': [[b, names.get(b, b), DP[b]['d'], DP[b]['a']] for b in dp_rank], 'dpBase': dp_base, 'nw': NW[:400],
            'dpr': {r[0]: DP[r[0]]['d'] for r in NW[:400] if DP.get(r[0], {}).get('d')}}
     with open(os.path.join(OUT, 'wt.json'), 'w') as f: json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
 
@@ -705,5 +823,6 @@ def build(OUT, days, meta, log):
              'fl': flip.get(b), 'ep': [e[:9] for e in EP.get(b, [])], 'tr': [trow(b, x) for x in sorted(TR.get(b, []), key=lambda x: -x['t0']) if x['bm'] >= 100000][:150], 'dp': DP.get(b), 'r': rows, 'h': HO.get(b, {}), 'full': F,
              'c': {tg: [close(tg, t) for t in range(nd)] for tg in tgs}}
         with open(os.path.join(OUT, 'wb', safe(b) + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
+    log('波段佈局', len(CP), '次（已有結果', len(fin), '，成功', len(win_), '），波段權證分點', len(swb))
     log('權證交易', sum(len(L) for L in TR.values()), '筆，深價外排名', len(dp_rank), '，深價外基準勝率', dp_base, '，最近新進場', len(NW))
     log('權證整理：完整', len(F), '天（時間軸', nd, '天），權證專業戶', len(pro), '，標的', len(summ), '，佈局事件', len(done), '基準勝率', base, '，高勝率分點', len(good), '，疑似知情', len(AL), '，延續性', persist)
