@@ -119,7 +119,7 @@ def build(OUT, days, meta, log):
                 addw(per.setdefault(tg, [0.0] * NF), cp, ratio, K, exp, d, S, bq, sq, bm, sm)
                 if k == 'b':
                     p = POS.setdefault(b, {}).setdefault(wc, [0, 0, 0.0]); p[0] += bq - sq; p[1] += bq; p[2] += bm
-            if k == 'b': NT.setdefault(b, []).append(len(per))
+            if k == 'b': NT.setdefault(b, []).append(sum(1 for a in per.values() if a[4] >= 30000))
             for tg, a in per.items():
                 if a[4] < 30000: continue
                 if k != 'b':
@@ -142,9 +142,9 @@ def build(OUT, days, meta, log):
             if exp and exp < last: continue                      # 已經到期
             eq = net * ratio; be = K + bm / bu / ratio if cp == 'C' else K - bm / bu / ratio
             dl = wdays(last, exp) if exp else None
-            h = HOLD.setdefault(b, {}).setdefault(tg, [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0])
+            h = HOLD.setdefault(b, {}).setdefault(tg, [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, 0.0])
             o = 0 if cp == 'C' else 4
-            h[o] += eq; h[o + 1] += be * eq
+            h[o] += eq; h[o + 1] += be * eq; h[10 + (o > 0)] += K * eq
             if dl is not None:
                 h[o + 2] += dl * eq; h[8 + (o > 0)] += eq
                 if h[o + 3] is None or exp < h[o + 3]: h[o + 3] = exp
@@ -152,9 +152,9 @@ def build(OUT, days, meta, log):
         r = []
         for o in (0, 4):
             w = h[8 + (o > 0)]
-            r += [round(h[o]), round(h[o + 1] / h[o], 2) if h[o] else None, round(h[o + 2] / w) if w else None, h[o + 3]]
+            r += [round(h[o]), round(h[o + 1] / h[o], 2) if h[o] else None, round(h[o + 2] / w) if w else None, h[o + 3], round(h[10 + (o > 0)] / h[o], 2) if h[o] else None]
         return r
-    HO = {b: {tg: hout(h) for tg, h in T_.items() if h[0] >= 1000 or h[4] >= 1000} for b, T_ in HOLD.items()}
+    HO = {b: {tg: hout(h) for tg, h in T_.items() if h[0] >= 1000 or h[4] >= 1000} for b, T_ in HOLD.items()}   # [認購 約當, 回本價, 剩餘天, 最早到期, 履約價, 認售 同左]
 
     # ── 權證隔日沖型分點：大買（≥ 50 萬）後隔天賣掉 ≥ 6 成 ──
     flip = {}
@@ -325,9 +325,9 @@ def build(OUT, days, meta, log):
                 r.setdefault(b, []).append([t] + avg(a)); nm[b] = names.get(b, b)
         ho = {b: HO[b][tg] for b in HO if tg in HO[b] and KD.get(b, 'b') == 'b'}
         for b in ho: nm.setdefault(b, names.get(b, b))
-        HT = [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0]
+        HT = [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, 0.0]
         for b, H in ((b, HOLD[b][tg]) for b in ho if b not in pro):
-            for i in (0, 1, 2, 4, 5, 6, 8, 9): HT[i] += H[i]
+            for i in (0, 1, 2, 4, 5, 6, 8, 9, 10, 11): HT[i] += H[i]
             for i in (3, 7):
                 if H[i] and (not HT[i] or H[i] < HT[i]): HT[i] = H[i]
         o = {'d': D, 'c': [close(tg, t) for t in range(nd)], 'v': [px(tg, t)[1] for t in range(nd)],
