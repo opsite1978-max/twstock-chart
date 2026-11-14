@@ -10,7 +10,7 @@
 看多金額＝認購淨買 − 認售淨買（買認售是看空）；約當股數＝權證單位 × 行使比例。
 外資券商、券商總公司（代號最後一碼是 0，多半是自營、造市或法人帳戶）不列入佈局分析，只顯示合計。
 """
-import json, os, re, shutil, statistics as ST
+import json, math, os, re, shutil, statistics as ST
 
 TH = {
     'ep': 500000,          # 一次「佈局」：單一分點一天在一檔標的看多（或看空）淨額 ≥ 50 萬元
@@ -26,6 +26,8 @@ TH = {
     'good_days': 20,       # 至少累積 20 個完整交易日才排高勝率分點
     'short': 30,           # 短天期：買進的權證平均剩 ≤ 30 個交易日到期
     'otm': 15,             # 深價外：履約價離股價 ≥ 15%
+    'hv_min': 12,          # 歷史波動率至少要 12 個日報酬
+    'hard': 20,            # 低勝算重押：以平常波動，20 個交易日內漲（跌）到回本的機率 < 20%
 }
 FOREIGN = ('麥格理', '美林', '摩根', '高盛', '野村', '花旗', '瑞銀', '大和', '法銀', '匯豐', '瑞士', '德意志', '星展', '里昂', '法興', '巴克萊', '渣打', '港商', '美商', '新加坡', '日商', '英商')
 
@@ -59,13 +61,98 @@ def wdays(a, b, _c={}):
     return _c[k]
 
 
+# ── 權證評價（Black-Scholes；權證價格 ÷ 行使比例＝每股權利金）──
+R_F = 0.015
+SQ2 = math.sqrt(2)
+
+
+def ncdf(x): return 0.5 * (1 + math.erf(x / SQ2))
+
+
+def bs(cp, S, K, T, s):
+    if T <= 1e-6 or s <= 1e-6: return max(0.0, S - K) if cp == 'C' else max(0.0, K - S)
+    v = s * math.sqrt(T); d1 = (math.log(S / K) + (R_F + s * s / 2) * T) / v; d2 = d1 - v; df = math.exp(-R_F * T)
+    return S * ncdf(d1) - K * df * ncdf(d2) if cp == 'C' else K * df * ncdf(-d2) - S * ncdf(-d1)
+
+
+def delta(cp, S, K, T, s):
+    if T <= 1e-6: return (1.0 if S > K else 0.0) if cp == 'C' else (-1.0 if S < K else 0.0)
+    d1 = (math.log(S / K) + (R_F + s * s / 2) * T) / (s * math.sqrt(T))
+    return ncdf(d1) if cp == 'C' else ncdf(d1) - 1
+
+
+def impl_vol(cp, S, K, T, P):
+    lo, hi = 0.02, 4.0
+    if bs(cp, S, K, T, lo) > P or bs(cp, S, K, T, hi) < P: return None
+    for _ in range(24):
+        m = (lo + hi) / 2
+        if bs(cp, S, K, T, m) < P: lo = m
+        else: hi = m
+    return (lo + hi) / 2
+
+
+def need_move(cp, S, K, T, iv, P, h):
+    """波動率不變下，h 個交易日後股價要到哪裡權證才回到 P → 要漲（認售：要跌）幾 %"""
+    Th = max(T - h / 245, 0)
+    f = lambda x: bs(cp, x, K, Th, iv) - P
+    if cp == 'C':
+        lo, hi = S * 0.3, S * 6
+        if f(hi) < 0: return None
+        if f(lo) > 0: return -70.0
+        for _ in range(26):
+            m = (lo + hi) / 2
+            if f(m) < 0: lo = m
+            else: hi = m
+        return ((lo + hi) / 2 / S - 1) * 100
+    lo, hi = S * 0.02, S * 3
+    if f(lo) < 0: return None
+    if f(hi) > 0: return -70.0
+    for _ in range(26):
+        m = (lo + hi) / 2
+        if f(m) > 0: lo = m
+        else: hi = m
+    return (1 - (lo + hi) / 2 / S) * 100
+
+
+def flat_days(cp, S, K, n, iv, V):
+    """股價不動、波動率不變，幾個交易日後權證會掉到 V 的 7 成（到期都不會就回傳 n）"""
+    if bs(cp, S, K, 0, iv) >= 0.7 * V: return n
+    lo, hi = 0, n
+    while hi - lo > 1:
+        m = (lo + hi) // 2
+        if bs(cp, S, K, (n - m) / 245, iv) <= 0.7 * V: hi = m
+        else: lo = m
+    return hi
+
+
+def opt(cp, S, K, n, P):
+    """買進當下的評價 → [隱含波動率%, 有效槓桿, 每天時間價值流失%, 10 天需漲%, 20 天需漲%, 股價不動幾天掉 3 成]"""
+    if not (S and K and P and n and n > 0): return None
+    T = n / 245; iv = impl_vol(cp, S, K, T, P)
+    if iv is None: return None
+    lev = abs(delta(cp, S, K, T, iv)) * S / P
+    th = (P - bs(cp, S, K, max(T - 1 / 245, 0), iv)) / P * 100
+    n10, n20 = need_move(cp, S, K, T, iv, P, 10), need_move(cp, S, K, T, iv, P, 20)
+    if n20 is None: return None
+    return [round(iv * 100, 1), round(lev, 1), round(th, 2), round(n10, 1) if n10 is not None else None, round(n20, 1), flat_days(cp, S, K, n, iv, P)]
+
+
+def prob(cp, need, hv, h=20):
+    """以平常的波動（歷史波動率），h 個交易日後股價漲（跌）超過 need% 的機率"""
+    if need is None or not hv: return None
+    z = math.log(1 + need / 100) if cp == 'C' else math.log(max(1e-4, 1 - need / 100))
+    sd = hv * math.sqrt(h / 245)
+    return (1 - ncdf(z / sd)) * 100 if cp == 'C' else ncdf(z / sd) * 100
+
+
 # 一筆（分點、標的、日）的欄位（內部用加總，輸出時再換成平均）
 # 0 看多淨額 1 認購淨 2 認售淨 3 約當股數淨 4 進出總額 5 認購買 6 認購賣 7 認售買 8 認售賣
 # 9 認購買進約當股數 10 Σ回本價×約當股數 11 Σ剩餘天數×金額 12 Σ價外%×金額 13 認售買進約當股數 14 15 16 同左（認售）
-NF = 17
+# 17 認購有評價的買進金額 18 Σ隱含波動率 19 Σ槓桿 20 Σ每天時間價值% 21 Σ20 天需漲% 22 Σ不動撐幾天 23 Σ機率 24 機率的權重；25～32 同左（認售）
+NF = 33
 
 
-def addw(a, cp, ratio, K, exp, d, S, bq, sq, bm, sm):
+def addw(a, cp, ratio, K, exp, d, S, bq, sq, bm, sm, g, hv):
     eb, es = bq * ratio, sq * ratio
     if cp == 'C':
         a[1] += bm - sm; a[5] += bm; a[6] += sm; a[3] += eb - es
@@ -79,15 +166,27 @@ def addw(a, cp, ratio, K, exp, d, S, bq, sq, bm, sm):
             be = K - bm / bq / ratio; a[13] += eb; a[14] += be * eb
             a[15] += wdays(d, exp) * bm if exp else 0
             if S: a[16] += (1 - K / S) * 100 * bm
+    if g and bm:
+        o = 17 if cp == 'C' else 25
+        a[o] += bm; a[o + 1] += g[0] * bm; a[o + 2] += g[1] * bm; a[o + 3] += g[2] * bm; a[o + 4] += g[4] * bm; a[o + 5] += g[5] * bm
+        p = prob(cp, g[4], hv)
+        if p is not None: a[o + 6] += p * bm; a[o + 7] += bm
     a[0] = a[1] - a[2]; a[4] += bm + sm
 
 
 def avg(a):
-    """內部加總 → 輸出：[看多, 認購淨, 認售淨, 約當淨, 認購買, 認購賣, 認售買, 認售賣, 認購買約當, 認購回本價, 認購剩餘天, 認購價外%, 認售買約當, 認售回本價, 認售剩餘天, 認售價外%]"""
+    """內部加總 → 輸出：
+    0 看多 1 認購淨 2 認售淨 3 約當淨 4 認購買 5 認購賣 6 認售買 7 認售賣 8 認購買約當 9 認購到期回本價 10 認購剩餘天 11 認購價外%
+    12 認售買約當 13 認售到期回本價 14 認售剩餘天 15 認售價外%
+    16 認購隱含波動率% 17 槓桿 18 每天時間價值% 19 20 天需漲% 20 不動撐幾天 21 20 天達成機率%；22～27 同左（認售）"""
     r = lambda v, n=0: round(v, n) if n else round(v)
-    return [r(a[0]), r(a[1]), r(a[2]), r(a[3]), r(a[5]), r(a[6]), r(a[7]), r(a[8]),
-            r(a[9]), r(a[10] / a[9], 2) if a[9] else None, r(a[11] / a[5]) if a[5] and a[11] else None, r(a[12] / a[5], 1) if a[5] and a[12] else None,
-            r(a[13]), r(a[14] / a[13], 2) if a[13] else None, r(a[15] / a[7]) if a[7] and a[15] else None, r(a[16] / a[7], 1) if a[7] and a[16] else None]
+    out = [r(a[0]), r(a[1]), r(a[2]), r(a[3]), r(a[5]), r(a[6]), r(a[7]), r(a[8]),
+           r(a[9]), r(a[10] / a[9], 2) if a[9] else None, r(a[11] / a[5]) if a[5] and a[11] else None, r(a[12] / a[5], 1) if a[5] and a[12] else None,
+           r(a[13]), r(a[14] / a[13], 2) if a[13] else None, r(a[15] / a[7]) if a[7] and a[15] else None, r(a[16] / a[7], 1) if a[7] and a[16] else None]
+    for o in (17, 25):
+        w = a[o]
+        out += [r(a[o + 1] / w, 1), r(a[o + 2] / w, 1), r(a[o + 3] / w, 2), r(a[o + 4] / w, 1), r(a[o + 5] / w), r(a[o + 6] / a[o + 7]) if a[o + 7] else None] if w else [None] * 6
+    return out
 
 
 def build(OUT, days, meta, log):
@@ -102,13 +201,45 @@ def build(OUT, days, meta, log):
     fulls = [d for d in days if d in DATA and isfull(DATA[d])]
     if not fulls: log('權證整理：還沒有完整的一天'); return
     D = [d for d in days if d >= fulls[0]]
-    nd = len(D); last = D[-1]
+    nd = len(D); LAST = D[-1]
     F = [t for t, d in enumerate(D) if d in DATA and isfull(DATA[d])]
     FS = set(F)
     KD = {b: kind(b, names.get(b, b)) for b in names}
+    # 歷史波動率（最近 20 個交易日、年化）：用每天存的收盤價
+    DI = {d: i for i, d in enumerate(days)}
+    _hv = {}
+    def hv(tg, d):
+        k = (tg, d)
+        if k not in _hv:
+            i = DI[d]; cs = [((DATA.get(days[j]) or {}).get('v', {}).get(tg) or [None])[0] for j in range(max(0, i - 20), i + 1)]
+            rs = [math.log(y / x) for x, y in zip(cs, cs[1:]) if x and y]
+            _hv[k] = ST.pstdev(rs) * math.sqrt(245) if len(rs) >= TH['hv_min'] else None
+        return _hv[k]
+    # 每檔權證每天的評價（用當天所有分點的平均買價；算過的存在 g/日期.json，不用重算）
+    G = {}; IVL = {}
+    os.makedirs(os.path.join(OUT, 'g'), exist_ok=True)
+    for t in F:
+        d = D[t]; fp = os.path.join(OUT, 'g', d + '.json'); g = jl(fp)
+        if g is None:
+            V = DATA[d]['v']; agg = {}
+            for rows in DATA[d]['w'].values():
+                for wc, bq, sq, bm, sm in rows:
+                    if bq: x = agg.setdefault(wc, [0, 0.0]); x[0] += bq; x[1] += bm
+            g = {}
+            for wc, (bq, bm) in agg.items():
+                m = WM.get(wc)
+                if not m or bm < 30000 or not m[2] or not m[3] or not m[4]: continue
+                S = (V.get(m[0]) or [None])[0]
+                r = opt(m[1], S, m[3], wdays(d, m[4]), bm / bq / m[2]) if S else None
+                if r: g[wc] = r
+            with open(fp, 'w') as f: json.dump(g, f, separators=(',', ':'))
+        G[d] = g
+        for wc, r in g.items(): IVL[wc] = r[0] / 100
+    for fn in os.listdir(os.path.join(OUT, 'g')):
+        if fn[:10] < days[0]: os.remove(os.path.join(OUT, 'g', fn))
     U = {}; BT = {}; FT = {}; NT = {}; POS = {}
     for t in F:
-        d = D[t]; V = DATA[d]['v']
+        d = D[t]; V = DATA[d]['v']; g = G[d]
         for b, rows in DATA[d]['w'].items():
             k = KD.get(b, 'b'); per = {}
             for wc, bq, sq, bm, sm in rows:
@@ -116,7 +247,7 @@ def build(OUT, days, meta, log):
                 if not m: continue
                 tg, cp, ratio, K, exp = m
                 S = (V.get(tg) or [None])[0]
-                addw(per.setdefault(tg, [0.0] * NF), cp, ratio, K, exp, d, S, bq, sq, bm, sm)
+                addw(per.setdefault(tg, [0.0] * NF), cp, ratio, K, exp, d, S, bq, sq, bm, sm, g.get(wc), hv(tg, d))
                 if k == 'b':
                     p = POS.setdefault(b, {}).setdefault(wc, [0, 0, 0.0]); p[0] += bq - sq; p[1] += bq; p[2] += bm
             if k == 'b': NT.setdefault(b, []).append(sum(1 for a in per.values() if a[4] >= 30000))
@@ -132,29 +263,54 @@ def build(OUT, days, meta, log):
     close = lambda tg, t: px(tg, t)[0]
 
     # ── 目前還抱著的權證（只看這段期間買賣相抵後還有剩的；更早買的不知道）──
-    # 每個分點、每檔標的：[認購約當股數, 認購回本價, 認購剩餘天數, 認購最早到期, 認售…]（剩餘天數以約當股數加權）
+    # 以最新收盤價、這檔權證最近一次的隱含波動率重新評價：估計損益、20 天內要漲多少才回本、股價不動幾天掉 3 成
+    # 每個分點、每檔標的、認購／認售各一組加總：
+    # 0 約當股數 1 Σ到期回本價 2 Σ剩餘天 3 最早到期 4 Σ履約價 5 剩餘天權重 6 成本 7 Σ損益% 8 Σ20 天需漲% 9 Σ不動撐幾天 10 Σ每天時間價值% 11 Σ槓桿 12 Σ機率 13 機率權重 14 評價權重
+    HN = 15
     HOLD = {}
     for b, P in POS.items():
         for wc, (net, bu, bm) in P.items():
             m = WM.get(wc)
             if net <= 0 or not bu or not m or not m[2] or not m[3]: continue
             tg, cp, ratio, K, exp = m
-            if exp and exp < last: continue                      # 已經到期
-            eq = net * ratio; be = K + bm / bu / ratio if cp == 'C' else K - bm / bu / ratio
-            dl = wdays(last, exp) if exp else None
-            h = HOLD.setdefault(b, {}).setdefault(tg, [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, 0.0])
-            o = 0 if cp == 'C' else 4
-            h[o] += eq; h[o + 1] += be * eq; h[10 + (o > 0)] += K * eq
+            if exp and exp <= LAST: continue                      # 已經到期
+            pc = bm / bu / ratio; eq = net * ratio; cost = net * bm / bu
+            be = K + pc if cp == 'C' else K - pc
+            dl = wdays(LAST, exp) if exp else None
+            h = HOLD.setdefault(b, {}).setdefault(tg, {}).setdefault(cp, [0.0] * HN)
+            if h[3] == 0.0: h[3] = None
+            h[0] += eq; h[1] += be * eq; h[4] += K * eq; h[6] += cost
             if dl is not None:
-                h[o + 2] += dl * eq; h[8 + (o > 0)] += eq
-                if h[o + 3] is None or exp < h[o + 3]: h[o + 3] = exp
-    def hout(h):
-        r = []
-        for o in (0, 4):
-            w = h[8 + (o > 0)]
-            r += [round(h[o]), round(h[o + 1] / h[o], 2) if h[o] else None, round(h[o + 2] / w) if w else None, h[o + 3], round(h[10 + (o > 0)] / h[o], 2) if h[o] else None]
-        return r
-    HO = {b: {tg: hout(h) for tg, h in T_.items() if h[0] >= 1000 or h[4] >= 1000} for b, T_ in HOLD.items()}   # [認購 約當, 回本價, 剩餘天, 最早到期, 履約價, 認售 同左]
+                h[2] += dl * eq; h[5] += eq
+                if h[3] is None or exp < h[3]: h[3] = exp
+            S = close(tg, nd - 1); iv = IVL.get(wc)
+            if S and iv and dl:
+                T = dl / 245; Vn = bs(cp, S, K, T, iv)
+                n20 = need_move(cp, S, K, T, iv, pc, 20)
+                if Vn > 0 and n20 is not None:
+                    h[14] += cost; h[7] += (Vn / pc - 1) * 100 * cost; h[8] += n20 * cost
+                    h[9] += flat_days(cp, S, K, dl, iv, Vn) * cost
+                    h[10] += (Vn - bs(cp, S, K, max(T - 1 / 245, 0), iv)) / Vn * 100 * cost
+                    h[11] += abs(delta(cp, S, K, T, iv)) * S / Vn * cost
+                    p = prob(cp, n20, hv(tg, LAST))
+                    if p is not None: h[12] += p * cost; h[13] += cost
+    def hside(h):
+        """→ [約當股數, 到期回本價, 剩餘天, 最早到期, 履約價, 估計損益%, 20 天需漲%, 不動撐幾天, 每天時間價值%, 槓桿, 20 天達成機率%]"""
+        if not h or h[0] <= 0: return [0, None, None, None, None, None, None, None, None, None, None]
+        w = h[14]
+        return [round(h[0]), round(h[1] / h[0], 2), round(h[2] / h[5]) if h[5] else None, h[3], round(h[4] / h[0], 2),
+                round(h[7] / w, 1) if w else None, round(h[8] / w, 1) if w else None, round(h[9] / w) if w else None,
+                round(h[10] / w, 2) if w else None, round(h[11] / w, 1) if w else None, round(h[12] / h[13]) if h[13] else None]
+    def hout(hh): return hside(hh.get('C')) + hside(hh.get('P'))      # 認購 0～10、認售 11～21
+    def hadd(tot, hh):
+        for cp, h in hh.items():
+            t_ = tot.setdefault(cp, [0.0] * HN)
+            if t_[3] == 0.0: t_[3] = None
+            for i in range(HN):
+                if i == 3:
+                    if h[3] and (t_[3] is None or h[3] < t_[3]): t_[3] = h[3]
+                else: t_[i] += h[i]
+    HO = {b: {tg: hout(hh) for tg, hh in T_.items() if max(x[0] for x in hh.values()) >= 1000} for b, T_ in HOLD.items()}
 
     # ── 權證隔日沖型分點：大買（≥ 50 萬）後隔天賣掉 ≥ 6 成 ──
     flip = {}
@@ -215,7 +371,7 @@ def build(OUT, days, meta, log):
         if len(both) >= 10:
             r1 = sorted(both, key=lambda b: -sum(a1[b]) / len(a1[b]))
             top = r1[:max(3, len(r1) // 4)]; rest = r1[len(top):]
-            wr = lambda bs: round(sum(sum(a2[b]) for b in bs) / sum(len(a2[b]) for b in bs) * 100, 1)
+            wr = lambda bl: round(sum(sum(a2[b]) for b in bl) / sum(len(a2[b]) for b in bl) * 100, 1)
             persist = {'n': len(both), 'top': wr(top), 'rest': wr(rest), 'ntop': len(top)}
     good = sorted([b for b, s in stats.items() if s[0] >= TH['min_n'] and s[3] > 0 and b not in flipper and b not in pro and len(F) >= TH['good_days'] and s[4] >= (base or 50) + 5], key=lambda b: (-stats[b][4], -stats[b][3]))[:40]
 
@@ -256,8 +412,8 @@ def build(OUT, days, meta, log):
             o[K] = [round(g[0]), round(g[1]), round(g[2]), round(g[3]), round(g[3] / vol * 100, 2) if vol else None, nb, ns,
                     [[b, round(a[0])] for b, a in top if a[0] > 0], [[b, round(a[0])] for b, a in bot if a[0] < 0], round(ft),
                     A[9], A[10], A[11], round(sh[0] / g[5] * 100) if g[5] else None,
-                    A[13], A[14], A[15], round(sh[1] / g[7] * 100) if g[7] else None]
-        if o: summ[tg] = {'c': close(tg, nd - 1), 'r1': None, 'k': o}
+                    A[13], A[14], A[15], round(sh[1] / g[7] * 100) if g[7] else None] + A[16:28]
+        if o: summ[tg] = {'c': close(tg, nd - 1), 'r1': None, 'k': o, 'hv': round(hv(tg, LAST) * 100, 1) if hv(tg, LAST) else None}
         c1, c0 = close(tg, nd - 1), close(tg, nd - 2) if nd >= 2 else None
         if tg in summ and c1 and c0: summ[tg]['r1'] = round((c1 / c0 - 1) * 100, 2)
         if tg in summ and nd >= 6 and close(tg, nd - 6) and c1: summ[tg]['r5'] = round((c1 / close(tg, nd - 6) - 1) * 100, 2)
@@ -281,6 +437,8 @@ def build(OUT, days, meta, log):
             eqp = abs(eq) / vol * 100 if vol else 0
             A = avg(g); o = 9 if bull > 0 else 13          # 看多看認購買進、看空看認售買進
             be, dl, otm = A[o], A[o + 1], A[o + 2]
+            q = 16 if bull > 0 else 22
+            iv, th, n20, fl, p20 = A[q], A[q + 2], A[q + 3], A[q + 4], A[q + 5]
             tags = []
             if abs(bull) >= TH['big']: tags.append('大額')
             if eqp >= TH['eqp']: tags.append('約當佔量高')
@@ -291,10 +449,11 @@ def build(OUT, days, meta, log):
             if not ({'大額', '約當佔量高'} & set(tags)) or len(tags) < 2: continue
             if dl is not None and dl <= TH['short']: tags.append('短天期')
             if otm is not None and otm >= TH['otm']: tags.append('深價外')
+            if p20 is not None and p20 < TH['hard']: tags.append('低勝算重押')
             if b in flipper: tags.append('隔日沖型')
             s_ = stats.get(b)
-            AL.append([b, tg, round(bull), round(eq), round(eqp, 2), tags, sorted(set(ts))[0], s_[2] if s_ and s_[0] >= 3 else None, s_[0] if s_ else 0, be, dl, otm])
-    AL.sort(key=lambda r: -(abs(r[2]) * (1 + 0.5 * ('新進場' in r[5]) + 0.5 * ('集中押注' in r[5]) + 0.3 * ('短天期' in r[5])) * (0.4 if '隔日沖型' in r[5] else 1)))
+            AL.append([b, tg, round(bull), round(eq), round(eqp, 2), tags, sorted(set(ts))[0], s_[2] if s_ and s_[0] >= 3 else None, s_[0] if s_ else 0, be, dl, otm, n20, p20, iv, th, fl])
+    AL.sort(key=lambda r: -(abs(r[2]) * (1 + 0.5 * ('新進場' in r[5]) + 0.5 * ('集中押注' in r[5]) + 0.3 * ('短天期' in r[5]) + 0.3 * ('低勝算重押' in r[5])) * (0.4 if '隔日沖型' in r[5] else 1)))
 
     # 目前（最近 5 天）高勝率分點的佈局
     hold = {}
@@ -316,8 +475,8 @@ def build(OUT, days, meta, log):
         shutil.rmtree(os.path.join(OUT, sub), ignore_errors=True); os.makedirs(os.path.join(OUT, sub))
     for tg, S in U.items():
         r = {}; nm = {}; tot = {}
-        for t, bs in S.items():
-            for b, a in bs.items():
+        for t, bmap in S.items():
+            for b, a in bmap.items():
                 if b not in pro:
                     g = tot.setdefault(t, [0.0] * NF)
                     for i in range(NF): g[i] += a[i]
@@ -325,15 +484,13 @@ def build(OUT, days, meta, log):
                 r.setdefault(b, []).append([t] + avg(a)); nm[b] = names.get(b, b)
         ho = {b: HO[b][tg] for b in HO if tg in HO[b] and KD.get(b, 'b') == 'b'}
         for b in ho: nm.setdefault(b, names.get(b, b))
-        HT = [0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, None, 0.0, 0.0, 0.0, 0.0]
-        for b, H in ((b, HOLD[b][tg]) for b in ho if b not in pro):
-            for i in (0, 1, 2, 4, 5, 6, 8, 9, 10, 11): HT[i] += H[i]
-            for i in (3, 7):
-                if H[i] and (not HT[i] or H[i] < HT[i]): HT[i] = H[i]
+        HT = {}
+        for b in ho:
+            if b not in pro: hadd(HT, HOLD[b][tg])
         o = {'d': D, 'c': [close(tg, t) for t in range(nd)], 'v': [px(tg, t)[1] for t in range(nd)],
              'f': [round(FT.get(tg, {}).get(t, [0, 0])[0]) for t in range(nd)], 'n': nm,
              'st': {b: stats[b][:4] for b in nm if b in stats}, 'flip': [b for b in nm if b in flipper], 'pro': [b for b in nm if b in pro], 'full': F,
-             'r': r, 'T': {t: avg(g) for t, g in tot.items()}, 'h': ho, 'H': hout(HT) if HT[0] or HT[4] else None}
+             'r': r, 'T': {t: avg(g) for t, g in tot.items()}, 'h': ho, 'H': hout(HT) if HT else None, 'hv': round(hv(tg, LAST) * 100, 1) if hv(tg, LAST) else None}
         with open(os.path.join(OUT, 'wu', tg + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
     for b, S in BT.items():
         rows = [[t, tg, round(a[0]), round(a[1]), round(a[2]), round(a[3])] for t, tgs in S.items() for tg, a in tgs.items() if abs(a[0]) >= 50000 or a[4] >= 200000]

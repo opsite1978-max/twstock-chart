@@ -122,6 +122,15 @@ def main():
     traders = sorted(meta['traders'])
     WM = warrant_map(meta)
     if len(WM) < 5000: T.log('權證對照表太少，先不查'); return
+    # 先把整段期間每天的收盤價補齊（一天一次查詢），算歷史波動率要用
+    for d in days:
+        fp = 'd/' + d + '.json'; day = jload(fp, {})
+        if day.get('v'): continue
+        try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
+        except T.RateLimited as e: T.log('停止', e); break
+        day['v'] = {r['stock_id']: [r['close'], round((r.get('Trading_Volume') or 0) / 1000), round((r.get('Trading_money') or 0) / 1e8, 3)] for r in px if r.get('date') == d and re.fullmatch(r'\d{4}', r['stock_id']) and r.get('close')}
+        if day.get('mv') != 3: day.update({'mv': 3, 'w': {}, 'done': []})
+        jsave(fp, day)
     stop = False; got = 0
     for di, d in enumerate(reversed(days)):
         fp = 'd/' + d + '.json'; day = jload(fp, {})
