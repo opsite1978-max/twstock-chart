@@ -709,27 +709,36 @@ const needTxt = (n, dir) => n == null ? '—' : n > 0 ? UP(dir) + ' ' + num(n, 1
 const pCls = p => p == null ? '' : p < 20 ? 'd' : p >= 40 ? 'u' : '';
 function wChart(j, dd, dir, hold, cNow, W){
   W = W || 720;
-  const nd = j.d.length, ix = wIx(dir), L = W < 500 ? 44 : 54, R = W < 500 ? 12 : 16, pw = W - L - R;
-  const T = 14, PH = W < 500 ? 170 : 200, G = 22, VH = W < 500 ? 96 : 110, B = 22, H = T + PH + G + VH + B;
-  const x = t => L + (t + 0.5) * pw / nd, bw = Math.max(3, pw / nd * 0.62);
-  const tg = dd.map((a, t) => a && a[ix.b] > 0 ? wTgt(j.c[t], a[ix.n], dir) : null);
-  const hl = hold && hold[6] != null ? wTgt(cNow, hold[6], dir) : null;
-  const hc = hold && hold[12] != null ? hold[12] : null;
-  const pv = j.c.filter(v => v).concat(tg.filter(v => v)); if (hl) pv.push(hl); if (hc) pv.push(hc);
-  let pmax = Math.max(...pv), pmin = Math.min(...pv); const pad = (pmax - pmin) * 0.1 || pmax * 0.02; pmax += pad; pmin -= pad;
+  const nd = j.d.length, ix = wIx(dir), L = W < 500 ? 44 : 54, R = W < 500 ? 40 : 52, pwAll = W - L - R;
+  const T = 16, PH = W < 500 ? 180 : 210, G = 22, VH = W < 500 ? 90 : 105, B = 22, H = T + PH + G + VH + B;
+  // 回本線：今天、5、10、20 個交易日後，股價要在哪裡才不賠（還抱著的權證）
+  const bePath = hold && hold[12] != null ? [[0, hold[12]], [5, hold[25]], [10, hold[26]], [20, wTgt(cNow, hold[6], dir)]].filter(p => p[1] != null) : null;
+  const FW = bePath ? Math.round(pwAll * 0.3) : 0, pw = pwAll - FW;
+  const x = t => L + (t + 0.5) * pw / nd, bw = Math.max(3, pw / nd * 0.62), x0 = x(nd - 1), xf = d => x0 + d / 20 * (FW + (pw / nd) * 0.5 - 6);
+  const pv = j.c.filter(v => v); if (bePath) for (const p of bePath) pv.push(p[1]);
+  let pmax = Math.max(...pv), pmin = Math.min(...pv); const pad = (pmax - pmin) * 0.12 || pmax * 0.02; pmax += pad; pmin -= pad;
   const yp = v => T + (pmax - v) / (pmax - pmin) * PH;
   let vmax = 1; for (const a of dd) if (a) vmax = Math.max(vmax, a[ix.b], a[ix.s]);
   const v0 = T + PH + G + VH * 0.62, yb = v => v0 - v / vmax * VH * 0.62, ys = v => v0 + v / vmax * VH * 0.38;
-  const bc = dir > 0 ? 'var(--up)' : 'var(--down)';
-  let s = '<svg class="wchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="每天權證買進金額與 20 天內要到的股價">';
-  for (const f of [0, 0.5, 1]){ const v = pmax - (pmax - pmin) * f, yy = T + PH * f; s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (yy + (f === 1 ? -2 : f === 0 ? 8 : 3.5)) + '" text-anchor="end">' + fmtP(v) + '</text>'; }
-  if (hl){ const yy = yp(hl); s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + bc + '" stroke-dasharray="5 4" stroke-width="1.3"/><text x="' + (L + pw - 2) + '" y="' + (yy - 4) + '" text-anchor="end" style="fill:' + bc + '">還抱著的：20 天內要到 ' + fmtP(hl) + ' 才回本</text>'; }
-  if (hc){ const yy = yp(hc); s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="#d9822b" stroke-dasharray="2 3" stroke-width="1.5"/><text x="' + (L + 4) + '" y="' + (yy + 12) + '" style="fill:#d9822b">成本相當於股價 ' + fmtP(hc) + '</text>'; }
+  const bc = dir > 0 ? 'var(--up)' : 'var(--down)', oc = '#d9822b';
+  let s = '<svg class="wchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="權證買進時間、金額與回本線">';
+  for (const f of [0, 0.5, 1]){ const v = pmax - (pmax - pmin) * f, yy = T + PH * f; s += '<line x1="' + L + '" x2="' + (L + pwAll) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (yy + (f === 1 ? -2 : f === 0 ? 8 : 3.5)) + '" text-anchor="end">' + fmtP(v) + '</text>'; }
+  // 收盤價和進場點（圈越大買越多）
   let path = ''; j.c.forEach((v, t) => { if (v) path += (path ? 'L' : 'M') + x(t).toFixed(1) + ' ' + yp(v).toFixed(1); });
   s += '<path d="' + path + '" fill="none" stroke="var(--fg)" stroke-width="1.6"/>';
   const rmax = Math.max(1, ...dd.map(a => a ? a[ix.b] : 0));
-  dd.forEach((a, t) => { if (tg[t]){ const r = 2.5 + 6.5 * Math.sqrt(a[ix.b] / rmax); s += '<line x1="' + x(t) + '" x2="' + x(t) + '" y1="' + yp(j.c[t]) + '" y2="' + yp(tg[t]) + '" stroke="' + bc + '" stroke-opacity=".35" stroke-width="1.2"/><circle cx="' + x(t) + '" cy="' + yp(tg[t]) + '" r="' + r.toFixed(1) + '" fill="' + bc + '" fill-opacity=".55" stroke="' + bc + '"/>'; } });
+  dd.forEach((a, t) => { if (a && a[ix.b] > 0 && j.c[t]){ const r = 3 + 8 * Math.sqrt(a[ix.b] / rmax); s += '<circle cx="' + x(t) + '" cy="' + yp(j.c[t]) + '" r="' + r.toFixed(1) + '" fill="' + bc + '" fill-opacity=".45" stroke="' + bc + '"/>'; } });
+  // 未來：回本線
+  if (bePath){
+    s += '<rect x="' + (x0 + 2) + '" y="' + T + '" width="' + (L + pwAll - x0 - 2) + '" height="' + PH + '" fill="var(--panel2)" opacity=".6"/>';
+    s += '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + T + '" y2="' + (T + PH) + '" stroke="var(--muted)" stroke-dasharray="2 3"/><text x="' + (x0 + 4) + '" y="' + (T + 10) + '" style="font-size:10px">今天之後 →</text>';
+    if (cNow) s += '<line x1="' + x0 + '" x2="' + xf(20) + '" y1="' + yp(cNow) + '" y2="' + yp(cNow) + '" stroke="var(--fg)" stroke-opacity=".35" stroke-dasharray="3 3"/>';
+    s += '<path d="' + bePath.map((p, i) => (i ? 'L' : 'M') + xf(p[0]).toFixed(1) + ' ' + yp(p[1]).toFixed(1)).join('') + '" fill="none" stroke="' + oc + '" stroke-width="2.2"/>';
+    for (const [d, v] of bePath){ s += '<circle cx="' + xf(d) + '" cy="' + yp(v) + '" r="3" fill="' + oc + '"/>'; if (d === 0 || d === 20) s += '<text x="' + (xf(d) + (d ? 4 : -4)) + '" y="' + (yp(v) + (dir > 0 ? -6 : 14)) + '" text-anchor="' + (d ? 'start' : 'end') + '" style="fill:' + oc + ';font-weight:700">' + fmtP(v) + '</text>'; }
+    for (const d of (W < 500 ? [10, 20] : [5, 10, 20])) s += '<text x="' + xf(d) + '" y="' + (T + PH + 13) + '" text-anchor="middle" style="font-size:9.5px">+' + d + ' 天</text>';
+  }
   s += '<text x="' + (L - 4) + '" y="10" text-anchor="end">股價</text>';
+  // 量
   s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + v0 + '" y2="' + v0 + '" stroke="var(--line2)"/>';
   s += '<text x="' + (L - 4) + '" y="' + (yb(vmax) + 3.5) + '" text-anchor="end">' + fmtM(vmax, false).replace(' ', '') + '</text>';
   dd.forEach((a, t) => {
@@ -737,11 +746,13 @@ function wChart(j, dd, dir, hold, cNow, W){
     if (a[ix.b] > 0) s += '<rect x="' + (x(t) - bw / 2) + '" y="' + yb(a[ix.b]) + '" width="' + bw + '" height="' + Math.max(0.5, v0 - yb(a[ix.b])) + '" fill="' + bc + '" rx="1"/>';
     if (a[ix.s] > 0) s += '<rect x="' + (x(t) - bw / 2) + '" y="' + v0 + '" width="' + bw + '" height="' + Math.max(0.5, ys(a[ix.s]) - v0) + '" fill="var(--dim)" rx="1"/>';
   });
-  const step = Math.ceil(nd / (W < 500 ? 4 : 7));
+  const step = Math.ceil(nd / (W < 500 ? 3 : 6));
   for (let t = 0; t < nd; t += step) s += '<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle">' + mmdd(j.d[t]) + '</text>';
   for (let t = 0; t < nd; t++) s += '<rect class="wday" data-t="' + t + '" x="' + (L + t * pw / nd) + '" y="' + T + '" width="' + (pw / nd) + '" height="' + (H - T - B) + '" fill="transparent"/>';
   s += '<line id="wCur" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--muted)" stroke-dasharray="2 3" style="display:none"/></svg>';
-  s += '<div class="wleg"><span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>收盤價</span><span><i style="background:' + bc + ';border-radius:50%;opacity:.6"></i>當天買的' + (dir > 0 ? '認購' : '認售') + '：20 個交易日內股價要到這裡才回本（圈越大買越多）</span><span><i style="background:' + bc + '"></i>買進金額</span><span><i style="background:var(--dim)"></i>賣出金額</span><span><i style="background:#d9822b;height:2px;vertical-align:3px"></i>成本相當於股價</span></div>';
+  s += '<div class="wleg"><span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>收盤價</span><span><i style="background:' + bc + ';border-radius:50%;opacity:.6"></i>買進的那天（圈越大買越多）</span>' +
+    (bePath ? '<span><i style="background:' + oc + ';height:3px;vertical-align:3px"></i>回本線：股價要在這條線' + (dir > 0 ? '上面' : '下面') + '才不賠，時間越久線越' + (dir > 0 ? '高' : '低') + '</span>' : '') +
+    '<span><i style="background:' + bc + '"></i>買進金額</span><span><i style="background:var(--dim)"></i>賣出金額</span></div>';
   return s;
 }
 function wDayHtml(j, dd, t, dir){
@@ -782,7 +793,8 @@ function wPlan(hh, c, dir, who, iv, hv){
   if (sCost != null){
     const gap = c ? (dir > 0 ? (c / sCost - 1) * 100 : (1 - c / sCost) * 100) : null;
     s += '<br><b>他們的成本</b>：投入約 ' + fmtM(cost, false) + '，現在估值 ' + fmtM(val, false) + '。' + (sEnt ? '平均在股價 <b>' + fmtP(sEnt) + '</b> 時買進；' : '') +
-      '以今天的權證價值換算，<b>成本相當於股價 ' + fmtP(sCost) + '</b>（現在 ' + fmtP(c) + '，' + (gap >= 0 ? '已高於成本 ' + num(gap, 1) + '%' : '還差 ' + num(-gap, 1) + '%') + '）。股價在這條線之上他們就是賺的，但每多放一天，這條線會再往' + (dir > 0 ? '上' : '下') + '移一點（時間價值）。';
+      '以今天的權證價值換算，<b>成本相當於股價 ' + fmtP(sCost) + '</b>（現在 ' + fmtP(c) + '，' + (gap >= 0 ? '高於成本 ' + num(gap, 1) + '%，目前是賺的' : '還差 ' + num(-gap, 1) + '%，目前是賠的') + '）。' +
+      '<br><b>回本線會隨時間' + (dir > 0 ? '往上' : '往下') + '走</b>（權證每天流失時間價值）：今天 ' + fmtP(sCost) + (hh[25] != null ? ' → 5 天後 ' + fmtP(hh[25]) : '') + (hh[26] != null ? ' → 10 天後 ' + fmtP(hh[26]) : '') + (n20 != null ? ' → 20 天後 <b>' + fmtP(wTgt(c, n20, dir)) + '</b>' : '') + '。也就是說，股價要' + (dir > 0 ? '漲得比這條線快' : '跌得比這條線快') + '，他們才會賺錢；股價不動，就會慢慢由賺轉賠。';
     if (scn.length === 10 && cost){
       const pv_ = v => v == null ? '—' : '<b class="' + cls(v - cost) + '">' + sgn((v / cost - 1) * 100, 0) + '%</b><small>' + fmtM(v - cost) + '</small>', pc = v => '<td>' + pv_(v) + '</td>';
       s += '<br><b>他們期待的獲利</b>（股票往押的方向走，這批權證會賺多少）：<div class="tblwrap"><table class="mini scn" style="margin:4px 0 2px"><tr><th></th><th>' + up + ' 5%</th><th>' + up + ' 10%</th><th>' + up + ' 20%</th><th>' + up + ' 30%</th><th>到平均履約價 ' + fmtP(K) + '</th></tr>' +
@@ -832,7 +844,7 @@ async function openWStock(c, focus){
   h += wPlan(hold, cNow, dir, sel ? (j.n[sel] || sel) : '一般分點合計', TIV, j.hv);
   const TH_ = j.th && j.th[dir > 0 ? 'C' : 'P'];
   if (TH_ && WT.pmap) h += '<h4>這檔被買的權證：股票要' + up + '多少、幾天才賺</h4><div class="pmcols"><div>' + pmNeedTable(TH_, WT.pmap, dir) + '</div><div>' + pmGrid(TH_, WT.pmap, dir) + '</div></div><p class="note" style="margin:0 0 6px">一般分點最近 20 個交易日買的' + (dir > 0 ? '認購' : '認售') + '權證，用買進當天的隱含波動率估算（假設波動率不變）。</p>';
-  h += '<h4>每天買進多少、20 天內股價要到哪裡才回本</h4><div class="chips" id="wSel">' + chips.map(([b, n]) => '<button class="chip" data-v="' + esc(b) + '" aria-pressed="' + (b === sel) + '">' + esc(n) + '</button>').join('') + '</div>';
+  h += '<h4>什麼時候買、買多少，回本線之後怎麼走</h4><div class="chips" id="wSel">' + chips.map(([b, n]) => '<button class="chip" data-v="' + esc(b) + '" aria-pressed="' + (b === sel) + '">' + esc(n) + '</button>').join('') + '</div>';
   h += wChart(j, dd, dir, hold, cNow, Math.round(Math.min(720, Math.max(330, sh.clientWidth - 34))));
   let lt = nd - 1; while (lt > 0 && !(dd[lt] && (dd[lt][ix.b] || dd[lt][ix.s]))) lt--;
   h += '<div class="card wdayc" id="wDay">' + wDayHtml(j, dd, lt, dir) + '</div><p class="note" style="margin:2px 0 8px">點圖上任何一天看當天明細。</p>';

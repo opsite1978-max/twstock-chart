@@ -324,7 +324,8 @@ def build(OUT, days, meta, log):
     # 每個分點、每檔標的、認購／認售各一組加總：
     # 0 約當股數 1 Σ到期回本價 2 Σ剩餘天 3 最早到期 4 Σ履約價 5 剩餘天權重 6 成本 7 Σ損益% 8 Σ20 天需漲% 9 Σ不動撐幾天 10 Σ每天時間價值% 11 Σ槓桿 12 Σ機率 13 機率權重 14 評價權重
     # 15 Σ買進時股價 16 Σ成本對應股價 17 現在市值 18 有評價部位的成本 19～28 情境市值（10 天後、20 天後 × 股票走 +5／+10／+20／+30%／到履約價）
-    HN = 29; SCN = [5, 10, 20, 30]
+    # 29 Σ5 天後回本股價 30 Σ10 天後回本股價（股價要到哪裡才回本，隨時間往上移）
+    HN = 31; SCN = [5, 10, 20, 30]
     HOLD = {}
     for b, P in POS.items():
         for wc, (net, bu, bm, sbm, sw) in P.items():
@@ -356,6 +357,9 @@ def build(OUT, days, meta, log):
                     if sw: h[15] += sbm / sw * cost
                     n0 = need_move(cp, S, K, T, iv, pc, 0)
                     h[16] += S * (1 + sg * (n0 if n0 is not None else 0) / 100) * cost
+                    for i_, hh_ in ((29, 5), (30, 10)):
+                        nx = need_move(cp, S, K, T, iv, pc, hh_)
+                        h[i_] += S * (1 + sg * (nx if nx is not None else n20) / 100) * cost
                     h[17] += Vn * eq; h[18] += cost
                     for k_, hh_ in enumerate((10, 20)):
                         Th = max(T - hh_ / 245, 0)
@@ -364,12 +368,12 @@ def build(OUT, days, meta, log):
                             h[19 + k_ * 5 + j_] += bs(cp, S2, K, Th, iv) * eq
     def hside(h):
         """→ [約當股數, 到期回本價, 剩餘天, 最早到期, 履約價, 估計損益%, 20 天需漲%, 不動撐幾天, 每天時間價值%, 槓桿, 20 天達成機率%]"""
-        if not h or h[0] <= 0: return [0] + [None] * 24
+        if not h or h[0] <= 0: return [0] + [None] * 26
         w = h[14]
         return [round(h[0]), round(h[1] / h[0], 2), round(h[2] / h[5]) if h[5] else None, h[3], round(h[4] / h[0], 2),
                 round(h[7] / w, 1) if w else None, round(h[8] / w, 1) if w else None, round(h[9] / w) if w else None,
                 round(h[10] / w, 2) if w else None, round(h[11] / w, 1) if w else None, round(h[12] / h[13]) if h[13] else None,
-                round(h[15] / w, 2) if w and h[15] else None, round(h[16] / w, 2) if w else None, round(h[18]), round(h[17])] + [round(x) for x in h[19:29]]
+                round(h[15] / w, 2) if w and h[15] else None, round(h[16] / w, 2) if w else None, round(h[18]), round(h[17])] + [round(x) for x in h[19:29]] + [round(h[29] / w, 2) if w else None, round(h[30] / w, 2) if w else None]
     # 每組 25 欄：0 約當股數 1 到期回本價 2 剩餘天 3 最早到期 4 履約價 5 估計損益% 6 20 天需漲% 7 不動撐幾天 8 每天時間價值% 9 槓桿 10 20 天機率%
     #          11 買進時平均股價 12 成本對應股價（今天） 13 成本 14 現在市值 15～24 情境市值（10 天、20 天 × +5/+10/+20/+30%/到履約價）
     def hout(hh): return hside(hh.get('C')) + hside(hh.get('P'))      # 認購 0～24、認售 25～49
