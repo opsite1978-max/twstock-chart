@@ -14,17 +14,27 @@ jobs:
         run: |
           mkdir -p out; B=https://api.finmindtrade.com/api/v4
           q(){ echo "== $1" >> out/sp.txt; curl -s -m 120 -H "Authorization: Bearer $T" "$B/$1" -o r.bin -w "http %{http_code} size %{size_download} type %{content_type}\n" >> out/sp.txt; head -c 700 r.bin | tr -d '\000' >> out/sp.txt; echo >> out/sp.txt; }
-          q "taiwan_stock_trading_daily_report_secid_agg?data_id=2330&start_date=2026-10-01&end_date=2026-11-13"
-          q "taiwan_stock_trading_daily_report_secid_agg?data_id=2330&securities_trader_id=9268&start_date=2026-06-01&end_date=2026-11-13"
-          q "taiwan_stock_trading_daily_report_secid_agg?securities_trader_id=9268&start_date=2026-11-13&end_date=2026-11-13"
-          q "taiwan_stock_warrant_trading_daily_report?data_id=066186&date=2026-11-13"
-          q "taiwan_stock_warrant_trading_daily_report?securities_trader_id=9268&date=2026-11-13"
-          q "taiwan_stock_warrant_trading_daily_report?date=2026-11-13"
-          q "taiwan_stock_trading_daily_report?securities_trader_id=9268&date=2026-11-13"
-          q "storage_objects?dataset=TaiwanStockWarrantTradingDailyReport&date=2026-11-13"
-          q "storage_objects?dataset=TaiwanStockTradingDailyReportSecIdAgg&date=2026-11-13"
-          q "data?dataset=TaiwanStockInfoWithWarrantSummary&data_id=066186&start_date=2026-11-13"
-          q "data?dataset=TaiwanStockInfoWithWarrantSummary&start_date=2026-11-13"
+          q "data?dataset=TaiwanStockInfoWithWarrantSummary&start_date=2025-06-01&end_date=2025-06-30"
+          python3 - <<'PY' >> out/sp.txt
+          import json
+          j = json.load(open('r.bin')); d = j.get('data') or []
+          print('rows', len(d), 'keys', list(d[0].keys()) if d else None)
+          import collections
+          print('types', collections.Counter(r.get('type') for r in d).most_common(5))
+          print('dates', min(r['date'] for r in d) if d else None, max(r['date'] for r in d) if d else None)
+          for r in d[:4]: print(r)
+          PY
+          q "data?dataset=TaiwanStockInfoWithWarrantSummary&start_date=2024-01-01&end_date=2024-12-31"
+          python3 -c "import json;d=json.load(open('r.bin')).get('data') or [];print('year rows',len(d), min((r['date'] for r in d),default=None), max((r['date'] for r in d),default=None))" >> out/sp.txt
+          q "data?dataset=TaiwanStockInfoWithWarrantSummary&data_id=707336"
+          q "data?dataset=TaiwanStockPrice&start_date=2026-11-13&end_date=2026-11-13"
+          python3 - <<'PY' >> out/sp.txt
+          import json, re
+          d = json.load(open('r.bin')).get('data') or []
+          w = [r for r in d if not re.fullmatch(r'\d{4}', r['stock_id'])]
+          print('price rows', len(d), 'non4', len(w)); print([r for r in w if r['stock_id'] in ('707336', '066186', '040343')][:3]); print(w[:2])
+          PY
+          q "data?dataset=TaiwanStockPrice&data_id=707336&start_date=2026-10-01"
           sed -i "s/$T/***/g" out/*.txt
       - name: 保存結果
         if: always()
