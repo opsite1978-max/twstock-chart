@@ -1,0 +1,40 @@
+name: 個股溫度研究資料（全市場日 K）
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: temp-data
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - id: t0
+        run: echo "t=$(date +%s)" >> $GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+      - name: 取出 temp-data 分支
+        run: git fetch -q origin temp-data && git worktree add -q temp-out origin/temp-data || mkdir -p temp-out
+      - name: 讀日 K
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          MAX_MIN: '60'
+          CAP: '1500'
+          RESERVE: '1500'
+        run: python3 scripts/temp_research_fetch.py temp-out
+      - name: 推到 temp-data 分支
+        if: always()
+        run: |
+          rm -rf pub && mkdir pub && cp temp-out/*.json pub/ 2>/dev/null; for x in px; do [ -d temp-out/$x ] && cp -r temp-out/$x pub/; done; true
+          cd pub && git init -q && git checkout -q -b temp-data && git add -A
+          git -c user.name=temp-bot -c user.email=temp-bot@users.noreply.github.com commit -qm "日K $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')" || exit 0
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" temp-data
+      - name: 還沒補完就一小時後再跑一輪
+        if: success() && hashFiles('temp_more') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          w=$(( ${{ steps.t0.outputs.t }} + 3720 - $(date +%s) )); [ $w -gt 0 ] && sleep $w
+          gh workflow run temp-data.yml --ref main -R ${{ github.repository }}
