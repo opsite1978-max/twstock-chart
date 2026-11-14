@@ -147,6 +147,10 @@ header .sp{flex:1}
 .wplan small{color:var(--muted);font-size:11.5px;line-height:1.5;display:inline-block;margin-top:2px}
 .wdayc{font-size:13px;line-height:1.6;padding:8px 12px}
 .wday{cursor:pointer}
+.tbl td.wrap:first-child{min-width:6.5em}
+.pmcols{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 18px}
+@media (min-width:900px){.pmcols{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
+.pmcols .mini td,.pmcols .mini th{text-align:right}
 small.o,span.o:not(.pill){color:#d9822b}
 .kv b+small{margin-top:1px}
 .pill{display:inline-block;font:600 11px/1.5 var(--sans);padding:0 6px;border-radius:9px;margin:1px 3px 1px 0;white-space:nowrap;border:1px solid var(--line2);color:var(--fg)}
@@ -451,6 +455,55 @@ const wName = b => (WT && WT.n[b]) || b;
 const WTAG = { '大額':'r', '約當佔量高':'r', '新進場':'p', '集中押注':'b', '連續買':'r', '連續賣':'g', '隔日沖型':'o', '短天期':'o', '深價外':'p', '低勝算重押':'r' };
 const wNeedCell = (n, p, dir = ST.wdir || 1) => n == null ? '<td>—</td>' : '<td>' + needTxt(n, dir) + (p != null ? '<small class="' + pCls(p) + '">機率 ' + p + '%</small>' : '') + '</td>';
 function wkOf(tg){ const u = WT.u[tg]; return u && u.k[String(ST.per)] || null; }
+// ── 獲利地圖 ──
+function pmNeed(row, pm, tgt){   // row：某個天數下、各股票漲幅對應的權證報酬 → 權證賺 tgt% 需要股票走多少
+  for (let i = 1; i < pm.length; i++){ const a = row[i - 1], b = row[i]; if (a < tgt && b >= tgt) return pm[i - 1] + (tgt - a) / (b - a) * (pm[i] - pm[i - 1]); }
+  return row[0] >= tgt ? pm[0] : null;
+}
+function pmRows(g, P){ const n = P.pm.length; return P.ph.map((h, k) => g.slice(1 + k * n, 1 + (k + 1) * n)); }
+const pmTxt = (v, last) => v == null ? '<span class="d">超過 ' + last + '%</span>' : num(Math.max(0, v), 1) + '%';
+const pmCell = v => '<td class="' + (v >= 30 ? 'u' : v < 0 ? 'd' : '') + '"' + (v >= 50 ? ' style="font-weight:700"' : '') + '>' + sgn(v, 0) + '%</td>';
+function pmNeedTable(g, P, dir){
+  const R = pmRows(g, P), up = UP(dir), last = P.pm[P.pm.length - 1];
+  return '<div class="tblwrap"><table class="mini"><tr><th>權證想賺</th>' + P.ph.map(h => '<th>' + h + ' 天內' + up + '</th>').join('') + '</tr>' +
+    [30, 50, 100].map(t => '<tr><td>+' + t + '%</td>' + R.map(r => '<td>' + pmTxt(pmNeed(r, P.pm, t), last) + '</td>').join('') + '</tr>').join('') + '</table></div>';
+}
+function pmGrid(g, P, dir){
+  const R = pmRows(g, P), show = P.pm.map((m, i) => [m, i]).filter(x => x[0] >= -5);
+  return '<div class="tblwrap"><table class="mini"><tr><th>股票' + UP(dir) + '</th>' + show.map(x => '<th>' + sgn(x[0], 0) + '%</th>').join('') + '</tr>' +
+    R.map((r, k) => '<tr><td>' + P.ph[k] + ' 天後</td>' + show.map(x => pmCell(r[x[1]])).join('') + '</tr>').join('') + '</table></div>';
+}
+const PMB = { A:'價內／價平（價外 ≤5%）', B:'小價外（5～15%）', C:'深價外（>15%）' }, PMD = { 1:'剩 ≤60 天', 2:'剩 60～120 天', 3:'剩 >120 天' };
+function renderPmap(dir){
+  const P = WT.pmap; if (!P) return '';
+  const side = P[dir > 0 ? 'C' : 'P'], all = side && side.all, up = UP(dir), last = P.pm[P.pm.length - 1];
+  let h = '<h3 class="secth">權證要賺錢，股票要' + up + '多少、幾天？<small>用一般分點最近 20 個交易日（' + mmdd(P.win[0]) + '～' + mmdd(P.win[1]) + '）實際買的' + (dir > 0 ? '認購' : '認售') + '權證，依買進金額加權</small></h3>';
+  if (!all){ return h + '<p class="note">資料還不夠。</p>'; }
+  const R = pmRows(all, P);
+  const s5 = pmNeed(R[1], P.pm, 30), s10 = pmNeed(R[2], P.pm, 30), s20 = pmNeed(R[3], P.pm, 30), z = pmNeed(R[2], P.pm, 0);
+  h += '<div class="card wplan" style="margin-top:0"><b>結論（理論）</b>：分點買的權證平均來說，要賺 3 成，股票得在 <b>5 天內' + up + ' ' + pmTxt(s5, last) + '</b>，或 <b>10 天內' + up + ' ' + pmTxt(s10, last) + '</b>，拖到 20 天就要' + up + ' ' + pmTxt(s20, last) + '。' +
+    '股票 10 天不動，權證約 <b class="d">' + sgn(R[2][P.pm.indexOf(0)], 0) + '%</b>' + (z != null ? '；10 天內至少要' + up + ' ' + num(Math.max(0, z), 1) + '% 才不賠' : '') + '。也就是說，<b>權證要賺錢，行情得又快又大</b>，慢慢漲會被時間價值吃掉。' +
+    '<br><small>用 Black-Scholes 模型、每檔權證買進當天的隱含波動率估算，假設隱含波動率不變；實際波動率下降時會賺得更少。</small></div>';
+  h += '<div class="pmcols"><div><h4>權證想賺多少 → 股票要' + up + '多少</h4>' + pmNeedTable(all, P, dir) + '</div><div><h4>股票' + up + '多少、過幾天 → 權證大約賺賠</h4>' + pmGrid(all, P, dir) + '</div></div>';
+  // 依權證種類
+  const rows = [];
+  for (const o of 'ABC') for (const d of '123'){ const g = side[o + d]; if (g && g[0] >= all[0] * 0.02) rows.push([o, d, g]); }
+  if (rows.length){
+    h += '<h4>不同種類的權證差很多</h4><div class="tblwrap"><table class="mini"><tr><th>權證種類</th><th>佔買進</th><th>賺 3 成：5 天內</th><th>10 天內</th><th>20 天內</th><th class="hide-m">10 天不動</th></tr>' +
+      rows.map(([o, d, g]) => { const r = pmRows(g, P); return '<tr><td>' + PMB[o] + '・' + PMD[d] + '</td><td>' + num(g[0] / all[0] * 100, 0) + '%</td>' + [1, 2, 3].map(k => '<td>' + up + ' ' + pmTxt(pmNeed(r[k], P.pm, 30), last) + '</td>').join('') + '<td class="hide-m d">' + sgn(r[2][P.pm.indexOf(0)], 0) + '%</td></tr>'; }).join('') + '</table></div>';
+    h += '<p class="note" style="margin:0 0 6px">價外越深槓桿越大，但時間價值掉得也越兇；剩餘天數越短，越要求行情馬上來。</p>';
+  }
+  // 實證
+  const E = P.emp, H30 = E.hit && (E.hit[30] || E.hit['30']);
+  h += '<h4>實際發生的（買進後 20 個交易日追蹤）</h4>';
+  if (!H30){ h += '<p class="note">實際資料累積中：每次佈局要滿 20 個交易日才算數，60 天資料補完、再過一陣子就會有統計。</p>'; return h; }
+  const line = (t, x) => x ? '權證漲到 <b>+' + t + '%</b>：' + x[1] + '% 的佈局做到' + (x.length > 2 ? '，中位數在第 <b>' + x[2] + '</b> 天（多半第 ' + x[3] + '～' + x[4] + ' 天），當時股票只' + up + '了 <b>' + num(x[5], 1) + '%</b>（多半 ' + num(x[6], 1) + '～' + num(x[7], 1) + '%）' : '') : '';
+  h += '<div class="card wplan" style="margin-top:0">一般分點 ' + H30[0] + ' 次佈局（滿 20 天的）裡：<br>' + [30, 50, 100].map(t => line(t, E.hit[t] || E.hit[String(t)])).filter(x => x).join('<br>') + '</div>';
+  const SBL = ['≤ −5%', '−5～0%', '0～5%', '5～10%', '10～15%', '15～20%', '> 20%'];
+  h += '<div class="tblwrap"><table class="mini"><tr><th>股票往押的方向走</th>' + [5, 10, 20].map(d => '<th>' + d + ' 天後權證（中位數）</th>').join('') + '</tr>' +
+    SBL.map((lb, i) => '<tr><td>' + lb + '</td>' + [5, 10, 20].map(d => { const c = (E.grid[d] || E.grid[String(d)] || {})[i] || (E.grid[d] || E.grid[String(d)] || {})[String(i)]; return c ? '<td class="' + (c[0] >= 30 ? 'u' : c[0] < 0 ? 'd' : '') + '">' + sgn(c[0], 0) + '%<small>' + c[1] + ' 次</small></td>' : '<td>—</td>'; }).join('') + '</tr>').join('') + '</table></div>';
+  return h;
+}
 async function renderWt(){
   const v = $('viewWt');
   if (!WT){
@@ -483,6 +536,7 @@ async function renderWt(){
   h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>股票</th><th>5 日淨額</th><th>約當張數</th><th>佔成交量</th><th>' + (dir > 0 ? '20 天要漲' : '20 天要跌') + '</th><th>到期剩</th><th style="text-align:left">標籤</th><th class="hide-m">開始</th><th>過去勝率</th></tr></thead><tbody>' +
     (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td>' + wNeedCell(r[12], r[13]) + '<td>' + (r[10] != null ? r[10] + '<small>天</small>' : '—') + '</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="10" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
   if (AL.length > 30 && !ST.amore) h += '<p style="text-align:center"><button class="btn" id="aMore">顯示其他 ' + (AL.length - 30) + ' 筆</button></p>';
+  h += renderPmap(dir);
   // 高勝率
   const P = WT.persist;
   h += '<h3 class="secth">高勝率波段權證分點<small>每次佈局（單日買進認購或認售 ≥ ' + fmtM(WT.th.ep, false) + '）之後第 ' + WT.th.hor + ' 個交易日，看<b>權證本身</b>漲了多少：漲 ≥ ' + WT.th.hit + '% 算「抓到行情」；至少 ' + WT.th.min_n + ' 次才列入</small></h3>';
@@ -634,6 +688,8 @@ async function openWStock(c, focus){
     '<div><small>20 天內要' + up + '多少才回本</small><b>' + (TN != null ? needTxt(TN, dir) : '—') + '</b><small>' + (TP != null ? '平常波動下機率 ' + Math.round(TP) + '%' : '機率：歷史波動率累積中') + '</small></div>' +
     '<div><small>隱含波動率／平常波動</small><b>' + (TIV != null ? num(TIV, 0) + '%' : '—') + '</b><small>' + (j.hv ? '平常 ' + num(j.hv, 0) + '%' : '平常：累積中') + '</small></div></div>';
   h += wPlan(hold, cNow, dir, sel ? (j.n[sel] || sel) : '一般分點合計', TIV, j.hv);
+  const TH_ = j.th && j.th[dir > 0 ? 'C' : 'P'];
+  if (TH_ && WT.pmap) h += '<h4>這檔被買的權證：股票要' + up + '多少、幾天才賺</h4><div class="pmcols"><div>' + pmNeedTable(TH_, WT.pmap, dir) + '</div><div>' + pmGrid(TH_, WT.pmap, dir) + '</div></div><p class="note" style="margin:0 0 6px">一般分點最近 20 個交易日買的' + (dir > 0 ? '認購' : '認售') + '權證，用買進當天的隱含波動率估算（假設波動率不變）。</p>';
   h += '<h4>每天買進多少、20 天內股價要到哪裡才回本</h4><div class="chips" id="wSel">' + chips.map(([b, n]) => '<button class="chip" data-v="' + esc(b) + '" aria-pressed="' + (b === sel) + '">' + esc(n) + '</button>').join('') + '</div>';
   h += wChart(j, dd, dir, hold, cNow, Math.round(Math.min(720, Math.max(330, sh.clientWidth - 34))));
   let lt = nd - 1; while (lt > 0 && !(dd[lt] && (dd[lt][ix.b] || dd[lt][ix.s]))) lt--;
