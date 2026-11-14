@@ -193,13 +193,21 @@ def avg(a):
     return out
 
 
+def dload(OUT, d):
+    """每天的資料：先找壓縮檔（.json.gz），沒有再找舊的 .json"""
+    try:
+        import gzip
+        with gzip.open(os.path.join(OUT, 'd', d + '.json.gz'), 'rt', encoding='utf-8') as f: return json.load(f)
+    except Exception: return jl(os.path.join(OUT, 'd', d + '.json'))
+
+
 def build(OUT, days, meta, log):
     names = meta.get('traders', {})
     WM = jl(os.path.join(OUT, 'wmap.json')) or {}
     # 時間軸：交易日曆（有收盤價的天都放進來）；分點資料只用「新格式、整天查完」的天
     DATA = {}
     for d in days:
-        x = jl(os.path.join(OUT, 'd', d + '.json'))
+        x = dload(OUT, d)
         if x and x.get('v'): DATA[d] = x
     isfull = lambda x: x.get('mv') == 3 and x.get('full') and x.get('w') is not None
     fulls = [d for d in days if d in DATA and isfull(DATA[d])]
@@ -382,6 +390,11 @@ def build(OUT, days, meta, log):
             for wc, bq, sq, bm, sm in rows:
                 if bq + sq: x = PXW.setdefault(wc, {}).setdefault(t, [0, 0.0]); x[0] += bq + sq; x[1] += bm + sm
     PXW = {wc: {t: m / q for t, (q, m) in v.items()} for wc, v in PXW.items()}
+    # 有權證收盤價（交易所日行情）的天，改用收盤價（比分點成交均價準，也補上沒有分點交易的天）
+    for t in range(nd):
+        wp = (DATA.get(D[t]) or {}).get('wp') or {}
+        for wc, c in wp.items():
+            if wc in PXW: PXW[wc][t] = c
     H = TH['hor']; t0w5 = F[-5:][0]
     def wout(b, t, tg, sg):
         d = D[t]; rows = DATA[d]['w'].get(b, []); S = close(tg, t); hvv = hv(tg, d)

@@ -8,13 +8,13 @@
 存成 d/日期.json，從最近一天往回補 BACK 個交易日。
 每輪查詢上限依 FinMind 這個小時還剩多少自動決定，保留一些給其他排程。
 """
-import json, os, re, sys, time, datetime, urllib.request, urllib.parse, urllib.error
+import gzip, json, os, re, sys, time, datetime, urllib.request, urllib.parse, urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import txo_scrape as T
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'wt-out'
-BACK = int(os.environ.get('BACK', '60'))
+BACK = int(os.environ.get('BACK', '250'))
 RESERVE = int(os.environ.get('RESERVE', '1500'))
 CAP = int(os.environ.get('CAP', '4000'))
 DEADLINE = time.time() + float(os.environ.get('MAX_MIN', '100')) * 60
@@ -23,6 +23,11 @@ MIN_W = 10000            # 一個分點一天在一檔權證買賣合計 < 1 萬
 
 
 def jload(p, d):
+    """每天的資料（d/日期.json）存成 gzip 壓縮檔（.json.gz），舊的未壓縮檔也讀得到"""
+    if p.startswith('d/'):
+        try:
+            with gzip.open(os.path.join(OUT, p + '.gz'), 'rt', encoding='utf-8') as f: return json.load(f)
+        except Exception: pass
     try:
         with open(os.path.join(OUT, p)) as f: return json.load(f)
     except Exception: return d
@@ -30,6 +35,10 @@ def jload(p, d):
 
 def jsave(p, o):
     fp = os.path.join(OUT, p); os.makedirs(os.path.dirname(fp) or '.', exist_ok=True)
+    if p.startswith('d/'):
+        with gzip.open(fp + '.gz', 'wt', encoding='utf-8', compresslevel=6) as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
+        if os.path.exists(fp): os.remove(fp)
+        return
     with open(fp, 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
 
 
@@ -70,6 +79,15 @@ def fetch_json(u):
     return []
 
 
+def wclose(px, d):
+    """權證當天的收盤價（有成交的才存；權證代號 6 碼、開頭 03～08、70～73）"""
+    return {r['stock_id']: r['close'] for r in px
+            if r.get('date') == d and len(r['stock_id']) == 6 and r['stock_id'][:2] in WPFX and r.get('close') and r.get('Trading_Volume')}
+
+
+WPFX = {'03', '04', '05', '06', '07', '08', '70', '71', '72', '73'}
+
+
 def roc(d):
     d = (d or '').strip()
     if re.fullmatch(r'\d{7}', d): return '%d-%s-%s' % (int(d[:3]) + 1911, d[3:5], d[5:])
@@ -80,7 +98,7 @@ def roc(d):
 def warrant_map(meta):
     """權證 → [標的代號, C/P, 行使比例, 履約價, 最後交易日]。來源：證交所、櫃買中心權證基本資料（每天更新一次，舊的保留）"""
     wm = jload('wmap.json', {})
-    if meta.get('wmd') == datetime.date.today().isoformat() and len(wm) > 5000: return wm
+    if meta.get('wmd') == datetime.date.today().isoformat() and meta.get('hmd') == meta['wmd'] and len(wm) > 5000: return wm
     if not meta.get('names') or time.time() - meta.get('nu', 0) > 7 * 86400:
         info = T.api({'dataset': 'TaiwanStockInfo'})
         meta['names'] = {r['stock_name']: r['stock_id'] for r in info if re.fullmatch(r'\d{4}', r.get('stock_id', ''))}; meta['nu'] = int(time.time())
@@ -101,12 +119,43 @@ def warrant_map(meta):
             except ValueError: ratio, k = 0, 0
             wm[code] = [tg, 'P' if '售' in (r.get('Type') or '') else 'C', ratio, k, roc(r.get('ExpiryDate'))]
     T.log('權證對照表', len(wm), '檔（新增', len(wm) - n0, '），找不到標的的名稱（多半是指數、ETF）', len(miss), sorted(miss.items(), key=lambda kv: -kv[1])[:8])
+    # 已經下市（到期）的權證：證交所、櫃買只列現在還在交易的，舊的用 FinMind 權證標的對照表（依上市日期查，一次一個月）補
+    # 這份資料沒有履約價，所以舊權證只能算金額、約當股數和實際損益，算不出價外程度和隱含波動率
+    today = datetime.date.today()
+    first = today - datetime.timedelta(days=int(BACK * 1.5) + 760)
+    hm = meta.setdefault('hm', [])                 # 已經查過的月份
+    mons = []; y, mth = first.year, first.month
+    while (y, mth) <= (today.year, today.month):
+        mons.append('%d-%02d' % (y, mth)); mth += 1
+        if mth > 12: y += 1; mth = 1
+    recent = set(mons[-2:]); add = 0; chk = [0, 0]
+    for mo in mons:
+        if mo in hm and mo not in recent: continue
+        if T.NREQ[0] >= T.REQ_BUDGET - 50: break
+        y_, m_ = map(int, mo.split('-')); end = (datetime.date(y_ + (m_ == 12), m_ % 12 + 1, 1) - datetime.timedelta(days=1)).isoformat()
+        try: rows = T.api({'dataset': 'TaiwanStockInfoWithWarrantSummary', 'start_date': mo + '-01', 'end_date': end})
+        except Exception as e: T.log('權證歷史對照表失敗', mo, str(e)[:60]); break
+        for r in rows:
+            code = r.get('stock_id'); tg = r.get('target_stock_id')
+            if not code or not tg: continue
+            cp = 'P' if '售' in (r.get('type') or '') else 'C'; ratio = r.get('exercise_ratio') or 0; ed = r.get('end_date') or ''
+            if code in wm:
+                chk[0] += 1; chk[1] += abs((wm[code][2] or 0) - ratio) < 1e-6 + 0.02 * ratio
+                continue
+            wm[code] = [tg, cp, ratio, (r.get('fulfillment_price') or None), ed]; add += 1
+        if mo not in hm: hm.append(mo)
+    if all(mo in hm for mo in mons): meta['hmd'] = today.isoformat()
+    T.log('權證歷史對照表：新增', add, '檔（已下市的舊權證），和交易所資料重疊', chk[0], '檔、行使比例一致', chk[1])
     if len(wm) > 5000: jsave('wmap.json', wm); meta['wmd'] = datetime.date.today().isoformat()
     return wm
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    # 舊的未壓縮日檔一次轉成壓縮檔
+    dd = os.path.join(OUT, 'd')
+    for fn in (os.listdir(dd) if os.path.isdir(dd) else []):
+        if fn.endswith('.json'): jsave('d/' + fn, jload('d/' + fn, {}))
     left = quota_left(); T.REQ_BUDGET = max(0, min(CAP, left - RESERVE))
     T.log('FinMind 這小時剩', left, '次，本輪用', T.REQ_BUDGET)
     if T.REQ_BUDGET < 150: open('wt_more', 'w').write('1'); return
@@ -125,10 +174,11 @@ def main():
     # 先把整段期間每天的收盤價補齊（一天一次查詢），算歷史波動率要用
     for d in days:
         fp = 'd/' + d + '.json'; day = jload(fp, {})
-        if day.get('v'): continue
+        if day.get('v') and 'wp' in day: continue
         try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
         except T.RateLimited as e: T.log('停止', e); break
         day['v'] = {r['stock_id']: [r['close'], round((r.get('Trading_Volume') or 0) / 1000), round((r.get('Trading_money') or 0) / 1e8, 3)] for r in px if r.get('date') == d and re.fullmatch(r'\d{4}', r['stock_id']) and r.get('close')}
+        day['wp'] = wclose(px, d)
         if day.get('mv') != 3: day.update({'mv': 3, 'w': {}, 'done': []})
         jsave(fp, day)
     stop = False; got = 0
@@ -141,6 +191,7 @@ def main():
             try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
             except T.RateLimited as e: T.log('停止', e); break
             day['v'] = {r['stock_id']: [r['close'], round((r.get('Trading_Volume') or 0) / 1000), round((r.get('Trading_money') or 0) / 1e8, 3)] for r in px if r.get('date') == d and re.fullmatch(r'\d{4}', r['stock_id']) and r.get('close')}
+            day['wp'] = wclose(px, d)
             jsave(fp, day)
         m = WM; done = set(day['done'])
         newest = di < 3

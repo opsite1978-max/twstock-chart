@@ -25,7 +25,7 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           MAX_MIN: '100'
           RESERVE: '700'
-          CAP: '4500'
+          CAP: '5200'
         run: python3 scripts/warrant_data.py wt-out
       - name: 推到 wt-data 分支
         if: always()
