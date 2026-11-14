@@ -141,6 +141,14 @@ header .sp{flex:1}
 .wchart text{font:10.5px var(--mono);fill:var(--muted)}
 .wleg{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;color:var(--muted);margin:2px 0 6px}
 .wleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+#wSel{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 2px}
+#wSel .chip[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.wplan{font-size:13px;line-height:1.65;margin:8px 0;border-left:3px solid var(--accent,#f08c00)}
+.wplan small{color:var(--muted);font-size:11.5px;line-height:1.5;display:inline-block;margin-top:2px}
+.wdayc{font-size:13px;line-height:1.6;padding:8px 12px}
+.wday{cursor:pointer}
+small.o,span.o:not(.pill){color:#d9822b}
+.kv b+small{margin-top:1px}
 .pill{display:inline-block;font:600 11px/1.5 var(--sans);padding:0 6px;border-radius:9px;margin:1px 3px 1px 0;white-space:nowrap;border:1px solid var(--line2);color:var(--fg)}
 .pill.r{background:#d8322c;color:#fff;border-color:#d8322c}.pill.o{background:#d9822b;color:#fff;border-color:#d9822b}.pill.p{background:#7a4fd0;color:#fff;border-color:#7a4fd0}.pill.g{background:#7b8494;color:#fff;border-color:#7b8494}.pill.b{background:#2f6fd6;color:#fff;border-color:#2f6fd6}
 .secth{margin:16px 0 6px;font-size:15px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -440,7 +448,8 @@ let WT = null, WTP = null;
 const wtGet = path => getJ(path, WBASE);
 const fmtM = (v, sg = true) => { if (v == null || !isFinite(v)) return '—'; const a = Math.abs(v); const s = a >= 1e8 ? num(v / 1e8, 2) + ' 億' : num(v / 1e4, 0) + ' 萬'; return sg && v > 0 ? '+' + s : s; };
 const wName = b => (WT && WT.n[b]) || b;
-const WTAG = { '大額':'r', '約當佔量高':'r', '新進場':'p', '集中押注':'b', '連續買':'r', '連續賣':'g', '隔日沖型':'o' };
+const WTAG = { '大額':'r', '約當佔量高':'r', '新進場':'p', '集中押注':'b', '連續買':'r', '連續賣':'g', '隔日沖型':'o', '短天期':'o', '深價外':'p' };
+const wBeCell = (be, c, dir) => { if (!be) return '<td>—</td>'; const n = c ? (dir > 0 ? (be / c - 1) * 100 : (1 - be / c) * 100) : null; return '<td>' + fmtP(be) + (n != null ? '<small>' + (dir > 0 ? '漲' : '跌') + ' ' + num(Math.max(0, n), 1) + '%</small>' : '') + '</td>'; };
 function wkOf(tg){ const u = WT.u[tg]; return u && u.k[String(ST.per)] || null; }
 async function renderWt(){
   const v = $('viewWt');
@@ -456,23 +465,23 @@ async function renderWt(){
   const lim = ST.wmore ? 300 : 40;
   let h = '<div class="bar" style="margin-top:0"><label>方向 <span class="seg" id="wdSeg"><button data-v="1" aria-pressed="' + (dir === 1) + '">看多（認購淨買）</button><button data-v="-1" aria-pressed="' + (dir === -1) + '">看空（認售淨買）</button></span></label><span class="note">資料 ' + mmdd(FD[0]) + '～' + mmdd(FD[nd - 1]) + '，共 ' + nd + ' 個交易日' + (K > nd ? '（' + K + ' 日不足，用全部 ' + nd + ' 天）' : '') + '</span></div>';
   h += '<h3 class="secth">近 ' + K + ' 日被佈局最多的股票<small>只算一般分點；看多＝認購淨買 − 認售淨買</small></h3>';
-  h += '<div class="tblwrap"><table class="tbl" id="wtTbl"><thead><tr><th>股票</th><th>' + (dir > 0 ? '看多' : '看空') + '淨額</th><th class="hide-m">認購淨買</th><th class="hide-m">認售淨買</th><th>約當張數</th><th>佔成交量</th><th class="hide-m">買／賣分點</th><th style="text-align:left">主要佈局分點</th><th class="hide-m">外資＋總公司</th></tr></thead><tbody>';
+  h += '<div class="tblwrap"><table class="tbl" id="wtTbl"><thead><tr><th>股票</th><th>' + (dir > 0 ? '看多' : '看空') + '淨額</th><th class="hide-m">認購淨買</th><th class="hide-m">認售淨買</th><th>約當張數</th><th>佔成交量</th><th title="買進權證到期時的損益兩平股價（金額加權平均）">回本股價</th><th title="買進的權證平均還剩幾個交易日到期">平均剩</th><th class="hide-m">買／賣分點</th><th style="text-align:left">主要佈局分點</th><th class="hide-m">外資＋總公司</th></tr></thead><tbody>';
   for (const r of rows.slice(0, lim)){
     const k = r.k, top = dir > 0 ? k[7] : k[8];
     h += '<tr data-w="' + r.tg + '"><td>' + esc(nameOf(r.tg)) + '<small>' + r.tg + '</small><span class="sm ' + cls(r.u.r5) + '" style="font-family:var(--mono)">5 日 ' + sgn(r.u.r5, 1) + '%</span></td>' +
       '<td class="' + cls(k[0]) + '">' + fmtM(k[0]) + '</td><td class="hide-m ' + cls(k[1]) + '">' + fmtM(k[1]) + '</td><td class="hide-m ' + cls(-k[2]) + '">' + fmtM(k[2]) + '</td>' +
-      '<td class="' + cls(k[3]) + '">' + sgn(k[3] / 1000, 0) + '</td><td class="' + cls(k[4]) + '">' + (k[4] != null ? sgn(k[4], 2) + '%' : '—') + '</td>' +
+      '<td class="' + cls(k[3]) + '">' + sgn(k[3] / 1000, 0) + '</td><td class="' + cls(k[4]) + '">' + (k[4] != null ? sgn(k[4], 2) + '%' : '—') + '</td>' + wBeCell(k[dir > 0 ? 10 : 14], r.u.c, dir) + '<td>' + (k[dir > 0 ? 11 : 15] != null ? k[dir > 0 ? 11 : 15] + '<small>天</small>' + (k[dir > 0 ? 13 : 17] >= 30 ? '<small class="o">短 ' + k[dir > 0 ? 13 : 17] + '%</small>' : '') : '—') + '</td>' +
       '<td class="hide-m">' + k[5] + '／' + k[6] + '</td><td class="wrap">' + top.map(x => '<span class="lk" data-wb="' + esc(x[0]) + '">' + esc(wName(x[0])) + '</span> <span style="font:11px var(--mono);color:var(--dim)">' + fmtM(x[1]) + '</span>').join('<br>') + '</td>' +
       '<td class="hide-m ' + cls(k[9]) + '">' + fmtM(k[9]) + '</td></tr>';
   }
-  if (!rows.length) h += '<tr><td colspan="9" style="text-align:center;color:var(--dim)">沒有資料</td></tr>';
+  if (!rows.length) h += '<tr><td colspan="11" style="text-align:center;color:var(--dim)">沒有資料</td></tr>';
   h += '</tbody></table></div>';
   if (rows.length > lim) h += '<p style="text-align:center"><button class="btn" id="wMore">顯示其他 ' + (rows.length - lim) + ' 檔</button></p>';
   // 疑似知情佈局
   const AL = WT.al.filter(r => dir * r[2] > 0);
   h += '<h3 class="secth">疑似知情佈局（最近 5 天）<small>單一分點在一檔股票的權證' + (dir > 0 ? '看多' : '看空') + '金額很大，或換算成股票佔成交量很高，再加上新進場、集中押注、連續買其中一項</small></h3>';
-  h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>股票</th><th>5 日淨額</th><th>約當張數</th><th>佔成交量</th><th style="text-align:left">標籤</th><th class="hide-m">開始</th><th>過去勝率</th></tr></thead><tbody>' +
-    (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="8" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
+  h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>股票</th><th>5 日淨額</th><th>約當張數</th><th>佔成交量</th><th>回本股價</th><th>剩餘</th><th style="text-align:left">標籤</th><th class="hide-m">開始</th><th>過去勝率</th></tr></thead><tbody>' +
+    (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td>' + wBeCell(r[9], WT.u[r[1]] && WT.u[r[1]].c, dir) + '<td>' + (r[10] != null ? r[10] + '<small>天</small>' : '—') + '</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="10" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
   if (AL.length > 30 && !ST.amore) h += '<p style="text-align:center"><button class="btn" id="aMore">顯示其他 ' + (AL.length - 30) + ' 筆</button></p>';
   // 高勝率
   const P = WT.persist;
@@ -483,6 +492,7 @@ async function renderWt(){
     (WT.good.length ? WT.good.map(g => '<tr><td class="wrap"><span class="lk" data-wb="' + esc(g[0]) + '">' + esc(wName(g[0])) + '</span></td><td>' + g[1] + '</td><td class="' + (g[3] >= 60 ? 'u' : '') + '">' + g[3] + '%<small>' + g[2] + ' 勝</small></td><td class="' + cls(g[4]) + '">' + sgn(g[4], 2) + '%</td><td class="wrap">' + (g[7].length ? g[7].map(x => '<span class="lk" data-w="' + x[0] + '">' + esc(nameOf(x[0])) + '</span> <span class="' + cls(x[1]) + '" style="font:11px var(--mono)">' + fmtM(x[1]) + '</span>').join('、') : '<span style="color:var(--dim)">—</span>') + '</td></tr>').join('') : '<tr><td colspan="5" style="text-align:center;color:var(--dim)">還要再累積幾天資料（每次佈局要等 ' + WT.th.hor + ' 個交易日才知道結果）</td></tr>') + '</tbody></table></div>';
   h += '<div class="card" style="margin-top:12px"><div class="note"><b>怎麼看</b>：權證槓桿高、時間價值會一直流失，敢在權證上大量押注的人通常對短期走勢很有把握，所以「單一分點突然大買某檔的權證」值得注意，但也可能只是大戶短線投機、或發行商、避險的進出。<br>' +
     '<b>約當張數</b>＝買進的權證單位 × 行使比例，換算成相當於多少張標的股票；<b>佔成交量</b>＝約當股數 ÷ 同期間標的成交量。<br>' +
+    '<b>回本股價</b>＝買進權證到期時的損益兩平股價（認購：履約價＋權證買價÷行使比例），旁邊是股價還要漲（跌）多少；<b>平均剩</b>＝買進的權證平均還有幾個交易日到期，「短」是剩 30 天內的權證佔買進金額的比例。<span class="pill o">短天期</span>買的權證平均剩不到 30 個交易日，<span class="pill p">深價外</span>履約價離股價 15% 以上——這兩種最怕時間價值流失，敢大買通常代表很確定近期會動。<br>' +
     '<span class="pill r">大額</span>5 日淨額 ≥ ' + fmtM(WT.th.big, false) + '　<span class="pill r">約當佔量高</span>≥ 成交量 ' + WT.th.eqp + '%　<span class="pill p">新進場</span>前 ' + WT.th.new_look + ' 天沒碰過這檔的權證　<span class="pill b">集中押注</span>這檔佔它 5 日權證進出 ' + WT.th.focus + '% 以上　<span class="pill o">隔日沖型</span>這個分點大買權證後隔天常賣掉 6 成以上（排序往後）。<br>' +
     '外資券商與券商總公司（多半是自營、造市、避險）不列入，只在「外資＋總公司」欄顯示合計；平均每天進出 ' + (WT.th.pro || 60) + ' 檔以上標的的「權證專業戶」也不列入疑似知情和高勝率名單。資料：FinMind 權證分點、權證對照表，每天晚上 10 點左右更新。僅供研究參考。</div></div>';
   v.innerHTML = h;
@@ -496,37 +506,74 @@ function bindW(root, from){
   for (const el of root.querySelectorAll('[data-w]')) el.onclick = e => { e.stopPropagation(); openWStock(el.dataset.w); };
 }
 const WCOL = ['#e5322d', '#f08c00', '#7a4fd0', '#2f6fd6', '#c2185b', '#0aa1a8'];
-function wChart(j, focus, W){
+const fmtP = v => v == null || !isFinite(v) ? '—' : num(v, v >= 1000 ? 0 : v >= 100 ? 1 : 2);
+// 每天的欄位（T 的排法；分點的 r 列多一個開頭的 t）：
+// 0 看多 1 認購淨 2 認售淨 3 約當淨 4 認購買 5 認購賣 6 認售買 7 認售賣 8 認購買約當 9 認購回本價 10 認購剩餘天 11 認購價外% 12 認售買約當 13 認售回本價 14 認售剩餘天 15 認售價外%
+const wIx = dir => dir > 0 ? { b:4, s:5, e:8, be:9, d:10, o:11 } : { b:6, s:7, e:12, be:13, d:14, o:15 };
+function wDays(j, sel){
+  const nd = j.d.length, out = Array(nd).fill(null);
+  if (!sel){ for (const [t, a] of Object.entries(j.T || {})) out[+t] = a; }
+  else for (const e of (j.r[sel] || [])) out[e[0]] = e.slice(1);
+  return out;
+}
+const wNeed = (be, c, dir) => be && c ? (dir > 0 ? (be / c - 1) * 100 : (1 - be / c) * 100) : null;
+function wChart(j, dd, dir, hb, W){
   W = W || 720;
-  const nd = j.d.length, H = W < 500 ? 250 : 300, L = W < 500 ? 44 : 54, R = W < 500 ? 40 : 50, T = 14, B = 26, pw = W - L - R, ph = H - T - B;
-  // 依整段期間看多金額（絕對值）挑前 6 個分點上色
-  const tot = Object.entries(j.r).map(([b, l]) => [b, l.reduce((s, e) => s + Math.abs(e[1]), 0)]).sort((a, b) => b[1] - a[1]);
-  const tops = tot.slice(0, 6).map(x => x[0]);
-  if (focus && !tops.includes(focus) && j.r[focus]) tops[5] = focus;
-  const pos = Array.from({ length:nd }, () => []), neg = Array.from({ length:nd }, () => []), oth = Array.from({ length:nd }, () => [0, 0]);
-  for (const [b, l] of Object.entries(j.r)) for (const e of l){ const k = tops.indexOf(b); if (k >= 0) (e[1] >= 0 ? pos : neg)[e[0]].push([k, e[1]]); else oth[e[0]][e[1] >= 0 ? 0 : 1] += e[1]; }
-  let mx = 1, mn = -1;
-  for (let t = 0; t < nd; t++){ const p = pos[t].reduce((s, x) => s + x[1], 0) + oth[t][0], n = neg[t].reduce((s, x) => s + x[1], 0) + oth[t][1]; mx = Math.max(mx, p); mn = Math.min(mn, n); }
-  const y = v => T + (mx - v) / (mx - mn) * ph, bw = Math.max(2, pw / nd * 0.7), x = t => L + (t + 0.5) * pw / nd;
-  const cs = j.c.filter(v => v), cmax = Math.max(...cs), cmin = Math.min(...cs), yc = v => T + (cmax - v) / ((cmax - cmin) || 1) * ph;
-  let s = '<svg class="wchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="權證佈局時間與買賣金額">';
-  for (const f of [0, 0.25, 0.5, 0.75, 1]){ const v = mx - (mx - mn) * f, yy = T + ph * f; s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 4) + '" y="' + (yy + 3.5) + '" text-anchor="end">' + (Math.abs(v) >= 1e8 ? num(v / 1e8, 1) + '億' : num(v / 1e4, 0)) + '</text>'; const cv = cmax - (cmax - cmin) * f; s += '<text x="' + (L + pw + 4) + '" y="' + (yy + 3.5) + '">' + num(cv, cv >= 100 ? 0 : 1) + '</text>'; }
-  s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line2)" stroke-width="1.2"/>';
-  for (let t = 0; t < nd; t++){
-    let up = 0, dn = 0;
-    const seg = (v, col) => { if (!v) return; let y0, y1; if (v > 0){ y0 = y(up + v); y1 = y(up); up += v; } else { y0 = y(dn); y1 = y(dn + v); dn += v; } s += '<rect x="' + (x(t) - bw / 2) + '" y="' + y0 + '" width="' + bw + '" height="' + Math.max(0.5, y1 - y0) + '" fill="' + col + '"><title>' + j.d[t] + '</title></rect>'; };
-    for (const [k, v] of pos[t].sort((a, b) => a[0] - b[0])) seg(v, WCOL[k]);
-    seg(oth[t][0], 'var(--dim)');
-    for (const [k, v] of neg[t].sort((a, b) => a[0] - b[0])) seg(v, WCOL[k]);
-    seg(oth[t][1], 'var(--dim)');
-  }
-  let path = ''; j.c.forEach((v, t) => { if (v) path += (path ? 'L' : 'M') + x(t).toFixed(1) + ' ' + yc(v).toFixed(1); });
+  const nd = j.d.length, ix = wIx(dir), L = W < 500 ? 44 : 54, R = W < 500 ? 12 : 16, pw = W - L - R;
+  const T = 14, PH = W < 500 ? 170 : 200, G = 22, VH = W < 500 ? 96 : 110, B = 22, H = T + PH + G + VH + B;
+  const x = t => L + (t + 0.5) * pw / nd, bw = Math.max(3, pw / nd * 0.62);
+  // 上：股價和回本股價
+  const pv = j.c.filter(v => v);
+  for (const a of dd) if (a && a[ix.be]) pv.push(a[ix.be]);
+  if (hb) pv.push(hb);
+  let pmax = Math.max(...pv), pmin = Math.min(...pv); const pad = (pmax - pmin) * 0.08 || pmax * 0.02; pmax += pad; pmin -= pad;
+  const yp = v => T + (pmax - v) / (pmax - pmin) * PH;
+  // 下：買進／賣出金額
+  let vmax = 1; for (const a of dd) if (a) vmax = Math.max(vmax, a[ix.b], a[ix.s]);
+  const v0 = T + PH + G + VH * 0.62, yb = v => v0 - v / vmax * VH * 0.62, ys = v => v0 + v / vmax * VH * 0.38;
+  const bc = dir > 0 ? 'var(--up)' : 'var(--down)';
+  let s = '<svg class="wchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="每天權證買進金額與回本股價">';
+  for (const f of [0, 0.5, 1]){ const v = pmax - (pmax - pmin) * f, yy = T + PH * f; s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (yy + (f === 1 ? -2 : f === 0 ? 8 : 3.5)) + '" text-anchor="end">' + fmtP(v) + '</text>'; }
+  if (hb){ const yy = yp(hb); s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + bc + '" stroke-dasharray="5 4" stroke-width="1.3"/><text x="' + (L + pw - 2) + '" y="' + (yy - 4) + '" text-anchor="end" style="fill:' + bc + '">還抱著的平均回本價 ' + fmtP(hb) + '</text>'; }
+  let path = ''; j.c.forEach((v, t) => { if (v) path += (path ? 'L' : 'M') + x(t).toFixed(1) + ' ' + yp(v).toFixed(1); });
   s += '<path d="' + path + '" fill="none" stroke="var(--fg)" stroke-width="1.6"/>';
+  const rmax = Math.max(1, ...dd.map(a => a ? a[ix.b] : 0));
+  dd.forEach((a, t) => { if (a && a[ix.be] && a[ix.b] > 0){ const r = 2.5 + 6.5 * Math.sqrt(a[ix.b] / rmax); s += '<circle cx="' + x(t) + '" cy="' + yp(a[ix.be]) + '" r="' + r.toFixed(1) + '" fill="' + bc + '" fill-opacity=".55" stroke="' + bc + '"/>'; } });
+  s += '<text x="' + (L - 4) + '" y="10" text-anchor="end">股價</text>';
+  // 量
+  s += '<line x1="' + L + '" x2="' + (L + pw) + '" y1="' + v0 + '" y2="' + v0 + '" stroke="var(--line2)"/>';
+  s += '<text x="' + (L - 4) + '" y="' + (yb(vmax) + 3.5) + '" text-anchor="end">' + fmtM(vmax, false).replace(' ', '') + '</text>';
+  dd.forEach((a, t) => {
+    if (!a) return;
+    if (a[ix.b] > 0) s += '<rect x="' + (x(t) - bw / 2) + '" y="' + yb(a[ix.b]) + '" width="' + bw + '" height="' + Math.max(0.5, v0 - yb(a[ix.b])) + '" fill="' + bc + '" rx="1"/>';
+    if (a[ix.s] > 0) s += '<rect x="' + (x(t) - bw / 2) + '" y="' + v0 + '" width="' + bw + '" height="' + Math.max(0.5, ys(a[ix.s]) - v0) + '" fill="var(--dim)" rx="1"/>';
+  });
   const step = Math.ceil(nd / (W < 500 ? 4 : 7));
-  for (let t = 0; t < nd; t += step) s += '<text x="' + x(t) + '" y="' + (H - 8) + '" text-anchor="middle">' + mmdd(j.d[t]) + '</text>';
-  s += '<text x="' + (L - 4) + '" y="10" text-anchor="end">萬元</text><text x="' + (L + pw + 4) + '" y="10">股價</text></svg>';
-  s += '<div class="wleg">' + tops.map((b, k) => '<span class="lk" data-wb="' + esc(b) + '"><i style="background:' + WCOL[k] + '"></i>' + esc(j.n[b] || b) + '</span>').join('') + '<span><i style="background:var(--dim)"></i>其他分點</span><span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>收盤價</span></div>';
+  for (let t = 0; t < nd; t += step) s += '<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle">' + mmdd(j.d[t]) + '</text>';
+  for (let t = 0; t < nd; t++) s += '<rect class="wday" data-t="' + t + '" x="' + (L + t * pw / nd) + '" y="' + T + '" width="' + (pw / nd) + '" height="' + (H - T - B) + '" fill="transparent"/>';
+  s += '<line id="wCur" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--muted)" stroke-dasharray="2 3" style="display:none"/></svg>';
+  s += '<div class="wleg"><span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>收盤價</span><span><i style="background:' + bc + ';border-radius:50%;opacity:.6"></i>當天買進的' + (dir > 0 ? '認購' : '認售') + '平均回本股價（圈越大買越多）</span><span><i style="background:' + bc + '"></i>買進金額</span><span><i style="background:var(--dim)"></i>賣出金額</span></div>';
   return s;
+}
+function wDayHtml(j, dd, t, dir){
+  const a = dd[t], ix = wIx(dir), c = j.c[t];
+  if (!a || !(a[ix.b] || a[ix.s])) return '<b>' + mmdd(j.d[t]) + '</b>　收盤 ' + fmtP(c) + '　這天沒有' + (dir > 0 ? '認購' : '認售') + '權證進出';
+  const nd = wNeed(a[ix.be], c, dir);
+  return '<b>' + mmdd(j.d[t]) + '</b>　收盤 ' + fmtP(c) + '<br>' + (dir > 0 ? '認購' : '認售') + '買進 <b class="' + (dir > 0 ? 'u' : 'd') + '">' + fmtM(a[ix.b], false) + '</b>（約當 ' + num(a[ix.e] / 1000, 0) + ' 張）、賣出 ' + fmtM(a[ix.s], false) +
+    (a[ix.be] ? '<br>買進的平均回本股價 <b>' + fmtP(a[ix.be]) + '</b>（股價要' + (dir > 0 ? '漲' : '跌') + ' ' + num(Math.max(0, nd), 1) + '%）' : '') +
+    (a[ix.d] != null ? '　平均還剩 <b>' + a[ix.d] + '</b> 個交易日到期' : '') + (a[ix.o] != null ? '　' + (a[ix.o] >= 0 ? '價外 ' + num(a[ix.o], 1) + '%' : '價內 ' + num(-a[ix.o], 1) + '%') : '');
+}
+function wPlan(h, c, dir, who){
+  if (!h) return '';
+  const o = dir > 0 ? 0 : 4, eq = h[o], be = h[o + 1], dl = h[o + 2], ex = h[o + 3];
+  if (!eq || eq < 1000) return '<p class="note">' + who + '目前沒有還抱著的' + (dir > 0 ? '認購' : '認售') + '權證（這段期間買的都賣掉了）。</p>';
+  const nd = wNeed(be, c, dir), keep = dl != null ? dl - 20 : null;
+  let s = '<div class="card wplan"><b>推演：' + who + '還抱著的' + (dir > 0 ? '認購' : '認售') + '權證能放多久</b><br>' +
+    '約當 <b>' + num(eq / 1000, 0) + ' 張</b>股票，平均回本股價 <b>' + fmtP(be) + '</b>（現在 ' + fmtP(c) + '，要' + (dir > 0 ? '漲' : '跌') + ' <b>' + num(Math.max(0, nd), 1) + '%</b>）' +
+    (dl != null ? '，平均還有 <b>' + dl + '</b> 個交易日到期' + (ex ? '，最快一批 ' + mmdd(ex) + ' 到期' : '') : '') + '。<br>';
+  if (keep != null) s += keep > 0 ? '權證最後一個月（約 20 個交易日）時間價值掉最快，主力通常會在那之前出場，所以這批大約還能放 <b>' + keep + ' 個交易日</b>；換句話說，他們押的是「<b>' + keep + ' 個交易日內</b>股價' + (dir > 0 ? '漲到' : '跌到') + ' ' + fmtP(be) + (dir > 0 ? ' 以上' : ' 以下') + '」。' :
+    '平均已經進入最後一個月，押的是很短期（常是消息面）的行情：不快點' + (dir > 0 ? '漲' : '跌') + '，就會被時間價值吃光（龜苓膏）。';
+  return s + '<br><small>只算這段資料期間買進、還沒賣掉的部分；更早就抱著的看不到。回本股價＝履約價 ' + (dir > 0 ? '＋' : '−') + ' 權證買價 ÷ 行使比例（到期時的損益兩平）。</small></div>';
 }
 async function openWStock(c, focus){
   const sh = $('sheet'); sh.classList.add('wide', 'on'); sh.scrollTop = 0;
@@ -534,20 +581,49 @@ async function openWStock(c, focus){
   if (!WT){ if (!WTP) WTP = wtGet('wt.json').then(x => { WT = x; return x; }); await WTP; }
   const j = await wtGet('wu/' + c + '.json');
   if (!j){ sh.querySelector('.note').textContent = '最近沒有一般分點在這檔的權證有明顯進出。'; return; }
-  const nd = j.d.length, FL = j.full || [...j.d.keys()], K = Math.min(ST.per, FL.length), t0 = FL[FL.length - K];
-  const agg = Object.entries(j.r).map(([b, l]) => { let v = 0, eq = 0, cn = 0, pn = 0, n = 0, all = 0; for (const e of l){ all += e[1]; if (e[0] >= t0){ v += e[1]; cn += e[2]; pn += e[3]; eq += e[4]; n++; } } return { b, v, eq, cn, pn, n, all }; }).filter(x => x.n);
+  if (!j.T){ sh.querySelector('.note').textContent = '這檔的資料還是舊格式，等下一次更新（約一小時）就會有回本股價和到期天數。'; return; }
+  const dir = ST.wdir || 1, ix = wIx(dir), nd = j.d.length, FL = j.full || [...j.d.keys()], K = Math.min(ST.per, FL.length), t0 = FL[FL.length - K];
+  const cNow = j.c[nd - 1] || j.c.filter(v => v).pop();
+  const agg = Object.entries(j.r).map(([b, l]) => {
+    const o = { b, v:0, eq:0, buy:0, sell:0, be:0, bw:0, dd:0, dw:0, n:0, all:0 };
+    for (const e of l){ o.all += e[1]; if (e[0] < t0) continue; o.v += e[1]; o.eq += e[4]; o.buy += e[1 + ix.b]; o.sell += e[1 + ix.s]; o.n++;
+      if (e[1 + ix.be]){ o.be += e[1 + ix.be] * e[1 + ix.e]; o.bw += e[1 + ix.e]; } if (e[1 + ix.d] != null){ o.dd += e[1 + ix.d] * e[1 + ix.b]; o.dw += e[1 + ix.b]; } }
+    o.be = o.bw ? o.be / o.bw : null; o.dd = o.dw ? o.dd / o.dw : null; return o; }).filter(x => x.n);
   const vol = j.v.slice(t0).reduce((s, x) => s + x, 0) * 1000;
-  const buy = agg.filter(x => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 8), sell = agg.filter(x => x.v < 0).sort((a, b) => a.v - b.v).slice(0, 5);
-  const sum = agg.reduce((s, x) => s + x.v, 0), seq = agg.reduce((s, x) => s + x.eq, 0), fsum = j.f.slice(t0).reduce((s, x) => s + x, 0);
-  const tr = x => { const st = j.st[x.b]; return '<tr data-wb="' + esc(x.b) + '"><td>' + esc(j.n[x.b] || x.b) + (j.flip.includes(x.b) ? ' <span class="pill o">隔日沖型</span>' : '') + ((j.pro || []).includes(x.b) ? ' <span class="pill" title="平均每天進出幾十檔以上的權證，多半是做價差或避險，不是押單一檔">權證專業戶</span>' : '') + '</td><td class="' + cls(x.v) + '">' + fmtM(x.v) + '</td><td class="hide-m ' + cls(x.cn) + '">' + fmtM(x.cn) + '</td><td class="hide-m ' + cls(-x.pn) + '">' + fmtM(x.pn) + '</td><td class="' + cls(x.eq) + '">' + sgn(x.eq / 1000, 0) + '</td><td>' + (vol ? num(Math.abs(x.eq) / vol * 100, 2) + '%' : '—') + '</td><td>' + (st && st[0] >= 3 ? st[2] + '%<small>' + st[0] + ' 次</small>' : '<small>—</small>') + '</td></tr>'; };
-  const head = '<tr><th>分點</th><th>看多淨額</th><th class="hide-m">認購淨</th><th class="hide-m">認售淨</th><th>約當張</th><th>佔量</th><th>過去勝率</th></tr>';
+  const buy = agg.filter(x => dir * x.v > 0).sort((a, b) => dir * (b.v - a.v)).slice(0, 8), sell = agg.filter(x => dir * x.v < 0).sort((a, b) => dir * (a.v - b.v)).slice(0, 5);
+  let tb = 0, tbe = 0, tbw = 0, tsl = 0;
+  for (let t = t0; t < nd; t++){ const a = j.T[t]; if (!a) continue; tb += a[ix.b]; tsl += a[ix.s]; if (a[ix.be]){ tbe += a[ix.be] * a[ix.e]; tbw += a[ix.e]; } }
+  const sel = ST.wsel && j.r[ST.wsel] ? ST.wsel : (focus && j.r[focus] ? focus : '');
+  const dd = wDays(j, sel), hsel = sel ? (j.h || {})[sel] : j.H;
+  const hb = hsel ? hsel[dir > 0 ? 1 : 5] : null;
+  const pro = j.pro || [];
+  const tag = b => (j.flip.includes(b) ? ' <span class="pill o">隔日沖型</span>' : '') + (pro.includes(b) ? ' <span class="pill" title="平均每天進出幾十檔以上的權證，多半是做價差或避險，不是押單一檔">權證專業戶</span>' : '');
+  const tr = x => { const st = j.st[x.b], hh = (j.h || {})[x.b], he = hh ? hh[dir > 0 ? 0 : 4] : 0, nd2 = wNeed(x.be, cNow, dir);
+    return '<tr data-wb="' + esc(x.b) + '"><td>' + esc(j.n[x.b] || x.b) + tag(x.b) + '</td><td class="' + cls(x.v) + '">' + fmtM(x.v) + '</td><td>' + fmtM(x.buy, false) + '</td>' +
+      '<td>' + (x.be ? fmtP(x.be) + '<small>' + (dir > 0 ? '漲' : '跌') + num(Math.max(0, nd2), 1) + '%</small>' : '—') + '</td><td>' + (x.dd != null ? Math.round(x.dd) + '<small>天</small>' : '—') + '</td>' +
+      '<td class="hide-m">' + (he >= 1000 ? num(he / 1000, 0) + '<small>張</small>' : '—') + '</td><td class="hide-m">' + (st && st[0] >= 3 ? st[2] + '%<small>' + st[0] + ' 次</small>' : '<small>—</small>') + '</td></tr>'; };
+  const head = '<tr><th>分點</th><th>' + (dir > 0 ? '看多' : '看空') + '淨額</th><th>買進' + (dir > 0 ? '認購' : '認售') + '</th><th>回本股價</th><th>剩餘</th><th class="hide-m">還抱著（約當）</th><th class="hide-m">過去勝率</th></tr>';
+  const chips = [['', '全部一般分點']].concat(agg.slice().sort((a, b) => Math.abs(b.all) - Math.abs(a.all)).slice(0, 6).map(x => [x.b, j.n[x.b] || x.b]));
+  if (sel && !chips.some(x => x[0] === sel)) chips.push([sel, j.n[sel] || sel]);
   let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button><h3>' + esc(nameOf(c)) + ' <span style="font:13px var(--mono);color:var(--dim)">' + c + '</span> 的權證佈局</h3>';
-  h += '<div class="kv"><div><small>一般分點看多淨額（' + K + ' 日）</small><b class="' + cls(sum) + '">' + fmtM(sum) + '</b></div><div><small>約當張數／佔成交量</small><b class="' + cls(seq) + '">' + sgn(seq / 1000, 0) + ' 張' + (vol ? '／' + num(Math.abs(seq) / vol * 100, 2) + '%' : '') + '</b></div><div><small>外資＋總公司</small><b class="' + cls(fsum) + '">' + fmtM(fsum) + '</b></div></div>';
-  h += '<h4>每天權證看多（正）／看空（負）淨額，依分點分色 ' + perSegHtml('wPer') + '</h4>' + wChart(j, focus, Math.round(Math.min(720, Math.max(330, sh.clientWidth - 34))));
-  h += '<table class="mini">' + head + '<tr><td colspan="7" style="color:var(--up);font-weight:700">看多佈局（' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nd - 1]) + '）</td></tr>' + buy.map(tr).join('') + (sell.length ? '<tr><td colspan="7" style="color:var(--down);font-weight:700">看空／賣出</td></tr>' + sell.map(tr).join('') : '') + '</table>';
-  h += '<p class="note" style="margin:0">圖上每根柱子是一天，往上是買認購（或賣認售），往下是買認售（或賣認購）；黑線是股價。看柱子集中出現在股價起漲前幾天，就是「有人提前佈局」的樣子。</p>';
+  h += '<div class="bar" style="margin:4px 0"><span class="seg" id="wsDir"><button data-v="1" aria-pressed="' + (dir === 1) + '">看多（認購）</button><button data-v="-1" aria-pressed="' + (dir === -1) + '">看空（認售）</button></span>' + perSegHtml('wPer') + '</div>';
+  const tnd = wNeed(tbw ? tbe / tbw : null, cNow, dir);
+  h += '<div class="kv"><div><small>一般分點買進' + (dir > 0 ? '認購' : '認售') + '（' + K + ' 日）</small><b class="' + (dir > 0 ? 'u' : 'd') + '">' + fmtM(tb, false) + '</b><small>賣出 ' + fmtM(tsl, false) + '</small></div><div><small>買進的平均回本股價</small><b>' + fmtP(tbw ? tbe / tbw : null) + '</b><small>現在 ' + fmtP(cNow) + (tnd != null ? '，要' + (dir > 0 ? '漲' : '跌') + ' ' + num(Math.max(0, tnd), 1) + '%' : '') + '</small></div><div><small>' + (dir > 0 ? '看多' : '看空') + '淨額／佔成交量</small><b class="' + cls(dir * agg.reduce((s, x) => s + x.v, 0)) + '">' + fmtM(agg.reduce((s, x) => s + x.v, 0)) + '</b><small>' + (vol ? '約當 ' + num(Math.abs(agg.reduce((s, x) => s + x.eq, 0)) / vol * 100, 2) + '%' : '') + '</small></div></div>';
+  h += wPlan(hsel, cNow, dir, sel ? (j.n[sel] || sel) : '一般分點合計');
+  h += '<h4>每天買進多少、在什麼股價回本</h4><div class="chips" id="wSel">' + chips.map(([b, n]) => '<button class="chip" data-v="' + esc(b) + '" aria-pressed="' + (b === sel) + '">' + esc(n) + '</button>').join('') + '</div>';
+  h += wChart(j, dd, dir, hb, Math.round(Math.min(720, Math.max(330, sh.clientWidth - 34))));
+  let lt = nd - 1; while (lt > 0 && !(dd[lt] && (dd[lt][ix.b] || dd[lt][ix.s]))) lt--;
+  h += '<div class="card wdayc" id="wDay">' + wDayHtml(j, dd, lt, dir) + '</div><p class="note" style="margin:2px 0 8px">點圖上任何一天看當天明細。</p>';
+  h += '<table class="mini">' + head + '<tr><td colspan="7" style="color:' + (dir > 0 ? 'var(--up)' : 'var(--down)') + ';font-weight:700">' + (dir > 0 ? '看多' : '看空') + '佈局（' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nd - 1]) + '）</td></tr>' + buy.map(tr).join('') +
+    (sell.length ? '<tr><td colspan="7" style="color:var(--muted);font-weight:700">反向（' + (dir > 0 ? '看空／賣出' : '看多／回補') + '）</td></tr>' + sell.map(tr).join('') : '') + '</table>';
+  h += '<p class="note" style="margin:0">回本股價是到期時的損益兩平；剩餘＝買進那天距離權證最後交易日的交易日數（買進金額加權平均）。不含外資券商、券商總公司；「全部一般分點」也不含權證專業戶。</p>';
   sh.innerHTML = h;
-  $('wPer').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); openWStock(c, focus); };
+  const re = () => openWStock(c, focus);
+  $('wPer').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.per = +b.dataset.v; LS.set('per', ST.per); syncSeg(); render(); re(); };
+  $('wsDir').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.wdir = +b.dataset.v; render(); re(); };
+  $('wSel').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.wsel = b.dataset.v; re(); };
+  const cur = sh.querySelector('#wCur');
+  for (const el of sh.querySelectorAll('.wday')) el.addEventListener('click', () => { const t = +el.dataset.t; $('wDay').innerHTML = wDayHtml(j, dd, t, dir); const xx = +el.getAttribute('x') + +el.getAttribute('width') / 2; cur.setAttribute('x1', xx); cur.setAttribute('x2', xx); cur.style.display = ''; });
   bindW(sh, c);
 }
 async function openWBranch(b, from){
@@ -562,6 +638,14 @@ async function openWBranch(b, from){
   const L = Object.entries(by).sort((a, b2) => Math.abs(b2[1][0]) - Math.abs(a[1][0])).slice(0, 15);
   let h = '<button class="x" onclick="document.getElementById(\'sheet\').classList.remove(\'on\')">×</button>' + back + '<h3>' + esc(j.n) + ' <span style="font:13px var(--mono);color:var(--dim)">' + esc(j.id) + '</span>' + (j.flip ? ' <span class="pill o">隔日沖型</span>' : '') + (j.pro ? ' <span class="pill">權證專業戶</span>' : '') + '</h3>' + (j.pro ? '<p class="note" style="margin:0 0 6px">這個分點平均每天進出約 ' + j.nt + ' 檔標的的權證，比較像做價差、避險的專業帳戶，不列入「疑似知情」和「高勝率」名單。</p>' : '');
   h += '<div class="kv"><div><small>權證佈局次數（已有結果）</small><b>' + (st ? st[0] : 0) + '</b></div><div><small>勝率</small><b class="' + (st && st[2] >= 60 ? 'u' : '') + '">' + (st ? st[2] + '%' : '—') + '</b></div><div><small>平均 ' + (WT ? WT.th.hor : 10) + ' 日報酬</small><b class="' + cls(st && st[3]) + '">' + (st ? sgn(st[3], 2) + '%' : '—') + '</b></div></div>';
+  const HL = Object.entries(j.h || {}).sort((a2, b2) => (b2[1][0] + b2[1][4]) - (a2[1][0] + a2[1][4])).slice(0, 12);
+  if (HL.length){
+    const last = tg => { const cc = (j.c[tg] || []).filter(v => v); return cc[cc.length - 1]; };
+    const one = (tg, o, dir) => { const x = j.h[tg]; if (!x[o] || x[o] < 1000) return ''; const keep = x[o + 2] != null ? x[o + 2] - 20 : null;
+      return '<tr data-w="' + tg + '"><td>' + esc(nameOf(tg)) + ' <span class="' + (dir > 0 ? 'u' : 'd') + '" style="font-size:11px">' + (dir > 0 ? '認購' : '認售') + '</span></td><td>' + num(x[o] / 1000, 0) + '</td>' + wBeCell(x[o + 1], last(tg), dir) + '<td>' + (x[o + 2] != null ? x[o + 2] + '<small>天</small>' : '—') + '</td><td>' + (keep == null ? '—' : keep > 0 ? '約 ' + keep + ' 天' : '<span class="o">已進入最後一個月</span>') + '</td><td class="hide-m">' + mmdd(x[o + 3]) + '</td></tr>'; };
+    h += '<h4>目前還抱著的權證（推演能放多久）</h4><table class="mini"><tr><th>股票</th><th>約當張</th><th>回本股價</th><th>剩餘</th><th>大約還能放</th><th class="hide-m">最快到期</th></tr>' + HL.map(([tg]) => one(tg, 0, 1) + one(tg, 4, -1)).join('') + '</table>' +
+      '<p class="note" style="margin:0 0 6px">只算資料期間內買進、還沒賣掉的部分。權證最後約 20 個交易日時間價值掉最快，主力通常在那之前出場，所以「大約還能放」＝剩餘天數 − 20。</p>';
+  }
   if (WT && WT.base != null) h += '<p class="note" style="margin:0 0 6px">全部分點平均勝率 ' + WT.base + '%。' + (j.fl ? '大買權證 ' + j.fl[0] + ' 次，隔天就賣掉 6 成以上 ' + j.fl[1] + ' 次。' : '') + '</p>';
   h += '<h4>它在佈局哪些股票 ' + perSegHtml('wbPer') + '</h4><table class="mini"><tr><th>股票</th><th>看多淨額</th><th class="hide-m">認購淨</th><th class="hide-m">認售淨</th><th>約當張</th><th>天</th></tr>' +
     (L.length ? L.map(([tg, o]) => '<tr data-w="' + tg + '"><td>' + esc(nameOf(tg)) + ' <span style="font:10.5px var(--mono);color:var(--dim)">' + tg + '</span></td><td class="' + cls(o[0]) + '">' + fmtM(o[0]) + '</td><td class="hide-m ' + cls(o[1]) + '">' + fmtM(o[1]) + '</td><td class="hide-m ' + cls(-o[2]) + '">' + fmtM(o[2]) + '</td><td class="' + cls(o[3]) + '">' + sgn(o[3] / 1000, 0) + '</td><td>' + o[4] + '</td></tr>').join('') : '<tr><td colspan="6" style="color:var(--dim)">這段期間沒有明顯進出</td></tr>') + '</table>';

@@ -2,10 +2,9 @@
 """權證分點：每個券商分點每天買賣了哪些權證（推到 wt-data 分支）
 
 一天的資料：
-  1. 權證對照表（TaiwanStockInfoWithWarrantSummary，一次拿全部）：權證 → 標的股票、認購／認售、行使比例、履約價、到期日、權證收盤、標的收盤
+  1. 權證對照表（證交所、櫃買中心權證基本資料）：權證 → 標的股票、認購／認售、行使比例、履約價、最後交易日
   2. 每個券商分點一次查詢（taiwan_stock_warrant_trading_daily_report，用分點代號查，回傳它當天買賣的所有權證）
-     → 依「標的股票」合計：[認購買進金額, 認購賣出金額, 認售買進金額, 認售賣出金額, 認購約當股數淨額, 認售約當股數淨額, 權證檔數]
-       約當股數＝權證單位數 × 行使比例（等於這些權證相當於多少股標的）
+     → 每檔權證存 [權證代號, 買進單位, 賣出單位, 買進金額, 賣出金額]，整理時再換算成標的、約當股數、回本股價、剩餘天數
 存成 d/日期.json，從最近一天往回補 BACK 個交易日。
 每輪查詢上限依 FinMind 這個小時還剩多少自動決定，保留一些給其他排程。
 """
@@ -20,7 +19,7 @@ RESERVE = int(os.environ.get('RESERVE', '1500'))
 CAP = int(os.environ.get('CAP', '4000'))
 DEADLINE = time.time() + float(os.environ.get('MAX_MIN', '100')) * 60
 SP = 'https://api.finmindtrade.com/api/v4/taiwan_stock_warrant_trading_daily_report'
-MIN_MONEY = 30000        # 一個分點在一檔標的的權證買賣合計 < 3 萬元就不存
+MIN_W = 10000            # 一個分點一天在一檔權證買賣合計 < 1 萬元就不存
 
 
 def jload(p, d):
@@ -126,8 +125,8 @@ def main():
     stop = False; got = 0
     for di, d in enumerate(reversed(days)):
         fp = 'd/' + d + '.json'; day = jload(fp, {})
-        if day.get('mv') != 2:          # 舊格式（用當天對照表、不完整）重查
-            day = {'mv': 2, 'b': {}, 'done': [], 'v': day.get('v')} if day.get('v') else {'mv': 2, 'b': {}, 'done': []}
+        if day.get('mv') != 3:          # 舊格式（只有合計、沒有每檔權證的價格）重查
+            day = {'mv': 3, 'w': {}, 'done': [], 'v': day.get('v')} if day.get('v') else {'mv': 3, 'w': {}, 'done': []}
             jsave(fp, day)
         if 'v' not in day:
             try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
@@ -146,24 +145,22 @@ def main():
             try: rows = special({'securities_trader_id': t, 'date': d})
             except T.RateLimited as e: T.log('停止', e); stop = True; break
             except Exception as e: T.log(t, d, '失敗', str(e)[:60]); continue
+            # 每檔權證：[權證代號, 買進單位, 賣出單位, 買進金額, 賣出金額]（標的、履約價、到期日在整理時用對照表查）
             agg = {}
             for r in rows:
-                w = m.get(r.get('stock_id'))
-                if not w: continue
-                a = agg.setdefault(w[0], [0, 0, 0, 0, 0.0, 0.0, set()])
+                wc = r.get('stock_id')
+                if wc not in m: continue
+                a = agg.setdefault(wc, [0, 0, 0.0, 0.0])
                 bq = r.get('buy') or 0; sq = r.get('sell') or 0; px = r.get('price') or 0
-                k = 0 if w[1] == 'C' else 2
-                a[k] += bq * px; a[k + 1] += sq * px
-                a[4 if w[1] == 'C' else 5] += (bq - sq) * w[2]
-                a[6].add(r['stock_id'])
-            keep = {tg: [round(a[0]), round(a[1]), round(a[2]), round(a[3]), round(a[4]), round(a[5]), len(a[6])] for tg, a in agg.items() if a[0] + a[1] + a[2] + a[3] >= MIN_MONEY}
-            if keep: day['b'][t] = keep
+                a[0] += bq; a[1] += sq; a[2] += bq * px; a[3] += sq * px
+            keep = [[wc, a[0], a[1], round(a[2]), round(a[3])] for wc, a in agg.items() if a[2] + a[3] >= MIN_W]
+            if keep: day['w'][t] = keep
             done.add(t); got += 1
             st = act.setdefault(t, [0, 0]); st[0] += 1; st[1] += 1 if rows else 0
             if got % 150 == 0: day['done'] = sorted(done); jsave(fp, day); jsave('meta.json', meta); T.log(d, '已查', len(done), '查詢', T.NREQ[0])
         if not stop: day['full'] = 1
         day['done'] = sorted(done); jsave(fp, day); jsave('meta.json', meta)
-        T.log(d, '完成', len(done), '／', len(traders), '有權證進出的分點', len(day['b']))
+        T.log(d, '完成', len(done), '／', len(traders), '有權證進出的分點', len(day['w']), '筆數', sum(len(x) for x in day['w'].values()))
         if stop: break
     for fn in os.listdir(os.path.join(OUT, 'd')) if os.path.isdir(os.path.join(OUT, 'd')) else []:
         if fn[:10] < days[0]: os.remove(os.path.join(OUT, 'd', fn))
