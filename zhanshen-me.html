@@ -329,8 +329,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 05:00・月週共振</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
-    <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 06:00・獨孤九劍</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
@@ -9020,7 +9020,7 @@ var favInit = false;
 function favApply(){
   if (!FAV_MAIN) return;
   // 只看常用時，新加的指標預設不打開（不影響盤面）
-  if (!favInit){ favInit = true; if (UI.favOnly && Array.isArray(UI.fav)){ const st = new Set(UI.fav); let ch = false; for (const pp of PANES) if (UI[pp.flag] && !st.has(pp.id) && pp.id !== URL_ON){ UI[pp.flag] = false; ch = true; } if (ch){ saveUI(); setTimeout(() => { recompute(); schedule(); }, 0); } } }
+  if (!favInit){ favInit = true; if (UI.favOnly && Array.isArray(UI.fav)){ const st = new Set(UI.fav); let ch = false; for (const pp of PANES) if (UI[pp.flag] && !st.has(pp.id) && !URL_ON.split(',').includes(pp.id)){ UI[pp.flag] = false; ch = true; } if (ch){ saveUI(); setTimeout(() => { recompute(); schedule(); }, 0); } } }
   const on = !!UI.favOnly && Array.isArray(UI.fav), set = new Set(UI.fav || []);
   for (const pp of PANES){ const b = document.getElementById('tog' + pp.btn); if (b) b.hidden = on && !set.has(pp.id) && !UI[pp.flag]; }
   for (const [k, id, isOn] of FAV_MAIN){ const b = document.getElementById(id); if (b) b.hidden = on && !set.has(k) && !isOn(); }
@@ -9648,7 +9648,9 @@ RAW = { id:'SAMPLE', name:'', rows:sampleRows(), sample:true, tf:'D' };
 recompute();
 setMsg('載入中… 先以範例資料顯示。', 'ok');
 const qs = new URLSearchParams(location.search).get('s');
-if (URL_ON){ const pp = PANES.find(x => x.id === URL_ON); if (pp && !UI[pp.flag]){ UI[pp.flag] = true; recompute(); syncToolbar(); } }
+// 網址參數：on＝要打開的副圖（可用逗號一次開多個，例如 on=lx,mwr,bwt）；iv＝週期（D／W／M）
+{ const ivq = new URLSearchParams(location.search).get('iv'); if (ivq && ['D', 'W', 'M'].includes(ivq)) UI.interval = ivq; }
+if (URL_ON){ let ch = false; for (const id of URL_ON.split(',')){ const pp = PANES.find(x => x.id === id); if (pp && !UI[pp.flag]){ UI[pp.flag] = true; ch = true; } } if (ch){ recompute(); syncToolbar(); } }
 loadSymbol((qs && qs.trim()) || UI.symbol || '2330');
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 // 安裝成第二個 App（我的戰神）：Android／電腦 Chrome 用瀏覽器的安裝視窗；iPhone 教怎麼加到主畫面

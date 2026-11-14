@@ -6,6 +6,7 @@
 另算布林大底（日／週／月，接 data/price/long 的長期收盤） → data/price/bbot.json（布林大底選股用）
 另算尋龍底龍穴能量 → data/price/lx.json（尋龍底選股用）
 另算起漲訊號 → data/price/qz.json（起漲選股用）
+另算獨孤九劍（尋龍底 × 月週共振 × BotWT 超賣金叉，日週月）→ data/price/dg.json（獨孤九劍選股用）
 在 GitHub Actions 上執行，只用標準函式庫。
 
   python3 scripts/price_scrape.py update     補抓缺少的交易日，然後 build
@@ -239,6 +240,8 @@ def build():
     except Exception as ex: log('lx failed', ex)
     try: build_qz(days_all, info)
     except Exception as ex: log('qz failed', ex)
+    try: build_dg(days_all, info)
+    except Exception as ex: log('dg failed', ex)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -745,6 +748,155 @@ def build_lx(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('lx', len(rows), 'stocks; long none/close/ohlc', nl)
 
+
+# ───────── 獨孤九劍選股：尋龍底 × 月週共振 × BotWT 超賣金叉（日／週／月三個週期） ─────────
+# 和戰神看盤・我的 的三個副圖同一套算法；回測：上市櫃普通股 2024/5～2026/10，見 dg.json 的 bt
+DG_LOOK = {'d': 5, 'w': 2, 'm': 1}       # 最近幾根內出現訊號才列入
+DG_BAND = {'d': 250, 'w': 156, 'm': 60}  # 月週共振上下界比較的根數
+
+def _ema_seed(a, n):
+    k = 2 / (n + 1); out = [None] * len(a); s = 0.0; cnt = 0; prev = None
+    for i, x in enumerate(a):
+        if x is None: prev = None; s = 0.0; cnt = 0; continue
+        if prev is None:
+            s += x; cnt += 1
+            if cnt == n: prev = s / n; out[i] = prev
+            continue
+        prev = prev + k * (x - prev); out[i] = prev
+    return out
+
+def dg_wt(H, L, C, n1=10, n2=21, sl=4, os1=-53, os2=-60):
+    """波浪趨勢（BotWT）：快線、超賣金叉、極端超賣金叉"""
+    ap = [(h + l + c) / 3 for h, l, c in zip(H, L, C)]
+    esa = _ema_seed(ap, n1)
+    d = _ema_seed([None if e is None else abs(x - e) for x, e in zip(ap, esa)], n1)
+    ci = [None if (e is None or dd is None or dd == 0) else (x - e) / (0.015 * dd) for x, e, dd in zip(ap, esa, d)]
+    w1 = _ema_seed(ci, n2); w2 = [None] * len(C)
+    for i in range(sl - 1, len(C)):
+        w = w1[i - sl + 1:i + 1]
+        if None not in w: w2[i] = sum(w) / sl
+    bot = [False] * len(C); deep = [False] * len(C)
+    for i in range(1, len(C)):
+        if None in (w1[i], w2[i], w1[i - 1], w2[i - 1]): continue
+        cu = w1[i] > w2[i] and w1[i - 1] <= w2[i - 1]
+        bot[i] = cu and w1[i] <= os1; deep[i] = cu and w1[i] <= os2
+    return w1, bot, deep
+
+def _dg_tf(keys, C):
+    """週（月）MACD：本期還沒結束就用今天收盤暫代（不偷看未來）"""
+    k12, k26, k9 = 2 / 13, 2 / 27, 0.2
+    e12 = e26 = de = None; cur = None; lc = None; DIF = []; DEA = []
+    for key, c in zip(keys, C):
+        if cur is not None and key != cur:
+            if e12 is None: e12 = e26 = lc; de = 0.0
+            else: e12 += k12 * (lc - e12); e26 += k26 * (lc - e26); de += k9 * ((e12 - e26) - de)
+        cur = key; lc = c
+        if e12 is None: DIF.append(0.0); DEA.append(0.0)
+        else:
+            t12 = e12 + k12 * (c - e12); t26 = e26 + k26 * (c - e26); d_ = t12 - t26; DIF.append(d_); DEA.append(de + k9 * (d_ - de))
+    return DIF, DEA
+
+def dg_mwr(D, C, H, iv, N, last):
+    """月週共振線、下界（只算最後 last 根）、底（往上穿過下界）／底★（再加收盤突破前一根高點）、日週月是否全空"""
+    import math
+    n = len(C)
+    def ema(a, m):
+        k = 2 / (m + 1); out = []; e = None
+        for x in a: e = x if e is None else e + k * (x - e); out.append(e)
+        return out
+    e12, e26 = ema(C, 12), ema(C, 26); dD = [a - b for a, b in zip(e12, e26)]; eD = ema(dD, 9)
+    wk = lambda d: datetime.date.fromisoformat(d[:10]).isocalendar()[:2] if len(d) >= 10 else d
+    dW, eW = (dD, eD) if iv in ('w', 'm') else _dg_tf([wk(d) for d in D], C)
+    dM, eM = (dD, eD) if iv == 'm' else _dg_tf([d[:7] for d in D], C)
+    def z(dif, dea):
+        h = [(a - b) / c * 100 if c else 0.0 for a, b, c in zip(dif, dea, C)]; out = [None] * n; s = s2 = 0.0; m = 0
+        for i in range(n):
+            s += h[i]; s2 += h[i] ** 2; m += 1
+            if i >= N: s -= h[i - N]; s2 -= h[i - N] ** 2; m -= 1
+            if m > min(40, N // 2):
+                sd = math.sqrt(max(1e-12, s2 / m - (s / m) ** 2)); out[i] = math.tanh(h[i] / sd / 1.5)
+        return out
+    zD, zW, zM = z(dD, eD), z(dW, eW), z(dM, eM)
+    R = [None if None in (a, b, c) else 100 * (a + b + c) / 3 for a, b, c in zip(zD, zW, zM)]
+    LB = [None] * n
+    for i in range(max(0, n - last - 1), n):
+        w = sorted(x for x in R[max(0, i - N + 1):i + 1] if x is not None)
+        if len(w) >= min(40, N // 2): LB[i] = w[int((len(w) - 1) * 0.10)]
+    bot = [0] * n
+    for i in range(max(1, n - last), n):
+        if None in (R[i - 1], R[i], LB[i - 1], LB[i]): continue
+        if R[i - 1] < LB[i - 1] and R[i] >= LB[i]: bot[i] = 2 if C[i] > H[i - 1] else 1
+    bear = dD[-1] < eD[-1] and dW[-1] < eW[-1] and dM[-1] < eM[-1]
+    return R, LB, bot, bear
+
+def dg_eval(D, O, H, L, C, iv):
+    """這個週期最近 look 根內，三劍各自有沒有出現 → [等級, 幾根前, 尋龍底, 共振底, 共振底★, WT金叉, WT極端, 共振線, 下界, WT快線, 日週月全空, 訊號後漲跌%, 離高點%]"""
+    n = len(C); look = DG_LOOK[iv]
+    if n < 60: return None
+    SS, _ = lx_calc(O, H, L, C)
+    w1, wbot, wdeep = dg_wt(H, L, C)
+    R, LB, mbot, bear = dg_mwr(D, C, H, iv, min(DG_BAND[iv], max(30, int(n * 0.8))), look + 4)
+    best = None
+    for i in range(n - look, n):
+        if i < 4: continue
+        rng = range(i - 3, i + 1)
+        A = any(SS[k] > 0 for k in rng)
+        B_ = any(mbot[k] for k in rng) or (R[i] is not None and LB[i] is not None and R[i] < LB[i])
+        Bs = any(mbot[k] == 2 for k in rng)
+        Cw = any(wbot[k] for k in rng); Cd = any(wdeep[k] for k in rng)
+        cnt = A + B_ + Cw
+        if cnt < 2: continue
+        brk = C[i] > H[i - 1]
+        g = 3 if cnt == 3 and (brk or Bs) else 2 if cnt == 3 else 1
+        cand = (g, i, A, B_, Bs, Cw, Cd)
+        if best is None or g >= best[0]: best = cand
+    if not best: return None
+    g, i, A, B_, Bs, Cw, Cd = best
+    hi = max(H[max(0, n - 60):])
+    r2 = lambda x: None if x is None else round(x, 1)
+    return [g, n - 1 - i, int(A), int(B_), int(Bs), int(Cw), int(Cd), r2(R[-1]), r2(LB[-1]), r2(w1[-1]), int(bear),
+            round((C[-1] / C[i] - 1) * 100, 2), round((C[-1] / hi - 1) * 100, 1)]
+
+def build_dg(days, info):
+    dates = [d['d'] for d in days]
+    if not dates: return
+    codes = sorted(c for c in set(c for d in days[-3:] for c in d['r']) if re.fullmatch(r'\d{4}', c))
+    rows = []
+    for c in codes:
+        O, H, L, C, V, D = [], [], [], [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3] and r[1] and r[2]:
+                O.append(r[0] or r[3]); H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
+        if len(C) < 120 or D[-1] != dates[-1]: continue
+        LP = None
+        p = os.path.join(LONG, c + '.json')
+        if os.path.exists(p):
+            try: LP = json.load(open(p, encoding='utf-8'))
+            except Exception: LP = None
+        res = {}
+        try: res['d'] = dg_eval(D, O, H, L, C, 'd')
+        except Exception as ex: res['d'] = None
+        for t, keyf in (('w', _monday), ('m', lambda x: x[:7])):
+            try:
+                K, o, h, l, cc = _agg(D, O, H, L, C, keyf, LP, t)
+                res[t] = dg_eval(K, o, h, l, cc, t)
+            except Exception: res[t] = None
+        if not any(res.values()): continue
+        v20 = sum(V[-20:]) / 20; u = info.get(c, {})
+        rows.append([c, u.get('name', ''), u.get('market', ''), u.get('ind', ''), C[-1],
+                     round((C[-1] / C[-2] - 1) * 100, 2) if C[-2] else 0, round(v20), round((C[-1] / max(H[-60:]) - 1) * 100, 1), res['d'], res['w'], res['m']])
+    bt = None
+    try: bt = json.load(open(os.path.join(OUT, 'dg_bt.json'), encoding='utf-8'))
+    except Exception: pass
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'looks': DG_LOOK, 'bt': bt,
+           'cols': ['code', 'name', 'market', 'ind', 'c', 'chg', 'v20', 'dd60', 'd', 'w', 'm'],
+           'tcols': ['grade', 'ago', 'lx', 'mwr', 'mwrStar', 'wt', 'wtDeep', 'R', 'LB', 'wt1', 'bear', 'since', 'ddHi'],
+           'rows': rows}
+    with open(os.path.join(OUT, 'dg.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('dg', len(rows), 'stocks')
+
 # ───────── 起漲選股 v2（全市場回測：2025 年挑條件、2026 年驗證） ─────────
 QZ_LOOK = 30          # 列出最近 30 個交易日內的起漲訊號
 
@@ -861,6 +1013,10 @@ if __name__ == '__main__':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
         build_lx([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
+    elif a[0] == 'dg':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_dg([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'vwb':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
