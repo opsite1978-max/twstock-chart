@@ -62,6 +62,50 @@ def special(params):
     raise RuntimeError('warrant report failed')
 
 
+def fetch_json(u):
+    for k in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'}), timeout=120) as r: return json.loads(r.read().decode('utf-8'))
+        except Exception as e:
+            T.log('讀取失敗', u, str(e)[:60]); time.sleep(5 + 5 * k)
+    return []
+
+
+def roc(d):
+    d = (d or '').strip()
+    if re.fullmatch(r'\d{7}', d): return '%d-%s-%s' % (int(d[:3]) + 1911, d[3:5], d[5:])
+    if re.fullmatch(r'\d{8}', d): return d[:4] + '-' + d[4:6] + '-' + d[6:]
+    return ''
+
+
+def warrant_map(meta):
+    """權證 → [標的代號, C/P, 行使比例, 履約價, 最後交易日]。來源：證交所、櫃買中心權證基本資料（每天更新一次，舊的保留）"""
+    wm = jload('wmap.json', {})
+    if meta.get('wmd') == datetime.date.today().isoformat() and len(wm) > 5000: return wm
+    if not meta.get('names') or time.time() - meta.get('nu', 0) > 7 * 86400:
+        info = T.api({'dataset': 'TaiwanStockInfo'})
+        meta['names'] = {r['stock_name']: r['stock_id'] for r in info if re.fullmatch(r'\d{4}', r.get('stock_id', ''))}; meta['nu'] = int(time.time())
+    nm = meta['names']; n0 = len(wm); miss = {}
+    for u in ('https://openapi.twse.com.tw/v1/opendata/t187ap37_L', 'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap37_O'):
+        for r in fetch_json(u):
+            code = (r.get('權證代號') or '').strip(); tgn = (r.get('標的證券/指數') or '').strip()
+            tg = nm.get(tgn)
+            if not code: continue
+            if not tg: miss[tgn] = miss.get(tgn, 0) + 1; continue
+            try: ratio = float(r.get('最新標的履約配發數量(每仟單位權證)') or 0) / 1000; k = float(r.get('最新履約價格(元)/履約指數') or 0)
+            except ValueError: ratio, k = 0, 0
+            wm[code] = [tg, 'P' if '售' in (r.get('權證類型') or '') else 'C', ratio, k, roc(r.get('最後交易日'))]
+    for r in fetch_json('https://www.tpex.org.tw/openapi/v1/tpex_warrant_issue'):
+        code = (r.get('Code') or '').strip(); tg = (r.get('UnderlyingStockCode') or '').strip()
+        if code and re.fullmatch(r'\d{4}', tg) and code not in wm:
+            try: ratio = float(r.get('Latest ExerciseRatio') or 0); k = float(r.get('LatestExercisePrice') or 0)
+            except ValueError: ratio, k = 0, 0
+            wm[code] = [tg, 'P' if '售' in (r.get('Type') or '') else 'C', ratio, k, roc(r.get('ExpiryDate'))]
+    T.log('權證對照表', len(wm), '檔（新增', len(wm) - n0, '），找不到標的的名稱（多半是指數、ETF）', len(miss), sorted(miss.items(), key=lambda kv: -kv[1])[:8])
+    if len(wm) > 5000: jsave('wmap.json', wm); meta['wmd'] = datetime.date.today().isoformat()
+    return wm
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     left = quota_left(); T.REQ_BUDGET = max(0, min(CAP, left - RESERVE))
@@ -77,29 +121,20 @@ def main():
     today = datetime.datetime.now(T.TW).date().isoformat()
     days = [d for d in cal if d <= today][-BACK:]
     traders = sorted(meta['traders'])
+    WM = warrant_map(meta)
+    if len(WM) < 5000: T.log('權證對照表太少，先不查'); return
     stop = False; got = 0
     for di, d in enumerate(reversed(days)):
         fp = 'd/' + d + '.json'; day = jload(fp, {})
-        if 'm' not in day:
-            try: ws = T.api({'dataset': 'TaiwanStockInfoWithWarrantSummary', 'start_date': d})
-            except T.RateLimited as e: T.log('停止', e); break
-            ws = [r for r in ws if r.get('date') == d]
-            if len(ws) < 1000:
-                T.log(d, '權證對照表還沒出來（', len(ws), '）'); continue
-            m = {}; tc = {}
-            for r in ws:
-                tg = r.get('target_stock_id') or ''
-                if not re.fullmatch(r'\d{4}', tg): continue
-                m[r['stock_id']] = [tg, 'P' if '售' in (r.get('type') or '') else 'C', r.get('exercise_ratio') or 0, r.get('fulfillment_price') or 0, r.get('end_date') or '', r.get('close') or 0]
-                if r.get('target_close'): tc[tg] = r['target_close']
-            day = {'m': m, 'tc': tc, 'b': {}, 'done': []}
-            jsave(fp, day); T.log(d, '權證', len(m), '檔，標的', len(tc), '檔')
+        if day.get('mv') != 2:          # 舊格式（用當天對照表、不完整）重查
+            day = {'mv': 2, 'b': {}, 'done': [], 'v': day.get('v')} if day.get('v') else {'mv': 2, 'b': {}, 'done': []}
+            jsave(fp, day)
         if 'v' not in day:
             try: px = T.api({'dataset': 'TaiwanStockPrice', 'start_date': d, 'end_date': d})
             except T.RateLimited as e: T.log('停止', e); break
             day['v'] = {r['stock_id']: [r['close'], round((r.get('Trading_Volume') or 0) / 1000), round((r.get('Trading_money') or 0) / 1e8, 3)] for r in px if r.get('date') == d and re.fullmatch(r'\d{4}', r['stock_id']) and r.get('close')}
             jsave(fp, day)
-        m = day['m']; done = set(day['done'])
+        m = WM; done = set(day['done'])
         newest = di < 3
         todo = [t for t in traders if t not in done and (newest or act.get(t, [0, 0])[0] < 3 or act[t][1] > 0)]
         if not todo:
