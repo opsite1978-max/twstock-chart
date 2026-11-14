@@ -13,9 +13,9 @@
 import json, math, os, re, shutil, statistics as ST
 
 TH = {
-    'ep': 500000,          # 一次「佈局」：單一分點一天在一檔標的看多（或看空）淨額 ≥ 50 萬元
+    'ep': 500000,          # 一次「佈局」：單一分點一天在一檔標的買進認購（或認售）≥ 50 萬元
     'ep_gap': 5,           # 同一分點同一檔同方向 5 天內只算一次
-    'hor': 10, 'up': 5.0, 'dn': 5.0,   # 之後 10 個交易日：先漲 5% 算贏、先跌 5% 算輸，都沒碰到看第 10 天漲跌
+    'hor': 10, 'hit': 30,  # 買進後第 10 個交易日，權證比買價漲 ≥ 30% 算「抓到行情」
     'min_n': 5,            # 至少 5 次佈局才排勝率
     'big': 3000000,        # 疑似知情：5 日淨額 ≥ 300 萬
     'eqp': 1.0,            # 或約當股數 ≥ 5 日成交量 1%
@@ -324,41 +324,66 @@ def build(OUT, days, meta, log):
                 if nx and nx[0] <= -0.6 * a[0]: f[1] += 1
     flipper = {b for b, (n, r) in flip.items() if n >= 4 and r / n * 100 >= TH['flip']}
 
-    # ── 佈局事件與之後的結果 ──
-    def outcome(tg, t, sgn):
-        c0 = close(tg, t)
-        if not c0: return None
-        for j in range(t + 1, min(nd, t + TH['hor'] + 1)):
-            c = close(tg, j)
-            if not c: continue
-            r = (c / c0 - 1) * 100 * sgn
-            if r >= TH['up']: return (1, r, j - t)
-            if r <= -TH['dn']: return (0, r, j - t)
-        if t + TH['hor'] >= nd: return None            # 還沒滿 10 天
-        c = close(tg, t + TH['hor'])
-        if not c: return None
-        r = (c / c0 - 1) * 100 * sgn
-        return (1 if r > 0 else 0, r, TH['hor'])
+    # ── 佈局事件與之後的結果（看權證本身，不是看股票）──
+    # 一次佈局：單一分點一天買進同方向權證 ≥ 50 萬（同一檔同方向 5 天內只算一次）
+    # 結果：買進後第 10 個交易日，這些權證的成交均價比買價漲了多少（買進金額加權）；漲 ≥ 30% 算「抓到行情」
+    # 事前機率：用買進當天的隱含波動率、這檔平常的波動，估第 10 天權證漲 30% 的機率；實際勝率明顯高於事前機率，才代表他們真的比別人知道得多
+    PXW = {}
+    for t in F:
+        for rows in DATA[D[t]]['w'].values():
+            for wc, bq, sq, bm, sm in rows:
+                if bq + sq: x = PXW.setdefault(wc, {}).setdefault(t, [0, 0.0]); x[0] += bq + sq; x[1] += bm + sm
+    PXW = {wc: {t: m / q for t, (q, m) in v.items()} for wc, v in PXW.items()}
+    H = TH['hor']
+    def wout(b, t, tg, sg):
+        d = D[t]; rows = DATA[d]['w'].get(b, []); S = close(tg, t); hvv = hv(tg, d)
+        tot = cov = rs = mx = ew = es = 0.0
+        for wc, bq, sq, bm, sm in rows:
+            m = WM.get(wc)
+            if not m or m[0] != tg or not bq or (m[1] == 'C') != (sg > 0): continue
+            p0 = bm / bq; tot += bm
+            ser = PXW.get(wc, {})
+            if t + H < nd:
+                p1 = next((ser[k] for k in (t + H, t + H - 1, t + H + 1, t + H - 2, t + H + 2) if k in ser and t < k < nd), None)
+                if p1:
+                    cov += bm; rs += (p1 / p0 - 1) * bm
+                    mx += (max(v for k, v in ser.items() if t < k <= t + H) / p0 - 1) * bm
+            g = G.get(d, {}).get(wc)
+            if g and S and m[2] and m[3] and m[4]:
+                n_ = wdays(d, m[4]); T_ = n_ / 245
+                nm = need_move(m[1], S, m[3], T_, g[0] / 100, p0 / m[2] * (1 + TH['hit'] / 100), H)
+                pr = prob(m[1], nm, hvv, H) if nm is not None and n_ > H else None
+                if pr is not None: ew += bm; es += pr * bm
+        if not tot: return None
+        ex = round(es / ew) if ew else None
+        if t + H >= nd: return [None, None, None, ex]
+        if cov < 0.6 * tot: return [None, None, None, ex]
+        r = rs / cov * 100
+        return [1 if r >= TH['hit'] else 0, round(r, 1), round(mx / cov * 100, 1), ex]
     EP = {}
-    for b, S in BT.items():
-        last = {}
-        for t in sorted(S):
-            for tg, a in S[t].items():
-                if abs(a[0]) < TH['ep']: continue
-                sg = 1 if a[0] > 0 else -1
-                if t - last.get((tg, sg), -99) < TH['ep_gap']: continue
-                last[(tg, sg)] = t
-                o = outcome(tg, t, sg)
-                EP.setdefault(b, []).append([t, tg, sg, round(a[0]), round(a[3]), o[0] if o else None, round(o[1], 2) if o else None, o[2] if o else None])
+    for b, Sb in BT.items():
+        lastep = {}
+        for t in sorted(Sb):
+            for tg, a in Sb[t].items():
+                for sg, money in ((1, a[5]), (-1, a[7])):
+                    if money < TH['ep']: continue
+                    if t - lastep.get((tg, sg), -99) < TH['ep_gap']: continue
+                    o = wout(b, t, tg, sg)
+                    if not o: continue
+                    lastep[(tg, sg)] = t
+                    EP.setdefault(b, []).append([t, tg, sg, round(money), round(a[3]), o[0], o[1], o[2], o[3]])
     done = [e for L in EP.values() for e in L if e[5] is not None]
     base = round(sum(e[5] for e in done) / len(done) * 100, 1) if done else None
     base_r = round(ST.mean(e[6] for e in done), 2) if done else None
+    ee = [e[8] for e in done if e[8] is not None]
+    base_e = round(ST.mean(ee), 1) if ee else None
     stats = {}
     for b, L in EP.items():
         f = [e for e in L if e[5] is not None]
         if not f: continue
-        w = sum(e[5] for e in f); n = len(f)
-        stats[b] = [n, w, round(w / n * 100), round(ST.mean(e[6] for e in f), 2), round((w + 1) / (n + 2) * 100, 1), len(L)]
+        w = sum(e[5] for e in f); n = len(f); fe = [e[8] for e in f if e[8] is not None]
+        # [次數, 抓到次數, 勝率%, 平均 10 日權證報酬%, 調整後勝率%, 全部佈局次數, 事前機率平均%]
+        stats[b] = [n, w, round(w / n * 100), round(ST.mean(e[6] for e in f), 1), round((w + 1) / (n + 2) * 100, 1), len(L), round(ST.mean(fe)) if fe else None]
     # 前後兩段是否一致（勝率有沒有延續性）
     persist = None
     if len(F) >= 30:
@@ -464,7 +489,7 @@ def build(OUT, days, meta, log):
         hold[b] = [[tg, round(v)] for tg, v in sorted(agg.items(), key=lambda kv: -abs(kv[1])) if abs(v) >= 100000][:5]
 
     used = set(good) | {r[0] for r in AL} | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
-    out = {'date': D[-1], 'days': D, 'fd': [D[t] for t in F], 'pro': sorted(b for b in pro if b in used),
+    out = {'date': D[-1], 'days': D, 'fd': [D[t] for t in F], 'baseE': base_e, 'pro': sorted(b for b in pro if b in used),
            'th': TH, 'base': base, 'baseR': base_r, 'nep': len(done), 'persist': persist,
            'n': {b: names.get(b, b) for b in used}, 'u': summ, 'al': AL[:300],
            'good': [[b] + stats[b] + [hold.get(b, [])] for b in good], 'flip': sorted(b for b in flipper if b in used)}
@@ -489,7 +514,7 @@ def build(OUT, days, meta, log):
             if b not in pro: hadd(HT, HOLD[b][tg])
         o = {'d': D, 'c': [close(tg, t) for t in range(nd)], 'v': [px(tg, t)[1] for t in range(nd)],
              'f': [round(FT.get(tg, {}).get(t, [0, 0])[0]) for t in range(nd)], 'n': nm,
-             'st': {b: stats[b][:4] for b in nm if b in stats}, 'flip': [b for b in nm if b in flipper], 'pro': [b for b in nm if b in pro], 'full': F,
+             'st': {b: stats[b][:4] + [stats[b][6]] for b in nm if b in stats}, 'flip': [b for b in nm if b in flipper], 'pro': [b for b in nm if b in pro], 'full': F,
              'r': r, 'T': {t: avg(g) for t, g in tot.items()}, 'h': ho, 'H': hout(HT) if HT else None, 'hv': round(hv(tg, LAST) * 100, 1) if hv(tg, LAST) else None}
         with open(os.path.join(OUT, 'wu', tg + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
     for b, S in BT.items():
