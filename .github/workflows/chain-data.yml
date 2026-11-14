@@ -24,6 +24,7 @@ jobs:
       - name: 產業鏈、價格、法人、主力
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          KEEP_FREE: '1000'
           REQ_BUDGET: '2600'
           MAX_MIN: '150'
         run: python3 scripts/chain_data.py chain-out

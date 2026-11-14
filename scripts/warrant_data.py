@@ -53,6 +53,7 @@ def quota_left():
 
 def special(params):
     if T.NREQ[0] >= T.REQ_BUDGET: raise T.RateLimited('本次查詢次數用完')
+    T.quota_guard()
     req = urllib.request.Request(SP + '?' + urllib.parse.urlencode(params), headers={'Authorization': 'Bearer ' + T.TOKEN})
     for k in range(4):
         T.NREQ[0] += 1

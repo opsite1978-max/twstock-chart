@@ -20,9 +20,10 @@ jobs:
       - name: 讀日 K
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          KEEP_FREE: '2500'
           MAX_MIN: '60'
-          CAP: '1500'
-          RESERVE: '1500'
+          CAP: '800'
+          RESERVE: '3000'
         run: python3 scripts/temp_research_fetch.py temp-out
       - name: 推到 temp-data 分支
         if: always()

@@ -174,7 +174,7 @@ def quota_left():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    left = quota_left(); T.REQ_BUDGET = max(60, min(T.REQ_BUDGET, left - 500))
+    left = quota_left(); T.REQ_BUDGET = max(60, min(T.REQ_BUDGET, left - 1500))
     T.log('FinMind 這小時剩', left, '次，本輪最多用', T.REQ_BUDGET)
     ch = build_chain()
     chain_codes = sorted({c for ind in ch['inds'] for col in ind['cols'] for sg in col['segs'] for c in sg.get('s', [])})

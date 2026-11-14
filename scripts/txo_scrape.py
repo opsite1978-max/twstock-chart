@@ -48,9 +48,26 @@ def log(*a):
     LOG.append(datetime.datetime.now(TW).strftime('%m-%d %H:%M:%S ') + line)
 
 
+# 節流：背景排程每查 150 次就看一下 FinMind 這小時還剩多少，剩不到 KEEP_FREE 就先停，留給你自己看盤用
+KEEP_FREE = int(os.environ.get('KEEP_FREE', '0'))
+_LASTCHK = [0]
+
+
+def quota_guard():
+    if not KEEP_FREE or NREQ[0] - _LASTCHK[0] < 150: return
+    _LASTCHK[0] = NREQ[0]
+    try:
+        req = urllib.request.Request('https://api.web.finmindtrade.com/v2/user_info', headers={'Authorization': 'Bearer ' + TOKEN})
+        with urllib.request.urlopen(req, timeout=30) as r: j = json.loads(r.read().decode())
+        left = int(j.get('api_request_limit_hour') or 6000) - int(j.get('user_count') or 0)
+    except Exception: return
+    if left < KEEP_FREE: raise RateLimited('節流：這小時只剩 %d 次，留給看盤用' % left)
+
+
 def api(params):
     if NREQ[0] >= REQ_BUDGET:
         raise RateLimited('本次查詢次數用完')
+    quota_guard()
     req = urllib.request.Request(API + '?' + urllib.parse.urlencode(params), headers={'Authorization': 'Bearer ' + TOKEN})
     for attempt in range(4):
         NREQ[0] += 1

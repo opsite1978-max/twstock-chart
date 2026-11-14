@@ -20,8 +20,10 @@ jobs:
       - name: 讀歷史分點
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          KEEP_FREE: '2500'
+          CAP: '1200'
           MAX_MIN: '100'
-          RESERVE: '3000'
+          RESERVE: '3500'
         run: python3 scripts/branch_bt_fetch.py brbt-out
       - name: 推到 brbt-data 分支
         if: always()
