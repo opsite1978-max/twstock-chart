@@ -662,6 +662,7 @@ def build(OUT, days, meta, log):
             if x['t0'] >= t0w5 and x['bm'] >= TH['tr_min'] and x['t1'] != x['t0']:
                 NW.append(trow(b, x))
     NW.sort(key=lambda r: -(r[8] * (1 + (DP.get(r[0], {}).get('d') or [0] * 7)[6] / 50)))
+
     done = [e for L in EP.values() for e in L if e[5] is not None]
     base = round(sum(e[5] for e in done) / len(done) * 100, 1) if done else None
     base_r = round(ST.mean(e[6] for e in done), 2) if done else None
@@ -733,6 +734,100 @@ def build(OUT, days, meta, log):
         if tg in summ and c1 and c0: summ[tg]['r1'] = round((c1 / c0 - 1) * 100, 2)
         if tg in summ and nd >= 6 and close(tg, nd - 6) and c1: summ[tg]['r5'] = round((c1 / close(tg, nd - 6) - 1) * 100, 2)
 
+    # ── 神秘資金雷達：最近 20 個交易日，哪些股票有「可疑」的認購權證佈局 ──
+    # 每個（分點、股票）的認購買進打分數：深價外 +2、勝算低 +2、短天期 +1、新面孔 +2、集中押注 +1、深價外戰績好 +2、還抱著 +1
+    # 排除權證專業戶、隔日沖型；每檔股票取分數最高的 3 個分點加總
+    WR = F[-20:]; wr0 = WR[0]
+    tot_b = {}
+    for t in WR:
+        for b, rows in DATA[D[t]]['w'].items():
+            if KD.get(b, 'b') != 'b' or b in pro or b in flipper: continue
+            tot_b[b] = tot_b.get(b, 0) + sum(r[3] for r in rows)
+    RS = {}
+    for b in tot_b:
+        Sb = BT.get(b, {}); per = {}
+        for t in WR:
+            for tg, a in Sb.get(t, {}).items():
+                if a[5] <= 0: continue
+                g = per.setdefault(tg, [0.0] * NF)
+                for i in range(NF): g[i] += a[i]
+        for tg, g in per.items():
+            if g[5] < 500000 or tg.startswith('00'): continue
+            A = avg(g); otm, dl_, p20 = A[11], A[10], A[21]
+            prev = [t for t in F if wr0 - 20 <= t < wr0]
+            first = min(t for t in WR if tg in Sb.get(t, {}) and Sb[t][tg][5] > 0)
+            newf = len(prev) >= 5 and all(tg not in Sb.get(t, {}) for t in prev)
+            hh = (HOLD.get(b, {}).get(tg, {}) or {}).get('C')
+            held = hh[6] / g[5] if hh else 0
+            d_ = DP.get(b, {}).get('d')
+            sc = 0; tags = []
+            vol_ = sum(px(tg, t)[1] for t in WR) * 1000; eqp = g[9] / vol_ * 100 if vol_ else 0
+            if otm is not None and otm >= 30: sc += 2; tags.append('深價外')
+            elif otm is not None and otm >= TH['otm']: sc += 1; tags.append('深價外')
+            if p20 is not None and p20 < TH['hard']: sc += 2; tags.append('勝算低')
+            if dl_ is not None and dl_ <= 60: sc += 1; tags.append('短天期')
+            if newf: sc += 3; tags.append('新面孔')
+            if tot_b[b] and g[5] / tot_b[b] >= 0.5: sc += 2; tags.append('集中押注')
+            if eqp >= 2: sc += 2; tags.append('約當佔量高')
+            elif eqp >= 0.5: sc += 1; tags.append('約當佔量高')
+            if len(F) >= TH['good_days'] and d_ and d_[0] >= TH['dp_min'] and dp_base is not None and d_[6] >= dp_base + 10: sc += 2; tags.append('深價外戰績好')
+            if held >= 0.7: sc += 1; tags.append('還抱著')
+            RS.setdefault(tg, []).append([sc + math.log10(g[5] / 500000 + 1), b, round(g[5]), tags, first])
+    RD = []
+    for tg, L in RS.items():
+        L.sort(key=lambda x: -x[0]); top = L[:3]
+        score = round(sum(x[0] for x in top), 1)
+        if score < 6: continue
+        RD.append([tg, score, [[x[1], round(x[0], 1), x[2], x[3], x[4]] for x in top], sum(x[2] for x in L), len(L)])
+    RD.sort(key=lambda r: -r[1]); RD = RD[:80]
+    # ── 神秘資金成本線：雷達上的股票（和被佈局最多的股票），這群分點的認購權證「成本相當於股價」每天的值 ──
+    # 每天：用這些分點到當天為止還抱著的權證、當天的隱含波動率、剩餘天數，反推股價在哪裡權證剛好等於成本；另外算平均進場股價
+    WL = {}
+    sel = [r[0] for r in RD]
+    for tg in sorted(summ, key=lambda x: -(summ[x]['k'].get(20) or summ[x]['k'].get(5) or [0])[0])[:80]:
+        if tg not in sel: sel.append(tg)
+    for tg in sel:
+        if tg in {r[0] for r in RD}:
+            mb = {x[0] for r in RD if r[0] == tg for x in r[2]} | {x[1] for x in RS.get(tg, [])}
+        else:
+            mb = {x[1] for x in RS.get(tg, [])}
+        if not mb: continue
+        pos = {}; ivt = {}; series = []; t_start = max(0, nd - 120)
+        for t in range(nd):
+            d = D[t]
+            if t in FS:
+                for wc, r in G.get(d, {}).items(): ivt[wc] = r[0] / 100
+                for b in mb:
+                    for wc, bq, sq, bm, sm in DATA[d]['w'].get(b, []):
+                        m = WM.get(wc)
+                        if not m or m[0] != tg or m[1] != 'C': continue
+                        p_ = pos.setdefault(wc, [0, 0.0, 0.0])          # 單位、成本、Σ進場股價×金額
+                        if bq: p_[0] += bq; p_[1] += bm; p_[2] += (close(tg, t) or 0) * bm
+                        if sq and p_[0] > 0:
+                            u = min(sq, p_[0]); ac = p_[1] / p_[0]; fr = u / p_[0]; p_[2] -= p_[2] * fr; p_[1] -= ac * u; p_[0] -= u
+            if t < t_start: continue
+            S = close(tg, t)
+            cw = cs = ew = es = eq = 0.0
+            if S:
+                for wc, (u, cost, se) in pos.items():
+                    m = WM[wc]; iv = ivt.get(wc)
+                    if u <= 0 or not m[2] or not m[3] or not m[4] or not iv or m[4] <= d: continue
+                    n_ = wdays(d, m[4]); pc = cost / u / m[2]
+                    nm = need_move('C', S, m[3], n_ / 245, iv, pc, 0)
+                    if nm is None: continue
+                    cw += cost; cs += S * (1 + nm / 100) * cost; eq += u * m[2]
+                    if se: ew += cost; es += se / (cost if cost else 1) * cost
+            series.append([round(cs / cw, 2) if cw >= 300000 else None, round(es / ew, 2) if ew >= 300000 else None, round(eq / 1000) if cw >= 300000 else 0])
+        if not any(x[0] for x in series): continue
+        WL[tg] = {'d': D[t_start:], 'c': [x[0] for x in series], 'e': [x[1] for x in series], 'q': [x[2] for x in series],
+                  'b': [names.get(b, b) for b in mb][:12], 'nb': len(mb), 'rd': tg in {r[0] for r in RD}}
+    shutil.rmtree(os.path.join(OUT, 'wl'), ignore_errors=True); os.makedirs(os.path.join(OUT, 'wl'))
+    for tg, o in WL.items():
+        with open(os.path.join(OUT, 'wl', tg + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
+    for r in RD:
+        w_ = WL.get(r[0]); r.append(next((x for x in reversed(w_['c']) if x), None) if w_ else None)
+        r.append(next((x for x in reversed(w_['e']) if x), None) if w_ else None)
+
     # ── 疑似知情佈局（最近 5 個完整交易日） ──
     AL = []
     W5 = F[-5:]; t0 = W5[0]
@@ -778,7 +873,7 @@ def build(OUT, days, meta, log):
             for tg, a in S.get(t, {}).items(): agg[tg] = agg.get(tg, 0) + a[0]
         hold[b] = [[tg, round(v)] for tg, v in sorted(agg.items(), key=lambda kv: -abs(kv[1])) if abs(v) >= 100000][:5]
 
-    used = set(good) | {r[0] for r in AL} | set(dp_rank) | {r[0] for r in NW[:400]} | {r[0] for r in SW['ex']} | {r[0] for r in SW['live']} | set(swb[:40]) | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
+    used = set(good) | {r[0] for r in AL} | {x[0] for r in RD for x in r[2]} | set(dp_rank) | {r[0] for r in NW[:400]} | {r[0] for r in SW['ex']} | {r[0] for r in SW['live']} | set(swb[:40]) | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
     # ── 獲利地圖：股票要漲多少、幾天，權證分點才賺得到錢 ──
     W20 = F[-20:]
     bk = lambda cp: {k: theo([cp + '|' + k], 'b', W20) for k in [o + d_ for o in 'ABC' for d_ in '123'] + ['all']}
@@ -815,7 +910,7 @@ def build(OUT, days, meta, log):
            'th': TH, 'base': base, 'baseR': base_r, 'nep': len(done), 'persist': persist,
            'n': {b: names.get(b, b) for b in used}, 'u': summ, 'al': AL[:300],
            'good': [[b] + stats[b] + [hold.get(b, [])] for b in good], 'flip': sorted(b for b in flipper if b in used), 'pmap': PMAP,
-           'sw': SW, 'dp': [[b, names.get(b, b), DP[b]['d'], DP[b]['a']] for b in dp_rank], 'dpBase': dp_base, 'nw': NW[:400],
+           'rd': RD, 'sw': SW, 'dp': [[b, names.get(b, b), DP[b]['d'], DP[b]['a']] for b in dp_rank], 'dpBase': dp_base, 'nw': NW[:400],
            'dpr': {r[0]: DP[r[0]]['d'] for r in NW[:400] if DP.get(r[0], {}).get('d')}}
     with open(os.path.join(OUT, 'wt.json'), 'w') as f: json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
 
@@ -855,6 +950,7 @@ def build(OUT, days, meta, log):
              'fl': flip.get(b), 'ep': [e[:9] for e in EP.get(b, [])], 'tr': [trow(b, x) for x in sorted(TR.get(b, []), key=lambda x: -x['t0']) if x['bm'] >= 100000][:150], 'dp': DP.get(b), 'r': rows, 'h': HO.get(b, {}), 'full': F,
              'c': {tg: [close(tg, t) for t in range(nd)] for tg in tgs}}
         with open(os.path.join(OUT, 'wb', safe(b) + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
+    log('神秘資金雷達', len(RD), '檔，成本線', len(WL), '檔')
     log('波段佈局', len(CP), '次（已有結果', len(fin), '，成功', len(win_), '），波段權證分點', len(swb))
     log('權證交易', sum(len(L) for L in TR.values()), '筆，深價外排名', len(dp_rank), '，深價外基準勝率', dp_base, '，最近新進場', len(NW))
     log('權證整理：完整', len(F), '天（時間軸', nd, '天），權證專業戶', len(pro), '，標的', len(summ), '，佈局事件', len(done), '基準勝率', base, '，高勝率分點', len(good), '，疑似知情', len(AL), '，延續性', persist)

@@ -30,7 +30,7 @@ jobs:
       - name: 推到 wt-data 分支
         if: always()
         run: |
-          rm -rf pub && mkdir pub && cp wt-out/*.json pub/ 2>/dev/null; for x in d g g2 wu wb; do [ -d wt-out/$x ] && cp -r wt-out/$x pub/; done; true
+          rm -rf pub && mkdir pub && cp wt-out/*.json pub/ 2>/dev/null; for x in d g g2 wu wb wl; do [ -d wt-out/$x ] && cp -r wt-out/$x pub/; done; true
           cd pub && git init -q && git checkout -q -b wt-data && git add -A
           git -c user.name=wt-bot -c user.email=wt-bot@users.noreply.github.com commit -qm "權證分點 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')" || exit 0
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" wt-data

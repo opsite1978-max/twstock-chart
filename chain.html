@@ -147,6 +147,10 @@ header .sp{flex:1}
 .wplan small{color:var(--muted);font-size:11.5px;line-height:1.5;display:inline-block;margin-top:2px}
 .wdayc{font-size:13px;line-height:1.6;padding:8px 12px}
 .wday{cursor:pointer}
+.zsb{display:inline-block;white-space:nowrap;text-decoration:none;font-size:12px;padding:4px 9px}
+.rdb{margin:2px 0;line-height:1.5}
+#rdTbl td small{display:block}
+#rdTbl td:nth-child(3){min-width:15em}
 .wstar{border:0;background:none;cursor:pointer;color:var(--dim);font-size:15px;padding:0 4px 0 0;line-height:1}
 .wstar[aria-pressed=true]{color:#e0a800}
 #nwTbl td small,#dpTbl td small,.trt td small{display:block}
@@ -626,6 +630,26 @@ function renderSw(){
   }
   return h;
 }
+// ── 神秘資金雷達 ──
+// 列：0 股票 1 分數 2 前三名分點 [分點, 分數, 金額, 標籤, 第一次買的日子] 3 全部金額 4 分點數 5 成本線（今天） 6 平均進場股價
+const RTAG = { '深價外':'p', '勝算低':'r', '短天期':'o', '新面孔':'p', '集中押注':'b', '約當佔量高':'r', '深價外戰績好':'g', '還抱著':'' };
+const zsLink = c => '<a class="btn zsb" href="zhanshen-me.html?s=' + c + '" target="_blank" rel="noopener">戰神看盤</a>';
+function renderRadar(){
+  const L = WT.rd || [];
+  let h = '<h3 class="secth">神秘資金雷達<small>最近 20 個交易日，一般分點在認購權證上最「可疑」的佈局：深價外、勝算低、短天期、新面孔、集中押注、約當佔量高、過去戰績好、還抱著，條件越多分數越高（排除權證專業戶、隔日沖型）</small></h3>';
+  if (!L.length) return h + '<p class="note">資料累積中。</p>';
+  h += '<p class="note" style="margin:0 0 6px"><b style="color:#d9822b">成本線</b>＝這群分點還抱著的權證，換算成股價要在哪裡才剛好回本（每天會隨時間價值往上移）。按「戰神看盤」會在 K 線圖上畫出這條線，股價站在線上＝他們在賺、會繼續抱；跌破＝他們開始賠。</p>';
+  const lim = ST.rdMore ? 80 : 20;
+  h += '<div class="tblwrap"><table class="tbl" id="rdTbl"><thead><tr><th>股票</th><th>分數</th><th style="text-align:left">主要的神秘資金</th><th>買進金額</th><th>成本線／現價</th><th class="hide-m">平均進場</th><th></th></tr></thead><tbody>' +
+    L.slice(0, lim).map(r => { const u = WT.u[r[0]] || {}, c = u.c, gap = r[5] && c ? (c / r[5] - 1) * 100 : null;
+      return '<tr data-w="' + r[0] + '"><td>' + esc(nameOf(r[0])) + '<small>' + r[0] + (u.r5 != null ? '・5 日 ' + sgn(u.r5, 1) + '%' : '') + '</small></td><td><b>' + num(r[1], 1) + '</b></td>' +
+        '<td class="wrap" style="text-align:left">' + r[2].map(x => '<div class="rdb">' + star(x[0]) + '<span class="lk" data-wb="' + esc(x[0]) + '">' + esc(wName(x[0])) + '</span> <small style="display:inline">' + fmtM(x[2], false) + '・' + mmdd(WT.days[x[4]]) + ' 起</small> ' + x[3].map(t => '<span class="pill ' + (RTAG[t] || '') + '">' + t + '</span>').join('') + '</div>').join('') + '</td>' +
+        '<td>' + fmtM(r[3], false) + '<small>' + r[4] + ' 個分點</small></td>' +
+        '<td>' + (r[5] ? '<b style="color:#d9822b">' + fmtP(r[5]) + '</b><small class="' + cls(gap) + '">現價 ' + fmtP(c) + (gap != null ? '（' + sgn(gap, 1) + '%）' : '') + '</small>' : '—') + '</td>' +
+        '<td class="hide-m">' + fmtP(r[6]) + '</td><td>' + zsLink(r[0]) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  if (L.length > lim) h += '<p style="text-align:center"><button class="btn" id="rdMore">顯示其他 ' + (L.length - lim) + ' 檔</button></p>';
+  return h;
+}
 async function renderWt(){
   const v = $('viewWt');
   if (!WT){
@@ -639,6 +663,7 @@ async function renderWt(){
   rows.sort((a, b) => dir * (b.k[0] - a.k[0]));
   const lim = ST.wmore ? 300 : 40;
   let h = '<div class="bar" style="margin-top:0"><label>方向 <span class="seg" id="wdSeg"><button data-v="1" aria-pressed="' + (dir === 1) + '">看多（認購淨買）</button><button data-v="-1" aria-pressed="' + (dir === -1) + '">看空（認售淨買）</button></span></label><span class="note">資料 ' + mmdd(FD[0]) + '～' + mmdd(FD[nd - 1]) + '，共 ' + nd + ' 個交易日' + (K > nd ? '（' + K + ' 日不足，用全部 ' + nd + ' 天）' : '') + '</span></div>';
+  if (dir > 0) h += renderRadar();
   h += '<h3 class="secth">近 ' + K + ' 日被佈局最多的股票<small>只算一般分點；看多＝認購淨買 − 認售淨買</small></h3>';
   h += '<div class="tblwrap"><table class="tbl" id="wtTbl"><thead><tr><th>股票</th><th>' + (dir > 0 ? '看多' : '看空') + '淨額</th><th class="hide-m">認購淨買</th><th class="hide-m">認售淨買</th><th>約當張數</th><th>佔成交量</th><th title="波動率不變下，20 個交易日內股價要漲（跌）多少，買的權證才回本；機率以這檔平常的波動估">' + (dir > 0 ? '20 天要漲' : '20 天要跌') + '</th><th title="買進的權證平均還剩幾個交易日到期">平均剩</th><th class="hide-m">買／賣分點</th><th style="text-align:left">主要佈局分點</th><th class="hide-m">外資＋總公司</th></tr></thead><tbody>';
   for (const r of rows.slice(0, lim)){
@@ -680,6 +705,8 @@ async function renderWt(){
   if ($('wMore')) $('wMore').onclick = () => { ST.wmore = true; renderWt(); };
   if ($('aMore')) $('aMore').onclick = () => { ST.amore = true; renderWt(); };
   if ($('nwMore')) $('nwMore').onclick = () => { ST.nwMore = true; renderWt(); };
+  if ($('rdMore')) $('rdMore').onclick = () => { ST.rdMore = true; renderWt(); };
+  for (const el of v.querySelectorAll('.zsb')) el.onclick = e => e.stopPropagation();
   if ($('dpMore')) $('dpMore').onclick = () => { ST.dpMore = true; renderWt(); };
   $('nwSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.nwMode = b.dataset.v; renderWt(); };
   bindStars(v, renderWt);
@@ -842,6 +869,7 @@ async function openWStock(c, focus){
     '<div><small>20 天內要' + up + '多少才回本</small><b>' + (TN != null ? needTxt(TN, dir) : '—') + '</b><small>' + (TP != null ? '平常波動下機率 ' + Math.round(TP) + '%' : '機率：歷史波動率累積中') + '</small></div>' +
     '<div><small>隱含波動率／平常波動</small><b>' + (TIV != null ? num(TIV, 0) + '%' : '—') + '</b><small>' + (j.hv ? '平常 ' + num(j.hv, 0) + '%' : '平常：累積中') + '</small></div></div>';
   h += wPlan(hold, cNow, dir, sel ? (j.n[sel] || sel) : '一般分點合計', TIV, j.hv);
+  h += '<p style="margin:4px 0 10px">' + zsLink(c) + ' <span class="note">在 K 線圖上畫出神秘資金成本線</span></p>';
   const TH_ = j.th && j.th[dir > 0 ? 'C' : 'P'];
   if (TH_ && WT.pmap) h += '<h4>這檔被買的權證：股票要' + up + '多少、幾天才賺</h4><div class="pmcols"><div>' + pmNeedTable(TH_, WT.pmap, dir) + '</div><div>' + pmGrid(TH_, WT.pmap, dir) + '</div></div><p class="note" style="margin:0 0 6px">一般分點最近 20 個交易日買的' + (dir > 0 ? '認購' : '認售') + '權證，用買進當天的隱含波動率估算（假設波動率不變）。</p>';
   h += '<h4>什麼時候買、買多少，回本線之後怎麼走</h4><div class="chips" id="wSel">' + chips.map(([b, n]) => '<button class="chip" data-v="' + esc(b) + '" aria-pressed="' + (b === sel) + '">' + esc(n) + '</button>').join('') + '</div>';

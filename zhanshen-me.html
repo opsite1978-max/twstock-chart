@@ -1900,6 +1900,26 @@ const isIntra = iv => !!INTRA[iv];
 if (NO_INTRA && isIntra(UI.interval)) UI.interval = 'D';
 function curDays(iv){ const c = INTRA[iv], v = +(UI.days || {})[iv]; return c.days.includes(v) ? v : c.def; }
 function saveUI(){ LS.set(PFX + 'ui', UI); }
+/* ═════════════ 神秘資金成本線（產業鏈地圖「權證佈局」算好的：可疑的權證分點還抱著的認購權證，換算成股價要在哪裡才回本） ═════════════ */
+const MYS_URL = 'https://raw.githubusercontent.com/opsite1978-max/twstock-chart/wt-data/wl/';
+let MYS = { id:null, j:null, arr:null, ent:null, key:'' };
+function mysArr(){
+  if (UI.showMys === false || !RAW || RAW.sample || !B || B.intra || B.iv !== 'D') return null;
+  const id = RAW.id;
+  if (MYS.id !== id){
+    MYS = { id, j:null, arr:null, ent:null, key:'' };
+    if (/^\d{4}$/.test(id)) fetch(MYS_URL + id + '.json?t=' + Math.floor(Date.now() / 6e5), { cache:'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (MYS.id === id && j){ MYS.j = j; schedule(); } }).catch(() => {});
+    return null;
+  }
+  if (!MYS.j) return null;
+  const key = B.n + '|' + B.d[B.n - 1];
+  if (MYS.key !== key){
+    const m = new Map(MYS.j.d.map((d, k) => [d, k])), a = new Float64Array(B.n).fill(NaN), e = new Float64Array(B.n).fill(NaN);
+    for (let i = 0; i < B.n; i++){ const k = m.get(String(B.d[i]).slice(0, 10)); if (k != null){ if (MYS.j.c[k] != null) a[i] = MYS.j.c[k]; if (MYS.j.e[k] != null) e[i] = MYS.j.e[k]; } }
+    MYS.arr = a; MYS.ent = e; MYS.key = key;
+  }
+  return MYS.arr;
+}
 function siteToken(){ return ''; }   // 我的戰神看盤只用自己存的憑證，不會借用別的頁面的
 function getToken(){ return (UI.token || '').trim() || siteToken(); }
 
@@ -5497,6 +5517,7 @@ function drawMain(p, i0, i1, ci){
   const r = R.vwb, q = P.vwb, ok0 = r && !r.error, hpmOn = P.hpm.on && P.hpm.hideVWB, ok = ok0 && !hpmOn;
   const mode = q.visualMode, cloud = mode === '雲帶', single = mode === '單邊通道';
   const arrs = [B.h, B.l];
+  const myA = mysArr(); if (myA) arrs.push(myA);
   if (ok && mode !== '只有趨勢線'){
     if (UI.scaleAll && cloud){ arrs.push(r.u1, r.l1, r.u3, r.l3); if (q.showOuter) arrs.push(r.u9, r.l9); }
     else arrs.push(r.u1, r.l1);
@@ -5568,6 +5589,8 @@ function drawMain(p, i0, i1, ci){
     if (!isNaN(e) && r.EIDX[B.n - 1] >= 0){ const a = r.atr[B.n - 1], x0 = X(Math.max(i0, r.EIDX[B.n - 1])), W = plotW();
       for (const [v, c, t] of [[e + q.tpMult * a, q.cLong, '停利'], [e, CC.axis, '進場'], [e - q.slMult * a, q.cExit, '停損']]){ const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = c; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); ctx.font = '11px "Noto Sans TC", sans-serif'; ctx.fillStyle = c; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(t + ' ' + fmtPx(v), W - 4, y - 2); ctx.textAlign = 'left'; } } }
   drawFZOverlay(i0, i1);
+  if (myA){ strokeSeries(i => MYS.ent[i], () => 'rgba(255,152,0,.55)', i0, i1, 1, [4, 4]); strokeSeries(i => myA[i], () => '#ff9800', i0, i1, 2.5);
+    const lv = myA[B.n - 1]; if (!isNaN(lv)) axisTag(lv, '#ff9800', '#0d1016', fmtP); }
   if (ok){
     if (cloud){
       if (q.showOuter){
@@ -5610,6 +5633,8 @@ function drawMain(p, i0, i1, ci){
       if (h.pat[ci]) ln.push([h.pat[ci] > 0 ? '多方 ABCD' : '空方 ABCD', '#00bcd4']);
       if (h.buy[ci]) ln.push([h.buy[ci] === 2 ? 'H BUY★' : 'H BUY', hq.cBuy]); if (h.sell[ci]) ln.push([h.sell[ci] === 2 ? 'H SELL★' : 'H SELL', hq.cSell]);
       lines.push(ln); } }
+  if (myA && MYS.j){ const j = MYS.j, v = myA[ci], e = MYS.ent[ci], q = j.q[j.q.length - 1];
+    lines.push([['神秘資金成本線', '#ff9800'], [isNaN(v) ? '—' : fmtP(v), '#ff9800'], ['進場均價 ' + (isNaN(e) ? '—' : fmtP(e)), 'rgba(255,152,0,.85)'], ['約當 ' + q + ' 張・' + j.nb + ' 個分點', CC.axis]]); }
   legend(lines, p.top);
 }
 
@@ -8839,6 +8864,7 @@ function appHTML(){
     '<p class="help">憑證只存在這台裝置的瀏覽器裡，請求時直接送到 FinMind。每個代號第一次載入抓一次完整日資料，之後只補最新幾天；週 K、月 K 由日資料在本機合成，不另外消耗額度。台指期從 2008 年起依年份分段抓取。</p></fieldset>' +
     '<fieldset><legend>圖表</legend>' +
     '<div class="row"><label for="a-vol">主圖底部顯示成交量</label><input type="checkbox" id="a-vol"' + (UI.showVolume ? ' checked' : '') + '></div>' +
+    '<div class="row"><label for="a-mys">主圖疊加神秘資金成本線（權證分點，只有日線、有資料的股票）</label><input type="checkbox" id="a-mys"' + (UI.showMys !== false ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-scale">價格座標納入 3／9 倍外通道</label><input type="checkbox" id="a-scale"' + (UI.scaleAll ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-zoom">圖上顯示縮放按鈕（－＋、自動、最新）</label><input type="checkbox" id="a-zoom"' + (UI.showZoom ? ' checked' : '') + '></div>' +
     '<div class="row"><label for="a-pname">副圖左上角顯示指標名稱</label><input type="checkbox" id="a-pname"' + ((UI.legendMode || 'value') === 'full' ? ' checked' : '') + '></div>' +
@@ -8870,6 +8896,7 @@ function bindApp(){
       else setChartColors(th, PRE[v]); buildBody(); };
   }
   document.getElementById('a-vol').onchange = e => { UI.showVolume = e.target.checked; saveUI(); schedule(); };
+  document.getElementById('a-mys').onchange = e => { UI.showMys = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-scale').onchange = e => { UI.scaleAll = e.target.checked; saveUI(); schedule(); };
   document.getElementById('a-pname').onchange = e => { UI.legendMode = e.target.checked ? 'full' : 'value'; saveUI(); syncLegBtn(); schedule(); };
   document.getElementById('a-zoom').onchange = e => { UI.showZoom = e.target.checked; saveUI(); document.getElementById('zoomBox').hidden = !UI.showZoom; };
