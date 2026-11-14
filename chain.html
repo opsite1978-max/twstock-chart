@@ -147,6 +147,12 @@ header .sp{flex:1}
 .wplan small{color:var(--muted);font-size:11.5px;line-height:1.5;display:inline-block;margin-top:2px}
 .wdayc{font-size:13px;line-height:1.6;padding:8px 12px}
 .wday{cursor:pointer}
+.wstar{border:0;background:none;cursor:pointer;color:var(--dim);font-size:15px;padding:0 4px 0 0;line-height:1}
+.wstar[aria-pressed=true]{color:#e0a800}
+#nwTbl td small,#dpTbl td small,.trt td small{display:block}
+#nwTbl td:nth-child(2){min-width:8.5em}
+#nwTbl td:nth-child(4),.trt td:nth-child(3){min-width:9.5em;white-space:normal}
+#nwTbl td:nth-child(4) small,.trt td:nth-child(3) small{white-space:nowrap}
 .tbl td.wrap:first-child{min-width:6.5em}
 .pmcols{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 18px}
 @media (min-width:900px){.pmcols{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
@@ -504,6 +510,56 @@ function renderPmap(dir){
     SBL.map((lb, i) => '<tr><td>' + lb + '</td>' + [5, 10, 20].map(d => { const c = (E.grid[d] || E.grid[String(d)] || {})[i] || (E.grid[d] || E.grid[String(d)] || {})[String(i)]; return c ? '<td class="' + (c[0] >= 30 ? 'u' : c[0] < 0 ? 'd' : '') + '">' + sgn(c[0], 0) + '%<small>' + c[1] + ' 次</small></td>' : '<td>—</td>'; }).join('') + '</tr>').join('') + '</table></div>';
   return h;
 }
+// ── 權證交易明細（分點自己的買賣） ──
+// 列：0 分點 1 權證 2 標的 3 C/P 4 履約價 5 最後交易日 6 進場日 7 出場日 8 買進金額 9 買進張 10 買均價 11 賣出張 12 賣均價 13 損益 14 報酬% 15 價外% 16 剩餘天 17 隱含波動率 18 現價 19 還抱著張
+let WF = new Set(); try { WF = new Set(JSON.parse(localStorage.getItem('chain:wfollow') || '[]')); } catch (e) {}
+function wfSave(){ try { localStorage.setItem('chain:wfollow', JSON.stringify([...WF])); } catch (e) {} }
+const star = b => '<button class="wstar" data-star="' + esc(b) + '" aria-pressed="' + WF.has(b) + '" title="追蹤這個分點">' + (WF.has(b) ? '★' : '☆') + '</button>';
+const wLbl = r => '<span style="font-family:var(--mono)">' + r[1] + '</span> <span class="' + (r[3] === 'C' ? 'u' : 'd') + '">' + (r[3] === 'C' ? '購' : '售') + '</span><small>履約 ' + fmtP(r[4]) + (r[5] ? '・' + r[5].slice(2).replace(/-/g, '/') + ' 到期' : '') + '</small>';
+const otmTxt = o => o == null ? '—' : o >= 0 ? (o >= 15 ? '<b class="o">價外 ' + num(o, 0) + '%</b>' : '價外 ' + num(o, 0) + '%') : '價內 ' + num(-o, 0) + '%';
+const pxx = v => v == null ? '—' : num(v, v < 1 ? 3 : 2);
+function tStatus(r, days){
+  if (r[7] == null) return '<span class="pill b">持有中</span><small>' + num(r[19], 0) + ' 張</small>';
+  if (r[7] === r[6]) return '<span class="pill">當沖</span>';
+  return '出場 ' + mmdd(days[r[7]]) + '<small>' + (r[7] - r[6]) + ' 天</small>';
+}
+const dpRec = d => d ? '<small class="' + (d[2] >= 60 ? 'u' : '') + '">深價外 ' + d[0] + ' 筆・勝 ' + d[2] + '%</small>' : '<small>深價外紀錄少</small>';
+function bindStars(root, after){
+  for (const el of root.querySelectorAll('[data-star]')) el.onclick = e => { e.stopPropagation(); const b = el.dataset.star; WF.has(b) ? WF.delete(b) : WF.add(b); wfSave(); after(); };
+}
+function renderNw(dir){
+  const days = WT.days, mode = ST.nwMode || 'deep';
+  let L = (WT.nw || []).filter(r => (r[3] === 'C') === (dir > 0));
+  if (mode === 'deep') L = L.filter(r => r[15] != null && r[15] >= WT.th.otm);
+  if (mode === 'follow') L = L.filter(r => WF.has(r[0]));
+  const lim = ST.nwMore ? 300 : 30;
+  let h = '<h3 class="secth">最近 5 天新進場的權證<small>分點這幾天新買進（≥ ' + fmtM(WT.th.tr_min, false) + '、不含當沖）的每一檔權證、買價和現在的損益；分點後面是它過去深價外交易的成績</small></h3>';
+  h += '<div class="bar" style="margin-top:0"><span class="seg" id="nwSeg">' + [['deep', '只看深價外（≥' + WT.th.otm + '%）'], ['all', '全部'], ['follow', '★ 追蹤的分點（' + WF.size + '）']].map(([v, t]) => '<button data-v="' + v + '" aria-pressed="' + (mode === v) + '">' + t + '</button>').join('') + '</span></div>';
+  h += '<div class="tblwrap"><table class="tbl" id="nwTbl"><thead><tr><th>進場</th><th>分點</th><th>股票</th><th style="text-align:left">權證</th><th>價外</th><th>到期剩</th><th>買進</th><th>金額</th><th>現價／損益</th><th>狀態</th></tr></thead><tbody>' +
+    (L.length ? L.slice(0, lim).map(r => '<tr data-w="' + r[2] + '"><td>' + mmdd(days[r[6]]) + '</td><td class="wrap">' + star(r[0]) + '<span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span>' + dpRec((WT.dpr || {})[r[0]]) + '</td><td>' + esc(nameOf(r[2])) + '<small>' + r[2] + '</small></td>' +
+      '<td class="wrap" style="text-align:left">' + wLbl(r) + '</td><td>' + otmTxt(r[15]) + '</td><td>' + (r[16] != null ? r[16] + '<small>天</small>' : '—') + '</td><td>' + num(r[9], 0) + ' 張<small>@ ' + pxx(r[10]) + '</small></td><td>' + fmtM(r[8], false) + '</td>' +
+      '<td class="' + cls(r[14]) + '">' + pxx(r[18]) + '<small>' + sgn(r[14], 1) + '%</small></td><td>' + tStatus(r, days) + '</td></tr>').join('') : '<tr><td colspan="10" style="text-align:center;color:var(--dim)">' + (mode === 'follow' ? '追蹤的分點最近 5 天沒有新進場（在分點旁按 ☆ 加入追蹤）' : '沒有符合的') + '</td></tr>') + '</tbody></table></div>';
+  if (L.length > lim) h += '<p style="text-align:center"><button class="btn" id="nwMore">顯示其他 ' + (L.length - lim) + ' 筆</button></p>';
+  return h;
+}
+function renderDp(){
+  const L = WT.dp || [];
+  let h = '<h3 class="secth">深價外權證高手（分點實際損益）<small>把每個分點每檔權證的買賣配對成一筆筆交易（買進 ≥ ' + fmtM(WT.th.tr_min, false) + '、不含當沖），算它自己真正賺賠；還沒出場但已滿 ' + WT.th.hor + ' 天的用現價估。至少 ' + WT.th.dp_min + ' 筆深價外交易才列入</small></h3>';
+  h += '<p class="note" style="margin:0 0 6px">所有一般分點的深價外交易，賺錢的比例是 <b>' + (WT.dpBase ?? '—') + '%</b>。勝率明顯高於這個、而且筆數多的，才不是運氣。</p>';
+  h += '<div class="tblwrap"><table class="tbl" id="dpTbl"><thead><tr><th>分點</th><th>深價外筆數</th><th>勝率</th><th>賺 ≥' + WT.th.hit + '%</th><th>報酬率</th><th>總損益</th><th class="hide-m">持有中位數</th><th class="hide-m">全部權證交易</th></tr></thead><tbody>' +
+    (L.length ? L.slice(0, ST.dpMore ? 60 : 25).map(([b, n, d, a]) => '<tr data-wb="' + esc(b) + '"><td class="wrap">' + star(b) + '<span class="lk" data-wb="' + esc(b) + '">' + esc(n) + '</span></td><td>' + d[0] + '</td><td class="' + (d[2] >= 60 ? 'u' : '') + '">' + d[2] + '%<small>' + d[1] + ' 勝</small></td><td>' + d[7] + '<small>次</small></td>' +
+      '<td class="' + cls(d[3]) + '">' + sgn(d[3], 1) + '%</td><td class="' + cls(d[4]) + '">' + fmtM(d[4]) + '</td><td class="hide-m">' + d[5] + '<small>天</small></td><td class="hide-m">' + (a ? a[2] + '%<small>' + a[0] + ' 筆</small>' : '—') + '</td></tr>').join('') :
+      '<tr><td colspan="8" style="text-align:center;color:var(--dim)">資料累積中：每筆交易要出場、或買進滿 ' + WT.th.hor + ' 個交易日才算</td></tr>') + '</tbody></table></div>';
+  if (L.length > 25 && !ST.dpMore) h += '<p style="text-align:center"><button class="btn" id="dpMore">顯示其他 ' + (L.length - 25) + ' 個</button></p>';
+  return h;
+}
+function tradeTable(rows, days, showBranch, names){
+  if (!rows || !rows.length) return '<p class="note">沒有 ≥ 10 萬的權證交易。</p>';
+  return '<div class="tblwrap"><table class="mini trt"><tr><th>進場</th>' + (showBranch ? '<th>分點</th>' : '<th>股票</th>') + '<th style="text-align:left">權證</th><th>價外</th><th>買進</th><th>賣出</th><th>損益</th><th>狀態</th></tr>' +
+    rows.map(r => '<tr data-' + (showBranch ? 'wb="' + esc(r[0]) : 'w="' + r[2]) + '"><td>' + mmdd(days[r[6]]) + '</td><td>' + (showBranch ? esc((names || {})[r[0]] || wName(r[0])) : esc(nameOf(r[2]))) + '</td><td style="text-align:left;white-space:normal">' + wLbl(r) + '</td><td>' + otmTxt(r[15]) + '<small>' + (r[16] != null ? '剩 ' + r[16] + ' 天' : '') + '</small></td>' +
+      '<td>' + num(r[9], 0) + ' 張<small>@ ' + pxx(r[10]) + '・' + fmtM(r[8], false) + '</small></td><td>' + (r[11] ? num(r[11], 0) + ' 張<small>@ ' + pxx(r[12]) + '</small>' : '—') + '</td>' +
+      '<td class="' + cls(r[13]) + '">' + fmtM(r[13]) + '<small>' + sgn(r[14], 1) + '%</small></td><td>' + tStatus(r, days) + '</td></tr>').join('') + '</table></div>';
+}
 async function renderWt(){
   const v = $('viewWt');
   if (!WT){
@@ -530,12 +586,14 @@ async function renderWt(){
   if (!rows.length) h += '<tr><td colspan="11" style="text-align:center;color:var(--dim)">沒有資料</td></tr>';
   h += '</tbody></table></div>';
   if (rows.length > lim) h += '<p style="text-align:center"><button class="btn" id="wMore">顯示其他 ' + (rows.length - lim) + ' 檔</button></p>';
+  h += renderNw(dir);
   // 疑似知情佈局
   const AL = WT.al.filter(r => dir * r[2] > 0);
   h += '<h3 class="secth">疑似知情佈局（最近 5 天）<small>單一分點在一檔股票的權證' + (dir > 0 ? '看多' : '看空') + '金額很大，或換算成股票佔成交量很高，再加上新進場、集中押注、連續買其中一項</small></h3>';
   h += '<div class="tblwrap"><table class="tbl"><thead><tr><th>分點</th><th>股票</th><th>5 日淨額</th><th>約當張數</th><th>佔成交量</th><th>' + (dir > 0 ? '20 天要漲' : '20 天要跌') + '</th><th>到期剩</th><th style="text-align:left">標籤</th><th class="hide-m">開始</th><th>過去勝率</th></tr></thead><tbody>' +
     (AL.length ? AL.slice(0, ST.amore ? 200 : 30).map(r => '<tr data-w="' + r[1] + '"><td class="wrap"><span class="lk" data-wb="' + esc(r[0]) + '">' + esc(wName(r[0])) + '</span></td><td>' + esc(nameOf(r[1])) + '<small>' + r[1] + '</small></td><td class="' + cls(r[2]) + '">' + fmtM(r[2]) + '</td><td class="' + cls(r[3]) + '">' + sgn(r[3] / 1000, 0) + '</td><td>' + num(r[4], 2) + '%</td>' + wNeedCell(r[12], r[13]) + '<td>' + (r[10] != null ? r[10] + '<small>天</small>' : '—') + '</td><td class="wrap">' + r[5].map(t => '<span class="pill ' + (WTAG[t] || '') + '">' + esc(t) + '</span>').join('') + '</td><td class="hide-m">' + mmdd(WT.days[r[6]]) + '</td><td>' + (r[7] != null ? r[7] + '%<small>' + r[8] + ' 次</small>' : '<small>樣本少</small>') + '</td></tr>').join('') : '<tr><td colspan="10" style="text-align:center;color:var(--dim)">最近 5 天沒有符合的</td></tr>') + '</tbody></table></div>';
   if (AL.length > 30 && !ST.amore) h += '<p style="text-align:center"><button class="btn" id="aMore">顯示其他 ' + (AL.length - 30) + ' 筆</button></p>';
+  h += renderDp();
   h += renderPmap(dir);
   // 高勝率
   const P = WT.persist;
@@ -554,6 +612,10 @@ async function renderWt(){
   $('wdSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.wdir = +b.dataset.v; ST.wmore = false; renderWt(); };
   if ($('wMore')) $('wMore').onclick = () => { ST.wmore = true; renderWt(); };
   if ($('aMore')) $('aMore').onclick = () => { ST.amore = true; renderWt(); };
+  if ($('nwMore')) $('nwMore').onclick = () => { ST.nwMore = true; renderWt(); };
+  if ($('dpMore')) $('dpMore').onclick = () => { ST.dpMore = true; renderWt(); };
+  $('nwSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ST.nwMode = b.dataset.v; renderWt(); };
+  bindStars(v, renderWt);
   bindW(v);
 }
 function bindW(root, from){
@@ -696,6 +758,8 @@ async function openWStock(c, focus){
   h += '<div class="card wdayc" id="wDay">' + wDayHtml(j, dd, lt, dir) + '</div><p class="note" style="margin:2px 0 8px">點圖上任何一天看當天明細。</p>';
   h += '<table class="mini">' + head + '<tr><td colspan="8" style="color:' + (dir > 0 ? 'var(--up)' : 'var(--down)') + ';font-weight:700">' + (dir > 0 ? '看多' : '看空') + '佈局（' + mmdd(j.d[t0]) + '～' + mmdd(j.d[nd - 1]) + '）</td></tr>' + buy.map(tr).join('') +
     (sell.length ? '<tr><td colspan="8" style="color:var(--muted);font-weight:700">反向（' + (dir > 0 ? '看空／賣出' : '看多／回補') + '）</td></tr>' + sell.map(tr).join('') : '') + '</table>';
+  const TRS = (j.tr || []).filter(r => (r[3] === 'C') === (dir > 0));
+  h += '<h4>最近 20 天分點買的' + (dir > 0 ? '認購' : '認售') + '權證明細</h4>' + (TRS.length ? tradeTable(TRS.slice(0, 40), j.d, true, j.n) : '<p class="note">沒有 ≥ 20 萬的新進場。</p>');
   h += '<p class="note" style="margin:0">「20 天要' + up + '」：假設隱含波動率不變，20 個交易日後股價要到哪裡，權證價值才回到買價（已扣掉這 20 天的時間價值）；機率用這檔最近 20 天的實際波動（歷史波動率）估。「不動撐」：股價不動，幾個交易日後權證掉 3 成。不含外資券商、券商總公司；「全部一般分點」也不含權證專業戶。</p>';
   sh.innerHTML = h;
   const re = () => openWStock(c, focus);
@@ -727,6 +791,8 @@ async function openWBranch(b, from){
     h += '<h4>目前還抱著的權證：能放多久、勝算多少</h4><table class="mini"><tr><th>股票</th><th>約當張</th><th>帳上損益</th><th>20 天要漲（跌）</th><th>不動撐</th><th class="hide-m">到期剩</th></tr>' + HL.map(([tg]) => one(tg, 1) + one(tg, -1)).join('') + '</table>' +
       '<p class="note" style="margin:0 0 6px">只算資料期間內買進、還沒賣掉的部分，用最新收盤價和權證最近的隱含波動率估算。「20 天要漲」＝20 個交易日內股價要到哪裡才回本（已扣掉時間價值）；機率以這檔平常的波動估。「不動撐」＝股價不動，幾個交易日後會再掉 3 成。</p>';
   }
+  const DPb = j.dp && j.dp.d, DPa = j.dp && j.dp.a;
+  h += '<h4>' + star(b) + ' 它的權證交易（實際損益）</h4><p class="note" style="margin:0 0 6px">' + (DPa ? '全部權證交易 ' + DPa[0] + ' 筆，賺錢 ' + DPa[2] + '%，報酬率 ' + sgn(DPa[3], 1) + '%。' : '') + (DPb ? '<b>深價外</b> ' + DPb[0] + ' 筆，賺錢 <b class="' + (DPb[2] >= 60 ? 'u' : '') + '">' + DPb[2] + '%</b>（全市場 ' + (WT && WT.dpBase != null ? WT.dpBase : '—') + '%），報酬率 ' + sgn(DPb[3], 1) + '%，總損益 ' + fmtM(DPb[4]) + '，持有中位數 ' + DPb[5] + ' 天。' : '深價外交易還沒有已出場或滿 10 天的。') + '</p>' + tradeTable((j.tr || []).slice(0, ST.trMore ? 150 : 30), j.d, false) + ((j.tr || []).length > 30 && !ST.trMore ? '<p style="text-align:center"><button class="btn" id="trMore">顯示全部 ' + j.tr.length + ' 筆</button></p>' : '');
   if (WT && WT.base != null) h += '<p class="note" style="margin:0 0 6px">全部分點實際抓到行情 ' + WT.base + '%、事前機率 ' + (WT.baseE ?? '—') + '%。' + (j.fl ? '大買權證 ' + j.fl[0] + ' 次，隔天就賣掉 6 成以上 ' + j.fl[1] + ' 次。' : '') + '</p>';
   h += '<h4>它在佈局哪些股票 ' + perSegHtml('wbPer') + '</h4><table class="mini"><tr><th>股票</th><th>看多淨額</th><th class="hide-m">認購淨</th><th class="hide-m">認售淨</th><th>約當張</th><th>天</th></tr>' +
     (L.length ? L.map(([tg, o]) => '<tr data-w="' + tg + '"><td>' + esc(nameOf(tg)) + ' <span style="font:10.5px var(--mono);color:var(--dim)">' + tg + '</span></td><td class="' + cls(o[0]) + '">' + fmtM(o[0]) + '</td><td class="hide-m ' + cls(o[1]) + '">' + fmtM(o[1]) + '</td><td class="hide-m ' + cls(-o[2]) + '">' + fmtM(o[2]) + '</td><td class="' + cls(o[3]) + '">' + sgn(o[3] / 1000, 0) + '</td><td>' + o[4] + '</td></tr>').join('') : '<tr><td colspan="6" style="color:var(--dim)">這段期間沒有明顯進出</td></tr>') + '</table>';
@@ -736,6 +802,8 @@ async function openWBranch(b, from){
   h += '<p class="note" style="margin:0">報酬是<b>權證本身</b>：買進後第 ' + (WT ? WT.th.hor : 10) + ' 個交易日的成交均價比買價漲跌多少（同一天買多檔就用金額加權），「最高」是這 ' + (WT ? WT.th.hor : 10) + ' 天裡最好的時候。漲 ≥ ' + (WT ? WT.th.hit : 30) + '% 算抓到行情。事前機率是買進當下，用權證的隱含波動率和這檔平常的波動估算做得到的機會。</p>';
   sh.innerHTML = h;
   if ($('wbBack')) $('wbBack').onclick = () => openWStock(from, b);
+  if ($('trMore')) $('trMore').onclick = () => { ST.trMore = true; openWBranch(b, from); };
+  bindStars(sh, () => openWBranch(b, from));
   $('wbPer').onclick = e => { const bt = e.target.closest('button'); if (!bt) return; ST.per = +bt.dataset.v; LS.set('per', ST.per); syncSeg(); render(); openWBranch(b, from); };
   bindW(sh);
 }

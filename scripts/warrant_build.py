@@ -27,6 +27,8 @@ TH = {
     'short': 30,           # 短天期：買進的權證平均剩 ≤ 30 個交易日到期
     'otm': 15,             # 深價外：履約價離股價 ≥ 15%
     'hv_min': 12,          # 歷史波動率至少要 12 個日報酬
+    'tr_min': 300000,      # 一筆權證交易買進 ≥ 30 萬才統計
+    'dp_min': 4,           # 深價外交易至少 4 筆才排名
     'hard': 20,            # 低勝算重押：以平常波動，20 個交易日內漲（跌）到回本的機率 < 20%
 }
 FOREIGN = ('麥格理', '美林', '摩根', '高盛', '野村', '花旗', '瑞銀', '大和', '法銀', '匯豐', '瑞士', '德意志', '星展', '里昂', '法興', '巴克萊', '渣打', '港商', '美商', '新加坡', '日商', '英商')
@@ -380,7 +382,7 @@ def build(OUT, days, meta, log):
             for wc, bq, sq, bm, sm in rows:
                 if bq + sq: x = PXW.setdefault(wc, {}).setdefault(t, [0, 0.0]); x[0] += bq + sq; x[1] += bm + sm
     PXW = {wc: {t: m / q for t, (q, m) in v.items()} for wc, v in PXW.items()}
-    H = TH['hor']
+    H = TH['hor']; t0w5 = F[-5:][0]
     def wout(b, t, tg, sg):
         d = D[t]; rows = DATA[d]['w'].get(b, []); S = close(tg, t); hvv = hv(tg, d)
         tot = cov = rs = mx = ew = es = 0.0
@@ -443,6 +445,73 @@ def build(OUT, days, meta, log):
                     if not o: continue
                     lastep[(tg, sg)] = t
                     EP.setdefault(b, []).append([t, tg, sg, round(money), round(a[3]), o[0], o[1], o[2], o[3], o[4]])
+    # ── 每筆權證交易：分點自己的進出（從第一次買進到幾乎賣光算一筆），算真正的損益 ──
+    # 賣出超過這段期間買進的部分（更早就有的庫存）不算。還沒賣完的，用最近的成交均價估。
+    def lastpx(wc):
+        ser = PXW.get(wc, {})
+        for k in range(nd - 1, max(-1, nd - 4), -1):
+            if k in ser: return ser[k]
+        return None
+    TR = {}                     # 分點 → 交易列表
+    for b in BT:
+        if KD.get(b, 'b') != 'b': continue
+        st_ = {}
+        for t in F:
+            for wc, bq, sq, bm, sm in DATA[D[t]]['w'].get(b, []):
+                m = WM.get(wc)
+                if not m: continue
+                x = st_.get(wc)
+                if bq:
+                    if x is None or x['pos'] <= 0.05 * x['mx']:
+                        if x is not None and x['bu']: TR.setdefault(b, []).append(x)
+                        S0 = close(m[0], t); gg = G.get(D[t], {}).get(wc)
+                        x = st_[wc] = {'wc': wc, 't0': t, 't1': None, 'pos': 0, 'mx': 0, 'cost': 0.0, 'bu': 0, 'bm': 0.0, 'su': 0, 'sm': 0.0, 'pnl': 0.0,
+                                       'otm': ((m[3] / S0 - 1) * 100 if m[1] == 'C' else (1 - m[3] / S0) * 100) if S0 and m[3] else None,
+                                       'dl': wdays(D[t], m[4]) if m[4] else None, 'iv': gg[0] if gg else None, 'S0': S0}
+                    x['pos'] += bq; x['cost'] += bm; x['bu'] += bq; x['bm'] += bm; x['mx'] = max(x['mx'], x['pos'])
+                if sq and x is not None and x['pos'] > 0:
+                    u = min(sq, x['pos']); ac = x['cost'] / x['pos']; px_ = sm / sq
+                    x['pnl'] += (px_ - ac) * u; x['cost'] -= ac * u; x['pos'] -= u; x['su'] += u; x['sm'] += px_ * u
+                    if x['pos'] <= 0.05 * x['mx']: x['t1'] = t
+        for x in st_.values():
+            if x['bu']: TR.setdefault(b, []).append(x)
+    for b, L in TR.items():
+        for x in L:
+            lp = lastpx(x['wc']) if x['t1'] is None else None
+            x['unr'] = (lp * x['pos'] - x['cost']) if lp and x['pos'] > 0 else 0.0
+            x['lp'] = lp
+            x['ret'] = (x['pnl'] + x['unr']) / x['bm'] * 100 if x['bm'] else 0
+            x['age'] = (x['t1'] if x['t1'] is not None else nd - 1) - x['t0']
+    # 深價外（價外 ≥ 15%）交易的分點勝率：已出場的，或還沒出場但已滿 10 天（用現價估）
+    # 當天買當天賣光的（當沖）不算佈局，不列入
+    def judged(x): return x['bm'] >= TH['tr_min'] and x['t1'] != x['t0'] and (x['t1'] is not None or x['age'] >= TH['hor'])
+    DP = {}
+    for b, L in TR.items():
+        if b in pro: continue
+        dl_ = [x for x in L if judged(x) and x['otm'] is not None and x['otm'] >= TH['otm']]
+        al_ = [x for x in L if judged(x)]
+        def sm_(z):
+            if not z: return None
+            w = sum(1 for x in z if x['ret'] > 0); n = len(z)
+            return [n, w, round(w / n * 100), round(sum(x['pnl'] + x['unr'] for x in z) / sum(x['bm'] for x in z) * 100, 1),
+                    round(sum(x['pnl'] + x['unr'] for x in z)), round(ST.median(x['age'] for x in z)), round((w + 1) / (n + 2) * 100, 1), sum(1 for x in z if x['ret'] >= TH['hit'])]
+        DP[b] = {'d': sm_(dl_), 'a': sm_(al_)}
+    alld = [x for b, L in TR.items() if b not in pro for x in L if judged(x) and x['otm'] is not None and x['otm'] >= TH['otm']]
+    dp_base = round(sum(1 for x in alld if x['ret'] > 0) / len(alld) * 100, 1) if alld else None
+    dp_rank = sorted([b for b, v in DP.items() if v['d'] and v['d'][0] >= TH['dp_min']], key=lambda b: (-DP[b]['d'][6], -DP[b]['d'][3]))[:60]
+    def trow(b, x):
+        m = WM[x['wc']]
+        return [b, x['wc'], m[0], m[1], m[3], m[4], x['t0'], x['t1'], round(x['bm']), round(x['bu'] / 1000), round(x['bm'] / x['bu'], 3) if x['bu'] else None,
+                round(x['su'] / 1000), round(x['sm'] / x['su'], 3) if x['su'] else None, round(x['pnl'] + x['unr']), round(x['ret'], 1),
+                round(x['otm'], 1) if x['otm'] is not None else None, x['dl'], x['iv'], round(x['lp'], 3) if x['lp'] else None, round(x['pos'] / 1000)]
+    # 最近 5 個交易日新進場的權證（≥ 30 萬），附上這個分點過去深價外交易的成績
+    NW = []
+    for b, L in TR.items():
+        if b in pro: continue
+        for x in L:
+            if x['t0'] >= t0w5 and x['bm'] >= TH['tr_min'] and x['t1'] != x['t0']:
+                NW.append(trow(b, x))
+    NW.sort(key=lambda r: -(r[8] * (1 + (DP.get(r[0], {}).get('d') or [0] * 7)[6] / 50)))
     done = [e for L in EP.values() for e in L if e[5] is not None]
     base = round(sum(e[5] for e in done) / len(done) * 100, 1) if done else None
     base_r = round(ST.mean(e[6] for e in done), 2) if done else None
@@ -559,7 +628,7 @@ def build(OUT, days, meta, log):
             for tg, a in S.get(t, {}).items(): agg[tg] = agg.get(tg, 0) + a[0]
         hold[b] = [[tg, round(v)] for tg, v in sorted(agg.items(), key=lambda kv: -abs(kv[1])) if abs(v) >= 100000][:5]
 
-    used = set(good) | {r[0] for r in AL} | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
+    used = set(good) | {r[0] for r in AL} | set(dp_rank) | {r[0] for r in NW[:400]} | {x[0] for s in summ.values() for k in s['k'].values() for x in k[7] + k[8]}
     # ── 獲利地圖：股票要漲多少、幾天，權證分點才賺得到錢 ──
     W20 = F[-20:]
     bk = lambda cp: {k: theo([cp + '|' + k], 'b', W20) for k in [o + d_ for o in 'ABC' for d_ in '123'] + ['all']}
@@ -595,12 +664,19 @@ def build(OUT, days, meta, log):
     out = {'date': D[-1], 'days': D, 'fd': [D[t] for t in F], 'baseE': base_e, 'pro': sorted(b for b in pro if b in used),
            'th': TH, 'base': base, 'baseR': base_r, 'nep': len(done), 'persist': persist,
            'n': {b: names.get(b, b) for b in used}, 'u': summ, 'al': AL[:300],
-           'good': [[b] + stats[b] + [hold.get(b, [])] for b in good], 'flip': sorted(b for b in flipper if b in used), 'pmap': PMAP}
+           'good': [[b] + stats[b] + [hold.get(b, [])] for b in good], 'flip': sorted(b for b in flipper if b in used), 'pmap': PMAP,
+           'dp': [[b, names.get(b, b), DP[b]['d'], DP[b]['a']] for b in dp_rank], 'dpBase': dp_base, 'nw': NW[:400],
+           'dpr': {r[0]: DP[r[0]]['d'] for r in NW[:400] if DP.get(r[0], {}).get('d')}}
     with open(os.path.join(OUT, 'wt.json'), 'w') as f: json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
 
     # ── 明細檔 ──
     for sub in ('wu', 'wb'):
         shutil.rmtree(os.path.join(OUT, sub), ignore_errors=True); os.makedirs(os.path.join(OUT, sub))
+    TRU = {}
+    for b, L in TR.items():
+        for x in L:
+            if x['t0'] >= W20[0] and x['bm'] >= 200000 and x['t1'] != x['t0']: TRU.setdefault(WM[x['wc']][0], []).append(trow(b, x))
+    for v in TRU.values(): v.sort(key=lambda r: (-r[6], -r[8]))
     for tg, S in U.items():
         r = {}; nm = {}; tot = {}
         for t, bmap in S.items():
@@ -612,20 +688,22 @@ def build(OUT, days, meta, log):
                 r.setdefault(b, []).append([t] + avg(a)); nm[b] = names.get(b, b)
         ho = {b: HO[b][tg] for b in HO if tg in HO[b] and KD.get(b, 'b') == 'b'}
         for b in ho: nm.setdefault(b, names.get(b, b))
+        for r_ in TRU.get(tg, [])[:80]: nm.setdefault(r_[0], names.get(r_[0], r_[0]))
         HT = {}
         for b in ho:
             if b not in pro: hadd(HT, HOLD[b][tg])
         o = {'d': D, 'c': [close(tg, t) for t in range(nd)], 'v': [px(tg, t)[1] for t in range(nd)],
              'f': [round(FT.get(tg, {}).get(t, [0, 0])[0]) for t in range(nd)], 'n': nm,
              'st': {b: stats[b][:4] + [stats[b][6]] for b in nm if b in stats}, 'flip': [b for b in nm if b in flipper], 'pro': [b for b in nm if b in pro], 'full': F,
-             'r': r, 'T': {t: avg(g) for t, g in tot.items()}, 'h': ho, 'H': hout(HT) if HT else None, 'th': {cp: theo([tg + '|' + cp], 'u', W20) for cp in 'CP'}, 'hv': round(hv(tg, LAST) * 100, 1) if hv(tg, LAST) else None}
+             'r': r, 'T': {t: avg(g) for t, g in tot.items()}, 'h': ho, 'H': hout(HT) if HT else None, 'th': {cp: theo([tg + '|' + cp], 'u', W20) for cp in 'CP'}, 'tr': TRU.get(tg, [])[:80], 'hv': round(hv(tg, LAST) * 100, 1) if hv(tg, LAST) else None}
         with open(os.path.join(OUT, 'wu', tg + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
     for b, S in BT.items():
         rows = [[t, tg, round(a[0]), round(a[1]), round(a[2]), round(a[3])] for t, tgs in S.items() for tg, a in tgs.items() if abs(a[0]) >= 50000 or a[4] >= 200000]
-        if not rows and b not in EP: continue
-        tgs = {x[1] for x in rows} | {e[1] for e in EP.get(b, [])} | set(HO.get(b, {}))
+        if not rows and b not in EP and b not in TR: continue
+        tgs = {x[1] for x in rows} | {e[1] for e in EP.get(b, [])} | set(HO.get(b, {})) | {WM[x['wc']][0] for x in TR.get(b, []) if x['bm'] >= 100000}
         o = {'d': D, 'id': b, 'n': names.get(b, b), 'st': stats.get(b), 'flip': b in flipper, 'pro': b in pro, 'nt': round(ST.mean(NT[b])) if b in NT else None,
-             'fl': flip.get(b), 'ep': [e[:9] for e in EP.get(b, [])], 'r': rows, 'h': HO.get(b, {}), 'full': F,
+             'fl': flip.get(b), 'ep': [e[:9] for e in EP.get(b, [])], 'tr': [trow(b, x) for x in sorted(TR.get(b, []), key=lambda x: -x['t0']) if x['bm'] >= 100000][:150], 'dp': DP.get(b), 'r': rows, 'h': HO.get(b, {}), 'full': F,
              'c': {tg: [close(tg, t) for t in range(nd)] for tg in tgs}}
         with open(os.path.join(OUT, 'wb', safe(b) + '.json'), 'w') as f: json.dump(o, f, ensure_ascii=False, separators=(',', ':'))
+    log('權證交易', sum(len(L) for L in TR.values()), '筆，深價外排名', len(dp_rank), '，深價外基準勝率', dp_base, '，最近新進場', len(NW))
     log('權證整理：完整', len(F), '天（時間軸', nd, '天），權證專業戶', len(pro), '，標的', len(summ), '，佈局事件', len(done), '基準勝率', base, '，高勝率分點', len(good), '，疑似知情', len(AL), '，延續性', persist)
