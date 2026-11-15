@@ -330,7 +330,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 14:20・操盤線</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 14:30・操盤線</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -1825,7 +1825,7 @@ SCHEMA.lhb = { tab:'龍虎榜抄底', title:'龍虎榜抄底（照你提供的�
 SCHEMA.jm = { tab:'操盤線', title:'操盤線主圖（照你提供的通達信「絕密操盤線」公式移植，畫面重新整理成只留重點）。【多空線】＝（開＋高＋低＋收）÷4 的 3 日平滑，往上彎桃紅、往下彎綠。【三條成本線】用籌碼分布算：每天依換手率（成交量÷發行股數）把舊籌碼換掉一部分，新籌碼落在當天高低價之間；大型股每天換手很少，照發行股數算的話多年前的便宜籌碼會一直留著、成本線會離股價很遠，所以預設把「長期不動的籌碼」排除（發行股數最多只算到近 250 根的成交量總和，可以在下面關掉回到原始算法）；主力成本＝最便宜 9% 籌碼的價位再取 250 日指數平均（黃），長命線＝27% 價位的 120 日平均（灰白），強命線＝81% 價位的 10 日平均（藍）。【買／賣】多空線由下往上穿過強命線＝買；多空線（5 日平滑）跌破強命線＝賣。【攻擊黃 K】成交量創 10 日新高、比前一天多一倍以上、收盤站上加權均價而且收漲，5 天內只標第一根。【黑馬】買點當天，5 天內出現過攻擊量、10 天內 8 日線穿過 20 日線、而且上漲日金額占比的短均穿過長均。沒有發行股數的商品（期貨、美股、指數）換手率改用「成交量÷近 60 根平均量的 100 倍」估算，圖例會寫「估」。成交金額用均價×成交量近似。這一版是照原公式移植，買賣點還沒有做回測。', groups:[
   { name:'顯示', items:[
     {k:'on', l:'啟用操盤線', t:'bool', d:true},
-    {k:'solo', l:'清晰模式：開著操盤線時，主圖其他疊加（VWB、通道、擒龍等）先藏起來', t:'bool', d:true},
+    {k:'clean', l:'清晰模式：開著操盤線時，主圖其他疊加（VWB、通道、擒龍等）先藏起來', t:'bool', d:false},
     {k:'showDK', l:'多空線（桃紅上彎、綠下彎）', t:'bool', d:true},
     {k:'showQM', l:'強命線（短線成本）', t:'bool', d:true},
     {k:'showCM', l:'長命線（中線成本）', t:'bool', d:true},
@@ -5654,7 +5654,7 @@ function calcJM(B, p){
   return { DK, DK1, ZL, CM, QM, OP, ATK, BUY, SELL, HM, mk, sig, est };
 }
 function jmOK(){ const q = P.jm; if (!q || !q.on) return null; const r = R.jm; return r && !r.error ? r : null; }
-function jmSolo(){ return !!(P.jm && P.jm.on && P.jm.solo && jmOK()); }
+function jmSolo(){ return !!(P.jm && P.jm.on && P.jm.clean && jmOK()); }
 function jmBar(i){ const r = jmOK(); return r && P.jm.colorK && r.ATK[i] ? P.jm.cAtk : null; }
 function drawJMOverlay(i0, i1){
   const r = jmOK(), q = P.jm; if (!r) return;
