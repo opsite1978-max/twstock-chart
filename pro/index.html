@@ -330,7 +330,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 15:10・買賣力道</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 19:00・一鍵整理</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -424,6 +424,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
     <button class="tog fav" id="togFav" aria-pressed="false" title="只顯示常用的指標按鈕，並把指標開關恢復成你存的常用設定；再按一次回到全部指標（圖不會變）">只看常用</button>
     <button class="iconbtn" id="btnFavSave" title="把現在開著的指標（副圖＋主圖的反轉抄底、機構牛、標準抄底）存成常用">設為常用</button>
+    <button class="iconbtn" id="btnTidy" title="一鍵整理：每個圖的高度恢復預設、價格座標恢復自動、K 棒寬度恢復預設、回到最新一根。指標開關與設定不會變">一鍵整理</button>
     <button class="iconbtn" id="btnRefresh" title="重新向 FinMind 抓取最新資料">重新整理</button>
     <button class="iconbtn" id="btnOrder" title="調整副圖由上到下的順序">副圖順序</button>
     <button class="iconbtn" id="btnBT" title="用這檔股票、這個週期的歷史資料，測試指標訊號進場、出場的績效">回測</button>
@@ -1976,7 +1977,8 @@ if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settin
 if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-UI.weights = Object.assign({ bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, dco:1.4, bwt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5 }, UI.weights);
+const DEF_W = Object.assign({ main:3, z:1.35, d:1.35 }, { bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, dco:1.4, bwt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5 });
+UI.weights = Object.assign({}, DEF_W, UI.weights);
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const FX = { USDTWD:'美元／台幣' };
 const INTRA = {
@@ -8145,6 +8147,7 @@ function resetY(){ for (const k in yS) yS[k] = null; schedule(); }
 document.getElementById('zIn').onclick = () => zoomBy(1.35);
 document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
 document.getElementById('zAuto').onclick = resetY;
+document.getElementById('btnTidy').onclick = () => { UI.weights = Object.assign({}, DEF_W); saveUI(); setBarW(7); view.right = NaN; if (!crossMode){ pinned = false; cross = null; } resetY(); setMsg('已整理：每個圖的高度、價格座標、K 棒寬度都恢復預設', 'ok', true); };
 document.getElementById('zEnd').onclick = () => { view.right = NaN; if (!crossMode){ pinned = false; cross = null; } else if (B) cross = { i:B.n - 1, y:cross ? cross.y : 100 }; schedule(); };
 function stepCross(k){
   if (!cross) cross = { i:B.n - 1, y:cv.clientHeight * 0.3 };
