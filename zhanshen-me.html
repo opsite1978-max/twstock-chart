@@ -329,7 +329,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 08:50・個股溫度</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 14:20・操盤線</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -372,6 +372,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togFZ" aria-pressed="true" title="反轉抄底（主圖）：轉折底、轉折頂★；其他功能在「指標設定 → 反轉抄底」打開">反轉抄底</button>
     <button class="tog" id="togJGN" aria-pressed="true" title="機構牛（主圖）：立體 K 棒、大漲紫 K／漲停金 K、牛線馬線、★機構牛與出場">機構牛</button>
     <button class="tog" id="togHPM" aria-pressed="true" title="HPM 通道（主圖，Highway Matrix Omega v8）：三條高斯核心線的外軌／內軌、壓力雲／支撐雲、轉折壓力支撐、H BUY★／H SELL★">HPM 通道</button>
+    <button class="tog" id="togJM" aria-pressed="true" title="操盤線（主圖）：多空線、強命線／長命線／主力成本三條籌碼成本線、攻擊黃 K、買賣與黑馬標記；清晰模式會先把其他主圖疊加藏起來">操盤線</button>
     <button class="tog" id="togBZ" aria-pressed="true" title="標準抄底（主圖）：紅藍 K、主升趨勢、主升安全、底部形態、主升啟動★／行情結束">標準抄底</button>
     <button class="tog" id="togQL" aria-pressed="true" title="擒龍（主圖）：DKX 紅綠多空帶、生命線、首版啟動橘 K、成本反轉紫 K、擒龍黃 K、★擒龍（回測優化）／出場">擒龍</button>
     <button class="tog" id="togCT" aria-pressed="true" title="週期通道（主圖，DCPv2 CycleTrend）：自動量出目前的波動週期，用它當均線長度畫均衡線，外加 1／2／3 倍偏差帶；2～3 倍之間上方是溢價區、下方是折價區">週期通道</button>
@@ -1817,6 +1818,33 @@ SCHEMA.lhb = { tab:'龍虎榜抄底', title:'龍虎榜抄底（照你提供的�
     {k:'cZone', l:'超跌區（跌破下界）', t:'color', d:'#00e5ff'},
     {k:'cOrig', l:'龍虎榜抄底', t:'color', d:'#ffd600'},
     {k:'cStar', l:'底★', t:'color', d:'#ff1744'}
+  ]}
+]};
+SCHEMA.jm = { tab:'操盤線', title:'操盤線主圖（照你提供的通達信「絕密操盤線」公式移植，畫面重新整理成只留重點）。【多空線】＝（開＋高＋低＋收）÷4 的 3 日平滑，往上彎桃紅、往下彎綠。【三條成本線】用籌碼分布算：每天依換手率（成交量÷發行股數）把舊籌碼換掉一部分，新籌碼落在當天高低價之間；大型股每天換手很少，照發行股數算的話多年前的便宜籌碼會一直留著、成本線會離股價很遠，所以預設把「長期不動的籌碼」排除（發行股數最多只算到近 250 根的成交量總和，可以在下面關掉回到原始算法）；主力成本＝最便宜 9% 籌碼的價位再取 250 日指數平均（黃），長命線＝27% 價位的 120 日平均（灰白），強命線＝81% 價位的 10 日平均（藍）。【買／賣】多空線由下往上穿過強命線＝買；多空線（5 日平滑）跌破強命線＝賣。【攻擊黃 K】成交量創 10 日新高、比前一天多一倍以上、收盤站上加權均價而且收漲，5 天內只標第一根。【黑馬】買點當天，5 天內出現過攻擊量、10 天內 8 日線穿過 20 日線、而且上漲日金額占比的短均穿過長均。沒有發行股數的商品（期貨、美股、指數）換手率改用「成交量÷近 60 根平均量的 100 倍」估算，圖例會寫「估」。成交金額用均價×成交量近似。這一版是照原公式移植，買賣點還沒有做回測。', groups:[
+  { name:'顯示', items:[
+    {k:'on', l:'啟用操盤線', t:'bool', d:true},
+    {k:'solo', l:'清晰模式：開著操盤線時，主圖其他疊加（VWB、通道、擒龍等）先藏起來', t:'bool', d:true},
+    {k:'showDK', l:'多空線（桃紅上彎、綠下彎）', t:'bool', d:true},
+    {k:'showQM', l:'強命線（短線成本）', t:'bool', d:true},
+    {k:'showCM', l:'長命線（中線成本）', t:'bool', d:true},
+    {k:'showZL', l:'主力成本（長線成本）', t:'bool', d:true},
+    {k:'showOp', l:'操作線（收盤 7 日指數平均，藍上彎、黃下彎）', t:'bool', d:false},
+    {k:'colorK', l:'攻擊量 K 棒塗黃', t:'bool', d:true},
+    {k:'showBS', l:'買／賣標記', t:'bool', d:true},
+    {k:'showHM', l:'黑馬標記', t:'bool', d:true},
+    {k:'tags', l:'右邊價格軸標出三條成本線', t:'bool', d:true},
+    {k:'lockAdj', l:'長期不動的籌碼不算（發行股數最多只算到近 250 根的成交量總和）', t:'bool', d:true}
+  ]},
+  { name:'顏色', items:[
+    {k:'cUp', l:'多空線上彎', t:'color', d:'#ff4fd8'},
+    {k:'cDn', l:'多空線下彎', t:'color', d:'#00e676'},
+    {k:'cQM', l:'強命線', t:'color', d:'#40c4ff'},
+    {k:'cCM', l:'長命線', t:'color', d:'#cfd8dc'},
+    {k:'cZL', l:'主力成本', t:'color', d:'#ffd600'},
+    {k:'cAtk', l:'攻擊黃 K', t:'color', d:'#ffea00'},
+    {k:'cBuy', l:'買', t:'color', d:'#ff5252'},
+    {k:'cSell', l:'賣', t:'color', d:'#26c281'},
+    {k:'cHM', l:'黑馬', t:'color', d:'#ffb300'}
   ]}
 ]};
 SCHEMA.hpm = { tab:'HPM 通道', title:'Highway Matrix Omega v8 PRO（HPM，主圖，照你提供的 Pine 逐行移植＋回測優化）。【三條高斯核心線】把 (高+低+收)÷3 用「越近權重越大」的鐘形權重平均：快線 13 根、中線 34 根、慢線 89 根（再 3 根平均），只用過去資料、不偷看未來。【外軌】＝慢線 ± 寬度；寬度＝真實波幅平均（21 根）×2.4×0.75 加上價格離慢線平均距離的一半，再 12 根平滑；趨勢往上時上軌稍微放寬、下軌收窄（反之亦然）。【內軌】＝（中線×0.75＋快線×0.25）± 0.65 個真實波幅，夾在外軌裡面。外軌～內軌上方是紅色壓力雲，下方是綠色支撐雲。【轉折結構】左右各 7 根確認的高點／低點：比前一個高點高＝HH、低＝LH；低點比前一個低點高＝HL、低＝LL（轉折點要再過 7 根才確定，所以標記會晚 7 根出現）。藍色階梯線＝最近確認的轉折高點（壓力）、淡藍＝最近確認的轉折低點（支撐）；方框＝最近幾個轉折點 ±0.6 個真實波幅的壓力區（紅）／支撐區（綠）。【共振】趨勢核心＝慢線斜率×0.65＋中線斜率×0.35；轉折核心＝快線斜率、中線斜率、快線與中線的轉彎幅度加權；斜率都除以真實波幅換成 −1～+1。共振分數＝（兩個核心各半 ＋1）×50，0～100。【H BUY／H SELL】（原版）＝快線斜率由負翻正且在加速、共振大於 0.2（或轉折核心大於 0.2，允許提早反轉）、相對強弱指標大於 43；賣出反過來（小於 57）；買賣交替出現，間隔至少 10 根；最後一根沒收盤前不出訊號。【★】（回測後新增）H BUY★＝H BUY 前 10 根內最低價碰過外下軌；H SELL★＝H SELL 前 10 根內最高價碰過外上軌。【回測】全市場約 1,940 檔日 K、分四段時間（2024/11～2025/5、2025/5～11、2025/11～2026/5、2026/5～10），「命中」＝訊號落在大低點（大高點）後 5 天內（前後 20 天最低／最高）。隨便挑一天：命中 10%／10%／10%／13%，20 天後上漲機率 44%／41%／49%／43%。原版 H BUY：命中 48%／45%／47%／47%，20 天後上漲機率 48%／40%／49%／41%，跟隨便挑一天差不多（是轉折點，不代表會漲）。H BUY★：命中 59%／64%／71%／79%，20 天後上漲機率 58%／38%／45%／51%，次數 219／149／199／101。原版 H SELL：命中 52%／52%／48%／58%，之後 20 天下跌機率 63%／51%／52%／56%。H SELL★：命中 66%／64%／57%／68%，下跌機率 64%／52%／49%／55%，次數 199／170／217／234。也試過加上「相對強弱指標低於 30」「從 60 日高點跌深 15%」「收盤突破前高」「急漲爆量」，四段時間沒有一致更好，不採用。預設只顯示 ★ 的大標籤，原版訊號是淡色小三角形。【推演路徑】原 Pine 用目前方向加正弦波畫的情境線，不是預測，預設關閉。【提醒】打開時預設會暫時隱藏 VWB 主圖軌道，畫面才不會兩組通道疊在一起；可在「顯示」關掉這個選項。', groups:[
@@ -5487,7 +5515,7 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM], ['ct', calcCT]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM], ['jm', calcJM], ['ct', calcCT]]){
     // 用到才算：只有開著的副圖／主圖標記會真的計算，關掉的指標不花時間（以前每次都把 39 個指標全部重算）
     const obj = R, bars = B, fix = v => { Object.defineProperty(obj, k, { value:v, writable:true, configurable:true, enumerable:true }); return v; };
     Object.defineProperty(obj, k, { configurable:true, enumerable:true, set:fix,
@@ -5511,6 +5539,7 @@ function recompute(){
   // 一舉奪魁：K 棒下方金色「魁」
   if (R.kui && R.kui.main) for (const m of R.kui.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'labelUp', text:'魁', col:m.col, tcol:'#3a2a00', size:1.15, dy:6 + k * 20 }); }
   if (R.bao && R.bao.main) for (const m of R.bao.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'arrowUp', text:m.text, col:m.col, tcol:m.col, size:1.3, dy:24 + k * 18 }); }
+  if (jmOK()){ if (jmSolo()) R.mainExtra = []; for (const m of R.jm.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:m.dy + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); } }
   btOnRecompute();
   syncChips(); syncWarrants(); syncVal();
   schedule(); renderSignals();
@@ -5857,8 +5886,85 @@ function draw(){
   }
 }
 
+/* ═════════════ 操盤線主圖（通達信「絕密操盤線」移植） ═════════════ */
+function jmCost(B, cap){   // 籌碼分布：回傳最便宜 9%／27%／81% 籌碼的價位
+  const n = B.n, H = B.h, L = B.l, O = B.o, C = B.c, V = B.v, NB = 400;
+  const c9 = nanArr(n), c27 = nanArr(n), c81 = nanArr(n);
+  let lo = Infinity, hi = -Infinity; for (let i = 0; i < n; i++){ if (L[i] > 0 && L[i] < lo) lo = L[i]; if (H[i] > hi) hi = H[i]; }
+  if (!(hi > lo)) return { c9, c27, c81 };
+  const l0 = Math.log(lo), st = (Math.log(hi) - l0) / NB, idx = v => Math.max(0, Math.min(NB - 1, Math.floor((Math.log(v) - l0) / st)));
+  const g = new Float64Array(NB), mv = sma(V, 60); let scale = 1, sum = 0, a0 = NB, b0 = -1;
+  for (let i = 0; i < n; i++){
+    if (!(H[i] > 0 && L[i] > 0)){ if (i){ c9[i] = c9[i - 1]; c27[i] = c27[i - 1]; c81[i] = c81[i - 1]; } continue; }
+    let t = cap[i] > 0 ? V[i] / cap[i] : mv[i] > 0 ? V[i] / (mv[i] * 100) : 0.01;
+    if (!(t >= 0)) t = 0; if (t > 1 || sum === 0) t = 1;
+    if (t >= 1){ g.fill(0); scale = 1; sum = 0; a0 = NB; b0 = -1; }
+    else { scale *= 1 - t; if (scale < 1e-150){ for (let k = a0; k <= b0; k++) g[k] *= scale; sum *= scale; scale = 1; } }
+    const a = idx(L[i]), b = idx(H[i]), pk = idx((O[i] + H[i] + L[i] + C[i]) / 4), add = t / scale;
+    if (a === b) g[a] += add;
+    else { let ws = 0; const w = k => 0.25 + (k <= pk ? (k - a) / Math.max(1, pk - a) : (b - k) / Math.max(1, b - pk)); for (let k = a; k <= b; k++) ws += w(k); for (let k = a; k <= b; k++) g[k] += add * w(k) / ws; }
+    sum += add; if (a < a0) a0 = a; if (b > b0) b0 = b;
+    const t9 = sum * 0.09, t27 = sum * 0.27, t81 = sum * 0.81; let cum = 0, s = 0;
+    for (let k = a0; k <= b0 && s < 3; k++){ const x = g[k]; if (!x) continue; const nx = cum + x;
+      while (s < 3){ const tg = s === 0 ? t9 : s === 1 ? t27 : t81; if (nx < tg) break; const pr = Math.exp(l0 + (k + (tg - cum) / x) * st); if (s === 0) c9[i] = pr; else if (s === 1) c27[i] = pr; else c81[i] = pr; s++; }
+      cum = nx; }
+    if (s < 3){ const pr = Math.exp(l0 + (b0 + 1) * st); if (s < 1) c9[i] = pr; if (s < 2) c27[i] = pr; c81[i] = pr; }
+  }
+  return { c9, c27, c81 };
+}
+function calcJM(B, p){
+  const n = B.n, O = B.o, H = B.h, L = B.l, C = B.c, V = B.v;
+  if (n < 30) return { error:'資料太少' };
+  if (!(RAW && RAW.sample)) capLoad(RAW && RAW.id);
+  const cap = capArrFor(B), est = !cap.some(x => x > 0);
+  if (p.lockAdj && !est){ let t = 0; for (let i = 0; i < n; i++){ t += V[i]; if (i >= 250) t -= V[i - 250]; const yr = t / Math.min(i + 1, 250) * 250; if (cap[i] > 0 && yr > 0 && yr < cap[i]) cap[i] = yr; } }   // 長期不動的籌碼不算
+  const avg = nanArr(n); for (let i = 0; i < n; i++) avg[i] = (O[i] + C[i] + H[i] + L[i]) / 4;
+  const DK = tdxSMA(avg, 3, 1), DK1 = tdxSMA(avg, 5, 1);
+  const cs = jmCost(B, cap), ZL = tdxEMA(cs.c9, 250), CM = tdxEMA(cs.c27, 120), QM = tdxEMA(cs.c81, 10), OP = tdxEMA(C, 7);
+  // 攻擊量
+  const jj = nanArr(n); for (let i = 0; i < n; i++) jj[i] = (3 * C[i] + H[i] + L[i] + O[i]) / 6;
+  const v11 = nanArr(n); for (let i = 8; i < n; i++) v11[i] = (8 * jj[i] + 7 * jj[i - 1] + 6 * jj[i - 2] + 5 * jj[i - 3] + 4 * jj[i - 4] + 3 * jj[i - 5] + 2 * jj[i - 6] + jj[i - 8]) / 36;
+  const big = new Uint8Array(n), big2 = new Uint8Array(n);
+  for (let i = 9; i < n; i++){ const vb = V[i] >= hhv(V, 10, i) && V[i] > 2 * V[i - 1] && C[i] > v11[i]; big[i] = vb && C[i] > C[i - 1] ? 1 : 0; big2[i] = vb && C[i] > O[i] ? 1 : 0; }
+  const fil = (a, N) => { const o = new Uint8Array(n); let nx = 0; for (let i = 0; i < n; i++) if (i >= nx && a[i]){ o[i] = 1; nx = i + N + 1; } return o; };
+  const ATK = fil(big, 5), XG = fil(big2, 5);
+  // 黑馬條件
+  const e8 = tdxEMA(C, 8), e20 = tdxEMA(C, 20), BL = nanArr(n); { let ya = 0, ma = 0; for (let i = 0; i < n; i++){ const am = avg[i] * V[i]; if (C[i] >= O[i]) ya += am; ma += am; BL[i] = ma > 0 ? 100 * ya / ma : 50; } }
+  const b3 = sma(BL, 3), b30 = sma(BL, 30), M3 = nanArr(n), M30 = nanArr(n); for (let i = 0; i < n; i++){ M3[i] = i >= 3 && !isNaN(b3[i]) ? b3[i] : 50; M30[i] = i >= 30 && !isNaN(b30[i]) ? b30[i] : M3[i]; }
+  const cross = (a, b, i) => i > 0 && a[i] > b[i] && a[i - 1] <= b[i - 1];
+  const cnt = (f, N, i) => { let c = 0; for (let j = Math.max(1, i - N + 1); j <= i; j++) if (f(j)) c++; return c; };
+  const mk = [], sig = [], BUY = new Uint8Array(n), SELL = new Uint8Array(n), HM = new Uint8Array(n);
+  for (let i = 1; i < n; i++){
+    if (cross(DK, QM, i)){ BUY[i] = 1;
+      if (cnt(j => XG[j], 5, i) >= 1 && cnt(j => cross(e8, e20, j), 10, i) >= 1 && cnt(j => cross(M3, M30, j), 10, i) === 1) HM[i] = 1; }
+    if (cross(QM, DK1, i)) SELL[i] = 1;
+    if (HM[i]){ sig.push({ i, src:'操盤線', text:'黑馬', col:p.cHM }); if (p.showHM) mk.push({ i, y:L[i], shape:'labelUp', text:'黑馬', col:p.cHM, tcol:'#000', size:1.05, dy:5, jm:1 }); }
+    else if (BUY[i]){ sig.push({ i, src:'操盤線', text:'買（多空線站上強命線）', col:p.cBuy }); if (p.showBS) mk.push({ i, y:L[i], shape:'labelUp', text:'買', col:p.cBuy, tcol:'#fff', size:0.85, dy:5, jm:1 }); }
+    if (SELL[i]){ sig.push({ i, src:'操盤線', text:'賣（多空線跌破強命線）', col:p.cSell }); if (p.showBS) mk.push({ i, y:H[i], shape:'labelDown', text:'賣', col:p.cSell, tcol:'#000', size:0.85, dy:-5, jm:1 }); }
+  }
+  return { DK, DK1, ZL, CM, QM, OP, ATK, BUY, SELL, HM, mk, sig, est };
+}
+function jmOK(){ const q = P.jm; if (!q || !q.on) return null; const r = R.jm; return r && !r.error ? r : null; }
+function jmSolo(){ return !!(P.jm && P.jm.on && P.jm.solo && jmOK()); }
+function jmBar(i){ const r = jmOK(); return r && P.jm.colorK && r.ATK[i] ? P.jm.cAtk : null; }
+function drawJMOverlay(i0, i1){
+  const r = jmOK(), q = P.jm; if (!r) return;
+  if (q.showZL) strokeSeries(i => r.ZL[i], () => q.cZL, i0, i1, 2);
+  if (q.showCM) strokeSeries(i => r.CM[i], () => q.cCM, i0, i1, 1.6);
+  if (q.showQM) strokeSeries(i => r.QM[i], () => q.cQM, i0, i1, 1.6);
+  if (q.showOp) strokeSeries(i => r.OP[i], i => r.OP[i] > r.OP[i - 1] ? '#448aff' : '#ffd740', i0, i1, 1.2);
+  if (q.showDK) strokeSeries(i => r.DK[i], i => r.DK[i] > r.DK[i - 1] ? q.cUp : q.cDn, i0, i1, 2.4);
+  if (q.tags){ const e = B.n - 1; for (const [a, c, on] of [[r.ZL, q.cZL, q.showZL], [r.CM, q.cCM, q.showCM], [r.QM, q.cQM, q.showQM]]) if (on && !isNaN(a[e])) axisTag(a[e], c, '#0d1016', fmtP); }
+}
+function jmLegend(ci){
+  const r = jmOK(), q = P.jm; if (!q || !q.on) return null; if (!r) return [['操盤線  ' + (R.jm ? R.jm.error : ''), '#ef6a5f']];
+  const up = r.DK[ci] > r.DK[ci - 1], over = r.DK[ci] > r.QM[ci], c = B.c[ci];
+  const st = over && up ? ['偏多（多空線在強命線上、往上彎）', q.cBuy] : over ? ['多方轉弱（在強命線上、但往下彎）', q.cQM] : up ? ['空方反彈（在強命線下、往上彎）', q.cQM] : ['偏空（多空線在強命線下、往下彎）', q.cSell];
+  return [['操盤線' + (r.est ? '（成本線為估算）' : ''), CC.axis], ['多空 ' + fmtP(r.DK[ci]), up ? q.cUp : q.cDn], ['強命 ' + fmtP(r.QM[ci]), q.cQM], ['長命 ' + fmtP(r.CM[ci]), q.cCM], ['主力成本 ' + fmtP(r.ZL[ci]), q.cZL], st];
+}
+
 function drawMain(p, i0, i1, ci){
-  const r = R.vwb, q = P.vwb, ok0 = r && !r.error, hpmOn = P.hpm.on && P.hpm.hideVWB, ok = ok0 && !hpmOn;
+  const r = R.vwb, q = P.vwb, ok0 = r && !r.error, jmS = jmSolo(), hpmOn = P.hpm.on && P.hpm.hideVWB, ok = ok0 && !hpmOn && !jmS;
   const mode = q.visualMode, cloud = mode === '雲帶', single = mode === '單邊通道';
   const arrs = [B.h, B.l];
   const myA = mysArr(); if (myA) arrs.push(myA);
@@ -5904,7 +6010,7 @@ function drawMain(p, i0, i1, ci){
     }
   }
 
-  drawQLOverlay(i0, i1);   // 擒龍多空帶畫在 K 棒下面
+  if (!jmS) drawQLOverlay(i0, i1);   // 擒龍多空帶畫在 K 棒下面
   // candles
   const bw = Math.max(1, Math.min(view.barW * 0.7, view.barW - 1));
   for (let i = i0; i <= i1; i++){
@@ -5913,9 +6019,10 @@ function drawMain(p, i0, i1, ci){
     let col = upBar ? CC.up : CC.down;
     const painted = ok && q.colorBars && r.ready[i] && r.state[i] !== 0;
     if (painted) col = r.state[i] === 1 ? q.bullColor : q.bearColor;
-    const bzc = bzBarColor(i); if (bzc) col = bzc;
-    const jg = jgBar(i); if (jg) col = jg.col;
-    const qc = qlBar(i); if (qc) col = qc;
+    const bzc = jmS ? null : bzBarColor(i); if (bzc) col = bzc;
+    const jg = jmS ? null : jgBar(i); if (jg) col = jg.col;
+    const qc = jmS ? null : qlBar(i); if (qc) col = qc;
+    { const jc = jmBar(i); if (jc) col = jc; }
     ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
     const yo = S.y(o), yc = S.y(c), yh = S.y(h), yl = S.y(l);
     if (bw < 2.5){ ctx.beginPath(); ctx.moveTo(x, yh); ctx.lineTo(x, yl); ctx.stroke(); continue; }
@@ -5926,14 +6033,13 @@ function drawMain(p, i0, i1, ci){
     if (jg && bw >= 4 && hb >= 3){ ctx.fillStyle = rgba(jg.core, 25); ctx.fillRect(x - bw * 0.17, yt + 1, bw * 0.34, hb - 2); }   // 立體中心亮條
   }
 
-  drawBZOverlay(i0, i1);
-  drawJGNOverlay(i0, i1);
-  drawHPMOverlay(i0, i1);
-  drawCTOverlay(i0, i1);
+  if (!jmS){ drawBZOverlay(i0, i1); drawJGNOverlay(i0, i1); drawHPMOverlay(i0, i1); }
+  drawJMOverlay(i0, i1);
+  if (!jmS) drawCTOverlay(i0, i1);
   if (UI.showLBB && P.lbb.showMainTPSL && R.lbb && !R.lbb.error){ const r = R.lbb, q = P.lbb, e = r.ENT[B.n - 1];
     if (!isNaN(e) && r.EIDX[B.n - 1] >= 0){ const a = r.atr[B.n - 1], x0 = X(Math.max(i0, r.EIDX[B.n - 1])), W = plotW();
       for (const [v, c, t] of [[e + q.tpMult * a, q.cLong, '停利'], [e, CC.axis, '進場'], [e - q.slMult * a, q.cExit, '停損']]){ const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = c; ctx.lineWidth = 1.2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); ctx.font = '11px "Noto Sans TC", sans-serif'; ctx.fillStyle = c; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText(t + ' ' + fmtPx(v), W - 4, y - 2); ctx.textAlign = 'left'; } } }
-  drawFZOverlay(i0, i1);
+  if (!jmS) drawFZOverlay(i0, i1);
   if (myA){ strokeSeries(i => MYS.ent[i], () => 'rgba(255,152,0,.55)', i0, i1, 1, [4, 4]); strokeSeries(i => myA[i], () => '#ff9800', i0, i1, 2.5);
     const lv = myA[B.n - 1]; if (!isNaN(lv)) axisTag(lv, '#ff9800', '#0d1016', fmtP); }
   if (ok){
@@ -5968,9 +6074,10 @@ function drawMain(p, i0, i1, ci){
   const line1 = [[name.trim() + ' · ' + ivName, CC.title], ['開 ' + fmtPx(B.o[ci])], ['高 ' + fmtPx(B.h[ci])], ['低 ' + fmtPx(B.l[ci])], ['收 ' + fmtPx(B.c[ci]), cc], [isNaN(chg) ? '' : (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cc], isFX ? (B.intra ? ['', CC.axis] : ['量 ' + fmtNum(B.v[ci] / 1e8, 1) + ' 億美元', CC.axis]) : ['量 ' + fmtNum(vol, RAW && RAW.id === 'TAIEX' ? 1 : 0) + (RAW && RAW.id === 'TAIEX' ? ' 億' : ' ' + unit), CC.axis]];
   const line2 = ok
     ? [['VWB PRO', CC.axis], ['趨勢 ' + fmtP(r.trend[ci]), trendOf(ci)], ['上 ' + fmtP(r.u1[ci]), bandOf(ci)], ['下 ' + fmtP(r.l1[ci]), bandOf(ci)]]
-    : hpmOn ? null : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
+    : hpmOn || jmS ? null : [['VWB PRO  ' + (r ? r.error : ''), '#ef6a5f']];
   const lines = [line1]; if (line2) lines.push(line2);
-  if (P.hpm.on){ const h = R.hpm, hq = P.hpm;
+  { const jl = jmLegend(ci); if (jl) lines.push(jl); }
+  if (P.hpm.on && !jmS){ const h = R.hpm, hq = P.hpm;
     if (!h || h.error) lines.push([['HPM  ' + (h ? h.error : ''), '#ef6a5f']]);
     else { const g = '#26c281', rd = '#ef5350', sg = v => isNaN(v) ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2), sc = isNaN(h.OM[ci]) ? NaN : Math.round((h.OM[ci] + 1) * 50);
       const ln = [['HPM', CC.axis], [h.TR[ci] > 0 ? '多頭' : '空頭', h.TR[ci] > 0 ? g : rd], ['共振 ' + (isNaN(sc) ? '—' : sc), sc >= 50 ? g : rd], ['趨勢 ' + sg(h.TR[ci]), h.TR[ci] >= 0 ? g : rd], ['轉折 ' + sg(h.TU[ci]), h.TU[ci] >= 0 ? g : rd]];
@@ -5978,7 +6085,7 @@ function drawMain(p, i0, i1, ci){
       if (h.pat[ci]) ln.push([h.pat[ci] > 0 ? '多方 ABCD' : '空方 ABCD', '#00bcd4']);
       if (h.buy[ci]) ln.push([h.buy[ci] === 2 ? 'H BUY★' : 'H BUY', hq.cBuy]); if (h.sell[ci]) ln.push([h.sell[ci] === 2 ? 'H SELL★' : 'H SELL', hq.cSell]);
       lines.push(ln); } }
-  if (P.ct.on){ const t = R.ct, tq = P.ct;
+  if (P.ct.on && !jmS){ const t = R.ct, tq = P.ct;
     if (!t || t.error) lines.push([['週期通道  ' + (t ? t.error : ''), '#ef6a5f']]);
     else { const e = t.EQ[ci], d = t.DV[ci], tc = t.TR[ci] > 0 ? tq.cUp : t.TR[ci] < 0 ? tq.cDn : tq.cFlat, ln = [['週期通道', CC.axis], ['週期 ' + t.LN[ci] + ' 根', CC.axis], ['均衡 ' + fmtP(e) + (t.TR[ci] > 0 ? ' ↑' : t.TR[ci] < 0 ? ' ↓' : ' →'), tc]];
       if (plotW() > 700 && !isNaN(d)){ ln.push(['溢價 ' + fmtP(e + d * tq.m2) + '～' + fmtP(e + d * tq.m3), tq.cPrem]); ln.push(['折價 ' + fmtP(e - d * tq.m2) + '～' + fmtP(e - d * tq.m3), tq.cDisc]); }
@@ -9109,12 +9216,12 @@ function syncToolbar(){
   { let after = document.getElementById('togAdj');
     for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (!b) continue; b.setAttribute('aria-pressed', String(!!UI[pp.flag])); after.after(b); after = b; } }
   { const sb = document.getElementById('togSM'); sb.setAttribute('aria-pressed', String(!!UI.subMarks)); }
-  { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); const jb = document.getElementById('togJGN'); jb.setAttribute('aria-pressed', String(!!UI.showJGN)); fb.after(jb); const bb = document.getElementById('togBZ'); bb.setAttribute('aria-pressed', String(!!P.bz.on)); jb.after(bb); const hb = document.getElementById('togHPM'); hb.setAttribute('aria-pressed', String(!!P.hpm.on)); bb.after(hb); const qb = document.getElementById('togQL'); qb.setAttribute('aria-pressed', String(!!P.ql.on)); hb.after(qb); const tb = document.getElementById('togCT'); tb.setAttribute('aria-pressed', String(!!P.ct.on)); qb.after(tb); tb.after(document.getElementById('togSM')); const lb = document.getElementById('togLive'); lb.setAttribute('aria-pressed', String(!!UI.live)); document.getElementById('togSM').after(lb); }
+  { const fb = document.getElementById('togFZ'); fb.setAttribute('aria-pressed', String(!!P.fz.on)); let last = document.getElementById('togAdj'); for (const pp of orderedPanes()){ const b = document.getElementById('tog' + pp.btn); if (b) last = b; } last.after(fb); const jb = document.getElementById('togJGN'); jb.setAttribute('aria-pressed', String(!!UI.showJGN)); fb.after(jb); const bb = document.getElementById('togBZ'); bb.setAttribute('aria-pressed', String(!!P.bz.on)); jb.after(bb); const hb = document.getElementById('togHPM'); hb.setAttribute('aria-pressed', String(!!P.hpm.on)); bb.after(hb); const qb = document.getElementById('togQL'); qb.setAttribute('aria-pressed', String(!!P.ql.on)); hb.after(qb); const tb = document.getElementById('togCT'); tb.setAttribute('aria-pressed', String(!!P.ct.on)); qb.after(tb); const jmb = document.getElementById('togJM'); jmb.setAttribute('aria-pressed', String(!!P.jm.on)); tb.after(jmb); jmb.after(document.getElementById('togSM')); const lb = document.getElementById('togLive'); lb.setAttribute('aria-pressed', String(!!UI.live)); document.getElementById('togSM').after(lb); }
   favApply();
   sizeChart();
 }
 /* 常用指標：存目前開著的指標；「只看常用」時其他按鈕藏起來 */
-var FAV_MAIN = [['fz', 'togFZ', () => !!P.fz.on, v => { P.fz.on = v; LS.set(PFX + 'p:fz', P.fz); }], ['jgn', 'togJGN', () => !!UI.showJGN, v => { UI.showJGN = v; }], ['bz', 'togBZ', () => !!P.bz.on, v => { P.bz.on = v; LS.set(PFX + 'p:bz', P.bz); }], ['hpm', 'togHPM', () => !!P.hpm.on, v => { P.hpm.on = v; LS.set(PFX + 'p:hpm', P.hpm); }], ['ql', 'togQL', () => !!P.ql.on, v => { P.ql.on = v; LS.set(PFX + 'p:ql', P.ql); }], ['ct', 'togCT', () => !!P.ct.on, v => { P.ct.on = v; LS.set(PFX + 'p:ct', P.ct); }]];
+var FAV_MAIN = [['fz', 'togFZ', () => !!P.fz.on, v => { P.fz.on = v; LS.set(PFX + 'p:fz', P.fz); }], ['jgn', 'togJGN', () => !!UI.showJGN, v => { UI.showJGN = v; }], ['bz', 'togBZ', () => !!P.bz.on, v => { P.bz.on = v; LS.set(PFX + 'p:bz', P.bz); }], ['hpm', 'togHPM', () => !!P.hpm.on, v => { P.hpm.on = v; LS.set(PFX + 'p:hpm', P.hpm); }], ['ql', 'togQL', () => !!P.ql.on, v => { P.ql.on = v; LS.set(PFX + 'p:ql', P.ql); }], ['ct', 'togCT', () => !!P.ct.on, v => { P.ct.on = v; LS.set(PFX + 'p:ct', P.ct); }], ['jm', 'togJM', () => !!P.jm.on, v => { P.jm.on = v; LS.set(PFX + 'p:jm', P.jm); }]];
 function favNow(){ return [...PANES.filter(pp => UI[pp.flag]).map(pp => pp.id), ...FAV_MAIN.filter(m => m[2]()).map(m => m[0])]; }
 var favInit = false;
 function favApply(){
@@ -9170,6 +9277,7 @@ async function tokCheck(){
 })();
 document.getElementById('togSM').onclick = () => { UI.subMarks = !UI.subMarks; saveUI(); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togHPM').onclick = () => { P.hpm.on = !P.hpm.on; LS.set(PFX + 'p:hpm', P.hpm); syncToolbar(); recompute(); schedule(); };
+document.getElementById('togJM').onclick = () => { P.jm.on = !P.jm.on; LS.set(PFX + 'p:jm', P.jm); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togBZ').onclick = () => { P.bz.on = !P.bz.on; LS.set(PFX + 'p:bz', P.bz); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togCT').onclick = () => { P.ct.on = !P.ct.on; LS.set(PFX + 'p:ct', P.ct); syncToolbar(); recompute(); schedule(); };
 document.getElementById('togQL').onclick = () => { P.ql.on = !P.ql.on; LS.set(PFX + 'p:ql', P.ql); syncToolbar(); recompute(); schedule(); };
@@ -9224,7 +9332,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['ct', '週期通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jm', '操盤線'], ['ct', '週期通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
