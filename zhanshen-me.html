@@ -329,7 +329,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 14:30・操盤線</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 15:10・買賣力道</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -420,6 +420,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togJBS" aria-pressed="true" title="精品BS（通達信公式）：主線、關注、B入、警戒區、S出">精品BS</button>
     <button class="tog" id="togMWR" aria-pressed="true" title="月週共振：日週月三個 MACD 合成一條共振線、動態上下界、底／頂／啟／背">月週共振</button>
     <button class="tog" id="togTMP" aria-pressed="true" title="個股溫度：量能、資金、籌碼成本、型態動能十個公式混合成一條 0～100 的溫度線，動態上中下界">個股溫度</button>
+    <button class="tog" id="togML" aria-pressed="true" title="買賣力道：微分 DIF 震盪線（動態上中下界）＋買賣力道柱，起／收／抄底，★＝回測較準">買賣力道</button>
     <button class="tog" id="togDX" aria-pressed="true" title="MultiColor DegenX：鎖碼／浮動／獲利三層，加上回測過的找底訊號">DegenX</button>
     <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
@@ -785,6 +786,31 @@ SCHEMA.tmp = { tab:'個股溫度', title:'個股溫度（多個數學模型混�
     {k:'cWarm', l:'溫', t:'color', d:'#ffc400'},
     {k:'cCold', l:'冷', t:'color', d:'#40c4ff'},
     {k:'cBand', l:'上下界', t:'color', d:'#9e9e9e'}
+  ]}
+]};
+SCHEMA.ml = { tab:'買賣力道', title:'買賣力道（照你提供的通達信公式移植＋回測優化＋動態上中下界）。【怎麼算】相對 DIF＝(12 日指數平均 − 26 日指數平均)÷兩者平均×1000；微分 DIF＝3×(相對 DIF − 它的 9 日平均)；微分 DEA＝微分 DIF 的 SMA(5,2)；買賣力道＝2×(微分 DIF − 微分 DEA)。【畫面】粗線＝微分 DIF（往上紅、往下綠），上下界＝它自己近 250 根的第 90／第 10 百分位，中界＝0；底下淡色柱＝買賣力道（變大紅、變小綠）。【原公式訊號】起＝買賣力道 V 型回升（原公式的粗黃柱）；收＝起之後第一次轉弱（原公式的粗綠柱），圖例會寫這一輪從「起」到現在的漲跌幅；抄底＝微分 DIF 往上穿過微分 DEA，而且微分 DEA 在 −0.07 以下。【回測：796 檔、2019 年起日線、訊號後 10 天平均報酬，分 2019～21／2022～23／2024～26 三段；全市場同期平均 +1.16%／+0.38%／+1.15%】原版「起」+1.42%／+0.41%／+1.29%、原版「抄底」+1.27%／+0.24%／+1.34%，和隨便買差不多；從「起」抱到「收」每輪中位數 −0.3%～−0.6%、賺錢比例約 40%，所以「收」不適合當出場依據，只是提醒力道轉弱。【優化★】訊號當天微分 DIF 還在下界以下（真的夠低）才打★：起★ +3.29%／+0.28%／+2.29%（勝率 62%／48%／56%）；抄底★ +3.77%／+0.65%／+2.11%（勝率 62%／50%／56%）。多頭年明顯比較好，空頭年（2022～23）只和大盤打平，並不是穩賺。週線、月線沒有回測。', groups:[
+  { name:'參數', items:[
+    {k:'f', l:'快線根數（原公式 12）', t:'int', d:12, min:2, max:60},
+    {k:'s', l:'慢線根數（原公式 26）', t:'int', d:26, min:5, max:120},
+    {k:'sig', l:'平均根數（原公式 9）', t:'int', d:9, min:2, max:60},
+    {k:'bandLen', l:'上下界比較的根數', t:'int', d:250, min:60, max:1000},
+    {k:'bandPct', l:'上下界百分位（上界＝100 − 這個數）', t:'float', d:10, min:1, max:30, step:1}
+  ]},
+  { name:'顯示', items:[
+    {k:'showHist', l:'買賣力道淡色柱', t:'bool', d:true},
+    {k:'showDEA', l:'微分 DEA 細線', t:'bool', d:false},
+    {k:'starOnly', l:'只標回測較準的 ★（比較乾淨）', t:'bool', d:false},
+    {k:'showStart', l:'標「起」', t:'bool', d:true},
+    {k:'showEnd', l:'標「收」（小綠點）', t:'bool', d:true},
+    {k:'showCD', l:'標「抄底」', t:'bool', d:true},
+    {k:'mainMarks', l:'主圖也標 起★／抄底★（要開「副圖標記」）', t:'bool', d:false}
+  ]},
+  { name:'顏色', items:[
+    {k:'cUp', l:'往上／力道變大', t:'color', d:'#ff1744'},
+    {k:'cDn', l:'往下／力道變小', t:'color', d:'#00c853'},
+    {k:'cBand', l:'上下界', t:'color', d:'#40c4ff'},
+    {k:'cStart', l:'起', t:'color', d:'#ffd600'},
+    {k:'cCD', l:'抄底', t:'color', d:'#ff4fd8'}
   ]}
 ]};
 SCHEMA.mwr = { tab:'月週共振', title:'月週共振（照你提供的「月週共振 MACD」改成一條線，方便判讀）：分別算日、週、月三個週期的 MACD 柱（DIF−DEA，換成佔股價的百分比、再除以自己過去 250 根的標準差，高價股低價股都能比），三個週期平均成一條「共振線」（−100～+100）。週、月 MACD 不偷看未來：本週／本月還沒結束時，用到今天為止的收盤當作本期收盤。線的顏色：日週月三個都在 0 上＝紅（三線共振多），都在 0 下＝綠（共振空），其他＝灰。上下界＝共振線過去 250 根的 90%／10% 百分位。原公式的「共振啟點」（日線 KD、MACD 同時翻多剛滿 3 根、近 13 根出現連 3 紅、週 DIF 往上、月 DIF 比 20 根前高）標「啟」；「頂背離」（死叉時股價比上次死叉高、DIF 卻比較低）標「背」。【回測】上市櫃約 400 檔、2019/1～2026/11，「命中」＝訊號落在大低點（大高點）後 5 根內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 9%、守住 36%（頂 9%、31%）。底（共振線往上穿過下界）：命中 28%、守住 48%；底★（加上收盤突破前一根高點）：命中 32%、守住 54%。頂（往下跌破上界）：命中 29%、守住 42%；頂★（加上收盤跌破前一根低點）：命中 32%、守住 47%，之後 20 天平均 −3.6%。共振啟點：不是抓低點（命中 2%），而是趨勢延續，之後 20 天 67% 沒有跌破起點，平均 +3.3%（隨便一天 +2.3%）。頂背離：命中 24%、守住 44%。共振線本身：最低 10% 和最高 10% 之後 20 天報酬都比較好（低檔反彈、高檔強者恆強），中間最差。', groups:[
@@ -2023,7 +2049,7 @@ for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.
 if (P.kmo && !LS.get(PFX + 'mig:kmo1', false)){ P.kmo.showKDX = false; P.kmo.showMX = false; if (LS.get(PFX + 'p:kmo', null)) LS.set(PFX + 'p:kmo', P.kmo); LS.set(PFX + 'mig:kmo1', true); }
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showBS:true, showMWR:true, showTMP:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showVXT:true, showDCO:true, showBWT:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showQLW:false, showJGN:true, live:true, subMarks:false, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showBS:true, showMWR:true, showTMP:true, showML:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showVXT:true, showDCO:true, showBWT:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showQLW:false, showJGN:true, live:true, subMarks:false, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false, showZoom:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
@@ -5515,7 +5541,7 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM], ['jm', calcJM], ['ct', calcCT]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['ml', calcML], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['ql', calcQL], ['qlw', calcQLW], ['kui', calcKUI], ['hpm', calcHPM], ['jm', calcJM], ['ct', calcCT]]){
     // 用到才算：只有開著的副圖／主圖標記會真的計算，關掉的指標不花時間（以前每次都把 39 個指標全部重算）
     const obj = R, bars = B, fix = v => { Object.defineProperty(obj, k, { value:v, writable:true, configurable:true, enumerable:true }); return v; };
     Object.defineProperty(obj, k, { configurable:true, enumerable:true, set:fix,
@@ -5524,7 +5550,7 @@ function recompute(){
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
   if (UI.subMarks && R.bwt && R.bwt.mk) for (const m of R.bwt.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
-  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'bs', 'mwr', 'tmp', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'sdb', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy', 'hm', 'vo', 'xg', 'camo', 'so', 'dz', 'lx', 'lhb']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy' || k === 'vo' || k === 'camo' || k === 'so' || k === 'dz') && m.text.includes('頂')) || (k === 'hm' && m.text.includes('大勢')) || (k === 'lbb' && m.text.startsWith('SELL')) || (k === 'bs' && m.text.startsWith('S')) || (k === 'mwr' && m.text.includes('頂')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
+  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'bs', 'mwr', 'tmp', 'ml', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'sdb', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy', 'hm', 'vo', 'xg', 'camo', 'so', 'dz', 'lx', 'lhb']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy' || k === 'vo' || k === 'camo' || k === 'so' || k === 'dz') && m.text.includes('頂')) || (k === 'hm' && m.text.includes('大勢')) || (k === 'lbb' && m.text.startsWith('SELL')) || (k === 'bs' && m.text.startsWith('S')) || (k === 'mwr' && m.text.includes('頂')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
   // 機構牛：★機構牛／出場
   if (UI.showJGN && R.jgn && R.jgn.mk && P.jgn.on) for (const m of R.jgn.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.dy || 0) + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
@@ -5749,7 +5775,7 @@ function axisTag(v, color, txtColor, fmt){
   ctx.fillStyle = txtColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v), W + 6, y + 0.5);
 }
 // 副圖左上角的指標名稱（例如「神奇波段」「尋龍底」）：預設不顯示，只留數值；可在「指標設定 → 資料與顯示」打開
-const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '精品BS', '月週共振', '個股溫度', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪', '臺指波動率', '主週期', 'BotWT×3']);
+const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '精品BS', '月週共振', '個股溫度', '買賣力道', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪', '臺指波動率', '主週期', 'BotWT×3']);
 function legend(lines, top){
   ctx.font = '11.5px "IBM Plex Mono", "Noto Sans TC", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   // 副圖文字三段：完整（名稱＋數值）／只數值／全部隱藏（只隱藏副圖的，主圖不動）
@@ -5821,6 +5847,7 @@ function draw(){
     else if (p.id === 'bs') drawBS(p, i0, i1, ci);
     else if (p.id === 'mwr') drawMWR(p, i0, i1, ci);
     else if (p.id === 'tmp') drawTMP(p, i0, i1, ci);
+    else if (p.id === 'ml') drawML(p, i0, i1, ci);
     else if (p.id === 'cci') drawCCI(p, i0, i1, ci);
     else if (p.id === 'kp') drawKP(p, i0, i1, ci);
     else if (p.id === 'jj') drawJJ(p, i0, i1, ci);
@@ -6133,6 +6160,7 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'bs', flag:'showBS', btn:'JBS', name:'精品BS', r:'bs' },
   { id:'mwr', flag:'showMWR', btn:'MWR', name:'月週共振', r:'mwr' },
   { id:'tmp', flag:'showTMP', btn:'TMP', name:'個股溫度', r:'tmp' },
+  { id:'ml', flag:'showML', btn:'ML', name:'買賣力道', r:'ml' },
   { id:'cp', flag:'showCP', btn:'CP', name:'抄底預警', r:'cp', reload:true },
   { id:'dk', flag:'showDK', btn:'DK', name:'多空趨勢', r:'dk' },
   { id:'zx', flag:'showZXP', btn:'ZX', name:'庄現趨勢', r:'zx' },
@@ -6870,6 +6898,62 @@ function drawTMP(p, i0, i1, ci){
   const zone = isNaN(v) ? '資料不足（要 250 根以上）' : v > r.UB[ci] ? '高於上界（高溫）' : v < r.LB[ci] ? '低於下界（低溫）' : v >= r.MID[ci] ? '中線之上' : '中線之下';
   const parts = [['個股溫度', CC.axis], [isNaN(v) ? '—' : fmtNum(v, 0) + '°', isNaN(v) ? CC.axis : col(v)], [zone, CC.axis],
     ['量能 ' + f(r.gVol[ci]), '#ab47bc'], ['資金 ' + f(r.gFlow[ci]), '#26a69a'], ['籌碼 ' + f(r.gChip[ci]), '#ff9800'], ['動能 ' + f(r.gMom[ci]), '#42a5f5']];
+  for (const tg of r.tag[ci] || []) parts.push(tg);
+  legend([parts], p.top);
+}
+
+/* ═════════════ 買賣力道（通達信公式移植＋回測優化＋動態上中下界） ═════════════ */
+function calcML(B, p){
+  const n = B.n, C = B.c; if (n < 60) return { error:'資料太少' };
+  const e1 = tdxEMA(C, Math.max(2, p.f | 0)), e2 = tdxEMA(C, Math.max(3, p.s | 0)), dif = nanArr(n);
+  for (let i = 0; i < n; i++){ const m = (e1[i] + e2[i]) / 2; dif[i] = m > 0 ? (e1[i] - e2[i]) / m * 1000 : NaN; }
+  const dea = tdxEMA(dif, Math.max(2, p.sig | 0)), KD = nanArr(n); for (let i = 0; i < n; i++) KD[i] = 3 * (dif[i] - dea[i]);
+  const KE = tdxSMA(KD, 5, 2), M = nanArr(n); for (let i = 0; i < n; i++) M[i] = 2 * (KD[i] - KE[i]);
+  const NB = Math.max(60, p.bandLen | 0), q = Math.min(30, Math.max(1, p.bandPct)) / 100, LB = rollPct(KD, NB, q), UB = rollPct(KD, NB, 1 - q);
+  const ev = [], sig = [], main = [], tag = new Array(n).fill(null), ZF = nanArr(n), ST = new Uint8Array(n), CD = new Uint8Array(n), EN = new Uint8Array(n);
+  const put = (i, t, c) => { (tag[i] = tag[i] || []).push([t, c]); };
+  let last = -1, cnt = 0, sum = 0;
+  for (let i = 2; i < n; i++){
+    const low = !isNaN(LB[i]) && KD[i] < LB[i];
+    const b11 = M[i] > M[i - 1] && M[i] > M[i - 2] && M[i - 2] > M[i - 1] && M[i - 2] * M[i - 1] > 0;
+    if (!b11 && last >= 0 && i - last < 15 && M[i] < M[i - 1] && M[i - 1] > M[i - 2]){ cnt++;
+      if (cnt === 1){ EN[i] = 1; const z = (C[i] / C[last] - 1) * 100; sum += z; put(i, '收（這一輪 ' + (z >= 0 ? '+' : '') + z.toFixed(1) + '%）', p.cDn);
+        if (p.showEnd && !p.starOnly) ev.push({ i, y:M[i], shape:'circle', col:p.cDn, size:0.55, dy:-7 }); } }
+    if (b11){ last = i; cnt = 0; ST[i] = low ? 2 : 1; put(i, low ? '起★' : '起', p.cStart); sig.push({ i, src:'買賣力道', text:low ? '起★（力道回升、微分 DIF 在下界以下）' : '起（力道 V 型回升）', col:p.cStart });
+      if (p.showStart && (low || !p.starOnly)) ev.push(low ? { i, y:Math.min(KD[i], M[i]), shape:'labelUp', text:'起★', col:p.cStart, tcol:'#000', size:0.95 } : { i, y:M[i], shape:'circle', col:p.cStart, size:0.6, dy:7 });
+      if (low && p.mainMarks) main.push({ i, text:'力道起★', col:p.cStart }); }
+    if (last >= 0) ZF[i] = (C[i] / C[last] - 1) * 100;
+    if (KD[i] > KE[i] && KD[i - 1] <= KE[i - 1] && KE[i] <= -0.07){ CD[i] = low ? 2 : 1; put(i, low ? '抄底★' : '抄底', p.cCD); sig.push({ i, src:'買賣力道', text:low ? '抄底★（微分 DIF 穿過 DEA、還在下界以下）' : '抄底（微分 DIF 穿過 DEA）', col:p.cCD });
+      if (p.showCD && (low || !p.starOnly)) ev.push(low ? { i, y:KD[i], shape:'labelUp', text:'抄底★', col:p.cCD, tcol:'#000', size:0.95, dy:ST[i] === 2 ? 18 : 0 } : { i, y:KD[i], shape:'triUp', col:p.cCD, size:0.6, dy:8 });
+      if (low && p.mainMarks) main.push({ i, text:'力道抄底★', col:p.cCD }); }
+  }
+  return { KD, KE, M, LB, UB, ZF, ST, CD, EN, ev, sig, main, tag, sum };
+}
+function drawML(p, i0, i1, ci){
+  const r = R.ml, q = P.ml;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -10, 10, 26, 6); legend([[['買賣力道  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const [mn, mx] = extent(q.showHist ? [r.KD, r.UB, r.LB, r.M] : [r.KD, r.UB, r.LB], i0, i1, markerExtra(r.ev, i0, i1)), pad = (mx - mn) * 0.08 || 1;
+  S = makeScale(p.top, p.h, ...rng('ml', mn - pad, mx + pad), 26, 8);
+  gridAndAxis(0);
+  const W = plotW(), y0 = S.y(0);
+  if (q.showHist){ const bw = Math.max(1, Math.min(view.barW * 0.6, view.barW - 1));
+    for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ const v = r.M[i]; if (isNaN(v)) continue; const y = S.y(v);
+      ctx.fillStyle = r.ST[i] ? q.cStart : r.EN[i] ? q.cDn : rgba(v > r.M[i - 1] ? q.cUp : q.cDn, r.ST[i] || r.EN[i] ? 0 : 62); ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); } }
+  fillBetween(i => r.UB[i], i => Math.max(r.UB[i], r.KD[i]), () => rgba(q.cDn, 70), i0, i1);
+  fillBetween(i => Math.min(r.LB[i], r.KD[i]), i => r.LB[i], () => rgba(q.cUp, 70), i0, i1);
+  strokeSeries(i => r.UB[i], () => rgba(q.cBand, 25), i0, i1, 1.2, [6, 4]);
+  strokeSeries(i => r.LB[i], () => rgba(q.cBand, 25), i0, i1, 1.2, [6, 4]);
+  { const y = Math.round(y0) + 0.5; ctx.strokeStyle = rgba(CC.axis, 40); ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); }
+  if (q.showDEA) strokeSeries(i => r.KE[i], () => rgba(CC.axis, 30), i0, i1, 1.1);
+  const lc = i => r.KD[i] >= r.KD[i - 1] ? q.cUp : q.cDn;
+  strokeSeries(i => r.KD[i], lc, i0, i1, 2.3);
+  visibleMarkers(r.ev, i0, i1);
+  const e = B.n - 1; if (!isNaN(r.KD[e])) axisTag(r.KD[e], lc(e), '#fff', v => fmtNum(v, 1));
+  const v = r.KD[ci], m = r.M[ci], z = r.ZF[ci];
+  const zone = isNaN(v) || isNaN(r.LB[ci]) ? '資料不足' : v > r.UB[ci] ? '高於上界（過熱）' : v < r.LB[ci] ? '低於下界（超跌）' : v >= 0 ? '0 軸之上' : '0 軸之下';
+  const parts = [['買賣力道', CC.axis], [isNaN(m) ? '—' : fmtNum(m, 2), m > r.M[ci - 1] ? q.cUp : q.cDn], [m > r.M[ci - 1] ? '力道變大' : '力道變小', m > r.M[ci - 1] ? q.cUp : q.cDn],
+    ['微分DIF ' + (isNaN(v) ? '—' : fmtNum(v, 1)), lc(ci)], ['上 ' + (isNaN(r.UB[ci]) ? '—' : fmtNum(r.UB[ci], 1)) + '  下 ' + (isNaN(r.LB[ci]) ? '—' : fmtNum(r.LB[ci], 1)), q.cBand], [zone, q.cBand]];
+  if (!isNaN(z)) parts.push(['起後 ' + (z >= 0 ? '+' : '') + z.toFixed(1) + '%', z >= 0 ? q.cUp : q.cDn]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
 }
@@ -9332,7 +9416,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jm', '操盤線'], ['ct', '週期通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['ml', '買賣力道'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jm', '操盤線'], ['ct', '週期通道'], ['jgn', '機構牛'], ['ql', '擒龍主圖'], ['qlw', '擒龍操盤王'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
