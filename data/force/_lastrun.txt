@@ -1,2 +1,7 @@
-11-16 10:53:05 本小時 FinMind 已用 3599 ／上限 6000
-11-16 10:53:05 超過保護線 3000 ，這次不跑，留給其他功能
+11-17 05:54:54 本小時 FinMind 已用 56 ／上限 6000
+11-17 05:54:56 targets 244 todo 3 this run max 60
+11-17 05:55:00 file 2026-11-14 bars 300 dup None cls 0.973 fb 0.0 last 04:59:58 complete True 5s req 6
+11-17 05:55:10 file 2026-11-16 bars 301 dup 1.995 cls 0.992 fb 0.0 last 13:44:59 complete False 10s req 10
+11-17 05:55:11 no ticks 2026-11-17
+11-17 05:55:13 strikes: no option daily yet 2026-11-17
+11-17 05:55:14 strikes written 2026-11-16
