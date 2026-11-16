@@ -330,7 +330,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/16 23:55・B4 鯊魚鰭</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/17 00:10・B4 鯊魚鰭</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -2036,8 +2036,9 @@ if (!UI.theme){ try { UI.theme = JSON.parse(localStorage.getItem('twchart.settin
 if (!UI.nightV2){ UI.nightV2 = 1; UI.night = true; }
 if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD', 'showBB', 'showVL', 'showTG', 'showIN', 'showDX', 'showJP', 'showCP', 'showDK', 'showZXP']) UI[k] = true; }
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
-const DEF_W = Object.assign({ main:3, z:1.35, d:1.35 }, { bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, dco:1.4, bwt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5 });
+const DEF_W = Object.assign({ main:3, z:1.35, d:1.35, b4:2.2, sf:1.2 }, { bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, dco:1.4, bwt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5 });
 UI.weights = Object.assign({}, DEF_W, UI.weights);
+if (!LS.get(PFX + 'b4w', false)){ UI.weights.b4 = DEF_W.b4; UI.weights.sf = DEF_W.sf; LS.set(PFX + 'b4w', true); }
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const FX = { USDTWD:'美元／台幣' };
 const INTRA = {
@@ -6788,13 +6789,13 @@ function b4Levels(q, W, normed){
   if (!normed) return;
   const hl = (v, c, w, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
   if (q.frame){ hl(100, rgba('#9aa5b5', 65), 1); hl(-100, rgba('#9aa5b5', 65), 1); }
-  hl(q.lvU, q.cLvU, 1.6); hl(q.lvM, q.cLvM, 1, [4, 3]); hl(q.lvL, q.cLvL, 1.6);
+  hl(q.lvU, q.cLvU, 1.6); hl(q.lvL, q.cLvL, 1.6); hl(q.lvM, q.lvM === 0 ? rgba('#bfc7d5', 45) : q.cLvM, 1);
 }
 function b4VLines(r, q, p, i0, i1){
   if (!q.showV || view.barW < 2) return;
   ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
   for (let i = i0; i <= i1 && i < B.n; i++){ if (!r.VB[i] && !r.VS[i]) continue; const x = Math.round(X(i)) + 0.5;
-    ctx.strokeStyle = rgba(r.VB[i] ? r.bull : r.bear, 55); ctx.beginPath(); ctx.moveTo(x, p.top + 18); ctx.lineTo(x, p.top + p.h); ctx.stroke(); }
+    ctx.strokeStyle = rgba(r.VB[i] ? r.bull : r.bear, 30); ctx.beginPath(); ctx.moveTo(x, p.top); ctx.lineTo(x, p.top + p.h); ctx.stroke(); }
   ctx.setLineDash([]);
 }
 function b4Arrows(r, q, i0, i1){
@@ -6811,29 +6812,30 @@ function drawB4(p, i0, i1, ci){
   const r = R.b4, q = P.b4;
   if (!r || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 6); legend([[['B4 通道  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
   const nm = q.norm, a = nm ? { M:r.dM, U:r.dU, L:r.dL, B:r.dB, H:r.dH } : { M:r.M, U:r.UP, L:r.LO, B:r.BA, H:r.HI };
-  let mn, mx; if (nm){ mn = -108; mx = 108; } else { [mn, mx] = extent(q.showHist ? [a.M, a.U, a.L, a.H] : [a.M, a.U, a.L], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn -= pd; mx += pd; }
+  let mn, mx; if (nm){ mn = -104; mx = 104; } else { [mn, mx] = extent(q.showHist ? [a.M, a.U, a.L, a.H] : [a.M, a.U, a.L], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn -= pd; mx += pd; }
   S = makeScale(p.top, p.h, ...rng('b4', mn, mx), 26, 8); gridAndAxis(nm ? 0 : 2);
   const W = plotW(), y0 = S.y(0);
   b4VLines(r, q, p, i0, i1);
-  if (q.showSq) for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ if (!r.SQ[i] || isNaN(a.U[i])) continue; const x0 = X(i) - view.barW / 2, yu = S.y(a.U[i]), yl = S.y(a.L[i]); ctx.fillStyle = rgba(q.cSq, 78); ctx.fillRect(x0, Math.min(yu, yl), view.barW + 0.5, Math.abs(yl - yu)); }
+  if (q.showSq) for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ if (!r.SQ[i] || isNaN(a.U[i])) continue; const x0 = X(i) - view.barW / 2, yu = S.y(a.U[i]), yl = S.y(a.L[i]); ctx.fillStyle = rgba(q.cSq, 80); ctx.fillRect(x0, Math.min(yu, yl), view.barW + 0.5, Math.abs(yl - yu)); }
   b4Levels(q, W, nm);
   if (q.showHist){ const bw = Math.max(1, Math.min(view.barW * 0.6, view.barW - 1));
     for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ const v = a.H[i]; if (isNaN(v)) continue; const s = r.HS[i], y = S.y(v);
       ctx.fillStyle = s === 2 ? r.bull : s === 1 ? rgba(r.bull, 48) : s === -2 ? r.bear : rgba(r.bear, 48); ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); } }
   if (q.showBands){ strokeSeries(i => a.U[i], () => q.cBU, i0, i1, 1.6); strokeSeries(i => a.L[i], () => q.cBL, i0, i1, 1.6); strokeSeries(i => a.B[i], () => q.cBM, i0, i1, 1.3); }
-  strokeSeries(i => a.M[i], i => b4LineCol(r, q, i), i0, i1, 2.2);
-  if (q.showDots && view.barW >= 4){ const rd = Math.min(2.6, view.barW * 0.28); for (let i = i0; i <= i1 && i < B.n; i++){ const v = a.M[i]; if (isNaN(v)) continue; ctx.fillStyle = b4LineCol(r, q, i); ctx.beginPath(); ctx.arc(X(i), S.y(v), rd, 0, Math.PI * 2); ctx.fill(); } }
+  strokeSeries(i => a.M[i], i => b4LineCol(r, q, i), i0, i1, 2);
+  if (q.showDots && view.barW >= 3){ const rd = Math.max(1.4, Math.min(2.4, view.barW * 0.22)); for (let i = i0; i <= i1 && i < B.n; i++){ const v = a.M[i]; if (isNaN(v)) continue; ctx.fillStyle = b4LineCol(r, q, i); ctx.beginPath(); ctx.arc(X(i), S.y(v), rd, 0, Math.PI * 2); ctx.fill(); } }
   if (q.showWeak){ const ev = []; for (let i = i0; i <= i1 && i < B.n; i++) if (r.WK[i]) ev.push({ i, y:a.M[i], shape:'labelDown', text:'×', col:'#ffffff', tcol:'#000', size:0.6, dy:-6 }); visibleMarkers(ev, i0, i1); }
   b4Arrows(r, q, i0, i1);
   const e = B.n - 1; if (!isNaN(a.M[e])) axisTag(a.M[e], b4LineCol(r, q, e), '#000', v => fmtNum(v, nm ? 0 : 2));
   const v = a.M[ci], pos = isNaN(v) ? '' : r.M[ci] > r.UP[ci] ? '在通道上方' : r.M[ci] < r.LO[ci] ? '在通道下方' : '在通道內';
-  legend([[['B4' + (nm ? '（±100）' : ''), CC.axis], ['主線 ' + (isNaN(v) ? '—' : fmtNum(v, nm ? 0 : 2)), b4LineCol(r, q, ci)], [pos, CC.axis], ...b4Info(r, q, ci), ...(r.BUY[ci] ? [['▲ 完整多方共振', r.bull]] : r.SELL[ci] ? [['▼ 完整空方共振', r.bear]] : [])]], p.top);
+  const inf = b4Info(r, q, ci);
+  legend([[['B4', CC.axis], [isNaN(v) ? '—' : fmtNum(v, nm ? 0 : 2), b4LineCol(r, q, ci)], inf[0], inf[1], ...(r.SQ[ci] ? [inf[3]] : []), ...(r.BUY[ci] ? [['▲ 共振多', r.bull]] : r.SELL[ci] ? [['▼ 共振空', r.bear]] : [])]], p.top);
 }
 function drawSF(p, i0, i1, ci){
   const r = R.b4, q = P.b4;
   if (!r || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 6); legend([[['鯊魚鰭  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
   const nm = q.finNorm, F = nm ? r.FIN : r.RAWF;
-  let mn, mx; if (nm){ mn = -108; mx = 108; } else { [mn, mx] = extent([F], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn = Math.min(0, mn - pd); mx = Math.max(0, mx + pd); }
+  let mn, mx; if (nm){ mn = -104; mx = 104; } else { [mn, mx] = extent([F], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn = Math.min(0, mn - pd); mx = Math.max(0, mx + pd); }
   S = makeScale(p.top, p.h, ...rng('sf', mn, mx), 26, 8); gridAndAxis(0, nm ? null : v => fmtNum(v, 0));
   const W = plotW(), y0 = S.y(0);
   b4VLines(r, q, p, i0, i1);
