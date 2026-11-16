@@ -330,7 +330,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/15 19:00・一鍵整理</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/16 23:55・B4 鯊魚鰭</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -419,6 +419,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
     <button class="tog" id="togMWR" aria-pressed="true" title="月週共振：日週月三個 MACD 合成一條共振線、動態上下界、底／頂／啟／背">月週共振</button>
     <button class="tog" id="togTMP" aria-pressed="true" title="個股溫度：量能、資金、籌碼成本、型態動能十個公式混合成一條 0～100 的溫度線，動態上中下界">個股溫度</button>
     <button class="tog" id="togML" aria-pressed="true" title="買賣力道：微分 DIF 震盪線（動態上中下界）＋買賣力道柱，起／收／抄底，★＝回測較準">買賣力道</button>
+    <button class="tog" id="togB4" aria-pressed="true" title="B4 通道：MACD 主線＋自己的布林通道、MACD 柱、壓縮黃雲帶、完整共振箭頭（±100 刻度）">B4 通道</button>
+    <button class="tog" id="togSF" aria-pressed="true" title="鯊魚鰭：依 B4 主線方向累加成交量，方向一換重新累加（±100 刻度）">鯊魚鰭</button>
     <button class="tog" id="togDX" aria-pressed="true" title="MultiColor DegenX：鎖碼／浮動／獲利三層，加上回測過的找底訊號">DegenX</button>
     <button class="tog" id="togIN" aria-pressed="true" title="主力意圖：法人、融資、融券借券、權證、股期、集保合成的籌碼震盪線（個股）">主力意圖</button>
     <div class="seg" id="themeSeg" role="group" aria-label="看盤底色"><button data-v="dark">黑底</button><button data-v="light">白底</button></div>
@@ -814,6 +816,63 @@ SCHEMA.ml = { tab:'買賣力道', title:'買賣力道（照你提供的通達信
     {k:'cBand', l:'上下界', t:'color', d:'#40c4ff'},
     {k:'cStart', l:'起', t:'color', d:'#ffd600'},
     {k:'cCD', l:'抄底', t:'color', d:'#ff4fd8'}
+  ]}
+]};
+SCHEMA.b4 = { tab:'B4 鯊魚鰭', title:'B4 SharkFins（照你提供的 TradingView「B4 SharkFins PRO v6.2」移植，分成兩個副圖）。【B4 通道】主線＝MACD 快慢線差（12／26），通道＝主線自己 15 根的布林通道（1 倍標準差）；主線在通道上方＝多方，往上走是「推進」、往下走是「減速」，通道下方相反，在通道內＝中性（黃）。底下柱體＝一般 MACD 柱（12／26／9）。黃色雲帶＝波動壓縮（Squeeze），代表行情在蓄力、還沒決定方向。畫面預設換算成 ±100：用近 100 根的最大值當 100，只改刻度、不改訊號；水平上中下界＝+80／0／−80，只是視覺參考，不代表超買超賣。【鯊魚鰭】依主線方向累加成交量，方向一換就重新累加；換算成 ±100 後，越接近 ±100 代表同一方向已經堆了越多量。【完整共振箭頭】主線衝出通道上緣＋RSI(7)、慢速隨機指標、MACD 柱三者同時偏多（RSM 共振）＋區間突破方向（FST）＋RSI 方向（IFT）同時偏多＝白色向上三角；空方相反。至少隔 3 根，多空交替。【方向切換虛線】只有 FST、IFT 兩個方向同時翻轉，條件比箭頭寬鬆。原版的多週期計算、K 棒上色、每日重置沒有搬過來（戰神看盤已經有週期切換）。沒有做回測，也還沒拿去和 TradingView 的數字逐根比對。', groups:[
+  { name:'B4 通道', items:[
+    {k:'norm', l:'換算成 ±100 刻度（關掉＝原始 MACD 數值）', t:'bool', d:true},
+    {k:'normLen', l:'換算刻度回看根數', t:'int', d:100, min:10, max:500},
+    {k:'fast', l:'MACD 快線', t:'int', d:12, min:1, max:200},
+    {k:'slow', l:'MACD 慢線', t:'int', d:26, min:2, max:400},
+    {k:'bandLen', l:'布林週期', t:'int', d:15, min:2, max:300},
+    {k:'bandMult', l:'布林標準差倍數', t:'float', d:1, min:0.1, max:5, step:0.1},
+    {k:'showHist', l:'MACD 柱體（固定 12／26／9）', t:'bool', d:true},
+    {k:'showBands', l:'動態通道三線', t:'bool', d:true},
+    {k:'showSq', l:'壓縮區黃色雲帶', t:'bool', d:true},
+    {k:'showDots', l:'主線圓點', t:'bool', d:true},
+    {k:'showWeak', l:'動能轉弱小叉號（通道外主線轉折）', t:'bool', d:false},
+    {k:'sqFix', l:'Squeeze 公式', t:'select', d:'修正 TrueRange', o:['修正 TrueRange','原碼參數順序']}
+  ]},
+  { name:'鯊魚鰭', items:[
+    {k:'sens', l:'方向敏感度', t:'select', d:'高：依主線方向', o:['高：依主線方向','低：共振轉向後延續']},
+    {k:'reset', l:'累積量重置', t:'select', d:'方向一致重置', o:['方向一致重置','原版 Decision 重置']},
+    {k:'finNorm', l:'換算成 ±100 刻度（關掉＝原始累積量）', t:'bool', d:true},
+    {k:'volLen', l:'基準均量週期', t:'int', d:20, min:2, max:300},
+    {k:'decay', l:'壓縮尺度（越大越慢靠近 100）', t:'float', d:8, min:1, max:50, step:0.5}
+  ]},
+  { name:'共振訊號', items:[
+    {k:'useFST', l:'共振包含 FST 區間突破方向', t:'bool', d:true},
+    {k:'useIFT', l:'共振包含 RSI IFT 方向', t:'bool', d:true},
+    {k:'fstLen', l:'FST 突破回看', t:'int', d:11, min:2, max:300},
+    {k:'fstHL', l:'FST 用最高／最低價（關掉＝用收盤）', t:'bool', d:true},
+    {k:'hmaLen', l:'HMA 週期', t:'int', d:55, min:2, max:300},
+    {k:'hmaLb', l:'HMA 曲率回看', t:'int', d:2, min:1, max:50},
+    {k:'hmaFilter', l:'箭頭額外要求 HMA 曲率同向', t:'bool', d:false},
+    {k:'cool', l:'箭頭至少間隔幾根', t:'int', d:3, min:0, max:100},
+    {k:'alt', l:'箭頭多空交替', t:'bool', d:true},
+    {k:'showArrows', l:'顯示完整共振箭頭', t:'bool', d:true},
+    {k:'showV', l:'顯示方向切換虛線', t:'bool', d:true},
+    {k:'mainMarks', l:'主圖也標共振箭頭（要開「副圖標記」）', t:'bool', d:false}
+  ]},
+  { name:'上中下界', items:[
+    {k:'lvU', l:'水平上界（±100 刻度）', t:'float', d:80, min:-100, max:100, step:5},
+    {k:'lvM', l:'水平中界', t:'float', d:0, min:-100, max:100, step:5},
+    {k:'lvL', l:'水平下界', t:'float', d:-80, min:-100, max:100, step:5},
+    {k:'frame', l:'顯示 ±100 外框', t:'bool', d:true}
+  ]},
+  { name:'顏色', items:[
+    {k:'pal', l:'配色', t:'select', d:'原圖：綠多紅空', o:['原圖：綠多紅空','台股：紅多綠空']},
+    {k:'cNeu', l:'中性', t:'color', d:'#ffe34d'},
+    {k:'cBullFade', l:'多方減速', t:'color', d:'#39d7eb'},
+    {k:'cBearFade', l:'空方減速', t:'color', d:'#e565ed'},
+    {k:'cBU', l:'動態上界', t:'color', d:'#ff6969'},
+    {k:'cBM', l:'動態中線', t:'color', d:'#eba247'},
+    {k:'cBL', l:'動態下界', t:'color', d:'#30d84b'},
+    {k:'cLvU', l:'水平上界', t:'color', d:'#e9b44c'},
+    {k:'cLvM', l:'水平中界', t:'color', d:'#bfc7d5'},
+    {k:'cLvL', l:'水平下界', t:'color', d:'#5980ff'},
+    {k:'cSq', l:'壓縮雲帶', t:'color', d:'#ffe34d'},
+    {k:'cArrow', l:'共振箭頭', t:'color', d:'#ffffff'}
   ]}
 ]};
 SCHEMA.mwr = { tab:'月週共振', title:'月週共振（照你提供的「月週共振 MACD」改成一條線，方便判讀）：分別算日、週、月三個週期的 MACD 柱（DIF−DEA，換成佔股價的百分比、再除以自己過去 250 根的標準差，高價股低價股都能比），三個週期平均成一條「共振線」（−100～+100）。週、月 MACD 不偷看未來：本週／本月還沒結束時，用到今天為止的收盤當作本期收盤。線的顏色：日週月三個都在 0 上＝紅（三線共振多），都在 0 下＝綠（共振空），其他＝灰。上下界＝共振線過去 250 根的 90%／10% 百分位。原公式的「共振啟點」（日線 KD、MACD 同時翻多剛滿 3 根、近 13 根出現連 3 紅、週 DIF 往上、月 DIF 比 20 根前高）標「啟」；「頂背離」（死叉時股價比上次死叉高、DIF 卻比較低）標「背」。【回測】上市櫃約 400 檔、2019/1～2026/11，「命中」＝訊號落在大低點（大高點）後 5 根內，「守住」＝之後 20 天沒再破底（創新高）。隨便挑一天：命中 9%、守住 36%（頂 9%、31%）。底（共振線往上穿過下界）：命中 28%、守住 48%；底★（加上收盤突破前一根高點）：命中 32%、守住 54%。頂（往下跌破上界）：命中 29%、守住 42%；頂★（加上收盤跌破前一根低點）：命中 32%、守住 47%，之後 20 天平均 −3.6%。共振啟點：不是抓低點（命中 2%），而是趨勢延續，之後 20 天 67% 沒有跌破起點，平均 +3.3%（隨便一天 +2.3%）。頂背離：命中 24%、守住 44%。共振線本身：最低 10% 和最高 10% 之後 20 天報酬都比較好（低檔反彈、高檔強者恆強），中間最差。', groups:[
@@ -1969,7 +2028,7 @@ for (const ind of Object.keys(SCHEMA)) P[ind] = Object.assign(defaults(ind), LS.
 if (P.kmo && !LS.get(PFX + 'mig:kmo1', false)){ P.kmo.showKDX = false; P.kmo.showMX = false; if (LS.get(PFX + 'p:kmo', null)) LS.set(PFX + 'p:kmo', P.kmo); LS.set(PFX + 'mig:kmo1', true); }
 
 const UI = Object.assign({
-  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showBS:true, showMWR:true, showTMP:true, showML:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showVXT:true, showDCO:true, showBWT:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showJGN:true, live:true, subMarks:false, wFilter:'',
+  symbol:'2330', interval:'D', adj:false, showZ:true, showD:true, showBB:true, showVL:true, showChips:true, showTG:true, showIN:true, showDX:true, showJP:true, showBS:true, showMWR:true, showTMP:true, showML:true, showB4:true, showSF:true, showCP:true, showDK:true, showZXP:true, showLS:true, showMD:true, showBD:true, showKM:true, showKMO:true, showVXT:true, showDCO:true, showBWT:true, showYM:true, showSDB:true, showCCI:true, showKP:true, showJJ:true, showQJ:true, showCD:true, showSMI:true, showTP:true, showLBB:true, showWL:true, showSY:true, showHM:true, showVO:true, showBBX:true, showCAMO:true, showSO:true, showDZ:true, showLX:true, showLHB:true, showJGN:true, live:true, subMarks:false, wFilter:'',
   token:'', start:'2000-01-01', showVolume:true, scaleAll:false, showZoom:false,
   theme:null, night:false, days:{}, weights:{ main:3, z:1.35, d:1.35 }
 }, LS.get(PFX + 'ui', {}));
@@ -5255,7 +5314,7 @@ function recompute(){
   const iv = RAW.tf && RAW.tf !== 'D' ? RAW.tf : (isIntra(UI.interval) ? 'D' : UI.interval);
   B = makeBars(RAW.tf && RAW.tf !== 'D' ? RAW.rows : aggregate(RAW.rows, iv), iv, RAW.sample);
   R = {};
-  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['ml', calcML], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['kui', calcKUI], ['hpm', calcHPM], ['jm', calcJM]]){
+  for (const [k, fn] of [['vwb', calcVWB], ['vwz', calcVWZ], ['vwd', calcVWD], ['bbot', calcBBOT], ['valley', calcVALLEY], ['turtle', calcTURTLE], ['intent', calcINTENT], ['degen', calcDEGEN], ['jp', calcJP], ['bs', calcBS], ['mwr', calcMWR], ['tmp', calcTMP], ['ml', calcML], ['b4', calcB4], ['sf', calcSF], ['cp', calcCP], ['dk', calcDK], ['zx', calcZX], ['ls', calcLS], ['md', calcMD], ['bao', calcBAO], ['bd', calcBD], ['km', calcKM], ['kmo', calcKMO], ['vxt', calcVXT], ['dco', calcDCO], ['bwt', calcBWT], ['ym', calcYM], ['sdb', calcSDB], ['cci', calcCCI], ['fz', calcFZ], ['kp', calcKP], ['jj', calcJJ], ['qj', calcQJ], ['cd', calcCD], ['smi', calcSMI], ['tp', calcTP], ['lbb', calcLBB], ['wl', calcWL], ['sy', calcSY], ['hm', calcHM], ['vo', calcVO], ['xg', calcXG], ['camo', calcCAMO], ['so', calcSO], ['dz', calcDZ], ['lx', calcLX], ['lhb', calcLHB], ['bz', calcBZ], ['jgn', calcJGN], ['kui', calcKUI], ['hpm', calcHPM], ['jm', calcJM]]){
     // 用到才算：只有開著的副圖／主圖標記會真的計算，關掉的指標不花時間（以前每次都把 39 個指標全部重算）
     const obj = R, bars = B, fix = v => { Object.defineProperty(obj, k, { value:v, writable:true, configurable:true, enumerable:true }); return v; };
     Object.defineProperty(obj, k, { configurable:true, enumerable:true, set:fix,
@@ -5264,7 +5323,7 @@ function recompute(){
   if (RAW && FUTS[RAW.id] && UI.showVL){ cstLoad(); if (B.iv !== 'W' && B.iv !== 'M') flwLoad(); }
   R.mainExtra = [];
   if (UI.subMarks && R.bwt && R.bwt.mk) for (const m of R.bwt.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
-  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'bs', 'mwr', 'tmp', 'ml', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'sdb', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy', 'hm', 'vo', 'xg', 'camo', 'so', 'dz', 'lx', 'lhb']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy' || k === 'vo' || k === 'camo' || k === 'so' || k === 'dz') && m.text.includes('頂')) || (k === 'hm' && m.text.includes('大勢')) || (k === 'lbb' && m.text.startsWith('SELL')) || (k === 'bs' && m.text.startsWith('S')) || (k === 'mwr' && m.text.includes('頂')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
+  if (UI.subMarks) for (const k of ['bbot', 'valley', 'turtle', 'intent', 'degen', 'jp', 'bs', 'mwr', 'tmp', 'ml', 'b4', 'cp', 'dk', 'zx', 'ls', 'md', 'bd', 'km', 'ym', 'sdb', 'cci', 'kp', 'jj', 'qj', 'cd', 'smi', 'tp', 'lbb', 'wl', 'sy', 'hm', 'vo', 'xg', 'camo', 'so', 'dz', 'lx', 'lhb']) if (R[k] && R[k].main) for (const m of R[k].main){ const up = ((k === 'bd' || k === 'km' || k === 'ym' || k === 'cci' || k === 'kp' || k === 'jj' || k === 'qj' || k === 'cd' || k === 'smi' || k === 'wl' || k === 'sy' || k === 'vo' || k === 'camo' || k === 'so' || k === 'dz') && m.text.includes('頂')) || (k === 'hm' && m.text.includes('大勢')) || (k === 'lbb' && m.text.startsWith('SELL')) || (k === 'bs' && m.text.startsWith('S')) || (k === 'mwr' && m.text.includes('頂')); R.mainExtra.push(up ? { i:m.i, y:B.h[m.i], shape:'labelDown', text:m.text, col:m.col, tcol:'#fff', size:0.85, dy:-4 } : { i:m.i, y:B.l[m.i], shape:'labelUp', text:m.text, col:m.col, tcol:'#000', size:0.85, dy:R.mainExtra.some(q => q.i === m.i) ? 20 : 4 }); }
   // 強勢起爆：K 棒下方紅箭頭「爆」，排在其他標記下面
   // 機構牛：★機構牛／出場
   if (UI.showJGN && R.jgn && R.jgn.mk && P.jgn.on) for (const m of R.jgn.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:(m.dy || 0) + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); }
@@ -5487,7 +5546,7 @@ function axisTag(v, color, txtColor, fmt){
   ctx.fillStyle = txtColor; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(fmt(v), W + 6, y + 0.5);
 }
 // 副圖左上角的指標名稱（例如「神奇波段」「尋龍底」）：預設不顯示，只留數值；可在「指標設定 → 資料與顯示」打開
-const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '精品BS', '月週共振', '個股溫度', '買賣力道', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪', '臺指波動率', '主週期', 'BotWT×3']);
+const PANE_NAMES = new Set(['DegenX', 'KD MACD', 'KD+MACD', 'L2 多空擺盪', 'VW Z PRO', 'VWD 9.1', '主力全景', '主力意圖', '主力抄底', '主力控盤', '均價成本', '多空趨勢', '宇宙動能', '尋龍底', '布林大底', '布林大底加強版', '布林谷底線', '庄現趨勢', '抄底預警', '拉升機會', '擒龍操盤王', '極品反彈', '精品BS', '月週共振', '個股溫度', '買賣力道', 'B4 通道', '鯊魚鰭', '發現短底', '神奇波段', '突破階梯', '紅持綠空', '聰明錢', '資金三線', '超級震盪', '量化MACD', '量能情緒', '鐵底風險', '黃柱MACD', '黑馬', '龍虎榜抄底', '龍頭CCI', '龜苓膏', '多空擺盪', '臺指波動率', '主週期', 'BotWT×3']);
 function legend(lines, top){
   ctx.font = '11.5px "IBM Plex Mono", "Noto Sans TC", ui-monospace, monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   // 副圖文字三段：完整（名稱＋數值）／只數值／全部隱藏（只隱藏副圖的，主圖不動）
@@ -5560,6 +5619,8 @@ function draw(){
     else if (p.id === 'mwr') drawMWR(p, i0, i1, ci);
     else if (p.id === 'tmp') drawTMP(p, i0, i1, ci);
     else if (p.id === 'ml') drawML(p, i0, i1, ci);
+    else if (p.id === 'b4') drawB4(p, i0, i1, ci);
+    else if (p.id === 'sf') drawSF(p, i0, i1, ci);
     else if (p.id === 'cci') drawCCI(p, i0, i1, ci);
     else if (p.id === 'kp') drawKP(p, i0, i1, ci);
     else if (p.id === 'jj') drawJJ(p, i0, i1, ci);
@@ -5862,6 +5923,8 @@ const PANES = [   // 畫的順序（由上到下）
   { id:'mwr', flag:'showMWR', btn:'MWR', name:'月週共振', r:'mwr' },
   { id:'tmp', flag:'showTMP', btn:'TMP', name:'個股溫度', r:'tmp' },
   { id:'ml', flag:'showML', btn:'ML', name:'買賣力道', r:'ml' },
+  { id:'b4', flag:'showB4', btn:'B4', name:'B4 通道', r:'b4' },
+  { id:'sf', flag:'showSF', btn:'SF', name:'鯊魚鰭', r:'sf' },
   { id:'cp', flag:'showCP', btn:'CP', name:'抄底預警', r:'cp', reload:true },
   { id:'dk', flag:'showDK', btn:'DK', name:'多空趨勢', r:'dk' },
   { id:'zx', flag:'showZXP', btn:'ZX', name:'庄現趨勢', r:'zx' },
@@ -6656,6 +6719,132 @@ function drawML(p, i0, i1, ci){
   if (!isNaN(z)) parts.push(['起後 ' + (z >= 0 ? '+' : '') + z.toFixed(1) + '%', z >= 0 ? q.cUp : q.cDn]);
   for (const tg of r.tag[ci] || []) parts.push(tg);
   legend([parts], p.top);
+}
+
+/* ═════════════ B4 SharkFins（TradingView B4 SharkFins PRO v6.2 移植） ═════════════ */
+function b4Col(p){ const tw = p.pal === '台股：紅多綠空'; return { bull: tw ? '#ff4757' : '#30d84b', bear: tw ? '#00c389' : '#ff3535' }; }
+function calcB4(B, p){
+  const n = B.n, O = B.o, H = B.h, L = B.l, C = B.c, V = B.v; if (n < 60) return { error:'資料太少' };
+  const ef = ema(C, Math.max(1, p.fast | 0)), es = ema(C, Math.max(2, p.slow | 0)), M = nanArr(n); for (let i = 0; i < n; i++) M[i] = ef[i] - es[i];
+  const bl = Math.max(2, p.bandLen | 0), BA = sma(M, bl), sd = stdevPop(M, bl), UP = nanArr(n), LO = nanArr(n);
+  for (let i = 0; i < n; i++){ UP[i] = BA[i] + sd[i] * p.bandMult; LO[i] = BA[i] - sd[i] * p.bandMult; }
+  const e12 = ema(C, 12), e26 = ema(C, 26), RM = nanArr(n); for (let i = 0; i < n; i++) RM[i] = e12[i] - e26[i];
+  const rs9 = ema(RM, 9), HI = nanArr(n); for (let i = 0; i < n; i++) HI[i] = RM[i] - rs9[i];
+  const r7 = rsi(C, 7), st = nanArr(n); for (let i = 0; i < n; i++){ const lo = llv(L, 14, i), sp = hhv(H, 14, i) - lo; st[i] = i < 13 ? NaN : sp > 0 ? 100 * (C[i] - lo) / sp : 50; }
+  const sk = sma(sma(st, 3), 3);
+  const hl2 = nanArr(n); for (let i = 0; i < n; i++) hl2[i] = (H[i] + L[i]) / 2;
+  const hn = Math.max(2, p.hmaLen | 0), w1 = wmaArr(hl2, Math.max(1, Math.floor(hn / 2))), w2 = wmaArr(hl2, hn), dd = nanArr(n); for (let i = 0; i < n; i++) dd[i] = 2 * w1[i] - w2[i];
+  const HU = wmaArr(dd, Math.max(1, Math.round(Math.sqrt(hn)))), lb = Math.max(1, p.hmaLb | 0), CV = nanArr(n);
+  for (let i = lb + 1; i < n; i++) CV[i] = HU[i] - (HU[i - 1] + (HU[i - 1] - HU[i - lb - 1]) / lb);
+  // Squeeze
+  const sC = nanArr(n), sH = nanArr(n), sL = nanArr(n), TR = nanArr(n);
+  for (let i = 1; i < n; i++){ const so = (O[i - 1] + C[i - 1]) / 2; sH[i] = Math.max(H[i], C[i - 1]); sL[i] = Math.min(L[i], C[i - 1]); sC[i] = (so + sH[i] + sL[i] + C[i]) / 4; }
+  for (let i = 1; i < n; i++){ const pc = isNaN(sC[i - 1]) ? sC[i] : sC[i - 1], ph = isNaN(sH[i - 1]) ? sH[i] : sH[i - 1];
+    TR[i] = p.sqFix === '原碼參數順序' ? Math.max(sC[i], ph) - Math.min(sL[i], ph) : Math.max(sH[i], pc) - Math.min(sL[i], pc); }
+  const atr = sma(TR, 20), ssd = stdevPop(sC, 20), SQ = new Uint8Array(n); for (let i = 0; i < n; i++) SQ[i] = 2 * ssd[i] < 1.5 * atr[i] ? 1 : 0;
+  const r5 = rsi(C, 5), r5c = nanArr(n); for (let i = 0; i < n; i++) r5c[i] = r5[i] - 50; const ib = ema(r5c, 9);
+  const fl = Math.max(2, p.fstLen | 0), FH = p.fstHL ? H : C, FL = p.fstHL ? L : C, mv = sma(V, Math.max(2, p.volLen | 0));
+  const TRD = new Int8Array(n), HS = new Int8Array(n), RSM = new Int8Array(n), HMS = new Int8Array(n), FIN = nanArr(n), RAWF = nanArr(n), PK = nanArr(n);
+  const BUY = new Uint8Array(n), SELL = new Uint8Array(n), VB = new Uint8Array(n), VS = new Uint8Array(n), WK = new Uint8Array(n);
+  let ift = 0, fst = 0, lastSig = -1e9, lastDir = 0, hiDir = 0, loDir = 0, cum = 0, segB = NaN, pBull = false, pBear = false, pLong = false, pShort = false, pReset = 0, pReady = false, pVol = false;
+  const ev = [], sig = [], main = [], vl = [], { bull, bear } = b4Col(p);
+  for (let i = 0; i < n; i++){
+    const ready = !isNaN(LO[i]) && !isNaN(sk[i]) && !isNaN(r7[i]);
+    const rB = ready && r7[i] >= 50 && sk[i] >= 50 && HI[i] >= 0, rS = ready && r7[i] < 50 && sk[i] < 50 && HI[i] < 0; RSM[i] = rB ? 1 : rS ? -1 : 0;
+    const cv = CV[i]; HMS[i] = isNaN(cv) ? 0 : cv >= 0 ? (cv > CV[i - 1] ? 2 : 1) : (cv < CV[i - 1] ? -2 : -1);
+    if (!isNaN(ib[i])) ift = ib[i] > 0 ? 1 : ib[i] < 0 ? -1 : ift;
+    if (i >= fl){ let ph = -Infinity, pl = Infinity; for (let k = i - fl; k < i; k++){ if (FH[k] > ph) ph = FH[k]; if (FL[k] < pl) pl = FL[k]; } if (FH[i] > ph) fst = 1; else if (FL[i] < pl) fst = -1; }
+    const bOK = (!p.useFST || fst === 1) && (!p.useIFT || ift === 1), sOK = (!p.useFST || fst === -1) && (!p.useIFT || ift === -1), cons = p.useFST || p.useIFT;
+    if (ready && cons && bOK && !pBull) VB[i] = 1; if (ready && cons && sOK && !pBear) VS[i] = 1; pBull = bOK; pBear = sOK;
+    const lS = ready && bOK && M[i] > UP[i] && rB && (!p.hmaFilter || cv > 0), sS = ready && sOK && M[i] <= LO[i] && rS && (!p.hmaFilter || cv < 0);
+    const coolOK = i - lastSig >= (p.cool | 0);
+    if (lS && !pLong && coolOK && (!p.alt || lastDir !== 1)){ BUY[i] = 1; lastSig = i; lastDir = 1; }
+    else if (sS && !pShort && coolOK && (!p.alt || lastDir !== -1)){ SELL[i] = 1; lastSig = i; lastDir = -1; }
+    pLong = lS; pShort = sS;
+    const sl = i > 0 ? (M[i] > M[i - 1] ? 1 : M[i] < M[i - 1] ? -1 : 0) : 0, sl1 = i > 1 ? (M[i - 1] > M[i - 2] ? 1 : M[i - 1] < M[i - 2] ? -1 : 0) : 0;
+    TRD[i] = M[i] > UP[i] ? (sl > 0 ? 2 : 1) : M[i] < LO[i] ? (sl < 0 ? -2 : -1) : 0;
+    HS[i] = HI[i] >= 0 ? (HI[i] > HI[i - 1] ? 2 : 1) : (HI[i] < HI[i - 1] ? -2 : -1);
+    WK[i] = (M[i] > UP[i] && sl < 0 && sl1 > 0) || (M[i] < LO[i] && sl > 0 && sl1 < 0) ? 1 : 0;
+    const dec = M[i] >= UP[i] ? 1 : M[i] <= LO[i] ? -1 : M[i] >= M[i - 1] ? 1 : -1;
+    if (ready) hiDir = M[i] > UP[i] ? 1 : M[i] < LO[i] ? -1 : sl !== 0 ? sl : hiDir;
+    if (lS) loDir = 1; else if (sS) loDir = -1;
+    const fd = p.sens === '低：共振轉向後延續' ? loDir : hiDir, rd = p.reset === '原版 Decision 重置' ? dec : fd;
+    const vOK = !isNaN(V[i]) && mv[i] > 0;
+    if (ready && vOK){ if (rd !== pReset || isNaN(segB) || !pReady || !pVol){ cum = V[i]; segB = mv[i]; } else cum += V[i];
+      RAWF[i] = fd * cum; FIN[i] = segB > 0 ? fd * 100 * (1 - Math.exp(-cum / (segB * p.decay))) : NaN; }
+    pReset = rd; pReady = ready; pVol = vOK;
+    PK[i] = Math.max(Math.abs(M[i]), Math.abs(UP[i]), Math.abs(LO[i]), Math.abs(HI[i]));
+    if (BUY[i]){ sig.push({ i, src:'B4', text:'完整多方共振', col:bull }); if (p.mainMarks) main.push({ i, text:'B4 多', col:bull }); }
+    if (SELL[i]){ sig.push({ i, src:'B4', text:'完整空方共振', col:bear }); if (p.mainMarks) main.push({ i, text:'B4 空', col:bear }); }
+  }
+  const nl = Math.max(10, p.normLen | 0), SC = nanArr(n);
+  for (let i = 0; i < n; i++){ let mx = -Infinity; for (let k = Math.max(0, i - nl + 1); k <= i; k++) if (PK[k] > mx) mx = PK[k]; SC[i] = p.norm ? (mx > 0 ? 100 / mx : NaN) : 1; }
+  const D = (a) => { const o = nanArr(n); for (let i = 0; i < n; i++) o[i] = a[i] * SC[i]; return o; };
+  return { M, UP, LO, BA, HI, dM:D(M), dU:D(UP), dL:D(LO), dB:D(BA), dH:D(HI), TRD, HS, RSM, HMS, SQ, FIN, RAWF, BUY, SELL, VB, VS, WK, sig, main, bull, bear };
+}
+function calcSF(B){ return { link:1 }; }
+function b4LineCol(r, q, i){ const t = r.TRD[i]; return t === 2 ? r.bull : t === 1 ? q.cBullFade : t === -2 ? r.bear : t === -1 ? q.cBearFade : q.cNeu; }
+function b4Levels(q, W, normed){
+  if (!normed) return;
+  const hl = (v, c, w, dash) => { const y = Math.round(S.y(v)) + 0.5; ctx.strokeStyle = c; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]); };
+  if (q.frame){ hl(100, rgba('#9aa5b5', 65), 1); hl(-100, rgba('#9aa5b5', 65), 1); }
+  hl(q.lvU, q.cLvU, 1.6); hl(q.lvM, q.cLvM, 1, [4, 3]); hl(q.lvL, q.cLvL, 1.6);
+}
+function b4VLines(r, q, p, i0, i1){
+  if (!q.showV || view.barW < 2) return;
+  ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  for (let i = i0; i <= i1 && i < B.n; i++){ if (!r.VB[i] && !r.VS[i]) continue; const x = Math.round(X(i)) + 0.5;
+    ctx.strokeStyle = rgba(r.VB[i] ? r.bull : r.bear, 55); ctx.beginPath(); ctx.moveTo(x, p.top + 18); ctx.lineTo(x, p.top + p.h); ctx.stroke(); }
+  ctx.setLineDash([]);
+}
+function b4Arrows(r, q, i0, i1){
+  if (!q.showArrows) return; const ev = [];
+  for (let i = i0; i <= i1 && i < B.n; i++){ if (r.BUY[i]) ev.push({ i, y:0, shape:'triUp', col:q.cArrow, size:0.75, dy:8 }); if (r.SELL[i]) ev.push({ i, y:0, shape:'triDown', col:q.cArrow, size:0.75, dy:-8 }); }
+  visibleMarkers(ev, i0, i1);
+}
+function b4Info(r, q, ci){
+  const t = r.TRD[ci], tt = t === 2 ? '多方推進' : t === 1 ? '多方減速' : t === -2 ? '空方推進' : t === -1 ? '空方減速' : '中性';
+  const rs = r.RSM[ci], h = r.HMS[ci], ht = h === 2 ? 'HMA 曲率向上擴大' : h === 1 ? 'HMA 向上曲率收斂' : h === -2 ? 'HMA 曲率向下擴大' : h === -1 ? 'HMA 向下曲率收斂' : 'HMA 暖機中';
+  return [[tt, b4LineCol(r, q, ci)], [rs === 1 ? 'RSM 多方共振' : rs === -1 ? 'RSM 空方共振' : 'RSM 未共振', rs === 1 ? r.bull : rs === -1 ? r.bear : q.cNeu], [ht, h > 0 ? r.bull : h < 0 ? r.bear : CC.axis], [r.SQ[ci] ? '壓縮中' : '未壓縮', r.SQ[ci] ? q.cNeu : CC.axis]];
+}
+function drawB4(p, i0, i1, ci){
+  const r = R.b4, q = P.b4;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 6); legend([[['B4 通道  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const nm = q.norm, a = nm ? { M:r.dM, U:r.dU, L:r.dL, B:r.dB, H:r.dH } : { M:r.M, U:r.UP, L:r.LO, B:r.BA, H:r.HI };
+  let mn, mx; if (nm){ mn = -108; mx = 108; } else { [mn, mx] = extent(q.showHist ? [a.M, a.U, a.L, a.H] : [a.M, a.U, a.L], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn -= pd; mx += pd; }
+  S = makeScale(p.top, p.h, ...rng('b4', mn, mx), 26, 8); gridAndAxis(nm ? 0 : 2);
+  const W = plotW(), y0 = S.y(0);
+  b4VLines(r, q, p, i0, i1);
+  if (q.showSq) for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ if (!r.SQ[i] || isNaN(a.U[i])) continue; const x0 = X(i) - view.barW / 2, yu = S.y(a.U[i]), yl = S.y(a.L[i]); ctx.fillStyle = rgba(q.cSq, 78); ctx.fillRect(x0, Math.min(yu, yl), view.barW + 0.5, Math.abs(yl - yu)); }
+  b4Levels(q, W, nm);
+  if (q.showHist){ const bw = Math.max(1, Math.min(view.barW * 0.6, view.barW - 1));
+    for (let i = Math.max(1, i0); i <= i1 && i < B.n; i++){ const v = a.H[i]; if (isNaN(v)) continue; const s = r.HS[i], y = S.y(v);
+      ctx.fillStyle = s === 2 ? r.bull : s === 1 ? rgba(r.bull, 48) : s === -2 ? r.bear : rgba(r.bear, 48); ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); } }
+  if (q.showBands){ strokeSeries(i => a.U[i], () => q.cBU, i0, i1, 1.6); strokeSeries(i => a.L[i], () => q.cBL, i0, i1, 1.6); strokeSeries(i => a.B[i], () => q.cBM, i0, i1, 1.3); }
+  strokeSeries(i => a.M[i], i => b4LineCol(r, q, i), i0, i1, 2.2);
+  if (q.showDots && view.barW >= 4){ const rd = Math.min(2.6, view.barW * 0.28); for (let i = i0; i <= i1 && i < B.n; i++){ const v = a.M[i]; if (isNaN(v)) continue; ctx.fillStyle = b4LineCol(r, q, i); ctx.beginPath(); ctx.arc(X(i), S.y(v), rd, 0, Math.PI * 2); ctx.fill(); } }
+  if (q.showWeak){ const ev = []; for (let i = i0; i <= i1 && i < B.n; i++) if (r.WK[i]) ev.push({ i, y:a.M[i], shape:'labelDown', text:'×', col:'#ffffff', tcol:'#000', size:0.6, dy:-6 }); visibleMarkers(ev, i0, i1); }
+  b4Arrows(r, q, i0, i1);
+  const e = B.n - 1; if (!isNaN(a.M[e])) axisTag(a.M[e], b4LineCol(r, q, e), '#000', v => fmtNum(v, nm ? 0 : 2));
+  const v = a.M[ci], pos = isNaN(v) ? '' : r.M[ci] > r.UP[ci] ? '在通道上方' : r.M[ci] < r.LO[ci] ? '在通道下方' : '在通道內';
+  legend([[['B4' + (nm ? '（±100）' : ''), CC.axis], ['主線 ' + (isNaN(v) ? '—' : fmtNum(v, nm ? 0 : 2)), b4LineCol(r, q, ci)], [pos, CC.axis], ...b4Info(r, q, ci), ...(r.BUY[ci] ? [['▲ 完整多方共振', r.bull]] : r.SELL[ci] ? [['▼ 完整空方共振', r.bear]] : [])]], p.top);
+}
+function drawSF(p, i0, i1, ci){
+  const r = R.b4, q = P.b4;
+  if (!r || r.error){ S = makeScale(p.top, p.h, -100, 100, 26, 6); legend([[['鯊魚鰭  ' + (r ? r.error : ''), '#ef6a5f']]], p.top); return; }
+  const nm = q.finNorm, F = nm ? r.FIN : r.RAWF;
+  let mn, mx; if (nm){ mn = -108; mx = 108; } else { [mn, mx] = extent([F], i0, i1); const pd = (mx - mn) * 0.08 || 1; mn = Math.min(0, mn - pd); mx = Math.max(0, mx + pd); }
+  S = makeScale(p.top, p.h, ...rng('sf', mn, mx), 26, 8); gridAndAxis(0, nm ? null : v => fmtNum(v, 0));
+  const W = plotW(), y0 = S.y(0);
+  b4VLines(r, q, p, i0, i1);
+  b4Levels(q, W, nm);
+  const bw = Math.max(1, Math.min(view.barW * 0.75, view.barW - 0.5));
+  for (let i = i0; i <= i1 && i < B.n; i++){ const v = F[i]; if (isNaN(v)) continue; const t = r.TRD[i], y = S.y(v);
+    ctx.fillStyle = t > 0 ? r.bull : t < 0 ? r.bear : q.cNeu; ctx.fillRect(X(i) - bw / 2, Math.min(y, y0), bw, Math.max(1, Math.abs(y - y0))); }
+  b4Arrows(r, q, i0, i1);
+  const e = B.n - 1, ce = r.TRD[e] > 0 ? r.bull : r.TRD[e] < 0 ? r.bear : q.cNeu; if (!isNaN(F[e])) axisTag(F[e], ce, '#000', v => fmtNum(v, 0));
+  const v = F[ci], c = r.TRD[ci] > 0 ? r.bull : r.TRD[ci] < 0 ? r.bear : q.cNeu;
+  legend([[['鯊魚鰭' + (nm ? '（±100）' : '（累積量）'), CC.axis], [isNaN(v) ? '—' : fmtNum(v, 0), c], [isNaN(v) ? '' : v > 0 ? '多方量能累積中' : v < 0 ? '空方量能累積中' : '中性', c], ...(nm && !isNaN(v) && Math.abs(v) >= Math.abs(q.lvU) ? [['同方向量已堆很多', q.cLvU]] : [])]], p.top);
 }
 
 function drawMWR(p, i0, i1, ci){
@@ -9115,7 +9304,7 @@ function queueRecompute(){ clearTimeout(recTimer); recTimer = setTimeout(recompu
 
 function buildTabs(){
   const tabs = document.getElementById('tabs');
-  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['ml', '買賣力道'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jm', '操盤線'], ['jgn', '機構牛'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
+  const list = [['vwb', 'VWB 主圖'], ['vwz', 'VW Z'], ['vwd', 'VWD'], ['bbot', '布林大底'], ['valley', '谷底線'], ['turtle', '龜苓膏'], ['intent', '主力意圖'], ['degen', 'DegenX'], ['jp', '極品反彈'], ['bs', '精品BS'], ['mwr', '月週共振'], ['tmp', '個股溫度'], ['ml', '買賣力道'], ['b4', 'B4 鯊魚鰭'], ['cp', '抄底預警'], ['dk', '多空趨勢'], ['zx', '庄現趨勢'], ['ls', '拉升機會'], ['md', '量化MACD'], ['bao', '起爆'], ['bd', '神奇波段'], ['km', 'KD+MACD'], ['kmo', 'KD MACD 原版'], ['vxt', '波動率轉折'], ['dco', '主週期'], ['bwt', 'BotWT×3'], ['ym', '黃柱MACD'], ['sdb', '發現短底'], ['cci', '龍頭CCI'], ['fz', '反轉抄底'], ['kp', '主力控盤'], ['jj', '均價成本'], ['qj', '主力全景'], ['cd', '主力抄底'], ['smi', '聰明錢'], ['tp', '突破階梯'], ['lbb', '多空擺盪'], ['wl', '鐵底風險'], ['sy', '資金三線'], ['hm', '黑馬'], ['vo', '量能情緒'], ['xg', '布林大底加強版'], ['camo', '宇宙動能'], ['so', '超級震盪'], ['dz', '紅持綠空'], ['lx', '尋龍底'], ['lhb', '龍虎榜抄底'], ['hpm', 'HPM 通道'], ['jm', '操盤線'], ['jgn', '機構牛'], ['bz', '標準抄底'], ['kui', '一舉奪魁'], ['order', '副圖順序'], ['app', '資料與顯示']];
   tabs.innerHTML = list.map(([k, t]) => '<button role="tab" data-t="' + k + '" aria-selected="' + (k === activeTab) + '">' + t + '</button>').join('');
   tabs.onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; activeTab = b.dataset.t; buildTabs(); buildBody(); };
 }
