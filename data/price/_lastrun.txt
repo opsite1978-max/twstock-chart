@@ -1,9 +1,12 @@
-11-17 02:56:25 2026-11-16 stocks 1961
-11-17 02:56:29 fetched days 1
-11-17 02:56:31 vwb 1961 stocks 165 need more history 605 days
-11-17 02:56:39 bbot 1961 stocks 1961 with long history
-11-17 02:56:41 jgn 118 stocks with signal in last 20 days
-11-17 02:56:57 lx 1859 stocks; long none/close/ohlc [63, 0, 1796]
-11-17 02:56:58 qz 58 stocks with 起漲 in last 30 days; breadth ['2026-11-16', 16]
-11-17 02:57:20 dg 1411 stocks
-11-17 02:57:23 build 1931 stocks 335 days backtest {'quietMa20': 693, 'bullNew': 2609, 'break60': 6285, 'bottom': 218, 'pullback': 14949, 'firstVol': 243}
+11-18 01:54:03   retry https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&o=jso HTTPError HTTP Error 403: Forbidden
+11-18 01:54:18   retry https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&o=jso HTTPError HTTP Error 403: Forbidden
+11-18 01:54:48   retry https://www.tpex.org.tw/web/stock/aftertrading/otc_quotes_no1430/stk_wn1430_result.php?l=zh-tw&o=jso HTTPError HTTP Error 403: Forbidden
+11-18 01:55:33 FAIL 2026-11-17 fetch failed
+11-18 01:55:40 fetched days 0
+11-18 01:55:43 vwb 1961 stocks 165 need more history 604 days
+11-18 01:55:57 bbot 1961 stocks 1961 with long history
+11-18 01:56:00 jgn 118 stocks with signal in last 20 days
+11-18 01:56:26 lx 1859 stocks; long none/close/ohlc [63, 0, 1796]
+11-18 01:56:28 qz 58 stocks with 起漲 in last 30 days; breadth ['2026-11-16', 16]
+11-18 01:57:06 dg 1411 stocks
+11-18 01:57:11 build 1931 stocks 335 days backtest {'quietMa20': 693, 'bullNew': 2609, 'break60': 6285, 'bottom': 218, 'pullback': 14949, 'firstVol': 243}
