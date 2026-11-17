@@ -4,7 +4,7 @@
   "short_name": "我的戰神",
   "description": "戰神看盤・我的（自己的憑證和設定，和家人的戰神看盤分開）",
   "start_url": "./zhanshen-me.html?app=me",
-  "scope": "./zhanshen-me.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#1c1008",
