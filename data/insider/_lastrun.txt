@@ -1,0 +1,23 @@
+11-19 06:13:52 shard 0 / 8 stocks 264 months 2023-11 ~ 2026-10
+11-19 06:15:26   retry query6_1 4749 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-19 06:16:42 result shard 0 done requests 26 ok 24 none 2 files 25 in 170 s
+11-19 06:13:51 shard 1 / 8 stocks 266 months 2023-11 ~ 2026-10
+11-19 06:15:38 result shard 1 done requests 21 ok 19 none 2 files 20 in 107 s
+11-19 06:13:51 shard 2 / 8 stocks 269 months 2023-11 ~ 2026-10
+11-19 06:15:05   retry query6_1 3043 115 10 URLError <urlopen error timed out>
+11-19 06:16:17   retry stapap1 3043 115 10 URLError <urlopen error timed out>
+11-19 06:17:41 result shard 2 done requests 19 ok 19 none 0 files 19 in 229 s
+11-19 06:13:56 shard 3 / 8 stocks 271 months 2023-11 ~ 2026-10
+11-19 06:15:10 result shard 3 done requests 17 ok 15 none 2 files 16 in 74 s
+11-19 06:13:51 shard 4 / 8 stocks 271 months 2023-11 ~ 2026-10
+11-19 06:14:51   retry query6_1 4129 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-19 06:16:19 result shard 4 done requests 23 ok 23 none 0 files 23 in 147 s
+11-19 06:13:53 shard 5 / 8 stocks 274 months 2023-11 ~ 2026-10
+11-19 06:14:59   retry stapap1 3226 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-19 06:15:35   retry stapap1 3492 115 10 URLError <urlopen error [Errno 111] Connection refused>
+11-19 06:17:50 result shard 5 done requests 30 ok 30 none 0 files 30 in 237 s
+11-19 06:13:52 shard 6 / 8 stocks 267 months 2023-11 ~ 2026-10
+11-19 06:15:20 result shard 6 done requests 23 ok 23 none 0 files 23 in 87 s
+11-19 06:13:52 shard 7 / 8 stocks 272 months 2023-11 ~ 2026-10
+11-19 06:15:02   retry stapap1 2609 115 10 URLError <urlopen error timed out>
+11-19 06:18:07 result shard 7 done requests 27 ok 27 none 0 files 27 in 255 s
