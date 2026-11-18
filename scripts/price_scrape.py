@@ -242,6 +242,8 @@ def build():
     except Exception as ex: log('qz failed', ex)
     try: build_dg(days_all, info)
     except Exception as ex: log('dg failed', ex)
+    try: build_push(days_all, info)
+    except Exception as ex: log('push failed', ex)
     days = days_all[-SCREEN_DAYS:]
     n = len(days)
     if n < 130:
@@ -897,6 +899,121 @@ def build_dg(days, info):
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     log('dg', len(rows), 'stocks')
 
+# ───────── 籌碼推升試算：流通股數、每漲 10% 要多少量與金額、波段大概在哪裡反轉 ─────────
+PUSH_STEPS = 5          # +10% ～ +50%
+PUSH_WIN = 120          # 起漲後最多看 120 個交易日
+PUSH_STOP = 0.15        # 從波段高點回落 15% 視為反轉
+
+def _pq(a, q):
+    if not a: return None
+    a = sorted(a); k = (len(a) - 1) * q; f = int(k); c = min(f + 1, len(a) - 1)
+    return a[f] + (a[c] - a[f]) * (k - f)
+
+def _holders(code):
+    p = os.path.join(ROOT, 'data', 'holders', code + '.json')
+    if not os.path.exists(p): return None
+    try: w = json.load(open(p, encoding='utf-8'))['w']
+    except Exception: return None
+    ks = sorted(k for k in w if isinstance(w[k], list) and len(w[k]) == 32 and w[k][0] > 0 and w[k][1] > 0)
+    if not ks: return None
+    out = []
+    for k in ks:
+        a = w[k]; pct = [x / 10000 for x in a[17:32]]
+        out.append((k, a[0], a[1] / 1000, sum(pct[11:15]), pct[14], sum(a[2:5]), sum(pct[0:3])))
+    return out   # (週, 股東人數, 總張數, 400張以上%, 1000張以上%, 10張以下人數, 10張以下持股%)
+
+def build_push(days, info):
+    import bisect
+    dates = [d['d'] for d in days]
+    if len(dates) < 250: return
+    codes = sorted(c for c in set(c for d in days[-3:] for c in d['r']) if re.fullmatch(r'[1-9]\d{3}', c))
+    recs, pool = [], []
+    for c in codes:
+        Hd = _holders(c)
+        if not Hd: continue
+        O, H, L, C, V, D = [], [], [], [], [], []
+        for d in days:
+            r = d['r'].get(c)
+            if r and r[3] and r[1] and r[2]:
+                H.append(r[1]); L.append(r[2]); C.append(r[3]); V.append(r[4] or 0); D.append(d['d'])
+        n = len(C)
+        if n < 250 or D[-1] != dates[-1]: continue
+        wk, ppl, lots, b400, b1k, sp, spct = Hd[-1]
+        F = lots * (1 - b1k / 100); Fc = lots * (1 - b400 / 100)
+        if F <= 0: continue
+        v20 = sum(V[-20:]) / 20; v60 = sum(V[-60:]) / 60
+        if v20 <= 0: continue
+        # ① 每漲 10% 要多少累計成交量：從 20 日低點出發，量到第一次碰到 +10%、+20%…
+        stepV = [[] for _ in range(PUSH_STEPS)]; tried = 0; hit = [0] * PUSH_STEPS; last = -99
+        for i in range(19, n - 1):
+            if C[i] != min(C[i - 19:i + 1]) or i - last < 5: continue
+            last = i; full = i + PUSH_WIN < n
+            if full: tried += 1
+            cum = 0.0; k = 0
+            for j in range(i + 1, min(n, i + PUSH_WIN + 1)):
+                cum += V[j]
+                while k < PUSH_STEPS and H[j] >= C[i] * (1 + 0.1 * (k + 1)):
+                    stepV[k].append(cum / F)
+                    if full: hit[k] += 1
+                    k += 1
+                if k >= PUSH_STEPS: break
+        own = [[_pq(s, .5), len(s), (hit[k] / tried if tried >= 5 else None)] for k, s in enumerate(stepV)]
+        # ② 波段反轉：從 60 日低點出發，到回落 15% 為止，記下漲幅、換手倍數、天數
+        rl = []; i = 59
+        while i < n - 5:
+            if C[i] != min(C[i - 59:i + 1]): i += 1; continue
+            pk = i; cum = 0.0; cpk = 0.0; j = i + 1
+            while j < n and j - i <= 180:
+                cum += V[j]
+                if C[j] > C[pk]: pk = j; cpk = cum
+                if C[j] <= C[pk] * (1 - PUSH_STOP): break
+                j += 1
+            done = j < n and j - i <= 180
+            g = C[pk] / C[i] - 1
+            if g >= 0.1 and done:
+                hi = bisect.bisect_right([h[0] for h in Hd], D[i]) - 1; hp = bisect.bisect_right([h[0] for h in Hd], D[pk]) - 1
+                pc = (Hd[hp][1] / Hd[hi][1] - 1) * 100 if hi >= 0 and hp > hi else None
+                rl.append((g, cpk / F, pk - i, pc))
+            i = max(j, i + 1)
+        # ③ 目前這一段：從近 60 日最低收盤起算
+        lo = n - 60 + min(range(60), key=lambda k: C[n - 60 + k]); cumNow = sum(V[lo + 1:]) / F
+        hl = bisect.bisect_right([h[0] for h in Hd], D[lo]) - 1
+        pplChg = (ppl / Hd[hl][1] - 1) * 100 if hl >= 0 and hl < len(Hd) - 1 else None
+        b4Chg = (b400 - Hd[hl][3]) if hl >= 0 and hl < len(Hd) - 1 else None
+        td = F / v20
+        u = info.get(c, {})
+        rec = {'c': c, 'n': u.get('name', ''), 'm': u.get('market', ''), 'i': u.get('ind', ''), 'p': C[-1], 'v20': round(v20), 'v60': round(v60),
+               'wk': wk, 'lots': round(lots), 'b400': round(b400, 2), 'b1k': round(b1k, 2), 'ppl': ppl, 'sp': sp, 'spct': round(spct, 2),
+               'F': round(F), 'Fc': round(Fc), 'own': [[None if a is None else round(a, 4), b, None if p is None else round(p, 3)] for a, b, p in own],
+               'rl': [len(rl), [round(_pq([r[0] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None, [round(_pq([r[1] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None, round(_pq([r[2] for r in rl], .5)) if rl else None],
+               'cur': [D[lo], C[lo], round(C[-1] / C[lo] - 1, 4), round(cumNow, 3), None if pplChg is None else round(pplChg, 1), None if b4Chg is None else round(b4Chg, 2)],
+               'hw': [[h[0][5:], h[1], round(h[3], 2)] for h in Hd[-26:]], 'td': round(td, 1)}
+        recs.append(rec); pool.append((td, b400, stepV, tried, hit, rl))
+    if not recs: return
+    # 同類股：換手天數三組 × 大戶集中三組，給自己歷史不夠的股票參考
+    tq = [_pq([p[0] for p in pool], q) for q in (1 / 3, 2 / 3)]; bq = [_pq([p[1] for p in pool], q) for q in (1 / 3, 2 / 3)]
+    gk = lambda td, b: (0 if td < tq[0] else 1 if td < tq[1] else 2) * 3 + (0 if b < bq[0] else 1 if b < bq[1] else 2)
+    G = {}
+    for (td, b, stepV, tried, hit, rl) in pool:
+        g = G.setdefault(gk(td, b), {'s': [[] for _ in range(PUSH_STEPS)], 't': 0, 'h': [0] * PUSH_STEPS, 'rl': []})
+        for k in range(PUSH_STEPS): g['s'][k] += stepV[k]; g['h'][k] += hit[k]
+        g['t'] += tried; g['rl'] += rl
+    grp = {}
+    for k, g in G.items():
+        rl = g['rl']
+        grp[k] = {'s': [[round(_pq(g['s'][j], .5) or 0, 4), len(g['s'][j]), round(g['h'][j] / g['t'], 3) if g['t'] else None] for j in range(PUSH_STEPS)],
+                  'g': [round(_pq([r[0] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None,
+                  't': [round(_pq([r[1] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None,
+                  'd': round(_pq([r[2] for r in rl], .5)) if rl else None,
+                  'pc': [round(_pq([r[3] for r in rl if r[3] is not None], q), 1) for q in (.25, .5, .75)] if any(r[3] is not None for r in rl) else None,
+                  'n': len(rl)}
+    for r in recs: r['g'] = gk(r['td'], r['b400'])
+    out = {'updated': datetime.datetime.now(TW).isoformat(timespec='minutes'), 'latest': dates[-1], 'from': dates[0],
+           'tq': [round(x, 1) for x in tq], 'bq': [round(x, 2) for x in bq], 'grp': grp, 'rows': recs}
+    with open(os.path.join(OUT, 'push.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
+    log('push', len(recs), 'stocks')
+
 # ───────── 起漲選股 v2（全市場回測：2025 年挑條件、2026 年驗證） ─────────
 QZ_LOOK = 30          # 列出最近 30 個交易日內的起漲訊號
 
@@ -997,6 +1114,10 @@ if __name__ == '__main__':
         cmd_update()
     elif a[0] == 'build':
         build()
+    elif a[0] == 'push':
+        want, info = universe()
+        files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))
+        build_push([json.load(open(os.path.join(DAYS, fn), encoding='utf-8')) for fn in files], info)
     elif a[0] == 'bbot':
         want, info = universe()
         files = sorted(fn for fn in os.listdir(DAYS) if re.fullmatch(r'\d{4}-\d{2}-\d{2}\.json', fn))

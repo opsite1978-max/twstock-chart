@@ -329,8 +329,8 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/17 00:10・B4 鯊魚鰭</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
-    <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/19 08:10・籌碼推升</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" id="navPush" href="/twstock-chart/push.html" title="目前這檔的流通股數、每漲 10% 要多少量與金額、波段大概在哪裡反轉">籌碼推升</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
       <button type="submit">載入</button>
@@ -8640,6 +8640,7 @@ function resetY(){ for (const k in yS) yS[k] = null; schedule(); }
 document.getElementById('zIn').onclick = () => zoomBy(1.35);
 document.getElementById('zOut').onclick = () => zoomBy(1 / 1.35);
 document.getElementById('zAuto').onclick = resetY;
+document.getElementById('navPush').addEventListener('click', e => { try { if (RAW && /^[1-9]\d{3}$/.test(RAW.id)){ e.preventDefault(); location.href = '/twstock-chart/push.html?s=' + RAW.id; } } catch (_){} });
 document.getElementById('btnTidy').onclick = () => { UI.weights = Object.assign({}, DEF_W); saveUI(); setBarW(7); view.right = NaN; if (!crossMode){ pinned = false; cross = null; } resetY(); setMsg('已整理：每個圖的高度、價格座標、K 棒寬度都恢復預設', 'ok', true); };
 document.getElementById('zEnd').onclick = () => { view.right = NaN; if (!crossMode){ pinned = false; cross = null; } else if (B) cross = { i:B.n - 1, y:cross ? cross.y : 100 }; schedule(); };
 function stepCross(k){

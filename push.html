@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>籌碼推升試算</title>
+<link rel="manifest" href="manifest-me.webmanifest">
+<link rel="icon" href="icon-me-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --warn:#ff9100; --blue:#5aa9e6; --zone:rgba(255,145,0,.16);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --warn:#e07800; --blue:#2f7fc1; --zone:rgba(224,120,0,.13);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.6 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 8px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px}
+.search{display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap}
+.search input{background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:8px 11px;width:240px;max-width:100%}
+.search button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.card h2{font-size:15px;margin:0 0 10px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.card h2 .hint{font-size:12px;color:var(--muted);font-weight:400}
+.title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:4px 0}
+.title .nm{font-size:22px;font-weight:700}
+.title .cd{font-family:var(--mono);color:var(--muted)}
+.title .px{font-family:var(--mono);font-size:22px;color:var(--accent);font-weight:600}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kv div{background:var(--panel2);border-radius:8px;padding:9px 11px;min-width:0}
+.kv .k{font-size:12px;color:var(--muted)}
+.kv .v{font-family:var(--mono);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv .s{font-size:11px;color:var(--muted)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 9px;border-bottom:1px solid var(--line2);background:var(--panel2);white-space:nowrap}
+td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+th.l,td.l{text-align:left;font-family:var(--sans)}
+tr.zone td{background:var(--zone)}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)} .warn{color:var(--warn)}
+.src{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.src.own{border-color:var(--accent);color:var(--accent)}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chartbox{width:100%;overflow:hidden}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.verdict{border-left:4px solid var(--accent);padding:10px 14px;background:var(--panel2);border-radius:0 8px 8px 0;font-size:15px;font-weight:600;margin-bottom:10px}
+.verdict.hot{border-left-color:var(--up)} .verdict.cool{border-left-color:var(--down)}
+.analysis p{margin:8px 0;max-width:72ch}
+.note{color:var(--muted);font-size:12px;line-height:1.75;max-width:80ch}
+.meter{height:10px;border-radius:5px;background:var(--panel2);position:relative;overflow:hidden;margin:6px 0 2px}
+.meter b{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}.title .nm,.title .px{font-size:19px}}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>籌碼推升試算</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" id="toChart" href="zhanshen-me.html">戰神看盤</a><a class="chip" href="dgscreen.html">獨孤九劍選股</a></nav>
+</header>
+<form class="search" id="f"><input id="q" list="dl" placeholder="輸入代號或名稱，例如 2330" autocomplete="off"><datalist id="dl"></datalist><button>試算</button></form>
+<div id="out"><div class="empty">讀取資料中…</div></div>
+<p class="note">
+<b>資料</b>：股價、成交量是上市櫃每日收盤資料（約兩年半）；股東人數、大戶持股來自集保股權分散表（每週一筆、約一年）。<br>
+<b>流通股數</b>：沒有董監持股、質押、庫藏股資料，只能用集保級距粗估。保守＝扣掉 400 張以上大戶；中性（計算都用這個）＝扣掉 1,000 張以上大戶；寬鬆＝全部股數。<br>
+<b>推升量</b>：找出這檔股票過去每一次「20 日最低點」，往後量到股價第一次碰到 +10%、+20%…為止，一路累積的成交量，取中位數，換算成流通股數的幾成，再套到現在的價格。自己的歷史不到 5 次時，改用同類股（換手快慢 × 大戶集中度分成 9 組）的中位數。<br>
+<b>反轉</b>：從 60 日最低點起漲，到股價從高點回落 15% 為止算一個波段，統計波段漲多少、換手幾倍流通股數才見頂。<br>
+<b>重要</b>：成交量、成交金額是買賣雙方合計，不是主力要投入的資金；這些都是過去的統計中位數，個股可能差很多，只能當參考，不是投資建議。
+</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const pct = (v, d = 1) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v * 100, d) + '%';
+const sgnCls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+const lotsTxt = v => v == null ? '—' : v >= 1e4 ? fmt(v / 1e4, v >= 1e6 ? 0 : 1) + ' 萬張' : fmt(v) + ' 張';
+const yi = v => v == null ? '—' : v >= 1e4 ? fmt(v / 1e4, 2) + ' 兆' : v >= 100 ? fmt(v, 0) + ' 億' : fmt(v, 1) + ' 億';
+try { const ui = JSON.parse(localStorage.getItem('me:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+let DB = null, MAP = {};
+const GTD = ['換手較快', '換手中等', '換手較慢'], GB = ['大戶較少', '大戶中等', '大戶較集中'];
+function stepsFor(r){
+  const g = DB.grp[r.g], out = [];
+  for (let k = 0; k < 5; k++){
+    const o = r.own[k], gs = g ? g.s[k] : null;
+    const useOwn = o && o[0] != null && o[1] >= 5;
+    out.push({ k:k + 1, t:useOwn ? o[0] : gs ? gs[0] : null, prob:useOwn && o[2] != null ? o[2] : gs ? gs[2] : null, src:useOwn ? 'own' : 'grp', n:useOwn ? o[1] : gs ? gs[1] : 0 });
+  }
+  for (let k = 1; k < 5; k++) if (out[k].t != null && out[k - 1].t != null && out[k].t < out[k - 1].t) out[k].t = out[k - 1].t;   // 累計量不能變少
+  return out;
+}
+const svgW = () => Math.round(Math.min(900, Math.max(340, (document.querySelector('.wrap').clientWidth || 900) - 30)));
+function rallyFor(r){
+  const g = DB.grp[r.g], own = r.rl && r.rl[0] >= 5;
+  return { src:own ? 'own' : 'grp', n:own ? r.rl[0] : g ? g.n : 0, g:own ? r.rl[1] : g && g.g, t:own ? r.rl[2] : g && g.t, d:own ? r.rl[3] : g && g.d, pc:g && g.pc };
+}
+// 累計換手 → 從現價起算的漲幅（線性內插，最多 +50%）
+function gainAtTurn(steps, turn){
+  let pt = 0, pg = 0;
+  for (const s of steps){ if (s.t == null) break; const g = s.k * 0.1; if (turn <= s.t) return pg + (g - pg) * (turn - pt) / Math.max(1e-9, s.t - pt); pt = s.t; pg = g; }
+  return null;
+}
+function chart(r, steps, zone, revP){
+  const W = svgW(), sm = W < 600, H = sm ? 250 : 300, L = sm ? 46 : 64, R = sm ? 40 : 56, T = 22, B = 40, pw = W - L - R, ph = H - T - B, p0 = r.p;
+  const amts = [], cum = []; let prevT = 0, a = 0;
+  for (const s of steps){ if (s.t == null){ amts.push(null); continue; } const dv = (s.t - prevT) * r.F; a += dv * p0 * (1 + 0.1 * s.k - 0.05) * 1000 / 1e8; prevT = s.t; amts.push(a); }
+  const maxA = Math.max(1, ...amts.filter(x => x != null)) * 1.12, pMax = p0 * 1.55, pMin = p0 * 0.97;
+  const x = p => L + (p - pMin) / (pMax - pMin) * pw, y = v => T + ph - v / maxA * ph, yp = v => T + ph - v * ph;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="推升階梯圖">';
+  for (let i = 0; i <= 4; i++){ const v = maxA * i / 4, yy = y(v); s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" />' + '<text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + (v >= 100 ? fmt(v, 0) : fmt(v, 1)) + '</text>'; }
+  s += '<text x="' + (L - 6) + '" y="' + (T - 8) + '" text-anchor="end">億元</text><text x="' + (W - R + 6) + '" y="' + (T - 8) + '">機率</text>';
+  for (let i = 0; i <= 4; i++) s += '<text x="' + (W - R + 6) + '" y="' + (yp(i / 4) + 4) + '">' + i * 25 + '%</text>';
+  if (zone){ const z0 = Math.max(pMin, zone[0]), z1 = Math.min(pMax, zone[1]); if (z1 > z0) s += '<rect x="' + x(z0) + '" y="' + T + '" width="' + (x(z1) - x(z0)) + '" height="' + ph + '" fill="var(--zone)" /><text x="' + ((x(z0) + x(z1)) / 2) + '" y="' + (T + 50) + '" text-anchor="middle" style="fill:var(--warn)">常見反轉區</text>'; }
+  const bw = pw / 14;
+  steps.forEach((st, i) => { const v = amts[i]; if (v == null) return; const p = p0 * (1 + 0.1 * st.k), xx = x(p);
+    s += '<rect x="' + (xx - bw / 2) + '" y="' + y(v) + '" width="' + bw + '" height="' + (T + ph - y(v)) + '" rx="3" fill="var(--up)" opacity="' + (st.src === 'own' ? .85 : .5) + '" />' +
+      '<text x="' + xx + '" y="' + (y(v) - 6) + '" text-anchor="middle" style="fill:var(--fg)">' + (v >= 100 ? fmt(v, 0) : fmt(v, 1)) + '</text>' +
+      '<text x="' + xx + '" y="' + (H - B + 16) + '" text-anchor="middle">' + fmt(p, p >= 100 ? 0 : 1) + '</text><text x="' + xx + '" y="' + (H - B + 30) + '" text-anchor="middle">+' + st.k * 10 + '%</text>'; });
+  const pts = steps.filter(st => st.prob != null).map(st => x(p0 * (1 + 0.1 * st.k)) + ',' + yp(st.prob));
+  if (pts.length) s += '<polyline points="' + x(p0) + ',' + yp(1) + ' ' + pts.join(' ') + '" fill="none" stroke="var(--blue)" stroke-width="2.2" />' + steps.filter(st => st.prob != null).map(st => '<circle cx="' + x(p0 * (1 + 0.1 * st.k)) + '" cy="' + yp(st.prob) + '" r="3.5" fill="var(--blue)" />').join('');
+  s += '<line x1="' + x(p0) + '" x2="' + x(p0) + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--accent)" stroke-width="2" /><text x="' + (x(p0) + 4) + '" y="' + (T + ph - 6) + '" style="fill:var(--accent)">現價 ' + fmt(p0, p0 >= 100 ? 0 : 2) + '</text>';
+  if (revP && revP < pMax) s += '<line x1="' + x(revP) + '" x2="' + x(revP) + '" y1="' + T + '" y2="' + (T + ph) + '" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" /><text x="' + (x(revP) + 4) + '" y="' + (T + 30) + '" style="fill:var(--warn)">燃料用完 ' + fmt(revP, revP >= 100 ? 0 : 1) + '</text>';
+  return s + '</svg>';
+}
+function mini(r){
+  const h = r.hw; if (!h || h.length < 3) return '<p class="muted">集保資料不足</p>';
+  const W = svgW(), H = W < 600 ? 110 : 150, L = 6, R = 6, T = 12, B = 22, pw = W - L - R, ph = H - T - B;
+  const ln = (vals, col, lab) => { const mn = Math.min(...vals), mx = Math.max(...vals), rg = mx - mn || 1; const pts = vals.map((v, i) => (L + i / (vals.length - 1) * pw) + ',' + (T + ph - (v - mn) / rg * ph)).join(' ');
+    return '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2" />'; };
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + ln(h.map(x => x[2]), 'var(--up)') + ln(h.map(x => x[1]), 'var(--blue)') +
+    '<text x="' + L + '" y="' + (H - 4) + '">' + h[0][0] + '</text><text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end">' + h[h.length - 1][0] + '</text></svg>' +
+    '<div class="legend"><span><i style="background:var(--up)"></i>大戶（400 張以上）比例 ' + fmt(h[0][2], 1) + '% → ' + fmt(h[h.length - 1][2], 1) + '%</span><span><i style="background:var(--blue)"></i>股東人數 ' + fmt(h[0][1]) + ' → ' + fmt(h[h.length - 1][1]) + '</span></div>';
+}
+function show(code){
+  const r = MAP[code];
+  if (!r){ $('out').innerHTML = '<div class="empty">找不到「' + code + '」。這個工具只有上市櫃普通股，而且要有集保資料。</div>'; return; }
+  history.replaceState(null, '', '?s=' + r.c); $('toChart').href = 'zhanshen-me.html?s=' + r.c;
+  const st = stepsFor(r), ra = rallyFor(r), cur = r.cur, lo = cur[1], p0 = r.p;
+  const zone = ra.g ? [lo * (1 + ra.g[0]), lo * (1 + ra.g[2])] : null, zoneMid = ra.g ? lo * (1 + ra.g[1]) : null;
+  const fuelLeft = ra.t ? ra.t[1] - cur[3] : null, gLeft = fuelLeft != null && fuelLeft > 0 ? gainAtTurn(st, fuelLeft) : fuelLeft != null ? 0 : null;
+  const revP = gLeft != null && gLeft > 0 ? p0 * (1 + gLeft) : null;
+  const fuelUsed = ra.t ? cur[3] / ra.t[1] : null, gainUsed = ra.g ? cur[2] / ra.g[1] : null;
+  const grpName = GTD[Math.floor(r.g / 3)] + '・' + GB[r.g % 3];
+  // 表格
+  let prevT = 0, a = 0;
+  const rows = st.map(s => { const tp = p0 * (1 + 0.1 * s.k); if (s.t == null) return '<tr><td class="l">+' + s.k * 10 + '%</td><td>' + fmt(tp, tp >= 100 ? 0 : 2) + '</td><td colspan="5" class="l muted">歷史上幾乎沒有漲到這裡</td></tr>';
+    const v = s.t * r.F, dv = (s.t - prevT) * r.F; a += dv * p0 * (1 + 0.1 * s.k - 0.05) * 1000 / 1e8; prevT = s.t;
+    const inZone = zone && tp >= zone[0] && tp <= zone[1];
+    return '<tr' + (inZone ? ' class="zone"' : '') + '><td class="l">+' + s.k * 10 + '%' + (inZone ? ' <span class="warn">反轉區</span>' : '') + '</td><td>' + fmt(tp, tp >= 100 ? 0 : 2) + '</td><td>' + lotsTxt(v) + '</td><td>' + fmt(s.t * 100, 0) + '%</td><td>' + yi(a) + '</td><td>' + fmt(v / r.v20, 0) + ' 天</td><td>' + (s.prob == null ? '—' : fmt(s.prob * 100, 0) + '%') + '</td><td class="l"><span class="src ' + s.src + '">' + (s.src === 'own' ? '自己 ' + s.n + ' 次' : '同類股') + '</span></td></tr>'; }).join('');
+  // 判讀
+  const pc = cur[4], b4c = cur[5], pcT = ra.pc;
+  const retail = pc == null ? null : pcT && pc > pcT[2] ? 'in' : pc < 0 && (b4c ?? 0) > 0 ? 'gather' : 'neutral';
+  let level, vcls;
+  if ((fuelUsed != null && fuelUsed >= 1.3) || (gainUsed != null && gainUsed >= 1.3) || retail === 'in'){ level = '已接近或超過常見反轉區，追高風險高'; vcls = 'hot'; }
+  else if ((fuelUsed != null && fuelUsed >= 0.7) || (gainUsed != null && gainUsed >= 0.7)){ level = '走到波段中段，上檔空間開始縮小'; vcls = ''; }
+  else { level = '還在波段初期或尚未起漲，燃料還多'; vcls = 'cool'; }
+  const meter = (v, lab) => v == null ? '' : '<div class="k" style="font-size:12px;color:var(--muted)">' + lab + '：' + fmt(v * 100, 0) + '%</div><div class="meter"><b style="width:' + Math.min(100, v * 100) + '%;background:' + (v >= 1 ? 'var(--up)' : v >= .7 ? 'var(--warn)' : 'var(--down)') + '"></b></div>';
+  const para = [];
+  para.push('<b>' + r.n + '</b>目前股價 ' + fmt(p0, p0 >= 100 ? 0 : 2) + ' 元，估計在市場上流通的股數約 ' + lotsTxt(r.F) + '（占全部 ' + fmt(r.F / r.lots * 100, 0) + '%），以最近 20 日的成交量，大約 ' + fmt(r.td, 0) + ' 天就會換手一輪，和全市場比屬於「' + grpName + '」這一類（各占三分之一）。');
+  const s1 = st[0], s3 = st[2];
+  if (s1.t != null) para.push('照過去經驗，股價要漲 10%，大約要成交流通股數的 ' + fmt(s1.t * 100, 0) + '%（約 ' + lotsTxt(s1.t * r.F) + '，' + fmt(s1.t * r.F / r.v20, 0) + ' 個交易日的量）' + (s3.t != null ? '；要漲 30%，累計要成交約 ' + fmt(s3.t * 100, 0) + '%' : '') + '。' + (s1.prob != null ? '從低點出發後 120 個交易日內，有 ' + fmt(s1.prob * 100, 0) + '% 的機會碰到 +10%' + (s3.prob != null ? '，碰到 +30% 的機會是 ' + fmt(s3.prob * 100, 0) + '%' : '') + '。' : ''));
+  if (ra.g) para.push('這一段是從 ' + cur[0].slice(5).replace('-', '/') + ' 的低點 ' + fmt(lo, lo >= 100 ? 0 : 2) + ' 元算起，到現在漲了 ' + pct(cur[2]) + '，期間成交量是流通股數的 ' + fmt(cur[3], 2) + ' 倍。' + (ra.src === 'own' ? '這檔股票自己過去 ' + ra.n + ' 個波段' : '同類股過去 ' + fmt(ra.n) + ' 個波段') + '，多半漲 ' + pct(ra.g[0], 0) + '～' + pct(ra.g[2], 0) + '（中位數 ' + pct(ra.g[1], 0) + '）、換手 ' + fmt(ra.t[0], 1) + '～' + fmt(ra.t[2], 1) + ' 倍就見頂，從低點到高點中位數 ' + ra.d + ' 個交易日。換算成價格，常見反轉區在 ' + fmt(zone[0], zone[0] >= 100 ? 0 : 1) + '～' + fmt(zone[1], zone[1] >= 100 ? 0 : 1) + ' 元' + (revP ? '；照換手量推算，燃料大約在 ' + fmt(revP, revP >= 100 ? 0 : 1) + ' 元附近用完' : fuelLeft != null && fuelLeft <= 0 ? '；換手量已經超過一般波段見頂時的水準' : '') + '。');
+  if (pc != null) para.push('籌碼方面，從低點那一週到最新一週，股東人數 ' + (pc >= 0 ? '增加' : '減少') + ' ' + fmt(Math.abs(pc), 1) + '%，大戶比例' + (b4c >= 0 ? '增加' : '減少') + ' ' + fmt(Math.abs(b4c), 2) + ' 個百分點。' + (retail === 'in' ? '股東人數增加的幅度已經超過一般波段見頂時的水準，代表散戶大量進場、籌碼變亂，這通常是反轉前的警訊。' : retail === 'gather' ? '股東變少、大戶變多，籌碼還在往大戶集中，對上漲有利。' : '目前看不出散戶大量湧入。'));
+  else para.push('最近一週的集保資料還沒涵蓋這一段，籌碼變化等下週更新後再看。');
+  para.push('<b>整體判斷：' + level + '。</b>' + (vcls === 'cool' ? '可以搭配戰神看盤、獨孤九劍的起漲訊號找進場點。' : vcls === 'hot' ? '如果已經持有，可以考慮分批停利或把停損拉近；還沒進場的不建議追。' : '可以續抱，但要留意量能和股東人數的變化。'));
+  $('out').innerHTML =
+    '<div class="title"><span class="nm">' + r.n + '</span><span class="cd">' + r.c + '・' + (r.m || '') + '・' + (r.i || '') + '</span><span class="px">' + fmt(p0, p0 >= 100 ? 0 : 2) + '</span><span class="' + sgnCls(cur[2]) + '">離 60 日低點 ' + pct(cur[2]) + '</span></div>' +
+    '<div class="card"><h2>流通股數與籌碼<span class="hint">集保 ' + r.wk + '</span></h2><div class="kv">' +
+      '<div><div class="k">全部股數</div><div class="v">' + lotsTxt(r.lots) + '</div><div class="s">寬鬆流通估計</div></div>' +
+      '<div><div class="k">流通股數（中性）</div><div class="v">' + lotsTxt(r.F) + '</div><div class="s">扣掉千張大戶，占 ' + fmt(r.F / r.lots * 100, 0) + '%</div></div>' +
+      '<div><div class="k">流通股數（保守）</div><div class="v">' + lotsTxt(r.Fc) + '</div><div class="s">扣掉 400 張以上大戶</div></div>' +
+      '<div><div class="k">大戶比例</div><div class="v">' + fmt(r.b400, 1) + '%</div><div class="s">千張大戶 ' + fmt(r.b1k, 1) + '%</div></div>' +
+      '<div><div class="k">股東人數</div><div class="v">' + fmt(r.ppl) + '</div><div class="s">10 張以下 ' + fmt(r.sp) + ' 人、持股 ' + fmt(r.spct, 1) + '%</div></div>' +
+      '<div><div class="k">換手一輪</div><div class="v">' + fmt(r.td, 0) + ' 天</div><div class="s">20 日均量 ' + lotsTxt(r.v20) + '</div></div>' +
+    '</div><div style="margin-top:12px">' + mini(r) + '</div></div>' +
+    '<div class="card"><h2>每漲 10% 要多少量與金額<span class="hint">從現價起算；紅柱＝累計成交金額，藍線＝過去 120 天內碰到的機率，橘底＝常見反轉區</span></h2><div class="chartbox">' + chart(r, st, zone, revP) + '</div>' +
+      '<div class="legend"><span><i style="background:var(--up)"></i>累計成交金額（深色＝用自己的歷史，淺色＝用同類股）</span><span><i style="background:var(--blue)"></i>碰到機率</span><span><i style="background:var(--zone);border:1px solid var(--warn)"></i>常見反轉區</span></div>' +
+      '<div class="tblwrap" style="margin-top:10px"><table><thead><tr><th class="l">漲幅</th><th>目標價</th><th>累計成交量</th><th>占流通股數</th><th>累計成交金額</th><th>約幾天的量</th><th>碰到機率</th><th class="l">依據</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+    '<div class="grid2"><div class="card"><h2>反轉推估</h2>' +
+      (ra.g ? '<div class="kv"><div><div class="k">常見反轉區</div><div class="v">' + fmt(zone[0], zone[0] >= 100 ? 0 : 1) + '～' + fmt(zone[1], zone[1] >= 100 ? 0 : 1) + '</div><div class="s">波段漲 ' + pct(ra.g[0], 0) + '～' + pct(ra.g[2], 0) + '</div></div>' +
+        '<div><div class="k">燃料用完約在</div><div class="v">' + (revP ? fmt(revP, revP >= 100 ? 0 : 1) : fuelLeft != null && fuelLeft <= 0 ? '已用完' : '超過 +50%') + '</div><div class="s">換手 ' + fmt(ra.t[1], 1) + ' 倍見頂（中位數）</div></div></div>' +
+        '<div style="margin-top:10px">' + meter(gainUsed, '漲幅已走完一般波段的') + meter(fuelUsed, '換手燃料已用掉') + '</div>' +
+        '<p class="note">依據：' + (ra.src === 'own' ? '自己過去 ' + ra.n + ' 個波段' : '同類股（' + grpName + '）' + fmt(ra.n) + ' 個波段') + '。從 ' + cur[0].replace(/-/g, '/') + ' 低點 ' + fmt(lo, lo >= 100 ? 0 : 2) + ' 起算。</p>' : '<p class="muted">波段資料不足</p>') + '</div>' +
+      '<div class="card"><h2>散戶動向</h2>' + (pc != null ? '<div class="kv"><div><div class="k">低點以來股東人數</div><div class="v ' + (pc > 0 ? 'up' : 'down') + '">' + (pc > 0 ? '+' : '') + fmt(pc, 1) + '%</div><div class="s">一般見頂時 ' + (pcT ? (pcT[1] > 0 ? '+' : '') + fmt(pcT[1], 1) + '%（多半 ' + fmt(pcT[0], 1) + '～' + fmt(pcT[2], 1) + '%）' : '—') + '</div></div><div><div class="k">低點以來大戶比例</div><div class="v ' + (b4c > 0 ? 'up' : 'down') + '">' + (b4c > 0 ? '+' : '') + fmt(b4c, 2) + '</div><div class="s">百分點</div></div></div>' +
+        '<p class="note">' + (retail === 'in' ? '<span class="warn">股東人數增加得比一般見頂時還多：散戶大量進場，籌碼變亂。</span>' : retail === 'gather' ? '股東變少、大戶變多：籌碼還在集中。' : '散戶沒有明顯湧入。') + '</p>' : '<p class="muted">這一段太新，集保週資料還沒涵蓋。</p>') + '</div></div>' +
+    '<div class="card analysis"><h2>整體分析</h2><div class="verdict ' + vcls + '">' + level + '</div>' + para.map(p => '<p>' + p + '</p>').join('') + '</div>';
+}
+fetch('data/price/push.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(d => {
+  DB = d; for (const r of d.rows) MAP[r.c] = r;
+  $('upd').textContent = '股價 ' + d.latest + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
+  $('dl').innerHTML = d.rows.map(r => '<option value="' + r.c + ' ' + r.n + '">').join('');
+  const q = new URLSearchParams(location.search).get('s');
+  let c = q && MAP[q] ? q : null;
+  if (!c){ try { const s = JSON.parse(localStorage.getItem('push:last') || 'null'); if (s && MAP[s]) c = s; } catch (e){} }
+  show(c || '2330'); $('q').value = '';
+}).catch(e => { $('out').innerHTML = '<div class="empty">讀取失敗：' + e.message + '</div>'; });
+let rsT; addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { const c = new URLSearchParams(location.search).get('s'); if (c && MAP[c]) show(c); }, 250); });
+$('f').addEventListener('submit', e => { e.preventDefault(); const v = $('q').value.trim(); if (!v) return;
+  let c = v.split(/\s+/)[0]; if (!MAP[c]){ const hit = DB.rows.find(r => r.n.includes(v) || v.includes(r.n)); if (hit) c = hit.c; }
+  try { localStorage.setItem('push:last', JSON.stringify(c)); } catch (e){} show(c); $('q').value = ''; $('q').blur(); });
+</script>
+</body>
+</html>
