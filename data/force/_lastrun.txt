@@ -1,1 +1,6 @@
-11-19 09:00:33 價格都已是新版，不用查詢
+11-19 12:16:23 本小時 FinMind 已用 1290 ／上限 6000
+11-19 12:16:24 targets 246 todo 2 this run max 60
+11-19 12:16:44 file 2026-11-18 bars 1142 dup 1.997 cls 0.995 fb 0.0 last 23:59:59 complete True 20s req 7
+11-19 12:16:46 no futures kbar 2026-11-19
+11-19 12:16:49 strikes: no option daily yet 2026-11-19
+11-19 12:16:50 strikes written 2026-11-18
