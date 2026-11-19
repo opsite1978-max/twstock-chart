@@ -329,7 +329,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/19 08:40・九龍模金訣</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/19 09:30・版面修正</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" id="navPush" href="/twstock-chart/push.html" title="目前這檔的流通股數、每漲 10% 要多少量與金額、波段大概在哪裡反轉">籌碼推升</a><a class="chip" href="/twstock-chart/jlmj.html" title="九個訊號（尋龍底、月週共振、BotWT、神奇波段、量能情緒、超級震盪、B4 超賣轉折、籌碼收斂、低檔燃料足）一起找起漲點">九龍模金訣</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -2119,6 +2119,7 @@ if (!UI.viewV3){ UI.viewV3 = 1; UI.viewV2 = 1; for (const k of ['showZ', 'showD'
 if (!UI.weights || !UI.weights.main) UI.weights = { main:3, z:1.35, d:1.35 };
 const DEF_W = Object.assign({ main:3, z:1.35, d:1.35, b4:2.2, sf:1.2 }, { bb:1.1, vl:1.2, tg:1.2, in:1.3, dx:1.3, jp:1.3, cp:1.4, dk:1.3, zx:1.3, ls:1.3, md:1.4, bd:1.4, km:1.4, kmo:1.4, vxt:1.4, dco:1.4, bwt:1.4, ym:1.4, sdb:1.4, cci:1.4, kp:1.4, jj:1.3, qj:1.6, cd:1.4, smi:1.3, tp:1.3, lbb:1.5, wl:1.7, sy:1.6, hm:1.6, vo:1.5, bbx:1.2, camo:1.5, so:1.9, dz:1.6, lx:1.4, lhb:1.5, qlw:1.3 });
 UI.weights = Object.assign({}, DEF_W, UI.weights);
+for (const k in UI.weights) if (k !== 'main' && typeof UI.weights[k] === 'number') UI.weights[k] = Math.min(3.5, Math.max(0.6, UI.weights[k]));
 if (!LS.get(PFX + 'b4w', false)){ UI.weights.b4 = DEF_W.b4; UI.weights.sf = DEF_W.sf; LS.set(PFX + 'b4w', true); }
 const FUTS = { TX:'台指期近月', MTX:'小台指近月', TMF:'微台指近月' };
 const FX = { USDTWD:'美元／台幣' };
@@ -5704,7 +5705,7 @@ function niceStep(range, count){
   const raw = range / Math.max(1, count), mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
   return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
 }
-function fmtNum(v, dec){ return isNaN(v) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec }); }
+function fmtNum(v, dec){ if (isNaN(v)) return '—'; const t = v.toLocaleString('en-US', { minimumFractionDigits:dec, maximumFractionDigits:dec }); return /^-0(\.0*)?$/.test(t) ? t.slice(1) : t; }
 function priceDec(v){ const a = Math.abs(v); if (RAW && FX[RAW.id]) return 3; if (RAW && isUS(RAW.id)) return a >= 10000 ? 0 : 2; return a >= 10000 ? 0 : a >= 100 ? 1 : 2; }
 function fmtP(v){ return fmtNum(v, priceDec(v)); }
 function fmtPx(v){ // OHLC exact, trims zeros
@@ -5870,8 +5871,16 @@ function draw(){
   const panes = [{ id:'main', w:Wt0.main }];
   for (const pp of shownPanes()) panes.push({ id:pp.id, w:Wt0[pp.id] || 1.3 });
   const avail = Ht - TIME_H, fixedH = panes.reduce((s, p) => s + (p.fixed || 0), 0), tw = panes.reduce((s, p) => s + (p.fixed ? 0 : p.w), 0);
+  // 每個圖都有最小高度：主圖至少 180、副圖至少 88（以前拖分隔線不小心拖太扁，圖會整個看不到）
+  { const minH = p => p.id === 'main' ? 180 : 88;
+    for (let it = 0; it < 4; it++){
+      const free = panes.filter(p => !p.fixed), fH = panes.reduce((s, p) => s + (p.fixed || 0), 0), fw = free.reduce((s, p) => s + p.w, 0); let ch = false;
+      for (const p of free){ const h = (avail - fH) * p.w / fw; if (h < minH(p) && avail > panes.length * 70){ p.fixed = minH(p); ch = true; } }
+      if (!ch) break;
+    } }
+  const fixedH2 = panes.reduce((s, p) => s + (p.fixed || 0), 0), tw2 = panes.reduce((s, p) => s + (p.fixed ? 0 : p.w), 0);
   let top = 0;
-  for (const p of panes){ p.top = top; p.h = p.fixed || Math.round((avail - fixedH) * p.w / tw); top += p.h; }
+  for (const p of panes){ p.top = top; p.h = p.fixed || Math.round((avail - fixedH2) * p.w / Math.max(1e-9, tw2)); top += p.h; }
   panes[panes.length - 1].h = avail - panes[panes.length - 1].top;
   layout = { panes, i0, i1, avail };
 
@@ -8589,7 +8598,7 @@ function endPtr(e, cancelled){
   else if (drag && drag.mode === 'pan' && !drag.moved && !cancelled && ptrs.size === 1){
     const h = drag.hit, now = Date.now(), dbl = now - lastTap.t < 350 && lastTap.kind === h.kind;
     lastTap = { t:now, kind:h.kind };
-    if (h.kind === 'axis'){ if (dbl && e.pointerType !== 'mouse'){ yS[h.p.id] = null; schedule(); } }
+    if (h.kind === 'axis'){ if ((dbl && e.pointerType !== 'mouse') || (yS[h.p.id] && pt.y > h.p.top + h.p.h - 24)){ yS[h.p.id] = null; schedule(); } }
     else if (h.kind === 'plot'){
       if (e.pointerType === 'mouse'){ pinned = !pinned; setCross(pt); }
       else if (dbl){ view.right = NaN; pinned = false; cross = null; schedule(); }
