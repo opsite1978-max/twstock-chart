@@ -922,6 +922,18 @@ def _holders(code):
         out.append((k, a[0], a[1] / 1000, sum(pct[11:15]), pct[14], sum(a[2:5]), sum(pct[0:3])))
     return out   # (週, 股東人數, 總張數, 400張以上%, 1000張以上%, 10張以下人數, 10張以下持股%)
 
+def _insider(code, lots):
+    """董監持股（公開資訊觀測站每月申報）：持股占全部股數 %、近 3 個月變化 %、質押占董監持股 %"""
+    p = os.path.join(ROOT, 'data', 'insider', code + '.json')
+    if not os.path.exists(p) or lots <= 0: return None
+    try: m = json.load(open(p, encoding='utf-8')).get('months', {})
+    except Exception: return None
+    ok = sorted((k, v['dir']) for k, v in m.items() if isinstance(v, dict) and v.get('s') == 'ok' and isinstance(v.get('dir'), dict) and v['dir'].get('total'))
+    if not ok: return None
+    ym, d = ok[-1]; tot = d['total']; pl = d.get('pledge') or 0
+    c3 = (tot / ok[-4][1]['total'] - 1) * 100 if len(ok) >= 4 and ok[-4][1]['total'] > 0 else None
+    return [ym, round(tot / 1000 / lots * 100, 2), None if c3 is None else round(c3, 2), round(pl / tot * 100, 1) if tot else 0]
+
 def build_push(days, info):
     import bisect
     dates = [d['d'] for d in days]
@@ -987,7 +999,7 @@ def build_push(days, info):
                'F': round(F), 'Fc': round(Fc), 'own': [[None if a is None else round(a, 4), b, None if p is None else round(p, 3)] for a, b, p in own],
                'rl': [len(rl), [round(_pq([r[0] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None, [round(_pq([r[1] for r in rl], q), 3) for q in (.25, .5, .75)] if rl else None, round(_pq([r[2] for r in rl], .5)) if rl else None],
                'cur': [D[lo], C[lo], round(C[-1] / C[lo] - 1, 4), round(cumNow, 3), None if pplChg is None else round(pplChg, 1), None if b4Chg is None else round(b4Chg, 2)],
-               'hw': [[h[0][5:], h[1], round(h[3], 2)] for h in Hd[-26:]], 'td': round(td, 1)}
+               'hw': [[h[0][5:], h[1], round(h[3], 2)] for h in Hd[-26:]], 'td': round(td, 1), 'ins': _insider(c, lots)}
         recs.append(rec); pool.append((td, b400, stepV, tried, hit, rl))
     if not recs: return
     # 同類股：換手天數三組 × 大戶集中三組，給自己歷史不夠的股票參考
