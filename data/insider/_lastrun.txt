@@ -1,8 +1,0 @@
-11-19 21:38:46 shard 0 / 8 stocks 264 months 2023-11 ~ 2026-10
-11-19 21:38:54 result shard 0 done requests 2 ok 0 none 2 files 1 in 7 s
-11-19 21:38:47 shard 1 / 8 stocks 266 months 2023-11 ~ 2026-10
-11-19 21:38:55 result shard 1 done requests 2 ok 0 none 2 files 1 in 7 s
-11-19 21:38:48 shard 3 / 8 stocks 271 months 2023-11 ~ 2026-10
-11-19 21:38:52 result shard 3 done requests 2 ok 0 none 2 files 1 in 4 s
-11-19 21:38:48 shard 6 / 8 stocks 267 months 2023-11 ~ 2026-10
-11-19 21:38:54 result shard 6 done requests 1 ok 1 none 0 files 1 in 5 s
