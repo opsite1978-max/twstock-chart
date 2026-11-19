@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>九劍籌碼選股</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.12);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line2);margin:6px 0 12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+input[type=number],input[type=search]{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;font-family:var(--mono);width:110px}
+input[type=search]{font-family:var(--sans);width:180px}
+label.ck{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:4px 0 2px}
+.summary .n{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--accent)}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.warn{background:rgba(230,193,77,.10);border:1px solid rgba(230,193,77,.35);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);cursor:pointer;white-space:nowrap;user-select:none}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴"}
+td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+td.l{font-family:var(--sans)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hl)}
+.code{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.pill{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.pill.new{border-color:var(--up);color:var(--up)}
+.pill.bull{border-color:var(--up);color:var(--up)} .pill.bear{border-color:var(--down);color:var(--down)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.7}
+h3{font-size:14px;margin:4px 0 8px;display:flex;gap:8px;align-items:baseline}
+h3 .cnt{font-family:var(--mono);color:var(--accent)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.v{display:inline-block;min-width:44px;padding:1px 6px;border-radius:5px;text-align:right}
+.v.hot{background:rgba(255,145,0,.22);color:#ff9100;font-weight:600}
+.v.warm{background:rgba(255,214,0,.16);color:#e6c14d;font-weight:600}
+.v.cold{color:var(--dim)}
+.run{font-size:11px;color:var(--muted);margin-left:3px;font-family:var(--sans)}
+details.grp{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+details.grp>summary{cursor:pointer;padding:11px 14px;display:flex;gap:10px;align-items:baseline;list-style:none}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::before{content:"▸";color:var(--muted);width:10px}
+details.grp[open]>summary::before{content:"▾"}
+details.grp .gname{font-weight:700}
+details.grp .gcnt{font-family:var(--mono);color:var(--muted);font-size:12px}
+details.grp .ghot{margin-left:auto;font-size:12px}
+details.grp .tblwrap{border:0;border-top:1px solid var(--line);border-radius:0 0 10px 10px;max-height:60vh}
+select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;max-width:200px}
+
+.pk{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+.pk i{display:inline-block;height:7px;border-radius:4px;opacity:.85}
+.tag{font-family:var(--sans);font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.tag.s2{background:rgba(255,145,0,.18);border-color:#ff9100;color:#ff9100;font-weight:700}
+.tag.s1{background:rgba(229,72,77,.14);border-color:var(--up);color:var(--up);font-weight:600}
+.tag.on{border-color:#e6c14d;color:#e6c14d}
+.tag.end{border-color:var(--up);color:var(--up)}
+.ago{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--sans)}
+.rng{display:inline-flex;align-items:center;gap:6px}
+.rng input{width:96px}
+.cellv{display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.25}
+.cellv .sub{font-size:11px;color:var(--muted);font-family:var(--sans);white-space:nowrap}
+.cellv.off{opacity:.38}
+.cellv .sub .s2{color:#ff9100;font-weight:700} .cellv .sub .s1{color:var(--up);font-weight:600} .cellv .sub .on{color:#e6b800} .cellv .sub .end{color:var(--up)}
+
+@media (max-width:600px){#t th:nth-child(2),#t td:nth-child(2),#t th:nth-child(4),#t td:nth-child(4),#t th:nth-child(9),#t td:nth-child(9),#t th:nth-child(10),#t td:nth-child(10),#t th:nth-child(11),#t td:nth-child(11){display:none} .ctag{font-size:10px;padding:1px 5px} #t.tf-d :is(th,td):is(:nth-child(6),:nth-child(7)),#t.tf-w :is(th,td):is(:nth-child(5),:nth-child(7)),#t.tf-m :is(th,td):is(:nth-child(5),:nth-child(6)){display:none} #t th:nth-child(3),#t td:nth-child(3){display:none} td,th{padding:6px 4px} td.l .code{display:block;margin:0;font-size:11px} table{font-size:12px} .cellv .sub{font-size:10px;white-space:normal;text-align:right;max-width:78px} .cellv .sub *{white-space:nowrap}}
+.grade{display:inline-block;min-width:26px;text-align:center;border-radius:6px;padding:1px 6px;font-weight:700;font-family:var(--sans)}
+.g3{background:#ff1744;color:#fff}.g2{background:rgba(255,145,0,.22);color:#ff9100}.g1{background:rgba(255,214,0,.14);color:#e6c14d}
+.sw{display:inline-flex;gap:3px;margin-left:4px}.sw i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.sw i.on{background:#ff9100}.sw i.on.star{background:#ff1744}
+.pess{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.75}
+.btt td,.btt th{font-size:12px}
+.ctag{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.ctag.c12{background:rgba(229,72,77,.16);border-color:var(--up);color:var(--up);font-weight:700}.ctag.c4{border-color:var(--up);color:var(--up)}.ctag.slow{border-color:#5aa9e6;color:#5aa9e6}
+.preset{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:6px 12px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>九劍籌碼選股</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" href="lxscreen.html">尋龍底選股</a><a class="chip" href="qzscreen.html">起漲選股</a><a class="chip" href="zhanshen-me.html">戰神看盤</a></nav>
+</header>
+<div class="card">
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">週期</span>
+    <div class="seg" id="tf"><button data-v="d" aria-pressed="true">日 K</button><button data-v="w" aria-pressed="false">週 K</button><button data-v="m" aria-pressed="false">月 K</button><button data-v="multi" aria-pressed="false">兩個週期以上</button><button data-v="all" aria-pressed="false">日週月全週期</button></div>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">劍數</span>
+    <div class="seg" id="gr"><button data-v="3" aria-pressed="true">三劍合一★（最準）</button><button data-v="2" aria-pressed="false">三劍合一以上</button><button data-v="1" aria-pressed="false">兩劍以上</button></div>
+    <span class="lbl">悲觀度至少</span>
+    <div class="seg" id="pe"><button data-v="0" aria-pressed="true">不限</button><button data-v="30" aria-pressed="false">30</button><button data-v="50" aria-pressed="false">50</button><button data-v="70" aria-pressed="false">70（最悲觀）</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">市場</span>
+    <div class="seg" id="mkt"><button data-v="all" aria-pressed="true">全部</button><button data-v="上市" aria-pressed="false">上市</button><button data-v="上櫃" aria-pressed="false">上櫃</button></div>
+    <select id="ind"><option value="">全部產業</option></select>
+    <span class="lbl">20 日均量至少</span><input type="number" id="minv" min="0" step="50" value="300"><span class="lbl">張</span>
+    <input type="search" id="q" placeholder="篩選代號／名稱">
+  </div>
+  <div class="row" style="margin-top:10px">
+    <span class="lbl">籌碼</span>
+    <div class="seg" id="ch"><button data-v="0" aria-pressed="true">不限</button><button data-v="c4" aria-pressed="false">4 週收斂</button><button data-v="c12" aria-pressed="false">12 週收斂</button><button data-v="slow" aria-pressed="false">收斂＋不常換手</button></div>
+    <button class="preset" id="preset" title="日 K・兩劍以上・4 週籌碼收斂・日均成交額 3,000 萬以上">九劍籌碼策略</button>
+    <span class="lbl" id="chUpd"></span>
+  </div>
+</div>
+<div class="summary"><span class="n" id="cnt">—</span><span class="muted" id="cntTxt"></span></div>
+<div class="tblwrap"><table id="t"><thead><tr>
+  <th class="l" data-k="name">股票</th><th class="l" data-k="ind">產業</th><th data-k="c">收盤</th><th data-k="chg">漲跌</th><th data-k="d">日 K</th><th data-k="w">週 K</th><th data-k="m">月 K</th><th data-k="chip">籌碼</th><th data-k="pess">悲觀度</th><th data-k="dd60">距 60 日高</th><th data-k="v20">20 日均量</th>
+</tr></thead><tbody></tbody></table></div>
+<p class="note"><b>三劍</b>＝戰神看盤・我的 三個副圖同一套算法：①<b>尋龍底</b>龍穴（副圖的綠色山丘）、②<b>月週共振</b>共振線在下界下面、或剛往上穿過下界（底／底★）、③<b>BotWT×3</b> 快線在超賣區往上穿過慢線（超賣金叉；黃點＝極端超賣金叉）。每格：等級（<span class="grade g3">★</span> 三劍合一，而且收盤突破前一根高點或共振底★；<span class="grade g2">3</span> 三劍合一；<span class="grade g1">2</span> 兩劍）、三個小圓點＝三劍各自有沒有亮、訊號在幾根前、之後漲跌。日 K 看最近 5 根、週 K 2 根、月 K 1 根；週、月 K 含這週、這個月到目前為止的走勢。<b>悲觀度</b>（0～100）＝離 60 日高點跌多深（最多 50 分）、BotWT 超賣多深（20 分）、日週月 MACD 是不是全空（15 分）、共振線是否還在下界下面（15 分），越高代表越悲觀。點一列用戰神看盤打開，三個副圖會自動打開。</p>
+<div class="card" id="btc"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const pxf = v => v == null ? '—' : fmt(v, v % 1 ? 2 : 0);
+const sgn = v => v > 0 ? '+' : '';
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+try { const ui = JSON.parse(localStorage.getItem('me:ui') || localStorage.getItem('zs:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+const S = { tf:'d', gr:'3', pe:'0', mkt:'all', ch:'0', sortK:null, sortAsc:false, rows:[], chip:{} };
+try { const p = JSON.parse(localStorage.getItem('dgscreen:prefs') || '{}'); for (const k of ['tf', 'gr', 'pe', 'mkt', 'ch']) if (p[k] != null) S[k] = p[k]; if (p.minv != null) $('minv').value = p.minv; } catch (e){}
+const save = () => { try { localStorage.setItem('dgscreen:prefs', JSON.stringify({ tf:S.tf, gr:S.gr, pe:S.pe, mkt:S.mkt, ch:S.ch, minv:$('minv').value })); } catch (e){} };
+function seg(id, key){ const el = $(id); for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[key] === b.dataset.v));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); S.sortK = null; save(); render(); }); }
+seg('tf', 'tf'); seg('gr', 'gr'); seg('pe', 'pe'); seg('mkt', 'mkt'); seg('ch', 'ch');
+const setSeg = (id, v) => { for (const x of $(id).querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); };
+$('preset').onclick = () => { S.tf = 'd'; S.gr = '1'; S.pe = '0'; S.ch = 'c4'; for (const [id, k] of [['tf', 'tf'], ['gr', 'gr'], ['pe', 'pe'], ['ch', 'ch']]) setSeg(id, S[k]); S.sortK = 'chip'; S.sortAsc = false; save(); render(); };
+// 籌碼：集保股權分散（每週）。大戶＝持股 400 張以上；換手天數＝扣掉千張大戶後的股數 ÷ 20 日均量
+function chipOf(a, ci){
+  const g = k => a[ci.indexOf(k)], b4 = g('b400'), b1k = g('b1000'), pp = g('ppl'), lots = g('lots'), n = b4.length - 1;
+  let e = n; while (e >= 0 && (b4[e] == null || pp[e] == null)) e--; if (e < 4) return null;
+  const at = k => (b4[k] != null && pp[k] != null) ? k : -1, k4 = at(e - 4), k12 = at(e - 12);
+  const o = { b: b4[e] / 100, b4: k4 >= 0 ? (b4[e] - b4[k4]) / 100 : null, p4: k4 >= 0 ? (pp[e] / pp[k4] - 1) * 100 : null,
+    b12: k12 >= 0 ? (b4[e] - b4[k12]) / 100 : null, p12: k12 >= 0 ? (pp[e] / pp[k12] - 1) * 100 : null, fl: lots[e] != null && b1k[e] != null ? lots[e] * (1 - b1k[e] / 10000) : null };
+  o.c4 = o.b4 != null && o.b4 > 0 && o.p4 < 0; o.c12 = o.b12 != null && o.b12 >= 1 && o.p12 <= -3;
+  return o;
+}
+function chipPass(r){
+  if (S.ch === '0') return true; const c = r.cp; if (!c || r.amt < 0.3) return false;
+  return S.ch === 'c4' ? c.c4 : S.ch === 'c12' ? c.c12 : (c.c4 || c.c12) && c.td >= 60;
+}
+function chipCell(r){
+  const c = r.cp; if (!c) return '<span class="muted">—</span>';
+  const tags = (c.c12 ? '<span class="ctag c12">12 週收斂</span>' : c.c4 ? '<span class="ctag c4">4 週收斂</span>' : '') + (c.td >= 60 ? ' <span class="ctag slow">不常換手</span>' : '');
+  const p = (v, d) => v == null ? '—' : '<span class="' + cls(v) + '">' + sgn(v) + fmt(v, d) + '</span>';
+  return '<div class="cellv"><span>' + (tags || '<span class="muted">—</span>') + '</span><span class="sub">大戶 4 週 ' + p(c.b4, 1) + '・人數 ' + p(c.p4, 1) + '%</span><span class="sub">換手 ' + (c.td == null ? '—' : fmt(c.td) + ' 天') + '</span></div>';
+}
+for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); render(); });
+$('ind').addEventListener('change', render);
+const IV = { d:'D', w:'W', m:'M' };
+const TO_ZS = new URLSearchParams(location.search).get('to') === 'zs';
+if (TO_ZS) for (const x of document.querySelectorAll('nav a[href="zhanshen-me.html"]')) x.href = 'zhanshen.html';
+document.addEventListener('click', e => { const tr = e.target.closest('tbody tr[data-c]'); if (!tr) return; const t = S.tf in IV ? S.tf : 'd'; location.href = TO_ZS ? 'zhanshen.html?s=' + encodeURIComponent(tr.dataset.c) + '&on=lx' : 'zhanshen-me.html?s=' + encodeURIComponent(tr.dataset.c) + '&iv=' + IV[t] + '&on=lx,mwr,bwt'; });
+const UNIT = { d:'天', w:'週', m:'個月' };
+const CHIP_BT = (() => {
+  const rows = [['全市場隨便挑（對照）', 148311, 2.4, -0.7, 43, 7.1, -0.3], ['籌碼收斂（12 週，單用）', 18054, 5.1, 0.5, 39, 13.3, 1.5], ['兩劍以上（單用）', 13260, 3.6, 1.1, 38, 1.9, 4.3],
+    ['兩劍以上＋4 週籌碼收斂（九劍籌碼策略）', 2053, 4.7, 2.1, 39, 0.6, 5.5], ['兩劍以上＋12 週籌碼收斂', 596, 5.0, 2.1, 40, 0.5, 5.8], ['兩劍以上＋收斂＋不常換手', 256, 5.7, 2.6, 28, null, 6.2]];
+  const p = v => v == null ? '<span class="muted">太少</span>' : '<span class="' + cls(v) + '">' + sgn(v) + v + '%</span>';
+  return '<h3 style="margin-top:16px">九劍＋籌碼回測（2026/1～2026/10・日 K・成交額 ≥ 3,000 萬・訊號後 20 個交易日）</h3><div class="tblwrap" style="max-height:none"><table class="btt"><thead><tr><th class="l">條件</th><th>次數</th><th>平均報酬</th><th>中位數</th><th>曾跌 10% 以上</th><th>上半年（多頭）</th><th>下半年（盤整回檔）</th></tr></thead><tbody>' +
+    rows.map(x => '<tr style="cursor:default"><td class="l">' + x[0] + '</td><td>' + fmt(x[1]) + '</td><td>' + p(x[2]) + '</td><td>' + p(x[3]) + '</td><td>' + x[4] + '%</td><td>' + p(x[5]) + '</td><td>' + p(x[6]) + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<p class="note">籌碼來自集保股權分散表（每週一筆，只用當時已公布的週資料）。大戶＝持股 400 張以上。<b>4 週收斂</b>＝大戶比例增加、股東人數減少；<b>12 週收斂</b>＝大戶比例增加 1 個百分點以上、股東人數減少 3% 以上；<b>不常換手</b>＝扣掉千張大戶後的股數，用 20 日均量要 60 天以上才換手一輪（跌幅比較小，但漲得也比較慢）。九劍在多頭時輸大盤、盤整回檔時才明顯贏，加上籌碼收斂後回檔期更好。只有九個月資料、同一檔連續幾天符合會重複計算，請當參考。建議持有約 20 個交易日。</p>';
+})();
+const agoTxt = (a, t) => a === 0 ? (t === 'd' ? '今天' : t === 'w' ? '本週' : '本月') : a + ' ' + UNIT[t] + '前';
+const GTXT = { 3:'★', 2:'3', 1:'2' };
+const pass = (r, t) => { const x = r[t]; return !!x && x.grade >= +S.gr; };
+function pessOf(r){
+  // 悲觀度：日 K 離 60 日高點跌多深（最多 50 分）、BotWT 超賣多深（最多 20 分）、日週月 MACD 全空（15 分）、共振線在下界下面（15 分）
+  const x = r.d || r.w || r.m || {};
+  const p = Math.min(50, Math.max(0, -r.dd60) * 1.25) + Math.min(20, Math.max(0, -(x.wt1 ?? 0) - 40) * 0.5) + (x.bear ? 15 : 0) + (x.R != null && x.LB != null && x.R < x.LB ? 15 : 0);
+  return Math.round(Math.min(100, p));
+}
+function cell(r, t, on){
+  const x = r[t]; if (!x) return '<span class="muted">—</span>';
+  const dot = (v, star) => '<i class="' + (v ? 'on' : '') + (star ? ' star' : '') + '"></i>';
+  return '<div class="cellv' + (on ? '' : ' off') + '"><span><span class="grade g' + x.grade + '">' + GTXT[x.grade] + '</span><span class="sw" title="尋龍底・月週共振・BotWT">' + dot(x.lx) + dot(x.mwr, x.mwrStar) + dot(x.wt, x.wtDeep) + '</span></span>' +
+    '<span class="sub">' + agoTxt(x.ago, t) + ' <span class="' + cls(x.since) + '">' + sgn(x.since) + fmt(x.since, 1) + '%</span></span></div>';
+}
+function render(){
+  const minv = +$('minv').value || 0, q = $('q').value.trim(), ind = $('ind').value, pe = +S.pe;
+  const tfs = S.tf in IV ? [S.tf] : ['d', 'w', 'm'];
+  const list = S.rows.filter(r => r.v20 >= minv && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && (!q || (r.code + r.name).includes(q)) && r.pess >= pe && chipPass(r) &&
+    (S.tf === 'all' ? tfs.every(t => pass(r, t)) : S.tf === 'multi' ? tfs.filter(t => pass(r, t)).length >= 2 : pass(r, S.tf)));
+  const key = S.sortK || 'auto', dir = S.sortAsc ? 1 : -1;
+  const val = (r, k) => k === 'auto' ? tfs.reduce((s, t) => s + (r[t] ? r[t].grade * (t === 'd' ? 1 : t === 'w' ? 1.5 : 2) : 0), 0) * 1000 + r.pess : k === 'd' || k === 'w' || k === 'm' ? (r[k] ? r[k].grade * 1000 + r.pess : null) : k === 'chip' ? (r.cp ? (r.cp.c12 ? 2000 : r.cp.c4 ? 1000 : 0) + (r.cp.b4 ?? 0) * 10 - (r.cp.p4 ?? 0) : null) : r[k];
+  list.sort((a, b) => { const x = val(a, key), y = val(b, key); return (typeof x === 'string' ? x.localeCompare(y, 'zh-Hant') : (x ?? -1e18) - (y ?? -1e18)) * dir; });
+  $('t').className = 'tf-' + S.tf;
+  $('cnt').textContent = list.length;
+  $('cntTxt').textContent = '檔：' + { d:'日 K', w:'週 K', m:'月 K', multi:'兩個週期以上', all:'日週月三個週期都' }[S.tf] + { 3:'三劍合一★', 2:'三劍合一', 1:'兩劍以上' }[S.gr] + (pe ? '・悲觀度 ≥ ' + pe : '') + (S.ch !== '0' ? '・' + { c4:'4 週籌碼收斂', c12:'12 週籌碼收斂', slow:'籌碼收斂＋不常換手' }[S.ch] + '（成交額 ≥ 3,000 萬）' : '');
+  $('t').querySelector('tbody').innerHTML = list.length ? list.slice(0, 500).map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td><td class="l muted">' + (r.ind || '') + '</td><td>' + pxf(r.c) + '</td><td class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</td>' +
+    ['d', 'w', 'm'].map(t => '<td>' + cell(r, t, tfs.includes(t) && pass(r, t)) + '</td>').join('') + '<td>' + chipCell(r) + '</td>' +
+    '<td>' + r.pess + '<span class="pess" style="width:' + Math.round(r.pess * 0.4) + 'px"></span></td><td class="down">' + fmt(r.dd60, 1) + '%</td><td>' + fmt(r.v20) + '</td></tr>').join('')
+    : '<tr><td colspan="11" class="empty">目前沒有股票符合條件，可以放寬劍數、籌碼條件、換週期或把 20 日均量調低</td></tr>';
+  for (const th of $('t').querySelectorAll('th')){ th.removeAttribute('aria-sort'); if (th.dataset.k === key) th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending'); }
+}
+$('t').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name' || k === 'ind'; } render(); });
+const chipP = fetch('data/holders/screen.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(h => { const m = {}; for (const a of h.rows) m[a[0]] = chipOf(a, h.cols); $('chUpd').textContent = '集保資料 ' + h.dates[h.dates.length - 1]; return m; }).catch(() => { $('chUpd').textContent = '集保資料讀取失敗'; return {}; });
+Promise.all([fetch('data/price/dg.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()), chipP]).then(([d, chip]) => {
+  const ci = d.cols, tc = d.tcols;
+  S.rows = d.rows.map(a => { const r = Object.fromEntries(ci.map((k, i) => [k, a[i]])); for (const t of ['d', 'w', 'm']) r[t] = Array.isArray(r[t]) ? Object.fromEntries(tc.map((k, i) => [k, r[t][i]])) : null; r.pess = pessOf(r); r.amt = r.v20 * r.c / 1e5; r.cp = chip[r.code] || null; if (r.cp) r.cp.td = r.cp.fl != null && r.v20 > 0 ? r.cp.fl / r.v20 : null; return r; });
+  $('upd').textContent = '資料 ' + d.latest + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
+  const inds = [...new Set(S.rows.map(r => r.ind).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  $('ind').innerHTML = '<option value="">全部產業</option>' + inds.map(x => '<option>' + x + '</option>').join('');
+  if (d.bt) $('btc').innerHTML = '<h3>回測（' + d.bt.period + '）</h3><div class="tblwrap" style="max-height:none"><table class="btt"><thead><tr><th class="l">條件</th><th>次數</th><th>命中低點</th><th>守住不破底</th><th>20 日平均</th><th>20 日內最高漲 ≥10%</th></tr></thead><tbody>' +
+    d.bt.rows.map(x => '<tr style="cursor:default"><td class="l">' + x[0] + '</td><td>' + fmt(x[1]) + '</td><td class="' + (x[2] > 30 ? 'up' : '') + '">' + x[2] + '%</td><td>' + x[3] + '%</td><td>' + sgn(x[4]) + x[4] + '%</td><td>' + x[5] + '%</td></tr>').join('') + '</tbody></table></div>' +
+    CHIP_BT + '<p class="note">' + d.bt.def + '。三劍合一★ 抓到波段低點的機率是隨便挑的 7 倍，而且一半以上之後 20 天不再破底；但之後的漲幅和平常差不多，它是「找最悲觀的起漲點」，不是保證大漲。週 K、月 K 還沒有回測。</p>';
+  render();
+}).catch(e => { $('upd').textContent = '讀取失敗：' + e.message; });
+</script>
+</body>
+</html>
