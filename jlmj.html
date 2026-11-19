@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<title>九龍模金訣</title>
+<link rel="manifest" href="manifest-me.webmanifest">
+<link rel="icon" href="icon-me-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#141922; --panel2:#1a202b; --line:#252d3a; --line2:#323c4c;
+  --fg:#d6dce6; --muted:#8892a3; --dim:#5d6676;
+  --accent:#d9a85c; --accent-ink:#1a1206;
+  --up:#e5484d; --down:#2fb67c; --err:#ef6a5f; --hl:rgba(217,168,92,.12);
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --panel:#f4f5f8; --panel2:#e8ebf1; --line:#dde1e8; --line2:#c8ced8;
+  --fg:#1c2230; --muted:#5d6676; --dim:#8a92a0;
+  --accent:#a8711a; --accent-ink:#ffffff;
+  --up:#e53935; --down:#089981; --err:#c62828; --hl:rgba(168,113,26,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:14px/1.5 var(--sans);padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0 10px}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .sub{color:var(--muted);font-size:12px}
+header nav{margin-left:auto;display:flex;gap:6px}
+.chip{display:inline-block;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;color:var(--fg);text-decoration:none;background:var(--panel);font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line2);margin:6px 0 12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;color:var(--muted);cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;color:var(--muted);cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--accent);font-weight:700}
+input[type=number],input[type=search]{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;font-family:var(--mono);width:110px}
+input[type=search]{font-family:var(--sans);width:180px}
+label.ck{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:4px 0 2px}
+.summary .n{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--accent)}
+.note{color:var(--muted);font-size:12px;line-height:1.7}
+.warn{background:rgba(230,193,77,.10);border:1px solid rgba(230,193,77,.35);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:70vh}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);font-size:12px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel);cursor:pointer;white-space:nowrap;user-select:none}
+th.l,td.l{text-align:left}
+th[aria-sort]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴"}
+td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+td.l{font-family:var(--sans)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hl)}
+.code{font-family:var(--mono);color:var(--muted);margin-right:6px}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+.pill{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+.pill.new{border-color:var(--up);color:var(--up)}
+.pill.bull{border-color:var(--up);color:var(--up)} .pill.bear{border-color:var(--down);color:var(--down)}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.7}
+h3{font-size:14px;margin:4px 0 8px;display:flex;gap:8px;align-items:baseline}
+h3 .cnt{font-family:var(--mono);color:var(--accent)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.v{display:inline-block;min-width:44px;padding:1px 6px;border-radius:5px;text-align:right}
+.v.hot{background:rgba(255,145,0,.22);color:#ff9100;font-weight:600}
+.v.warm{background:rgba(255,214,0,.16);color:#e6c14d;font-weight:600}
+.v.cold{color:var(--dim)}
+.run{font-size:11px;color:var(--muted);margin-left:3px;font-family:var(--sans)}
+details.grp{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+details.grp>summary{cursor:pointer;padding:11px 14px;display:flex;gap:10px;align-items:baseline;list-style:none}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::before{content:"▸";color:var(--muted);width:10px}
+details.grp[open]>summary::before{content:"▾"}
+details.grp .gname{font-weight:700}
+details.grp .gcnt{font-family:var(--mono);color:var(--muted);font-size:12px}
+details.grp .ghot{margin-left:auto;font-size:12px}
+details.grp .tblwrap{border:0;border-top:1px solid var(--line);border-radius:0 0 10px 10px;max-height:60vh}
+select{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:6px 9px;max-width:200px}
+
+.pk{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+.pk i{display:inline-block;height:7px;border-radius:4px;opacity:.85}
+.tag{font-family:var(--sans);font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.tag.s2{background:rgba(255,145,0,.18);border-color:#ff9100;color:#ff9100;font-weight:700}
+.tag.s1{background:rgba(229,72,77,.14);border-color:var(--up);color:var(--up);font-weight:600}
+.tag.on{border-color:#e6c14d;color:#e6c14d}
+.tag.end{border-color:var(--up);color:var(--up)}
+.ago{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--sans)}
+.rng{display:inline-flex;align-items:center;gap:6px}
+.rng input{width:96px}
+.cellv{display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.25}
+.cellv .sub{font-size:11px;color:var(--muted);font-family:var(--sans);white-space:nowrap}
+.cellv.off{opacity:.38}
+.cellv .sub .s2{color:#ff9100;font-weight:700} .cellv .sub .s1{color:var(--up);font-weight:600} .cellv .sub .on{color:#e6b800} .cellv .sub .end{color:var(--up)}
+
+@media (max-width:600px){#t th:nth-child(2),#t td:nth-child(2),#t th:nth-child(4),#t td:nth-child(4),#t th:nth-child(9),#t td:nth-child(9),#t th:nth-child(10),#t td:nth-child(10),#t th:nth-child(11),#t td:nth-child(11){display:none} .ctag{font-size:10px;padding:1px 5px} #t.tf-d :is(th,td):is(:nth-child(6),:nth-child(7)),#t.tf-w :is(th,td):is(:nth-child(5),:nth-child(7)),#t.tf-m :is(th,td):is(:nth-child(5),:nth-child(6)){display:none} #t th:nth-child(3),#t td:nth-child(3){display:none} td,th{padding:6px 4px} td.l .code{display:block;margin:0;font-size:11px} table{font-size:12px} .cellv .sub{font-size:10px;white-space:normal;text-align:right;max-width:78px} .cellv .sub *{white-space:nowrap}}
+.grade{display:inline-block;min-width:26px;text-align:center;border-radius:6px;padding:1px 6px;font-weight:700;font-family:var(--sans)}
+.g3{background:#ff1744;color:#fff}.g2{background:rgba(255,145,0,.22);color:#ff9100}.g1{background:rgba(255,214,0,.14);color:#e6c14d}
+.sw{display:inline-flex;gap:3px;margin-left:4px}.sw i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.sw i.on{background:#ff9100}.sw i.on.star{background:#ff1744}
+.pess{display:inline-block;height:6px;border-radius:3px;background:var(--down);vertical-align:middle;margin-left:6px;opacity:.75}
+.btt td,.btt th{font-size:12px}
+.ctag{font-family:var(--sans);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.ctag.c12{background:rgba(229,72,77,.16);border-color:var(--up);color:var(--up);font-weight:700}.ctag.c4{border-color:var(--up);color:var(--up)}.ctag.slow{border-color:#5aa9e6;color:#5aa9e6}
+.preset{background:var(--accent);color:var(--accent-ink);border:0;border-radius:7px;padding:6px 12px;font-weight:700;cursor:pointer}
+
+.tier{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:700;font-family:var(--sans);font-size:12px;white-space:nowrap}
+.tier.t3{background:#ffb300;color:#1a1206}.tier.t2{background:rgba(229,72,77,.18);color:var(--up);border:1px solid var(--up)}.tier.t1{border:1px solid var(--line2);color:var(--muted)}
+.dr{display:inline-flex;gap:3px;vertical-align:middle}.dr i{width:9px;height:9px;border-radius:50%;background:var(--line2);display:inline-block}
+.dr i.on{background:#ff9100}.dr i.on.n0{background:#ff1744}.dr i.cp{border-radius:2px}.dr i.cp.on{background:#e5484d}.dr i.fuel.on{background:#2fb67c}.dr i.fuel,.dr i.cp{margin-left:2px}
+.dnames{font-family:var(--sans);font-size:11px;color:var(--muted);white-space:normal;max-width:300px;text-align:left;line-height:1.5}
+.legend9{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend9 b{color:var(--fg);font-weight:500}
+td.dl{text-align:left}
+.lnk{font-family:var(--sans);font-size:12px;color:var(--accent);text-decoration:none;border:1px solid var(--line2);border-radius:6px;padding:2px 7px}
+@media (max-width:600px){#t :is(th,td):is(:nth-child(5),:nth-child(6),:nth-child(7)){display:none}.dnames{max-width:170px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>九龍模金訣</h1><span class="sub" id="upd">讀取中…</span>
+  <nav><a class="chip" href="dgscreen.html">獨孤九劍選股</a><a class="chip" href="push.html">籌碼推升</a><a class="chip" href="zhanshen-me.html">戰神看盤</a></nav>
+</header>
+<div class="card">
+  <div class="row" style="margin-bottom:10px">
+    <span class="lbl">等級</span>
+    <div class="seg" id="tr"><button data-v="3" aria-pressed="true">金訣（技術 4 龍＋籌碼收斂）</button><button data-v="2" aria-pressed="false">九龍（技術 4 龍以上）</button><button data-v="1" aria-pressed="false">潛龍（技術 3 龍以上）</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">市場</span>
+    <div class="seg" id="mkt"><button data-v="all" aria-pressed="true">全部</button><button data-v="上市" aria-pressed="false">上市</button><button data-v="上櫃" aria-pressed="false">上櫃</button></div>
+    <select id="ind"><option value="">全部產業</option></select>
+    <span class="lbl">20 日均量至少</span><input type="number" id="minv" min="0" step="50" value="300"><span class="lbl">張</span>
+    <input type="search" id="q" placeholder="篩選代號／名稱">
+  </div>
+</div>
+<div class="card"><div class="legend9" id="lg"></div></div>
+<div class="summary"><span class="n" id="cnt">—</span><span class="muted" id="cntTxt"></span></div>
+<div class="tblwrap"><table id="t"><thead><tr>
+  <th class="l" data-k="name">股票</th><th data-k="tier">等級</th><th class="l" data-k="cnt">九龍</th><th data-k="b4">籌碼（4 週）</th><th data-k="ddHi">距 60 日高</th><th data-k="v20">20 日均量</th><th data-k="c">收盤</th><th class="l"></th>
+</tr></thead><tbody></tbody></table></div>
+<div class="card" id="btc"></div>
+<p class="note" id="def"></p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '—' : v.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const sgn = v => v > 0 ? '+' : '';
+const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+try { const ui = JSON.parse(localStorage.getItem('me:ui') || '{}'); if (ui.theme === 'light') document.documentElement.dataset.theme = 'light'; } catch (e){}
+const S = { tr:'3', mkt:'all', sortK:null, sortAsc:false, rows:[], names:[] };
+try { const p = JSON.parse(localStorage.getItem('jlmj:prefs') || '{}'); for (const k of ['tr', 'mkt']) if (p[k] != null) S[k] = p[k]; if (p.minv != null) $('minv').value = p.minv; } catch (e){}
+const save = () => { try { localStorage.setItem('jlmj:prefs', JSON.stringify({ tr:S.tr, mkt:S.mkt, minv:$('minv').value })); } catch (e){} };
+function seg(id, key){ const el = $(id); for (const b of el.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[key] === b.dataset.v));
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; for (const x of el.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); S.sortK = null; save(); render(); }); }
+seg('tr', 'tr'); seg('mkt', 'mkt');
+for (const id of ['minv', 'q']) $(id).addEventListener('input', () => { save(); render(); });
+$('ind').addEventListener('change', render);
+const ON = 'lx,mwr,bwt,bd,vo,so,b4';
+document.addEventListener('click', e => { if (e.target.closest('a')) return; const tr = e.target.closest('tbody tr[data-c]'); if (!tr) return; location.href = 'zhanshen-me.html?s=' + encodeURIComponent(tr.dataset.c) + '&iv=D&on=' + ON; });
+const TIER = { 3:'金訣', 2:'九龍', 1:'潛龍' };
+const SHORT = ['尋龍', '月週', 'WT', '波段', '量能', '震盪', 'B4', '籌碼', '燃料'];
+function dots(r){ return '<span class="dr">' + r.ago.map((a, k) => '<i class="' + (a >= 0 ? 'on' : '') + (a === 0 && k < 7 ? ' n0' : '') + (k === 7 ? ' cp' : k === 8 ? ' fuel' : '') + '" title="' + S.names[k] + (a >= 0 ? (a === 0 ? '（今天）' : '（' + a + ' 天前）') : '') + '"></i>').join('') + '</span>'; }
+function render(){
+  const minv = +$('minv').value || 0, q = $('q').value.trim(), ind = $('ind').value, tr = +S.tr;
+  const list = S.rows.filter(r => r.tier >= tr && r.v20 >= minv && (S.mkt === 'all' || r.market === S.mkt) && (!ind || r.ind === ind) && (!q || (r.code + r.name).includes(q)));
+  const key = S.sortK || 'auto', dir = S.sortAsc ? 1 : -1;
+  const val = (r, k) => k === 'auto' ? r.tier * 100 + r.tech * 10 + r.cnt - (r.ddHi ?? 0) / 100 : r[k];
+  list.sort((a, b) => { const x = val(a, key), y = val(b, key); return (typeof x === 'string' ? x.localeCompare(y, 'zh-Hant') : (x ?? -1e18) - (y ?? -1e18)) * dir; });
+  $('cnt').textContent = list.length;
+  $('cntTxt').textContent = '檔：' + { 3:'金訣（技術 4 龍以上＋籌碼收斂）', 2:'九龍以上（技術 4 龍以上）', 1:'潛龍以上（技術 3 龍以上）' }[S.tr];
+  $('t').querySelector('tbody').innerHTML = list.length ? list.slice(0, 400).map(r => '<tr data-c="' + r.code + '"><td class="l"><span class="code">' + r.code + '</span>' + r.name + '</td>' +
+    '<td><span class="tier t' + r.tier + '">' + TIER[r.tier] + '</span></td>' +
+    '<td class="dl"><div>' + dots(r) + ' <b style="font-family:var(--mono)">' + r.cnt + '</b><span class="muted">/9</span></div><div class="dnames">' + r.ago.map((a, k) => a >= 0 ? SHORT[k] : null).filter(Boolean).join('・') + '</div></td>' +
+    '<td>' + (r.b4 == null ? '<span class="muted">—</span>' : '<div class="cellv"><span>大戶 <span class="' + cls(r.b4) + '">' + sgn(r.b4) + fmt(r.b4, 2) + '</span></span><span class="sub">人數 <span class="' + cls(r.p4) + '">' + sgn(r.p4) + fmt(r.p4, 1) + '%</span></span></div>') + '</td>' +
+    '<td class="down">' + fmt(r.ddHi, 1) + '%</td><td>' + fmt(r.v20) + '</td><td>' + fmt(r.c, r.c % 1 ? 2 : 0) + ' <span class="' + cls(r.chg) + '">' + sgn(r.chg) + fmt(r.chg, 2) + '%</span></td>' +
+    '<td class="l"><a class="lnk" href="push.html?s=' + r.code + '">推升</a></td></tr>').join('')
+    : '<tr><td colspan="8" class="empty">今天沒有股票符合，可以把等級放寬到「九龍」或「潛龍」，或把 20 日均量調低</td></tr>';
+  for (const th of $('t').querySelectorAll('th')){ th.removeAttribute('aria-sort'); if (th.dataset.k === key) th.setAttribute('aria-sort', S.sortAsc ? 'ascending' : 'descending'); }
+}
+$('t').querySelector('thead').addEventListener('click', e => { const th = e.target.closest('th'); if (!th || !th.dataset.k) return; const k = th.dataset.k; if (S.sortK === k) S.sortAsc = !S.sortAsc; else { S.sortK = k; S.sortAsc = k === 'name'; } render(); });
+fetch('data/price/jlmj.json?t=' + Date.now(), { cache:'no-store' }).then(r => r.json()).then(d => {
+  S.names = d.names;
+  S.rows = d.rows.map(a => { const r = Object.fromEntries(d.cols.map((k, i) => [k, a[i]])); r.tech = r.ago.slice(0, 7).filter(x => x >= 0).length; r.tier = r.tech >= 4 && r.ago[7] >= 0 ? 3 : r.tech >= 4 ? 2 : r.tech >= 3 ? 1 : 0; return r; }).filter(r => r.tier > 0);
+  $('upd').textContent = '資料 ' + d.latest + '・更新 ' + d.updated.slice(5, 16).replace('T', ' ');
+  $('lg').innerHTML = '<span class="lbl" style="width:100%">九龍（前七個是技術訊號，最近 ' + d.win + ' 個交易日內出現過就算；紅點＝今天出現）</span>' +
+    d.names.map((nm, k) => '<span><span class="dr"><i class="on' + (k === 7 ? ' cp' : k === 8 ? ' fuel' : '') + '"></i></span> <b>' + (k + 1) + '. ' + nm + '</b></span>').join('');
+  const inds = [...new Set(S.rows.map(r => r.ind).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  $('ind').innerHTML = '<option value="">全部產業</option>' + inds.map(x => '<option>' + x + '</option>').join('');
+  const B = d.bt, p = v => v == null ? '—' : '<span class="' + cls(v) + '">' + sgn(v) + v + '%</span>';
+  const rowsBT = [['全市場隨便挑（對照）', 'base'], ['金訣：技術 4 龍＋籌碼收斂', 't4c'], ['金訣＋低檔燃料足', 't4cf'], ['九龍：技術 4 龍以上', 't4'], ['技術 5 龍以上', 't5'], ['潛龍：技術 3 龍以上', 't3'], ['技術 3 龍＋籌碼收斂', 't3c']]
+    .concat(d.names.map((nm, k) => ['單一：' + nm, 'k' + k]));
+  $('btc').innerHTML = '<h3>回測（' + d.from.slice(0, 7).replace('-', '/') + '～' + d.latest.slice(0, 7).replace('-', '/') + '・日 K・成交額 ≥ 3,000 萬・訊號後 20 個交易日）</h3><div class="tblwrap" style="max-height:none"><table class="btt" style="min-width:640px"><thead><tr><th class="l">條件</th>' + d.btCols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>' +
+    rowsBT.filter(x => B[x[1]]).map(([lab, k]) => { const b = B[k]; return '<tr style="cursor:default' + (k === 't4c' ? ';background:rgba(255,179,0,.10)' : '') + '"><td class="l">' + lab + '</td><td>' + fmt(b[0]) + '</td><td>' + p(b[1]) + '</td><td>' + p(b[2]) + '</td><td>' + b[3] + '%</td><td>' + b[4] + '%</td><td>' + b[5] + '%</td><td>' + p(b[6]) + '</td><td>' + p(b[7]) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+    '<p class="note">籌碼收斂和低檔燃料足要用集保資料，只能從 2025 年底開始算，所以含籌碼的列樣本比較少；技術訊號從 ' + d.from.slice(0, 7).replace('-', '/') + ' 起算。同一檔連續幾天符合會重複計算，實際獨立樣本比次數少。</p>';
+  $('def').innerHTML = '<b>九龍</b>：①尋龍底（底）②月週共振（底，或共振線在下界下面）③BotWT×3（超賣金叉、極端超賣黃點、王牌買點）④神奇波段（底）⑤量能情緒（極度悲觀後的底）⑥超級震盪（極度超賣後的底）⑦B4 超賣轉折（B4 主線近 5 根曾跌到 −80 以下、今天往上彎）⑧籌碼收斂（近 4 週大戶比例增加、股東人數減少）⑨低檔燃料足（離 60 日低點漲不到 10%，而且低點以來換手不到流通股數的一半）。前七個直接用「我的戰神看盤」同一份指標程式計算，和你在圖上看到的訊號一致（日 K、預設參數）。點股票會打開戰神看盤，並自動開好這七個副圖；「推升」連到籌碼推升試算。只是參考，不是投資建議。';
+  render();
+}).catch(e => { $('upd').textContent = '讀取失敗：' + e.message; });
+</script>
+</body>
+</html>
