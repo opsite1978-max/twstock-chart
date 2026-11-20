@@ -1,2 +1,3 @@
-11-20 01:26:45 trading days 250 have 275 fut days 249
-11-20 01:26:46 no data yet 2026-11-20
+11-21 01:01:27 trading days 250 have 276 fut days 248
+11-21 01:01:29 no data yet 2026-10-23
+11-21 01:01:30 no data yet 2026-07-10
