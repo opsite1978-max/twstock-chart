@@ -14,14 +14,22 @@ jobs:
         run: |
           mkdir -p out; B=https://api.finmindtrade.com/api/v4
           q(){ echo "== $1" >> out/sp.txt; curl -s -m 120 -H "Authorization: Bearer $T" "$B/$1" -o r.bin -w "http %{http_code} size %{size_download} type %{content_type}\n" >> out/sp.txt; head -c 700 r.bin | tr -d '\000' >> out/sp.txt; echo >> out/sp.txt; }
-          for ds in TaiwanStockMarginMaintenance TaiwanStockBrokerDailyConcentration TaiwanStockTradingDailyReportSecIdAgg TaiwanStockTreasuryStock TaiwanStockTreasuryStockBuyBack TaiwanStockTreasuryShares; do
-            q "data?dataset=$ds&data_id=2425&start_date=2026-10-01&end_date=2026-11-20"
-          done
-          q "data?dataset=TaiwanStockMarginMaintenance&start_date=2026-11-19&end_date=2026-11-19"
-          q "data?dataset=TaiwanStockTradingDailyReport&data_id=2425&start_date=2026-11-19"
-          q "data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=2425&start_date=2026-11-10"
-          q "datalist?dataset=TaiwanStockTreasuryStock"
-          sed -i "s/$T/***/g" out/*.txt
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, time
+          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36'
+          def get(url, data=None, fn='x.html'):
+              try:
+                  req = urllib.request.Request(url, data=urllib.parse.urlencode(data).encode() if data else None, headers={'User-Agent': UA, 'Referer': 'https://mopsov.twse.com.tw/mops/web/index'})
+                  b = urllib.request.urlopen(req, timeout=60).read()
+                  open('out/' + fn, 'wb').write(b); print(fn, len(b))
+              except Exception as e: print(fn, 'ERR', e)
+              time.sleep(2)
+          for k in ['t35sc09', 't35sc10', 't35sc11', 't35sc13']:
+              get('https://mopsov.twse.com.tw/mops/web/' + k, fn=k + '.html')
+          get('https://mopsov.twse.com.tw/mops/web/ajax_t35sc09', {'encodeURIComponent':1,'step':1,'firstin':1,'off':1,'TYPEK':'sii','d1':'1151001','d2':'1151121','RD':1}, 'a09_sii.html')
+          get('https://mopsov.twse.com.tw/mops/web/ajax_t35sc09', {'encodeURIComponent':1,'step':1,'firstin':1,'off':1,'TYPEK':'sii','co_id':'2330'}, 'a09_2330.html')
+          PY
+          sed -i "s/$T/***/g" out/*.txt || true
       - name: 保存結果
         if: always()
         run: |
