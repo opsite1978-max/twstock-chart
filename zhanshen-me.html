@@ -329,7 +329,7 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/20 06:10・鎖碼九劍</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
+    <div class="brand"><h1 id="pageName">戰神看盤</h1><span class="sub">版本 11/21 16:30・個股體檢</span><button class="iconbtn install" id="btnInstall" hidden title="把「我的戰神」裝成手機／電腦上的獨立 App，和家人的戰神看盤分開">安裝成 App</button></div>
     <nav class="chips"><a class="chip" href="/twstock-chart/chain.html" title="產業上中下游、龍頭績優股、各產業資金流向與主力買賣超">產業鏈</a><a class="chip" href="/twstock-chart/vwscreen.html">選股</a><a class="chip" href="/twstock-chart/bbscreen.html">大底選股</a><a class="chip" href="/twstock-chart/qzscreen.html">起漲選股</a><a class="chip" href="/twstock-chart/bdscreen.html">神奇波段選股</a><a class="chip" href="/twstock-chart/xdscreen.html">尋底選股</a><a class="chip" href="/twstock-chart/lxscreen.html">尋龍底選股</a><a class="chip" href="/twstock-chart/dgscreen.html" title="尋龍底 × 月週共振 × BotWT 超賣金叉，日週月三個週期一起看，找最悲觀的起漲點">獨孤九劍選股</a><a class="chip" id="navPush" href="/twstock-chart/push.html" title="目前這檔的流通股數、每漲 10% 要多少量與金額、波段大概在哪裡反轉">籌碼推升</a><a class="chip" href="/twstock-chart/dgchip.html" title="獨孤九劍＋籌碼收斂（大戶比例、股東人數、換手天數）">九劍籌碼選股</a><a class="chip" href="/twstock-chart/jlmj.html" title="九個訊號（尋龍底、月週共振、BotWT、神奇波段、量能情緒、超級震盪、B4 超賣轉折、籌碼收斂、低檔燃料足）一起找起漲點">九龍模金訣</a><a class="chip" href="/twstock-chart/lock.html" title="大戶、董監持股與流通股數＋獨孤九劍：找籌碼集中、好拉抬的底部股">鎖碼九劍選股</a><a class="chip" href="/twstock-chart/jgscreen.html">機構牛選股</a><a class="chip" href="/twstock-chart/fxpos.html">外資期現貨</a><a class="chip" id="calcLink" href="/twstock-chart/calc.html">獲利計算</a><a class="chip" href="overview.html">總覽</a><a class="chip" href="./">看盤</a></nav>
     <form class="sym" id="symForm" autocomplete="off">
       <input id="symInput" list="symList" placeholder="代號或名稱，如 2408、南亞科" aria-label="股票代號" spellcheck="false">
@@ -486,6 +486,15 @@ legend{font:600 12px var(--sans);color:var(--accent);padding:0;margin-bottom:6px
       <button class="tog" id="togVal" aria-pressed="true">顯示</button>
     </div>
     <div id="valBox"></div>
+  </section>
+
+  <section class="chipsec" id="ckSec" hidden>
+    <div class="head">
+      <h2>個股體檢<span>融資維持率、庫藏股、大戶與流通股數、本益比河流、預估 EPS、關鍵分點</span></h2>
+      <span class="spacer"></span>
+      <button class="tog" id="togCk" aria-pressed="true">顯示</button>
+    </div>
+    <div id="ckBox" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
 
   <section class="chipsec" id="chipSec" hidden>
@@ -5630,7 +5639,7 @@ function recompute(){
   if (R.bao && R.bao.main) for (const m of R.bao.main){ const k = R.mainExtra.filter(q => q.i === m.i).length; R.mainExtra.push({ i:m.i, y:B.l[m.i], shape:'arrowUp', text:m.text, col:m.col, tcol:m.col, size:1.3, dy:24 + k * 18 }); }
   if (jmOK()){ if (jmSolo()) R.mainExtra = []; for (const m of R.jm.mk){ const k = R.mainExtra.filter(q => q.i === m.i && q.shape === m.shape).length; R.mainExtra.push(Object.assign({}, m, { dy:m.dy + (m.shape === 'labelDown' ? -1 : 1) * k * 18 })); } }
   btOnRecompute();
-  syncChips(); syncWarrants(); syncVal();
+  syncChips(); syncWarrants(); syncVal(); syncCk();
   schedule(); renderSignals();
 }
 
@@ -9324,8 +9333,8 @@ function valChart(m){
   return s + '</svg>';
 }
 // 本益比（或股價淨值比）河流圖：週收盤＋五條倍數線，未來一年用預估 EPS 虛線延伸
-function valRiver(m){
-  const el = document.getElementById('valRiver'), W = Math.max(300, el.clientWidth || 640), H = W < 560 ? 230 : 280;
+function valRiver(m, el = document.getElementById('valRiver')){
+  const W = Math.max(300, el.clientWidth || 640), H = W < 560 ? 230 : 280;
   const padL = 8, padR = W < 560 ? 64 : 84, top = 14, bot = 26;
   const rv = m.river, fut = m.futTTM;
   if (rv.length < 20) return '<p class="note2">歷史資料太少，畫不出河流圖。</p>';
@@ -9481,6 +9490,178 @@ function syncVal(){
 document.getElementById('togVal').onclick = () => { UI.showVal = UI.showVal === false; saveUI(); valKey = ''; syncVal(); };
 addEventListener('resize', () => { const c = document.getElementById('valChart') || document.getElementById('valRiver'); if (c && c.firstChild && RAW && VALC.has(RAW.id)) { valKey = ''; syncVal(); } });
 
+/* ═════════════ 個股體檢：融資維持率、庫藏股、大戶與流通股數、本益比河流、預估 EPS、關鍵分點 ═════════════ */
+let ckKey = '', CK_PUSH = null, CK_TREAS = null;
+const ckJSON = u => fetch(u + '?t=' + Math.floor(Date.now() / 6e5), { cache:'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+const ckF = (x, d = 0) => x == null || !isFinite(x) ? '—' : x.toLocaleString('zh-TW', { minimumFractionDigits:d, maximumFractionDigits:d });
+const ckSg = (x, d = 1, u = '%') => x == null || !isFinite(x) ? '—' : (x > 0 ? '+' : '') + ckF(x, d) + u;
+const ckC = x => x > 0 ? 'u' : x < 0 ? 'd' : '';
+async function ckMargin(id){
+  const key = 'ckm:' + id, c = await DSTORE.get(key);
+  if (c && Date.now() - c.t < 3 * 36e5) return c;
+  const [mm, mp] = await Promise.all([
+    finmind({ dataset:'TaiwanStockMarginMaintenance', data_id:id, start_date:isoDay(Date.now() - 200 * 864e5) }),
+    finmind({ dataset:'TaiwanStockMarginPurchaseShortSale', data_id:id, start_date:isoDay(Date.now() - 45 * 864e5) })]);
+  const v = { t:Date.now(), mm:mm.map(x => [x.date, +x.margin_balance, +x.margin_cost, +x.margin_maintenance]), mp:mp.map(x => [x.date, +x.MarginPurchaseTodayBalance, +x.MarginPurchaseLimit, +x.ShortSaleTodayBalance]) };
+  DSTORE.put(key, v); return v;
+}
+async function ckBranches(id, dates){
+  const key = 'ckb:' + id + ':' + dates[dates.length - 1], c = await DSTORE.get(key);
+  if (c) return c;
+  const days = [];
+  for (let i = 0; i < dates.length; i += 3){
+    const part = await Promise.all(dates.slice(i, i + 3).map(d => finmind({ dataset:'TaiwanStockTradingDailyReport', data_id:id, start_date:d }).then(rows => [d, rows]).catch(() => [d, null])));
+    days.push(...part);
+    const el = document.getElementById('ckBrMsg'); if (el) el.textContent = '讀取分點中… ' + Math.min(dates.length, i + 3) + '／' + dates.length + ' 天';
+  }
+  let conc = [];
+  try { conc = await finmind({ dataset:'TaiwanStockBrokerDailyConcentration', data_id:id, start_date:dates[0] }); } catch (e){}
+  const br = {}, vol = {};
+  for (const [d, rows] of days){
+    if (!rows) continue; let tv = 0;
+    for (const r of rows){
+      const k = r.securities_trader_id, o = br[k] || (br[k] = { n:r.securities_trader, b:0, s:0, ba:0, sa:0, d:{} });
+      o.b += r.buy; o.s += r.sell; o.ba += r.buy * r.price; o.sa += r.sell * r.price; o.d[d] = (o.d[d] || 0) + r.buy - r.sell; tv += r.buy;
+    }
+    vol[d] = tv;
+  }
+  const v = { dates:days.filter(x => x[1]).map(x => x[0]), vol, br, conc:conc.map(x => [x.date, +x.top_buy_volume, +x.top_sell_volume]) };
+  if (v.dates.length) DSTORE.put(key, v);
+  return v;
+}
+function ckSpark(pts, refs, fmtY){
+  const W = 560, H = 120, L = 6, R = 40, T = 8, B = 16;
+  const ys = pts.map(p => p[1]).concat(refs.map(r => r[0])), mn = Math.min(...ys) * 0.97, mx = Math.max(...ys) * 1.02;
+  const x = i => L + i / Math.max(1, pts.length - 1) * (W - L - R), y = v => T + (H - T - B) * (1 - (v - mn) / (mx - mn || 1));
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block">';
+  for (const [v, c, lab] of refs) if (v > mn && v < mx) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + c + '" stroke-dasharray="4 3" /><text x="' + (W - R + 3) + '" y="' + (y(v) + 4) + '" style="font:10px var(--mono);fill:' + c + '">' + lab + '</text>';
+  s += '<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="' + pts.map((p, i) => x(i) + ',' + y(p[1])).join(' ') + '" />';
+  const e = pts[pts.length - 1]; s += '<circle cx="' + x(pts.length - 1) + '" cy="' + y(e[1]) + '" r="3.5" fill="var(--accent)" />';
+  s += '<text x="' + L + '" y="' + (H - 3) + '" style="font:10px var(--mono);fill:var(--muted)">' + pts[0][0].slice(5) + '</text><text x="' + (W - R) + '" y="' + (H - 3) + '" text-anchor="end" style="font:10px var(--mono);fill:var(--muted)">' + e[0].slice(5) + '</text>';
+  return s + '</svg>';
+}
+function ckRenderBranches(id, v, price){
+  const box = document.getElementById('ckBr'); if (!box) return;
+  const D = v.dates; if (!D.length){ box.innerHTML = '<p class="note2">讀不到分點資料（可能是 FinMind 額度不夠或這檔沒有分點資料）。</p>'; return; }
+  const D5 = D.slice(-5), tv20 = D.reduce((s, d) => s + (v.vol[d] || 0), 0), tv5 = D5.reduce((s, d) => s + (v.vol[d] || 0), 0);
+  const L = Object.entries(v.br).map(([k, o]) => { const days = D.filter(d => o.d[d] != null), nd = days.filter(d => o.d[d] > 0).length;
+    return { k, n:o.n, net:(o.b - o.s) / 1000, ab:o.b ? o.ba / o.b : null, as:o.s ? o.sa / o.s : null, act:days.length, nd, n5:D5.reduce((s, d) => s + (o.d[d] || 0), 0) / 1000, sh:tv20 ? (o.b - o.s) / tv20 * 100 : 0 }; });
+  const buy = L.filter(o => o.net > 0).sort((a, b) => b.net - a.net), sell = L.filter(o => o.net < 0).sort((a, b) => a.net - b.net);
+  const sus = o => o.sh >= 1 && o.act >= 3 && o.nd / o.act >= 0.6;
+  const top15 = (a) => a.slice(0, 15).reduce((s, o) => s + o.net, 0);
+  const c20 = tv20 ? (top15(buy) + top15(sell)) * 1000 / tv20 * 100 : null;
+  const cc = v.conc.filter(x => D5.includes(x[0])), c5 = tv5 && cc.length ? cc.reduce((s, x) => s + x[1] - x[2], 0) / tv5 * 100 : null;
+  const S = buy.filter(sus).slice(0, 6), cost = S.length ? S.reduce((s, o) => s + o.net * (o.ab || 0), 0) / S.reduce((s, o) => s + o.net, 0) : null;
+  const row = (o, isBuy) => '<tr' + (isBuy && sus(o) ? ' class="near"' : '') + '><td>' + esc(o.n) + (isBuy && sus(o) ? ' <b style="color:var(--up)">疑似主力</b>' : '') + '</td><td class="' + (o.net > 0 ? 'u' : 'd') + '">' + ckF(o.net) + '</td><td>' + ckF(o.sh, 1) + '%</td><td>' + (isBuy ? ckF(o.ab, 2) + '<small>' + ckSg((price / o.ab - 1) * 100, 1) + '</small>' : ckF(o.as, 2)) + '</td><td>' + (isBuy ? o.nd : o.act - o.nd) + '／' + o.act + '</td><td class="' + ckC(o.n5) + '">' + ckF(o.n5) + '</td></tr>';
+  const head = isBuy => '<tr><th>' + (isBuy ? '買超分點' : '賣超分點') + '</th><th>淨' + (isBuy ? '買' : '賣') + '（張）</th><th>占成交量</th><th>' + (isBuy ? '買進均價<small>現價差</small>' : '賣出均價') + '</th><th>' + (isBuy ? '買超天數' : '賣超天數') + '</th><th>近 5 日</th></tr>';
+  let h = '<div class="valsum">';
+  h += '<div class="vt"><div class="k">前 15 大分點集中度（' + D.length + ' 日）</div><div class="v ' + ckC(c20) + '">' + ckSg(c20, 1) + '</div><div class="s">買超前 15 名減賣超前 15 名，占成交量；正＝籌碼往少數分點集中</div></div>';
+  h += '<div class="vt"><div class="k">近 5 日集中度</div><div class="v">' + ckSg(c5, 1) + '</div><div class="s">FinMind 每日前 15 大買賣分點</div></div>';
+  h += '<div class="vt' + (S.length ? ' hl' : '') + '"><div class="k">疑似主力</div><div class="v">' + S.length + ' 家</div><div class="s">' + (S.length ? '平均成本約 ' + ckF(cost, 2) + ' 元（現價 ' + ckSg((price / cost - 1) * 100, 1) + '）' : '沒有分點同時符合三個條件') + '</div></div></div>';
+  h += '<div style="overflow-x:auto"><table class="vtab" style="min-width:560px"><thead>' + head(true) + '</thead><tbody>' + buy.slice(0, 8).map(o => row(o, true)).join('') + '</tbody></table></div>';
+  h += '<div style="overflow-x:auto"><table class="vtab" style="min-width:560px"><thead>' + head(false) + '</thead><tbody>' + sell.slice(0, 5).map(o => row(o, false)).join('') + '</tbody></table></div>';
+  h += '<p class="help">「疑似主力」＝近 ' + D.length + ' 個交易日淨買超占成交量 1% 以上、至少有 3 天有交易、而且有交易的日子六成以上是買超（持續吃貨）。買進均價只算它買的那部分，不是持股成本；同一家券商分點可能是很多客人合起來，只能當線索。資料 ' + D[0] + '～' + D[D.length - 1] + '。</p>';
+  box.innerHTML = h;
+  return { S, cost, c20, c5 };
+}
+function syncCk(){
+  const sec = document.getElementById('ckSec'), box = document.getElementById('ckBox');
+  const id = RAW && !RAW.sample ? RAW.id : null, stock = id && /^[1-9]\d{3}$/.test(id);
+  sec.hidden = !stock; document.getElementById('togCk').setAttribute('aria-pressed', String(UI.showCk !== false));
+  if (!stock) return;
+  box.hidden = UI.showCk === false; if (box.hidden) return;
+  const rows = RAW.rows, price = rows && rows.length ? rows[rows.length - 1][4] : null, key = id + '|' + price;
+  if (key === ckKey) return; ckKey = key;
+  box.innerHTML = '<p class="note2">讀取融資、庫藏股、籌碼資料中…</p>';
+  if (!CK_PUSH) CK_PUSH = ckJSON('data/price/push.json'); if (!CK_TREAS) CK_TREAS = ckJSON('data/treasury.json');
+  if (!VALC.has(id)) VALC.set(id, valFetch(id).catch(e => { VALC.delete(id); throw e; }));
+  Promise.all([ckMargin(id).catch(e => ({ err:e.message })), CK_PUSH, CK_TREAS, VALC.get(id).catch(() => null)]).then(([mg, pj, tj, vv]) => {
+    if (!RAW || RAW.id !== id) return;
+    const pr = pj && pj.rows ? pj.rows.find(r => r.c === id) : null, tr = tj && tj.rows ? tj.rows[id] : null, today = isoDay(Date.now());
+    const tile = (k, v, s, cls) => '<div class="vt' + (cls ? ' ' + cls : '') + '"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+    const sum = [];   // 綜合判讀
+    let h = '';
+    // ① 融資
+    h += '<div class="valcard"><div class="vh">融資維持率<span>FinMind 估計的融資平均成本；130% 以下會被追繳</span></div>';
+    if (mg.err || !mg.mm || !mg.mm.length) h += '<p class="note2">' + (mg.err ? '讀取失敗：' + esc(mg.err) : '這檔沒有融資（或不能融資）。') + '</p>';
+    else {
+      const a = mg.mm, e = a[a.length - 1], bal = e[1], cost = e[2], mt = e[3], b5 = a.length > 5 ? a[a.length - 6][1] : null, b20 = a.length > 20 ? a[a.length - 21][1] : null;
+      const lim = mg.mp.length ? mg.mp[mg.mp.length - 1][2] : null, use = lim ? bal / lim * 100 : null, short = mg.mp.length ? mg.mp[mg.mp.length - 1][3] : null;
+      const call = cost * 0.6 * 1.3, st = mt >= 170 ? ['安全', 'var(--down)'] : mt >= 150 ? ['正常', 'var(--muted)'] : mt >= 140 ? ['偏低', 'var(--accent)'] : mt >= 130 ? ['危險，接近追繳', 'var(--up)'] : ['低於 130%，追繳中', 'var(--up)'];
+      h += '<div class="valsum">' + tile('維持率', ckF(mt, 1) + '%', '<b style="color:' + st[1] + '">' + st[0] + '</b>（' + e[0].slice(5) + '）', mt < 140 ? 'hl' : '') + tile('融資平均成本', ckF(cost, 2) + ' 元', '現價 ' + ckSg((price / cost - 1) * 100, 1)) +
+        tile('追繳價（維持率 130%）', ckF(call, 2) + ' 元', '離現價 ' + ckSg((call / price - 1) * 100, 1)) + tile('融資餘額', ckF(bal) + ' 張', '5 日 ' + ckSg(b5 ? (bal / b5 - 1) * 100 : null) + '・20 日 ' + ckSg(b20 ? (bal / b20 - 1) * 100 : null)) +
+        tile('融資使用率', ckF(use, 1) + '%', '餘額 ÷ 融資限額' + (short ? '；融券 ' + ckF(short) + ' 張' : '')) + '</div>';
+      h += ckSpark(a.slice(-120).map(x => [x[0], x[3]]), [[130, 'var(--up)', '130'], [150, 'var(--accent)', '150'], [170, 'var(--down)', '170']]);
+      if (mt < 140) sum.push('融資維持率 ' + ckF(mt, 0) + '%，' + (mt < 130 ? '已經在追繳線下，短線可能有斷頭賣壓' : '接近 130% 追繳線，再跌約 ' + ckF((1 - call / price) * 100, 0) + '% 就會被追繳') + '。');
+      else if (b20 && bal / b20 - 1 > 0.2 && price < cost) sum.push('融資 20 天增加 ' + ckF((bal / b20 - 1) * 100, 0) + '%，而且股價低於融資成本，散戶套牢、籌碼偏亂。');
+      else if (b20 && bal / b20 - 1 < -0.15) sum.push('融資 20 天減少 ' + ckF((1 - bal / b20) * 100, 0) + '%，散戶籌碼在退場，對主力拉抬有利。');
+    }
+    h += '</div>';
+    // ② 庫藏股
+    const P = { 1:'轉讓給員工', 2:'配合認股權、可轉債轉換', 3:'維護公司信用及股東權益' };
+    h += '<div class="valcard"><div class="vh">庫藏股<span>公開資訊觀測站買回自己公司股份彙總表（近 3 年）</span></div>';
+    if (!tj) h += '<p class="note2">庫藏股資料還沒準備好（每天晚上更新）。</p>';
+    else if (!tr || !tr.r.length) h += '<p class="note2">近 3 年沒有買回庫藏股。</p>';
+    else {
+      const r = tr.r[0], lots = pr ? pr.lots : null, run = r[7] === 'N' && r[6] >= today, inRange = price >= r[3] && price <= r[4];
+      h += '<div class="valsum">' + tile('最新一次', r[0].replace(/-/g, '/'), '董事會決議・' + (P[r[1]] || '目的 ' + r[1])) + tile('預定買回', ckF(r[2] / 1000) + ' 張', lots ? '占全部股數 ' + ckF(r[2] / 1000 / lots * 100, 2) + '%' : '') +
+        tile('買回價格區間', ckF(r[3], 2) + '～' + ckF(r[4], 2), '現價 ' + ckF(price, 2) + (inRange ? '（在區間內）' : price > r[4] ? '（高於上限，買不了）' : '（低於下限）'), run && inRange ? 'hl' : '') +
+        tile('期間', r[5].slice(5).replace('-', '/') + '～' + r[6].slice(5).replace('-', '/'), run ? '<b style="color:var(--up)">執行中</b>' : r[7] === 'Y' ? '已完成' : '已過期') +
+        (r[8] != null ? tile('執行結果', ckF(r[9], 0) + '%', '買回 ' + ckF(r[8] / 1000) + ' 張、均價 ' + ckF(r[11], 2) + ' 元') : '') + '</div>';
+      if (tr.r.length > 1) h += '<p class="help">近 3 年共 ' + tr.r.length + ' 次：' + tr.r.slice(0, 5).map(x => x[0].slice(0, 7).replace('-', '/') + (x[9] != null ? ' 執行 ' + ckF(x[9], 0) + '%' : x[7] === 'N' ? ' 進行中' : '')).join('、') + '。執行中的進度要等期間結束才會公布。</p>';
+      if (run && inRange) sum.push('公司正在買回庫藏股（' + (P[r[1]] || '') + '），股價還在買回區間 ' + ckF(r[3], 1) + '～' + ckF(r[4], 1) + ' 元內，下檔有公司在承接。');
+      else if (run) sum.push('公司有庫藏股在執行中，但現價' + (price > r[4] ? '已高於買回上限' : '低於下限') + '。');
+    }
+    h += '</div>';
+    // ③ 大戶與流通股數
+    h += '<div class="valcard"><div class="vh">大戶集中度與流通股數<span>集保 ' + (pr ? pr.wk : '—') + '・<a href="push.html?s=' + id + '" style="color:var(--accent)">籌碼推升試算</a></span></div>';
+    if (!pr) h += '<p class="note2">沒有集保資料。</p>';
+    else {
+      const hw = pr.hw || [], e = hw.length - 1, b4 = e >= 4 ? hw[e][2] - hw[e - 4][2] : null, p4 = e >= 4 ? (hw[e][1] / hw[e - 4][1] - 1) * 100 : null, sweet = pr.F >= 1e4 && pr.F < 1e5, ins = pr.ins;
+      h += '<div class="valsum">' + tile('大戶（400 張以上）', ckF(pr.b400, 1) + '%', '4 週 <span class="' + ckC(b4) + '">' + ckSg(b4, 2, '') + '</span> 個百分點', b4 > 0 && p4 < 0 ? 'hl' : '') + tile('股東人數', ckF(pr.ppl), '4 週 ' + ckSg(p4, 1)) +
+        tile('董監持股', ins ? ckF(ins[1], 1) + '%' : '—', ins ? '3 個月 ' + ckSg(ins[2], 1) + (ins[3] ? '・質押 ' + ckF(ins[3], 0) + '%' : '') : '') +
+        tile('流通股數（中性）', ckF(pr.F / 1e4, 1) + ' 萬張', '扣掉千張大戶；' + (sweet ? '<b style="color:var(--accent)">好拉抬區</b>（1～10 萬張）' : pr.F < 1e4 ? '太小，量少' : '偏大，拉抬要很多資金')) +
+        tile('散戶（10 張以下）', ckF(pr.spct, 1) + '%', ckF(pr.sp) + ' 人') + tile('換手一輪', ckF(pr.td, 0) + ' 天', '20 日均量 ' + ckF(pr.v20) + ' 張') + '</div>';
+      if (b4 > 0 && p4 < 0) sum.push('近 4 週大戶比例增加 ' + ckF(b4, 2) + ' 個百分點、股東人數減少 ' + ckF(-p4, 1) + '%，籌碼往大戶集中。');
+      else if (b4 < 0 && p4 > 0) sum.push('近 4 週大戶比例減少、股東人數增加，籌碼正在分散到散戶手上。');
+      if (ins && ins[2] > 0.5) sum.push('董監近 3 個月增持 ' + ckF(ins[2], 1) + '%。'); else if (ins && ins[2] < -0.5) sum.push('董監近 3 個月減持 ' + ckF(-ins[2], 1) + '%，要留意。');
+      if (ins && ins[3] > 30) sum.push('董監質押比例 ' + ckF(ins[3], 0) + '%，偏高。');
+      sum.push('流通股數約 ' + ckF(pr.F / 1e4, 1) + ' 萬張，' + (sweet ? '在比較好拉抬的 1～10 萬張區間。' : pr.F < 1e4 ? '偏小，量少、進出不易。' : '偏大，要很多資金才拉得動。'));
+    }
+    h += '</div>';
+    // ④ 估值
+    h += '<div class="valcard"><div class="vh">本益比河流與預估 EPS<span>用財報和月營收推算，不是法人預估；詳細在下方「估值」</span></div>';
+    const m = vv && vv.eps && vv.eps.length ? valModel(vv, price) : null;
+    if (!m) h += '<p class="note2">' + (vv ? '財報資料不足，算不出預估。' : '估值資料讀取失敗或還在讀。') + '</p>';
+    else {
+      const posTxt = m.pos == null ? '資料不足' : '過去 3 年第 ' + Math.round(m.pos * 100) + ' 百分位';
+      h += '<div class="valsum">' + (m.mode === 'PB' ? tile('股價淨值比', ckF(m.pbNow, 2) + ' 倍', posTxt + '（本益比不適用）') : tile('目前本益比', m.pe ? ckF(m.pe, 1) + ' 倍' : '虧損', posTxt)) +
+        tile('近四季 EPS', ckF(m.ttm, 2) + ' 元', '已公布財報') + tile('未來四季 EPS 預估', ckF(m.fwd, 2) + ' 元', '大約 ' + ckF(m.fwdLo, 2) + '～' + ckF(m.fwdHi, 2) + '，可信度 ' + m.grade, 'hl') +
+        tile('預估本益比', m.fpe ? ckF(m.fpe, 1) + ' 倍' : '—', '現價 ÷ 未來四季 EPS', 'hl') + tile(m.Y + ' 年 EPS', ckF(m.yEps, 2) + ' 元', m.prevY > 0 ? '去年 ' + ckF(m.prevY, 2) + '，' + valPct(m.yEps / m.prevY - 1) : '') + '</div>';
+      h += m.mode ? '<div id="ckRiver"></div>' : '<p class="note2">本益比、股價淨值比都不適用：' + esc(m.peWhy || '') + '</p>';
+      if (m.pos != null) sum.push((m.mode === 'PB' ? '股價淨值比' : '本益比') + '在過去 3 年第 ' + Math.round(m.pos * 100) + ' 百分位，' + (m.pos < 0.25 ? '偏便宜' : m.pos > 0.75 ? '偏貴' : '中間') + '；未來四季 EPS 預估 ' + ckF(m.fwd, 2) + ' 元' + (m.fpe ? '（預估本益比 ' + ckF(m.fpe, 1) + ' 倍）' : '') + '。');
+    }
+    h += '</div>';
+    // ⑤ 分點
+    h += '<div class="valcard"><div class="vh">關鍵分點：疑似主力佈局<span>近 20 個交易日、FinMind 分點進出</span></div><div id="ckBr"><p class="note2" id="ckBrMsg">分析分點要向 FinMind 查 21 次（約占你每小時額度的 0.4%），按下才開始。</p><button class="tog" id="ckBrBtn">分析分點</button></div></div>';
+    // ⑥ 綜合
+    h += '<div class="valcard vconc" id="ckSum"><div class="vh">綜合判讀</div>' + (sum.length ? sum.map(s => '<p>・' + s + '</p>').join('') : '<p>資料不足。</p>') + '<p class="help" style="margin:0">只是把資料整理在一起，不是投資建議。</p></div>';
+    box.innerHTML = h;
+    if (m && m.mode){ const el = document.getElementById('ckRiver'); el.innerHTML = valRiver(m, el); }
+    const runBr = () => {
+      const dates = (mg.mm || []).map(x => x[0]).slice(-20);
+      if (!dates.length){ document.getElementById('ckBrMsg').textContent = '找不到交易日（這檔沒有融資資料），無法分析分點。'; return; }
+      const b = document.getElementById('ckBrBtn'); if (b) b.remove();
+      ckBranches(id, dates).then(v => { if (!RAW || RAW.id !== id) return; const r = ckRenderBranches(id, v, price);
+        if (r){ const el = document.getElementById('ckSum'); const p = document.createElement('p'); p.textContent = '・分點：' + (r.S.length ? '有 ' + r.S.length + ' 家分點持續買超（疑似主力），平均成本約 ' + ckF(r.cost, 2) + ' 元，現價 ' + ckSg((price / r.cost - 1) * 100, 1) + '。' : '沒有看到持續買超的分點。') + '前 15 大分點集中度 ' + ckSg(r.c20, 1) + '。'; el.insertBefore(p, el.lastElementChild); } })
+        .catch(e => { const el = document.getElementById('ckBr'); if (el) el.innerHTML = '<p class="note2">分點讀取失敗：' + esc(e.message) + '</p>'; });
+    };
+    const bb = document.getElementById('ckBrBtn'); if (bb) bb.onclick = runBr;
+    DSTORE.get('ckb:' + id + ':' + ((mg.mm || []).slice(-1)[0] || [''])[0]).then(c => { if (c && RAW && RAW.id === id) runBr(); });
+  });
+}
+document.getElementById('togCk').onclick = () => { UI.showCk = UI.showCk === false; saveUI(); ckKey = ''; syncCk(); };
+
 /* ═════════════ toolbar ═════════════ */
 document.getElementById('symForm').addEventListener('submit', e => { e.preventDefault(); document.getElementById('symInput').blur(); loadSymbol(document.getElementById('symInput').value); });
 document.getElementById('presets').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (!b) return; if (b.dataset.night){ UI.night = b.dataset.night === '1'; saveUI(); syncToolbar(); } loadSymbol(b.dataset.s); });
@@ -9589,7 +9770,7 @@ function applyTheme(){
   document.documentElement.dataset.theme = UI.theme;
   CC = themeColors();
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = CC.bg;
-  syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips(); if (typeof syncVal === 'function' && RAW){ valKey = ''; syncVal(); }
+  syncToolbar(); schedule(); if (typeof syncChips === 'function' && RAW) syncChips(); if (typeof syncVal === 'function' && RAW){ valKey = ''; syncVal(); } if (typeof syncCk === 'function' && RAW){ ckKey = ''; syncCk(); }
 }
 document.getElementById('togAdj').onclick = () => { UI.adj = !UI.adj; saveUI(); syncToolbar(); syncAppForm(); if (RAW && !RAW.sample && !FUTS[RAW.id]) loadSymbol(RAW.id); };
 // 副圖越多，圖表越高，主圖不會被擠扁
